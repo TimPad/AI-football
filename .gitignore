@@ -1,0 +1,16 @@
+# данные и модели — не в git
+data/
+models/
+*.pt
+*.mp4
+*.parquet
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# прочее
+.DS_Store
+runs/
