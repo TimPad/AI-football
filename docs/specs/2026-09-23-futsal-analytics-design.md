@@ -118,8 +118,8 @@ configs/venues/<venue>/        ← один раз на установку ка�
 | `venue.yaml` | размеры поля в метрах; пороги уверенности по классам; целевой fps обработки; модель и imgsz | вручную |
 | `calib.json` | матрица камеры K, коэффициенты дисторсии, размер кадра. Может отсутствовать — тогда коррекция дисторсии пропускается | `cv2.calibrateCamera` по шахматной доске, либо по прямым линиям зала |
 | `homography.json` | H (3×3) из неискажённых пикселей в метры; контрольные точки (пиксель ↔ метры), по которым H посчитана; ошибка репроекции | разметка точек мышкой, `cv2.findHomography` |
-| `pitch_polygon` (внутри `venue.yaml`) | контур поля на кадре, в пикселях | разметка мышкой |
-| `visible_polygon` (внутри `venue.yaml`) | часть поля, которую видит камера, в метрах | вычисляется из H и границ кадра |
+| `pitch_polygon.json` | контур поля на кадре, в пикселях исходного кадра | разметка мышкой (`aifootball.tools.mark_points`) |
+| `visible_polygon` | часть поля, которую видит камера, в метрах | вычисляется из H и границ кадра. **Отложено до Ф4:** в Ф1 покрытие учитывается через `observed_s` |
 
 **Система координат поля:** метры, начало — ближний к камере левый угол поля (как видно из камеры). `x` — вдоль длинной оси, от 0 до длины поля; `y` — поперёк, от ближней боковой линии до дальней. Размеры поля берутся из `venue.yaml`, в коде не зашиты.
 
@@ -136,13 +136,14 @@ configs/venues/<venue>/        ← один раз на установку ка�
 | `cls` | category | `person` \| `ball` |
 | `x1, y1, x2, y2` | float32 | бокс в пикселях исходного кадра |
 | `conf` | float32 | уверенность |
+| `torso_l, torso_a, torso_b` | float32 | медианный цвет торса в Lab (шкала OpenCV); у мяча NaN. Считается при детекции, пока кадр в памяти, — чтобы трекинг и деление на команды не читали видео заново |
 
 **`tracks.parquet`** — все поля detections, плюс:
 
 | поле | тип | смысл |
 |---|---|---|
 | `track_id` | int32 | идентификатор трека (это ещё **не** игрок, см. 4.3) |
-| `foot_x, foot_y` | float32 | точка касания пола: центр нижней грани бокса, в неискажённых пикселях |
+| `foot_x, foot_y` | float32 | точка касания пола: центр нижней грани бокса, в пикселях **исходного** кадра. Дисторсия снимается в L2 при проекции в метры — вся геометрическая коррекция в одном месте |
 | `in_pitch` | bool | точка касания внутри `pitch_polygon` |
 | `role` | category | `player` \| `goalkeeper` \| `referee` \| `unknown` |
 | `team` | category, nullable | `A` \| `B` \| null (у судьи и неизвестных) |
@@ -291,7 +292,7 @@ configs/venues/<venue>/        ← один раз на установку ка�
 
 ## 7. Стек и структура репозитория
 
-**Стек:** Python 3.12, uv, ultralytics (YOLO11), supervision (ByteTrack, работа с полигонами), OpenCV, polars + pyarrow, pytest. Сервисная часть (Ф6) выбирается отдельно, к ней приступаем позже.
+**Стек:** Python 3.12, uv, ultralytics (YOLO11), trackers (ByteTrack от Roboflow; `supervision.ByteTrack` устарел и удаляется в supervision 0.31), supervision (контейнер детекций), OpenCV, polars + pyarrow, pytest. Сервисная часть (Ф6) выбирается отдельно, к ней приступаем позже.
 
 ```
 AI-football/
@@ -300,11 +301,12 @@ AI-football/
 ├── src/aifootball/
 │   ├── schemas.py                 схемы артефактов и их версии
 │   ├── venue.py                   загрузка конфига установки
-│   ├── perception/                detect.py, track.py, roles.py
+│   ├── perception/                frames.py, color.py, detect.py, track.py, teams.py
 │   ├── geometry/                  undistort.py, homography.py, polygons.py
 │   ├── state/                     project.py, smooth.py
-│   ├── analytics/                 metrics.py, heatmap.py
-│   ├── viz/                       overlay.py, topdown.py
+│   ├── analytics/                 metrics.py, checks.py
+│   ├── viz/                       overlay.py, topdown.py, debug_video.py
+│   ├── tools/                     marking.py, mark_points.py — разметка установки мышкой
 │   └── cli.py                     по одной подкоманде на шаг
 ├── scripts/                       разовые исследования (bench_detect, debug_overlay)
 ├── tests/
