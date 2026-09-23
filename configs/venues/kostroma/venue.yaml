@@ -1,0 +1,12 @@
+# Кострома, YouTube x-ITNQMFm0M — полигон для разработки, не целевая установка.
+# Размеры поля — ДОПУЩЕНИЕ: стандартная площадка 40x20 м. Проверяется в задаче 21.
+venue_id: kostroma
+pitch:
+  length_m: 40.0
+  width_m: 20.0
+processing:
+  target_fps: 10
+  model: yolo11m.pt
+  imgsz: 1280
+  conf_person: 0.25
+  conf_ball: 0.10
