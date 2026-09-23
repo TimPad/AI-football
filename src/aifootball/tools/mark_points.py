@@ -15,8 +15,13 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from aifootball.geometry.polygons import is_simple_polygon
-from aifootball.tools.marking import save_homography, save_polygon, topdown_preview
+from aifootball.tools.marking import (
+    finish_problem,
+    parse_meters,
+    save_homography,
+    save_polygon,
+    topdown_preview,
+)
 from aifootball.venue import load_venue
 
 KEY_ENTER = {10, 13}
@@ -47,10 +52,11 @@ def collect_points(frame: np.ndarray, scale: float, ask_meters: bool):
         if ask_meters:
             answer = input(f"точка {len(pixels) + 1} ({point[0]:.0f}, {point[1]:.0f}) px — метры 'x y': ")
             try:
-                xm, ym = (float(v) for v in answer.replace(",", " ").split())
-            except ValueError:
-                print("  не понял, точка не добавлена")
+                xm, ym = parse_meters(answer)
+            except ValueError as error:
+                print(f"  {error}. Точка не добавлена — кликните её ещё раз")
                 return
+            print(f"  точка {len(pixels) + 1}: x = {xm} м, y = {ym} м")
             meters.append((xm, ym))
         pixels.append(point)
 
@@ -75,10 +81,9 @@ def collect_points(frame: np.ndarray, scale: float, ask_meters: bool):
             if ask_meters:
                 meters.pop()
         if key in KEY_ENTER:
-            # Контур проверяем до закрытия окна: иначе все клики пропадут вместе с ошибкой.
-            if not ask_meters and not is_simple_polygon(pixels):
-                print("контур пересекает сам себя или короче 3 вершин: ставьте вершины по порядку "
-                      "обхода. Backspace — убрать последние точки")
+            problem = finish_problem(pixels, homography=ask_meters)
+            if problem:
+                print(problem)
                 continue
             cv2.destroyAllWindows()
             return pixels, meters
@@ -109,7 +114,9 @@ def main(argv=None) -> None:
     info = save_homography(args.venue, pixels, meters, venue.calib)
     print(f"точек: {len(pixels)}")
     print(f"ошибка на своих точках: {info['reprojection_error_m']} м")
-    print(f"ошибка без каждой точки (честная): {info['leave_one_out_error_m']} м")
+    loo = info["leave_one_out_error_m"]
+    print(f"ошибка без каждой точки (честная): {loo} м" if loo is not None
+          else "честная ошибка не считается: нужно 5 точек или больше")
     preview = topdown_preview(frame, load_venue(args.venue).H, venue.length_m, venue.width_m, venue.calib)
     cv2.imshow("topdown preview — любая клавиша", preview)
     cv2.waitKey(0)

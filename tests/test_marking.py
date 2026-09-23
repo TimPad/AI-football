@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from aifootball.geometry.homography import apply_homography
-from aifootball.tools.marking import save_homography, save_polygon, topdown_preview
+from aifootball.tools.marking import finish_problem, parse_meters, save_homography, save_polygon, topdown_preview
 from aifootball.venue import load_venue
 from conftest import make_venue_dir
 
@@ -47,3 +47,35 @@ def test_self_intersecting_polygon_rejected(tmp_path):
     with pytest.raises(ValueError, match="пересекает сам себя"):
         save_polygon(root, [(0, 0), (10, 10), (10, 0), (0, 10)])
     assert not (root / "pitch_polygon.json").exists()
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("40 8.5", (40.0, 8.5)),
+        ("40 8,5", (40.0, 8.5)),  # десятичная запятая
+        ("4,5 9,25", (4.5, 9.25)),
+        ("40, 8.5", (40.0, 8.5)),
+        ("40; 8,5", (40.0, 8.5)),
+        ("  20   20 ", (20.0, 20.0)),
+    ],
+)
+def test_parse_meters(text, expected):
+    assert parse_meters(text) == expected
+
+
+@pytest.mark.parametrize("text", ["4,9", "40", "40 8 1", "", "сорок 8"])
+def test_parse_meters_rejects_ambiguous_input(text):
+    # «4,9» по-русски — одно число 4.9, а не пара (4, 9): переспрашиваем
+    with pytest.raises(ValueError):
+        parse_meters(text)
+
+
+def test_finish_problem_blocks_bad_markup_before_window_closes():
+    square = [(0, 0), (10, 0), (10, 10), (0, 10)]
+
+    assert finish_problem(square, homography=False) is None
+    assert "пересекает" in finish_problem([(0, 0), (10, 10), (10, 0), (0, 10)], homography=False)
+    assert "минимум 3" in finish_problem([(0, 0), (1, 1)], homography=False)
+    assert "минимум 4" in finish_problem([(0, 0)], homography=True)
+    assert finish_problem(square, homography=True) is None

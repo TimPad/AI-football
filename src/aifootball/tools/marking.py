@@ -6,11 +6,40 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from aifootball.geometry.homography import fit_homography, leave_one_out_error
+from aifootball.geometry.homography import MIN_POINTS, fit_homography, leave_one_out_error
 from aifootball.geometry.polygons import is_simple_polygon
 from aifootball.geometry.undistort import undistort_points
 from aifootball.venue import Calibration
 from aifootball.viz.topdown import LINE_BGR, canvas_size, draw_pitch, meters_to_canvas
+
+
+def parse_meters(text: str) -> tuple[float, float]:
+    """Ответ пользователя «x y» в метрах: '40 8.5', '40 8,5', '40; 8,5' -> (40.0, 8.5).
+
+    Запятая внутри числа — десятичная. Поэтому «4,9» — это одно число 4.9,
+    а не пара (4, 9): такой ответ отвергается, чтобы не угадывать.
+    """
+    tokens = text.replace(";", " ").split()
+    if len(tokens) != 2:
+        raise ValueError(f"нужно два числа через пробел: 'x y', получено {text.strip()!r}")
+    x, y = (float(token.rstrip(",").replace(",", ".")) for token in tokens)
+    return x, y
+
+
+def finish_problem(pixels, homography: bool) -> str | None:
+    """Почему разметку нельзя сохранить; None — можно.
+
+    Проверяется до закрытия окна: иначе все клики пропадут вместе с ошибкой.
+    """
+    if homography:
+        if len(pixels) < MIN_POINTS:
+            return f"для гомографии нужно минимум {MIN_POINTS} точки, поставлено {len(pixels)}"
+        return None
+    if len(pixels) < 3:
+        return f"у контура нужно минимум 3 вершины, поставлено {len(pixels)}"
+    if not is_simple_polygon(pixels):
+        return "контур пересекает сам себя: ставьте вершины по порядку обхода (Backspace — убрать последние)"
+    return None
 
 
 def save_polygon(venue_root: Path, points_px) -> Path:
