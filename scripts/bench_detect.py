@@ -25,7 +25,7 @@ MATCH_MINUTES = 45
 # кадрами — ByteTrack такое сшивает без проблем. Прореживание даёт ускорение в 2.5x.
 TARGET_FPS = 10
 
-MODELS = ["yolo11n.pt", "yolo11s.pt", "yolo11m.pt"]
+MODELS = ["models/yolo11n.pt", "models/yolo11s.pt", "models/yolo11m.pt"]
 IMAGE_SIZES = [960, 1280]
 WARMUP_FRAMES = 5
 BENCH_FRAMES = 40

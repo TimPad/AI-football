@@ -21,7 +21,7 @@ from ultralytics import YOLO
 PERSON = 0  # COCO 'person'
 BALL = 32  # COCO 'sports ball'
 
-MODEL = "yolo11m.pt"
+MODEL = "models/yolo11m.pt"
 IMGSZ = 1280
 CONF_PERSON = 0.25
 CONF_BALL = 0.10  # мяч мелкий, уверенность заведомо низкая — смотрим что вообще есть
