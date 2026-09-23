@@ -15,6 +15,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from aifootball.geometry.polygons import is_simple_polygon
 from aifootball.tools.marking import save_homography, save_polygon, topdown_preview
 from aifootball.venue import load_venue
 
@@ -74,6 +75,11 @@ def collect_points(frame: np.ndarray, scale: float, ask_meters: bool):
             if ask_meters:
                 meters.pop()
         if key in KEY_ENTER:
+            # Контур проверяем до закрытия окна: иначе все клики пропадут вместе с ошибкой.
+            if not ask_meters and not is_simple_polygon(pixels):
+                print("контур пересекает сам себя или короче 3 вершин: ставьте вершины по порядку "
+                      "обхода. Backspace — убрать последние точки")
+                continue
             cv2.destroyAllWindows()
             return pixels, meters
 

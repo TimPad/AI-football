@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 
 from aifootball.geometry.homography import fit_homography, leave_one_out_error
+from aifootball.geometry.polygons import is_simple_polygon
 from aifootball.geometry.undistort import undistort_points
 from aifootball.venue import Calibration
 from aifootball.viz.topdown import LINE_BGR, canvas_size, draw_pitch, meters_to_canvas
@@ -16,6 +17,8 @@ def save_polygon(venue_root: Path, points_px) -> Path:
     points = np.asarray(points_px, dtype=float).reshape(-1, 2)
     if len(points) < 3:
         raise ValueError(f"у контура поля нужно минимум 3 вершины, дано {len(points)}")
+    if not is_simple_polygon(points):
+        raise ValueError("контур пересекает сам себя: вершины нужно ставить по порядку обхода")
     path = venue_root / "pitch_polygon.json"
     path.write_text(json.dumps({"points_px": points.round(1).tolist()}, indent=2), encoding="utf-8")
     return path

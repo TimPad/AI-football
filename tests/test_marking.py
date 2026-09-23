@@ -39,3 +39,11 @@ def test_preview_has_canvas_size():
     scale = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 1.0]])
 
     assert topdown_preview(frame, scale, 40, 20).shape == (480, 880, 3)
+
+
+def test_self_intersecting_polygon_rejected(tmp_path):
+    root = make_venue_dir(tmp_path / "v")
+
+    with pytest.raises(ValueError, match="пересекает сам себя"):
+        save_polygon(root, [(0, 0), (10, 10), (10, 0), (0, 10)])
+    assert not (root / "pitch_polygon.json").exists()
