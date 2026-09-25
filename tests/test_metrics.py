@@ -12,8 +12,9 @@ def _state(track_id, team, ts, x, y=5.0, speed=1.0):
         "frame_id": (np.asarray(ts) * 25).round().astype(np.int32),
         "ts": np.asarray(ts, dtype=float),
         "track_id": [track_id] * n, "role": ["player"] * n, "team": [team] * n,
-        "x_m": np.asarray(x, dtype=float), "y_m": np.full(n, y),
-        "vx": np.full(n, speed), "vy": np.zeros(n), "speed": np.full(n, speed),
+        "x_m": np.asarray(x, dtype=np.float32), "y_m": np.full(n, y, dtype=np.float32),
+        "vx": np.full(n, speed, dtype=np.float32), "vy": np.zeros(n, dtype=np.float32),
+        "speed": np.full(n, speed, dtype=np.float32),
         "interpolated": [False] * n,
     }, schema=schemas.STATE)
 
@@ -53,4 +54,33 @@ def test_team_totals_and_heatmap():
     assert heat.shape == (40, 20)
     assert heat.sum() == pytest.approx((101 + 42) * 0.1)
     assert heat[:, 5].sum() == pytest.approx(heat.sum())  # все бегали по y=5
-    assert teams["B"] == {"tracks": [], "observed_s": 0, "distance_m": 0, "heatmap_s": np.zeros((40, 20)).tolist()}
+    assert teams["B"] == {
+        "tracks": [],
+        "observed_s": 0,
+        "distance_m": 0,
+        "sprints_count": 0,
+        "compactness_m2": 0.0,
+        "heatmap_s": np.zeros((40, 20)).tolist(),
+    }
+
+
+def test_sprint_counting_and_compactness():
+    # Создаем 3 игроков для проверки площади треугольника (компактности)
+    # Площадь прямоугольного треугольника с катетами 10 м и 10 м = 50 м^2
+    ts = np.arange(20) / 10.0  # 2 секунды
+    speeds = np.full(20, 1.0, dtype=np.float32)
+    speeds[5:18] = 6.0  # 1.3 секунды со скоростью 6 м/с (спринт!)
+
+    df1 = _state(1, "A", ts, np.zeros(20), y=0.0, speed=1.0)
+    df1 = df1.with_columns(speed=pl.Series(speeds, dtype=pl.Float32))
+
+    df2 = _state(2, "A", ts, np.full(20, 10.0), y=0.0, speed=1.0)
+    df3 = _state(3, "A", ts, np.zeros(20), y=10.0, speed=1.0)
+
+    state = pl.concat([df1, df2, df3])
+    m = compute_metrics(state, 40.0, 20.0)
+
+    assert m["tracks"]["1"]["sprints_count"] == 1
+    assert m["teams"]["A"]["sprints_count"] == 1
+    assert m["teams"]["A"]["compactness_m2"] == pytest.approx(50.0)
+
