@@ -20,7 +20,7 @@ from aifootball import schemas
 from aifootball.analytics.checks import phase1_checks
 from aifootball.analytics.metrics import compute_metrics
 from aifootball.perception.frames import video_fps
-from aifootball.perception.teams import assign_teams
+from aifootball.perception.teams import assign_roles, assign_teams
 from aifootball.perception.track import track_people
 from aifootball.state.project import project_tracks
 from aifootball.venue import load_venue
@@ -53,12 +53,19 @@ def cmd_detect(args, venue) -> None:
 
 
 def cmd_track(args, venue) -> None:
+    from aifootball.perception.stitch import stitch_tracks
+
     detections = schemas.read(args.match / "detections.parquet", "detections")
-    tracks = assign_teams(track_people(detections, venue))
+    raw_tracks = track_people(detections, venue)
+    stitched_tracks = stitch_tracks(raw_tracks, max_gap_s=venue.max_gap_s * 5.0)
+    assigned_teams = assign_teams(stitched_tracks, min_observations=venue.min_team_observations)
+    tracks = assign_roles(assigned_teams, venue)
     schemas.write(tracks, args.match / "tracks.parquet", "tracks")
     on_pitch = tracks.filter(tracks["in_pitch"])
     print(
-        f"track: {tracks['track_id'].n_unique()} треков, на поле {on_pitch['track_id'].n_unique()}, "
+        f"track: исходно {raw_tracks['track_id'].n_unique()} -> {tracks['track_id'].n_unique()} треков после сшивки, "
+        f"на поле {on_pitch['track_id'].n_unique()}, "
+        f"роли {tracks.group_by('role').len().sort('role').rows()}, "
         f"команды {tracks.group_by('team').len().sort('team').rows()}"
     )
 
@@ -71,11 +78,20 @@ def cmd_project(args, venue) -> None:
 
 
 def cmd_metrics(args, venue) -> None:
+    from aifootball.perception.ball import process_ball_trajectory
+
     state = schemas.read(args.match / "state.parquet", "state")
-    metrics = compute_metrics(state, venue.length_m, venue.width_m)
+    det_path = args.match / "detections.parquet"
+    detections = schemas.read(det_path, "detections") if det_path.exists() else None
+    ball_state = process_ball_trajectory(detections, venue) if detections is not None else None
+
+    metrics = compute_metrics(state, venue.length_m, venue.width_m, ball_state=ball_state)
     schemas.write_json(metrics, args.match / "metrics.json")
     for team, m in metrics["teams"].items():
         print(f"metrics: команда {team}: {m['distance_m']:.0f} м за {m['observed_s']:.0f} с наблюдения")
+    if "possession" in metrics:
+        poss = metrics["possession"]["possession_pct"]
+        print(f"metrics: владение мячом A: {poss['A']}%, B: {poss['B']}%")
 
 
 def cmd_check(args, venue) -> bool:
@@ -109,6 +125,31 @@ def cmd_run(args, venue) -> bool:
     return passed
 
 
+def cmd_eval(args, venue) -> None:
+    from aifootball.analytics.validation import (
+        evaluate_detections,
+        evaluate_projection_error,
+        evaluate_tracking,
+    )
+
+    results = {}
+    if args.gt_detections and args.gt_detections.exists():
+        gt_det = schemas.read(args.gt_detections, "detections")
+        pred_det = schemas.read(args.match / "detections.parquet", "detections")
+        results["detections"] = evaluate_detections(pred_det, gt_det)
+
+    if args.gt_state and args.gt_state.exists():
+        gt_state = schemas.read(args.gt_state, "state")
+        pred_state = schemas.read(args.match / "state.parquet", "state")
+        pred_tracks = schemas.read(args.match / "tracks.parquet", "tracks")
+        results["tracking"] = evaluate_tracking(pred_tracks, gt_state)
+        results["projection_error"] = evaluate_projection_error(pred_state, gt_state, venue.width_m)
+
+    out_path = args.match / "eval.json"
+    schemas.write_json(results, out_path)
+    print("eval:", json.dumps(results, ensure_ascii=False, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -131,6 +172,9 @@ def build_parser() -> argparse.ArgumentParser:
     add("metrics")
     add("check")
     add("render", video=True, seconds=True)
+    ev = add("eval")
+    ev.add_argument("--gt-detections", type=Path, default=None, help="эталонные детекции")
+    ev.add_argument("--gt-state", type=Path, default=None, help="эталонные траектории")
     run = add("run", video=True, models=True, seconds=True)
     run.add_argument("--redetect", action="store_true")
     return parser
@@ -138,7 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 COMMANDS = {
     "detect": cmd_detect, "track": cmd_track, "project": cmd_project, "metrics": cmd_metrics,
-    "check": cmd_check, "render": cmd_render, "run": cmd_run,
+    "check": cmd_check, "eval": cmd_eval, "render": cmd_render, "run": cmd_run,
 }
 
 

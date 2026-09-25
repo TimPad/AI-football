@@ -35,6 +35,10 @@ class Venue:
     pitch_polygon_px: np.ndarray | None
     H: np.ndarray | None
     calib: Calibration | None
+    lost_buffer_30fps: int = 90
+    min_team_observations: int = 10
+    max_gap_s: float = 1.0
+    max_physical_speed: float = 10.0
 
     def require_polygon(self) -> np.ndarray:
         if self.pitch_polygon_px is None:
@@ -70,6 +74,10 @@ def load_venue(root: Path) -> Venue:
         pitch_polygon_px=_load_polygon(root / "pitch_polygon.json"),
         H=_load_homography(root / "homography.json"),
         calib=_load_calibration(root / "calib.json"),
+        lost_buffer_30fps=int(proc.get("lost_buffer_30fps", 90)),
+        min_team_observations=int(proc.get("min_team_observations", 10)),
+        max_gap_s=float(proc.get("max_gap_s", 1.0)),
+        max_physical_speed=float(proc.get("max_physical_speed", 10.0)),
     )
 
 

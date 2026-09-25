@@ -8,7 +8,7 @@ import polars as pl
 
 from aifootball.perception.frames import iter_frames
 from aifootball.venue import Venue
-from aifootball.viz.overlay import draw_tracks
+from aifootball.viz.overlay import TrackAnnotator, draw_tracks
 from aifootball.viz.topdown import draw_pitch, draw_players
 
 
@@ -21,10 +21,12 @@ def render_debug_video(
     max_seconds: float | None = None,
 ) -> int:
     """Пишет mp4 «кадр | вид сверху». Возвращает число записанных кадров."""
-    tracks_by_frame = _by_frame(tracks)
-    state_by_frame = _by_frame(state)
+    tracks_groups = _by_frame_groups(tracks)
+    state_groups = _by_frame_groups(state)
     pitch = draw_pitch(venue.length_m, venue.width_m)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    annotator = TrackAnnotator(trace_length=int(venue.target_fps * 3.0))
 
     writer = None
     written = 0
@@ -32,8 +34,8 @@ def render_debug_video(
         for frame_id, ts, frame in iter_frames(video, venue.target_fps):
             if max_seconds is not None and ts > max_seconds:
                 break
-            left = draw_tracks(frame, tracks_by_frame.get(frame_id, []), venue.pitch_polygon_px)
-            right = draw_players(pitch, state_by_frame.get(frame_id, []), venue.width_m)
+            left = annotator.annotate(frame, _get_frame_rows(tracks_groups, frame_id), venue.pitch_polygon_px)
+            right = draw_players(pitch, _get_frame_rows(state_groups, frame_id), venue.width_m)
             right = _fit_height(right, left.shape[0])
             canvas = np.hstack([left, right])
             cv2.putText(
@@ -53,10 +55,17 @@ def render_debug_video(
     return written
 
 
-def _by_frame(df: pl.DataFrame) -> dict[int, list[dict]]:
+def _by_frame_groups(df: pl.DataFrame) -> dict[int, pl.DataFrame]:
     if df.is_empty():
         return {}
-    return {key[0]: group.to_dicts() for key, group in df.partition_by("frame_id", as_dict=True).items()}
+    return {key[0]: group for key, group in df.partition_by("frame_id", as_dict=True).items()}
+
+
+def _get_frame_rows(groups: dict[int, pl.DataFrame], frame_id: int) -> list[dict]:
+    group = groups.get(frame_id)
+    if group is None or len(group) == 0:
+        return []
+    return group.to_dicts()
 
 
 def _fit_height(img: np.ndarray, height: int) -> np.ndarray:

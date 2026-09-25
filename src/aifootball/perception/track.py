@@ -30,7 +30,7 @@ def track_people(detections: pl.DataFrame, venue: Venue) -> pl.DataFrame:
         return schemas.empty("tracks")
 
     tracker = ByteTrackTracker(
-        lost_track_buffer=LOST_BUFFER_30FPS,
+        lost_track_buffer=venue.lost_buffer_30fps,
         frame_rate=venue.target_fps,
         track_activation_threshold=ACTIVATION_CONF,
         high_conf_det_threshold=HIGH_CONF,
@@ -70,14 +70,56 @@ def track_people(detections: pl.DataFrame, venue: Venue) -> pl.DataFrame:
     )
     tracked_people = people.join(assigned, on="row", how="inner").drop("row")
 
-    foot = np.column_stack([
-        ((tracked_people["x1"] + tracked_people["x2"]) / 2).to_numpy(),
-        tracked_people["y2"].to_numpy(),
-    ])
+    foot_x, foot_y = _compute_robust_foot_points(tracked_people)
+    foot = np.column_stack([foot_x, foot_y])
+
     return tracked_people.with_columns(
-        foot_x=pl.Series(foot[:, 0], dtype=pl.Float32),
-        foot_y=pl.Series(foot[:, 1], dtype=pl.Float32),
+        foot_x=pl.Series(foot_x, dtype=pl.Float32),
+        foot_y=pl.Series(foot_y, dtype=pl.Float32),
         in_pitch=pl.Series(points_in_polygon(foot, polygon)),
         role=pl.lit("unknown"),
         team=pl.lit(None, dtype=pl.Utf8),
     ).sort("frame_id", "track_id")
+
+
+def _compute_robust_foot_points(df: pl.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Вычисляет робастную точку касания пола (foot_x, foot_y).
+
+    Защищает от дёргания нижней грани бокса (y2), когда ноги уходят за край
+    или перекрываются: для каждого трека используется медианная высота бокса
+    относительно верхней грани (y1).
+    """
+    x1 = df["x1"].to_numpy().astype(np.float64)
+    y1 = df["y1"].to_numpy().astype(np.float64)
+    x2 = df["x2"].to_numpy().astype(np.float64)
+    y2 = df["y2"].to_numpy().astype(np.float64)
+    track_ids = df["track_id"].to_numpy()
+
+    foot_x = (x1 + x2) / 2.0
+    foot_y = y2.copy()
+
+    unique_tracks = np.unique(track_ids)
+    for tid in unique_tracks:
+        mask = track_ids == tid
+        if not np.any(mask):
+            continue
+        y1_tr = y1[mask]
+        y2_tr = y2[mask]
+        h_tr = y2_tr - y1_tr
+
+        if len(h_tr) < 3:
+            continue
+
+        h_med = float(np.median(h_tr))
+        if h_med <= 0:
+            continue
+
+        # Если нижняя грань бокса укорочена из-за смаза/перекрытия (h < 0.75 * h_med),
+        # восстанавливаем foot_y по верху головы и медианной высоте
+        clipped = h_tr < 0.75 * h_med
+        if np.any(clipped):
+            foot_y_tr = y2_tr.copy()
+            foot_y_tr[clipped] = y1_tr[clipped] + h_med
+            foot_y[mask] = foot_y_tr
+
+    return foot_x.astype(np.float32), foot_y.astype(np.float32)

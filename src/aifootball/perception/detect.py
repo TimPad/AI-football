@@ -58,7 +58,13 @@ def boxes_to_rows(
     return rows
 
 
-def detect_video(video: Path, venue: Venue, weights: Path, progress_every: int = 250) -> pl.DataFrame:
+def detect_video(
+    video: Path,
+    venue: Venue,
+    weights: Path,
+    batch_size: int = 16,
+    progress_every: int = 250,
+) -> pl.DataFrame:
     if not weights.exists():
         raise FileNotFoundError(f"нет весов модели: {weights}")
     from ultralytics import YOLO  # тяжёлый импорт — только когда реально детектируем
@@ -69,19 +75,37 @@ def detect_video(video: Path, venue: Venue, weights: Path, progress_every: int =
     rows: list[dict] = []
     started = time.perf_counter()
 
-    for n, (frame_id, ts, frame) in enumerate(iter_frames(video, venue.target_fps), start=1):
-        result = model.predict(
-            frame, imgsz=venue.imgsz, device=device, classes=list(CLASS_NAMES), conf=conf, verbose=False
-        )[0]
-        boxes = result.boxes
-        rows.extend(boxes_to_rows(
-            frame_id, ts, frame,
-            boxes.xyxy.cpu().numpy(), boxes.cls.cpu().numpy(), boxes.conf.cpu().numpy(),
-            venue.conf_person, venue.conf_ball,
-        ))
-        if n % progress_every == 0:
-            elapsed = time.perf_counter() - started
-            print(f"  {n} кадров, {ts / 60:.1f} мин видео, {n / elapsed:.1f} кадр/с", file=sys.stderr)
+    batch_meta: list[tuple[int, float, np.ndarray]] = []
+
+    def _process_batch(items: list[tuple[int, float, np.ndarray]]) -> None:
+        if not items:
+            return
+        frames = [item[2] for item in items]
+        results = model.predict(
+            frames, imgsz=venue.imgsz, device=device, classes=list(CLASS_NAMES), conf=conf, verbose=False
+        )
+        for (frame_id, ts, frame), res in zip(items, results):
+            boxes = res.boxes
+            rows.extend(boxes_to_rows(
+                frame_id, ts, frame,
+                boxes.xyxy.cpu().numpy(), boxes.cls.cpu().numpy(), boxes.conf.cpu().numpy(),
+                venue.conf_person, venue.conf_ball,
+            ))
+
+    total_frames = 0
+    for frame_id, ts, frame in iter_frames(video, venue.target_fps):
+        batch_meta.append((frame_id, ts, frame))
+        total_frames += 1
+        if len(batch_meta) >= batch_size:
+            _process_batch(batch_meta)
+            batch_meta.clear()
+            if total_frames % progress_every == 0:
+                elapsed = time.perf_counter() - started
+                print(f"  {total_frames} кадров, {ts / 60:.1f} мин видео, {total_frames / elapsed:.1f} кадр/с", file=sys.stderr)
+
+    if batch_meta:
+        _process_batch(batch_meta)
+        batch_meta.clear()
 
     if not rows:
         return schemas.empty("detections")

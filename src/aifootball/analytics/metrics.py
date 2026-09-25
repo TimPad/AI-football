@@ -16,7 +16,12 @@ HEATMAP_CELL_M = 1.0
 TEAMS = ("A", "B")
 
 
-def compute_metrics(state: pl.DataFrame, length_m: float, width_m: float) -> dict:
+def compute_metrics(
+    state: pl.DataFrame,
+    length_m: float,
+    width_m: float,
+    ball_state: pl.DataFrame | None = None,
+) -> dict:
     tracks = {
         str(track_id): _track_metrics(group)
         for (track_id,), group in state.sort("track_id", "ts").group_by("track_id", maintain_order=True)
@@ -33,12 +38,19 @@ def compute_metrics(state: pl.DataFrame, length_m: float, width_m: float) -> dic
             # heatmap_s[ix][iy] — секунды, проведённые игроками команды в клетке 1x1 м
             "heatmap_s": _heatmap(team_state, length_m, width_m, sample_s),
         }
-    return {
+    
+    result = {
         "schema_version": schemas.SCHEMA_VERSION,
         "pitch": {"length_m": length_m, "width_m": width_m, "heatmap_cell_m": HEATMAP_CELL_M},
         "teams": teams,
         "tracks": tracks,
     }
+
+    if ball_state is not None and not ball_state.is_empty():
+        from aifootball.perception.ball import compute_possession
+        result["possession"] = compute_possession(ball_state, state)
+
+    return result
 
 
 def _track_metrics(g: pl.DataFrame) -> dict:
@@ -74,9 +86,13 @@ def _heatmap(team_state: pl.DataFrame, length_m: float, width_m: float, sample_s
     ny = math.ceil(width_m / HEATMAP_CELL_M)
     if team_state.is_empty():
         return np.zeros((nx, ny)).tolist()
+    # Ограничиваем координаты границами поля [0, length_m) и [0, width_m),
+    # чтобы точки на линиях или с допустимым вылетом за пределы поля не отбрасывались
+    x = np.clip(team_state["x_m"].to_numpy(), 0.0, length_m - 1e-5)
+    y = np.clip(team_state["y_m"].to_numpy(), 0.0, width_m - 1e-5)
     hist, _, _ = np.histogram2d(
-        team_state["x_m"].to_numpy(),
-        team_state["y_m"].to_numpy(),
+        x,
+        y,
         bins=[nx, ny],
         range=[[0, length_m], [0, width_m]],
     )

@@ -62,3 +62,47 @@ def test_not_enough_tracks_leaves_everyone_unknown():
 def test_keeps_tracks_schema():
     result = assign_teams(_tracks(_track(1, a=200, n=12), _track(2, a=60, n=12)))
     assert result.columns == list(schemas.TRACKS)
+
+
+def test_assign_roles_goalkeeper_and_referee(venue):
+    from aifootball.perception.teams import assign_roles
+
+    rows = []
+    # Трек 1: в центре поля
+    for f in range(10):
+        rows.append({
+            "frame_id": f, "ts": f / 10, "cls": "person",
+            "x1": 0.0, "y1": 0.0, "x2": 10.0, "y2": 30.0, "conf": 0.9,
+            "torso_l": 120.0, "torso_a": 60.0, "torso_b": 140.0,
+            "track_id": 1, "foot_x": 200.0, "foot_y": 100.0,
+            "in_pitch": True, "role": "player", "team": "A",
+        })
+    # Трек 2: у ворот А (foot_x = 20 -> x_m = 2.0м при H=0.1*I)
+    for f in range(10):
+        rows.append({
+            "frame_id": f, "ts": f / 10, "cls": "person",
+            "x1": 0.0, "y1": 0.0, "x2": 10.0, "y2": 30.0, "conf": 0.9,
+            "torso_l": 120.0, "torso_a": 60.0, "torso_b": 140.0,
+            "track_id": 2, "foot_x": 20.0, "foot_y": 100.0,
+            "in_pitch": True, "role": "player", "team": "A",
+        })
+    # Трек 3: у самой бровки (foot_y = 2.0 -> y_m = 0.2м)
+    for f in range(10):
+        rows.append({
+            "frame_id": f, "ts": f / 10, "cls": "person",
+            "x1": 0.0, "y1": 0.0, "x2": 10.0, "y2": 30.0, "conf": 0.9,
+            "torso_l": 120.0, "torso_a": 150.0, "torso_b": 140.0,
+            "track_id": 3, "foot_x": 200.0, "foot_y": 2.0,
+            "in_pitch": True, "role": "player", "team": "A",
+        })
+
+    tracks = pl.DataFrame(rows, schema=schemas.TRACKS)
+    res = assign_roles(tracks, venue)
+
+    t1_role = res.filter(pl.col("track_id") == 1)["role"].unique().to_list()
+    t2_role = res.filter(pl.col("track_id") == 2)["role"].unique().to_list()
+    t3_role = res.filter(pl.col("track_id") == 3)["role"].unique().to_list()
+
+    assert t1_role == ["player"]
+    assert t2_role == ["goalkeeper"]
+    assert t3_role == ["referee"]
