@@ -3,9 +3,12 @@
 import numpy as np
 import polars as pl
 
+TEAMS = ("A", "B")
 MAX_BALL_SPEED_MS = 25.0  # ~90 км/ч — максимальная скорость удара в футзале
 MAX_BALL_GAP_S = 1.5  # максимальный пропуск детекции мяча для интерполяции
 POSSESSION_RADIUS_M = 1.8  # радиус контроля мяча игроком в метрах
+MIN_POSSESSION_S = 0.3  # владение короче — касание или смена ближайшего, а не приём мяча
+MAX_PASS_FLIGHT_S = 3.0  # дольше пас в футзале не летит; за больший разрыв владельцев не связываем
 
 
 def process_ball_trajectory(
@@ -124,6 +127,84 @@ def compute_possession(
     return {
         "possession_s": {"A": poss_a_s, "B": poss_b_s, "loose": max(0.0, loose_s)},
         "possession_pct": {"A": pct_a, "B": pct_b},
+    }
+
+
+def detect_passes(
+    ball_state: pl.DataFrame,
+    player_state: pl.DataFrame,
+    possession_radius_m: float = POSSESSION_RADIUS_M,
+    min_possession_s: float = MIN_POSSESSION_S,
+    max_flight_s: float = MAX_PASS_FLIGHT_S,
+) -> dict:
+    """Считает передачи по командам: смену владельца мяча между игроками.
+
+    Владелец в кадре — ближайший к мячу игрок команды в пределах possession_radius_m.
+    Владение засчитывается, если длится не меньше min_possession_s, поэтому пас в одно
+    касание сливается со следующим. Передача сопернику — неточный пас. Если между
+    владениями прошло больше max_flight_s, это не пас: мяч мог выйти из игры или
+    потеряться детектором.
+    """
+    if ball_state.is_empty() or player_state.is_empty():
+        return _passes_result({"A": 0, "B": 0}, {"A": 0, "B": 0})
+
+    # Владеть мячом может только игрок команды: судья и неопознанные треки пас не прерывают
+    candidates = player_state.filter(pl.col("team").is_in(TEAMS))
+    joined = ball_state.join(candidates, on="frame_id", suffix="_player")
+    passes_total = {"A": 0, "B": 0}
+    passes_completed = {"A": 0, "B": 0}
+    if joined.is_empty():
+        return _passes_result(passes_total, passes_completed)
+
+    dx = joined["x_m"].to_numpy() - joined["x_m_player"].to_numpy()
+    dy = joined["y_m"].to_numpy() - joined["y_m_player"].to_numpy()
+    joined = joined.with_columns(dist=pl.Series(np.hypot(dx, dy)))
+    owners = (
+        joined.filter(pl.col("dist") <= possession_radius_m)
+        .sort("dist")
+        .group_by("frame_id")
+        .first()
+        .sort("frame_id")
+    )
+    if owners.is_empty():
+        return _passes_result(passes_total, passes_completed)
+
+    # Серии кадров подряд у одного владельца; короткие серии — шум, их выбрасываем
+    sample_step = float(np.median(np.diff(ball_state["ts"].to_numpy()))) if len(ball_state) > 1 else 0.1
+    runs = (
+        owners.with_columns(run=(pl.col("track_id") != pl.col("track_id").shift(1)).fill_null(True).cum_sum())
+        .group_by("run", maintain_order=True)
+        .agg(
+            pl.col("track_id").first(),
+            pl.col("team").first(),
+            frames=pl.len(),
+            ts_start=pl.col("ts").min(),
+            ts_end=pl.col("ts").max(),
+        )
+        .filter(pl.col("frames") * sample_step >= min_possession_s - 1e-9)
+    )
+
+    rows = runs.to_dicts()
+    for prev, current in zip(rows, rows[1:]):
+        if current["track_id"] == prev["track_id"]:
+            continue  # владелец вернул мяч себе после чужого касания
+        if current["ts_start"] - prev["ts_end"] > max_flight_s:
+            continue
+        passes_total[prev["team"]] += 1
+        if current["team"] == prev["team"]:
+            passes_completed[prev["team"]] += 1
+
+    return _passes_result(passes_total, passes_completed)
+
+
+def _passes_result(passes_total: dict, passes_completed: dict) -> dict:
+    acc_a = round(passes_completed["A"] / passes_total["A"] * 100, 1) if passes_total["A"] > 0 else 0.0
+    acc_b = round(passes_completed["B"] / passes_total["B"] * 100, 1) if passes_total["B"] > 0 else 0.0
+
+    return {
+        "passes_total": passes_total,
+        "passes_completed": passes_completed,
+        "pass_accuracy_pct": {"A": acc_a, "B": acc_b},
     }
 
 

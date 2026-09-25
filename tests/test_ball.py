@@ -54,3 +54,108 @@ def test_compute_possession_team_assignment():
 
     assert poss["possession_pct"]["A"] == 50.0
     assert poss["possession_pct"]["B"] == 50.0
+
+
+
+def _ball(xs, dt=0.1):
+    n = len(xs)
+    return pl.DataFrame({
+        "frame_id": list(range(1, n + 1)),
+        "ts": [dt * (i + 1) for i in range(n)],
+        "x_m": [float(x) for x in xs],
+        "y_m": [5.0] * n,
+        "speed": [0.0] * n,
+        "interpolated": [False] * n,
+    })
+
+
+def _players(owners, xs, dt=0.1):
+    """owners[i] — (track_id, role, team) игрока в кадре i+1, стоящего в точке xs[i]."""
+    n = len(owners)
+    return pl.DataFrame({
+        "frame_id": list(range(1, n + 1)),
+        "ts": [dt * (i + 1) for i in range(n)],
+        "track_id": [o[0] for o in owners],
+        "role": [o[1] for o in owners],
+        "team": [o[2] for o in owners],
+        "x_m": [float(x) + 0.1 for x in xs],
+        "y_m": [5.0] * n,
+        "vx": [0.0] * n,
+        "vy": [0.0] * n,
+        "speed": [0.0] * n,
+        "interpolated": [False] * n,
+    }, schema_overrides={"team": pl.Utf8})
+
+
+A1 = (1, "player", "A")
+A2 = (2, "player", "A")
+B1 = (3, "player", "B")
+REF = (9, "referee", None)
+
+
+def test_detect_passes_between_teammates():
+    from aifootball.perception.ball import detect_passes
+
+    xs = [10] * 4 + [20] * 4
+    passes = detect_passes(_ball(xs), _players([A1] * 4 + [A2] * 4, xs))
+
+    assert passes["passes_total"] == {"A": 1, "B": 0}
+    assert passes["passes_completed"] == {"A": 1, "B": 0}
+    assert passes["pass_accuracy_pct"]["A"] == 100.0
+
+
+def test_detect_passes_interception_is_incomplete():
+    from aifootball.perception.ball import detect_passes
+
+    xs = [10] * 4 + [20] * 4
+    passes = detect_passes(_ball(xs), _players([A1] * 4 + [B1] * 4, xs))
+
+    assert passes["passes_total"] == {"A": 1, "B": 0}
+    assert passes["passes_completed"] == {"A": 0, "B": 0}
+    assert passes["pass_accuracy_pct"]["A"] == 0.0
+
+
+def test_detect_passes_ignores_flicker_between_neighbours():
+    # Мяч между двумя соседями: ближайший меняется каждый кадр — это не пасы
+    from aifootball.perception.ball import detect_passes
+
+    xs = [10] * 10
+    owners = [A1, A2] * 5
+    passes = detect_passes(_ball(xs), _players(owners, xs))
+
+    assert passes["passes_total"] == {"A": 0, "B": 0}
+
+
+def test_detect_passes_short_touch_does_not_break_possession():
+    # Соперник на кадр оказался ближе к мячу, но владение не сменилось
+    from aifootball.perception.ball import detect_passes
+
+    xs = [10] * 9
+    owners = [A1] * 4 + [B1] + [A1] * 4
+    passes = detect_passes(_ball(xs), _players(owners, xs))
+
+    assert passes["passes_total"] == {"A": 0, "B": 0}
+
+
+def test_detect_passes_ignores_referee_near_ball():
+    # Мяч прошёл мимо судьи по пути от A1 к A2 — это один точный пас A
+    from aifootball.perception.ball import detect_passes
+
+    xs = [10] * 4 + [15] * 4 + [20] * 4
+    owners = [A1] * 4 + [REF] * 4 + [A2] * 4
+    passes = detect_passes(_ball(xs), _players(owners, xs))
+
+    assert passes["passes_total"] == {"A": 1, "B": 0}
+    assert passes["passes_completed"] == {"A": 1, "B": 0}
+
+
+def test_detect_passes_ignores_owner_change_after_long_gap():
+    # Мяч 4 с вне досягаемости игроков: что случилось между владениями, неизвестно
+    from aifootball.perception.ball import detect_passes
+
+    ball_xs = [10] * 4 + [30] * 40 + [20] * 4
+    player_xs = [10] * 4 + [10] * 40 + [20] * 4
+    owners = [A1] * 44 + [A2] * 4
+    passes = detect_passes(_ball(ball_xs), _players(owners, player_xs))
+
+    assert passes["passes_total"] == {"A": 0, "B": 0}

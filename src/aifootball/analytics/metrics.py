@@ -53,8 +53,9 @@ def compute_metrics(
     }
 
     if ball_state is not None and not ball_state.is_empty():
-        from aifootball.perception.ball import compute_possession
+        from aifootball.perception.ball import compute_possession, detect_passes
         result["possession"] = compute_possession(ball_state, state)
+        result["passes"] = detect_passes(ball_state, state)
 
     return result
 
