@@ -187,3 +187,100 @@ def _box_iou(box1: np.ndarray, box2: np.ndarray) -> float:
     box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
     union_area = box1_area + box2_area - inter_area
     return inter_area / union_area if union_area > 0 else 0.0
+
+
+BALL_DIAMETER_M = 0.2  # футзальный мяч №4: окружность 62–64 см
+BALL_HIT_TOL_PX = 4.0  # клик по мячу 5 px неточен на пару пикселей
+BALL_SIZE_BINS = (("<6px", 0.0, 6.0), ("6-10px", 6.0, 10.0), (">=10px", 10.0, np.inf))
+
+
+def evaluate_ball(detections: pl.DataFrame, labels: pl.DataFrame, venue, conf_min: float) -> dict:
+    """Сравнивает детекции мяча с ручной разметкой (схема ball_labels).
+
+    recall — доля кадров с видимым мячом, где хоть одна детекция накрывает клик;
+    false_alarm_rate — доля кадров «мяча нет в кадре», где детектор что-то нашёл;
+    precision — доля кадров с детекцией (visible + absent), где самая уверенная детекция
+    и есть мяч: дальше по пайплайну идёт именно она. Кадры hidden не учитываются.
+    Детекции за контуром поля отброшены, как в process_ball_trajectory.
+    """
+    from aifootball.geometry.polygons import points_in_polygon
+
+    balls = detections.filter((pl.col("cls") == "ball") & (pl.col("conf") >= conf_min))
+    if not balls.is_empty() and venue.pitch_polygon_px is not None:
+        centers = np.column_stack([
+            ((balls["x1"] + balls["x2"]) / 2).to_numpy(),
+            ((balls["y1"] + balls["y2"]) / 2).to_numpy(),
+        ])
+        balls = balls.filter(pl.Series(points_in_polygon(centers, venue.pitch_polygon_px)))
+    by_frame = {
+        key[0]: g.sort("conf", descending=True).select("x1", "y1", "x2", "y2").to_numpy()
+        for key, g in balls.partition_by("frame_id", as_dict=True).items()
+    }
+
+    def covers(box, x, y) -> bool:
+        t = BALL_HIT_TOL_PX
+        return box[0] - t <= x <= box[2] + t and box[1] - t <= y <= box[3] + t
+
+    visible = labels.filter(pl.col("status") == "visible")
+    absent = labels.filter(pl.col("status") == "absent")
+    found = np.zeros(len(visible), dtype=bool)
+    top_right = top_wrong = 0
+    for i, row in enumerate(visible.iter_rows(named=True)):
+        boxes = by_frame.get(row["frame_id"])
+        if boxes is None:
+            continue
+        found[i] = any(covers(b, row["x"], row["y"]) for b in boxes)
+        if covers(boxes[0], row["x"], row["y"]):
+            top_right += 1
+        else:
+            top_wrong += 1
+    false_alarms = sum(frame_id in by_frame for frame_id in absent["frame_id"].to_list())
+    top_wrong += false_alarms
+
+    by_size = {}
+    sizes = ball_size_px(visible.select("x", "y").to_numpy(), venue) if len(visible) else np.zeros(0)
+    for name, lo, hi in BALL_SIZE_BINS:
+        in_bin = (sizes >= lo) & (sizes < hi)
+        by_size[name] = {
+            "visible": int(in_bin.sum()),
+            "found": int(found[in_bin].sum()),
+            "recall": _ratio(found[in_bin].sum(), in_bin.sum()),
+        }
+
+    return {
+        "conf_min": conf_min,
+        "visible": len(visible),
+        "found": int(found.sum()),
+        "recall": _ratio(found.sum(), len(visible)),
+        "absent": len(absent),
+        "false_alarm_frames": false_alarms,
+        "false_alarm_rate": _ratio(false_alarms, len(absent)),
+        "hidden": int((labels["status"] == "hidden").sum()),
+        "precision": _ratio(top_right, top_right + top_wrong),
+        "by_size": by_size,
+    }
+
+
+def ball_size_px(points_px: np.ndarray, venue) -> np.ndarray:
+    """Ожидаемый диаметр мяча в пикселях в точках кадра, по гомографии.
+
+    Мяч — шар, перспективой пола он не сплющивается, поэтому берём наибольший
+    масштаб «пикселей на метр» в точке (старшее сингулярное число якобиана).
+    """
+    from aifootball.geometry.homography import apply_homography
+    from aifootball.geometry.undistort import undistort_points
+
+    pts = np.asarray(points_px, dtype=float).reshape(-1, 2)
+    H_inv = np.linalg.inv(venue.H)
+    meters = apply_homography(venue.H, undistort_points(pts, venue.calib))
+    step = 0.1
+    base = apply_homography(H_inv, meters)
+    along_x = (apply_homography(H_inv, meters + [step, 0.0]) - base) / step
+    along_y = (apply_homography(H_inv, meters + [0.0, step]) - base) / step
+    jacobians = np.stack([along_x, along_y], axis=2)  # (n, 2, 2): столбцы — d px / d x_m, d px / d y_m
+    px_per_m = np.linalg.svd(jacobians, compute_uv=False)[:, 0]
+    return BALL_DIAMETER_M * px_per_m
+
+
+def _ratio(num, den) -> float | None:
+    return round(float(num) / float(den), 3) if den else None

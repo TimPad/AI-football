@@ -55,7 +55,17 @@ STATE = {
     "interpolated": pl.Boolean,
 }
 
-SCHEMAS = {"detections": DETECTIONS, "tracks": TRACKS, "state": STATE}
+# Ручная разметка мяча (эталон). x, y — центр мяча в пикселях исходного кадра,
+# заполнены только у visible.
+BALL_LABELS = {
+    "frame_id": pl.Int32,
+    "ts": pl.Float64,
+    "status": pl.Utf8,  # visible | absent (нет в кадре) | hidden (в кадре, но не видно)
+    "x": pl.Float32,
+    "y": pl.Float32,
+}
+
+SCHEMAS = {"detections": DETECTIONS, "tracks": TRACKS, "state": STATE, "ball_labels": BALL_LABELS}
 
 
 class SchemaError(Exception):

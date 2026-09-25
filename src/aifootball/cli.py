@@ -7,6 +7,7 @@
     python -m aifootball.cli metrics --venue DIR --match DIR
     python -m aifootball.cli check   --venue DIR --match DIR
     python -m aifootball.cli render  --video V --venue DIR --match DIR [--seconds 60]
+    python -m aifootball.cli eval-ball --venue DIR --match DIR --labels data/gt/<матч>/ball.parquet
 """
 
 import argparse
@@ -150,6 +151,30 @@ def cmd_eval(args, venue) -> None:
     print("eval:", json.dumps(results, ensure_ascii=False, indent=2))
 
 
+def cmd_eval_ball(args, venue) -> None:
+    from aifootball.analytics.validation import evaluate_ball
+
+    labels = schemas.read(args.labels, "ball_labels")
+    det_path = args.detections or args.match / "detections.parquet"
+    detections = schemas.read(det_path, "detections")
+    results = [evaluate_ball(detections, labels, venue, conf_min=c) for c in args.conf]
+    schemas.write_json({"labels": str(args.labels), "detections": str(det_path), "results": results},
+                       args.match / "eval_ball.json")
+
+    first = results[0]
+    print(f"eval-ball: мяч виден {first['visible']}, нет в кадре {first['absent']}, не видно {first['hidden']}")
+    print("  conf    recall  найдено  ложные(нет в кадре)  precision  recall <6px / 6-10px / >=10px")
+    for r in results:
+        sizes = " / ".join(f"{b['found']}/{b['visible']}" for b in r["by_size"].values())
+        print(f"  {r['conf_min']:<6}  {_fmt(r['recall'])}   {r['found']:>3}/{r['visible']:<3}  "
+              f"{r['false_alarm_frames']:>3}/{r['absent']:<3} {_fmt(r['false_alarm_rate'])}       "
+              f"{_fmt(r['precision'])}     {sizes}")
+
+
+def _fmt(x) -> str:
+    return "  —  " if x is None else f"{x:.3f}"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -175,6 +200,10 @@ def build_parser() -> argparse.ArgumentParser:
     ev = add("eval")
     ev.add_argument("--gt-detections", type=Path, default=None, help="эталонные детекции")
     ev.add_argument("--gt-state", type=Path, default=None, help="эталонные траектории")
+    evb = add("eval-ball")
+    evb.add_argument("--labels", type=Path, required=True, help="ручная разметка мяча (tools.label_ball)")
+    evb.add_argument("--detections", type=Path, default=None, help="по умолчанию detections.parquet матча")
+    evb.add_argument("--conf", type=float, nargs="+", default=[0.05, 0.10, 0.25], help="пороги уверенности")
     run = add("run", video=True, models=True, seconds=True)
     run.add_argument("--redetect", action="store_true")
     return parser
@@ -182,7 +211,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 COMMANDS = {
     "detect": cmd_detect, "track": cmd_track, "project": cmd_project, "metrics": cmd_metrics,
-    "check": cmd_check, "eval": cmd_eval, "render": cmd_render, "run": cmd_run,
+    "check": cmd_check, "eval": cmd_eval, "eval-ball": cmd_eval_ball, "render": cmd_render, "run": cmd_run,
 }
 
 
