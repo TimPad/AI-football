@@ -1,6 +1,8 @@
 """Модуль расчета метрик качества (Фаза 2): Precision, Recall, IDF1, MOTA и ошибка проекции.
 
-Все метрики рассчитываются с разбивкой по ближней и дальней половине поля.
+Все метрики рассчитываются с разбивкой по ближней и дальней половине поля. Ближняя —
+та часть, где поле в кадре крупнее, чем в центре поля (масштаб по гомографии): так
+деление не зависит от того, с какой стороны и под каким углом стоит камера.
 """
 
 import math
@@ -11,24 +13,22 @@ import polars as pl
 def evaluate_detections(
     pred_df: pl.DataFrame,
     gt_df: pl.DataFrame,
+    venue,
     iou_threshold: float = 0.5,
 ) -> dict:
     """Вычисляет Precision, Recall и F1-score детекций.
 
-    Отдельно рассчитывается для ближней и дальней половины поля (по y1).
+    Отдельно для ближней и дальней половины поля — по точке касания пола (низ бокса).
     """
     if gt_df.is_empty():
         return {"precision": 1.0, "recall": 1.0, "f1": 1.0, "near_f1": 1.0, "far_f1": 1.0}
 
-    # Делим детекции на ближнюю и дальнюю половину по медиане y1
-    y_mid = float(gt_df["y1"].median()) if len(gt_df) else 0.0
-
     overall = _eval_box_matches(pred_df, gt_df, iou_threshold)
 
-    gt_near = gt_df.filter(pl.col("y1") >= y_mid)
-    gt_far = gt_df.filter(pl.col("y1") < y_mid)
-    pred_near = pred_df.filter(pl.col("y1") >= y_mid) if not pred_df.is_empty() else pred_df
-    pred_far = pred_df.filter(pl.col("y1") < y_mid) if not pred_df.is_empty() else pred_df
+    gt_is_near = pl.Series(_boxes_near_camera(gt_df, venue))
+    pred_is_near = pl.Series(_boxes_near_camera(pred_df, venue))
+    gt_near, gt_far = gt_df.filter(gt_is_near), gt_df.filter(~gt_is_near)
+    pred_near, pred_far = pred_df.filter(pred_is_near), pred_df.filter(~pred_is_near)
 
     near = _eval_box_matches(pred_near, gt_near, iou_threshold)
     far = _eval_box_matches(pred_far, gt_far, iou_threshold)
@@ -90,11 +90,11 @@ def evaluate_tracking(pred_df: pl.DataFrame, gt_df: pl.DataFrame) -> dict:
 def evaluate_projection_error(
     pred_state: pl.DataFrame,
     gt_state: pl.DataFrame,
-    width_m: float,
+    venue,
 ) -> dict:
     """Вычисляет ошибку проекции в метрах (MAE и RMSE).
 
-    Отдельно для ближней (y_m >= width_m / 2) и дальней (y_m < width_m / 2) половины поля.
+    Отдельно для ближней и дальней половины поля — по эталонной позиции.
     """
     if gt_state.is_empty() or pred_state.is_empty():
         return {"mae_m": 0.0, "rmse_m": 0.0, "near_half_mae_m": 0.0, "far_half_mae_m": 0.0}
@@ -107,8 +107,7 @@ def evaluate_projection_error(
     dy = joined["y_m"].to_numpy() - joined["y_m_pred"].to_numpy()
     dist = np.hypot(dx, dy)
 
-    half_y = width_m / 2.0
-    near_mask = joined["y_m"].to_numpy() >= half_y
+    near_mask = near_camera(joined.select("x_m", "y_m").to_numpy(), venue)
     far_mask = ~near_mask
 
     mae = float(np.mean(dist))
@@ -123,6 +122,24 @@ def evaluate_projection_error(
         "near_half_mae_m": round(near_mae, 3),
         "far_half_mae_m": round(far_mae, 3),
     }
+
+
+def near_camera(points_m: np.ndarray, venue) -> np.ndarray:
+    """True для точек поля (в метрах), где поле в кадре крупнее, чем в его центре."""
+    from aifootball.geometry.homography import pixels_per_meter
+
+    center = pixels_per_meter(venue.H, np.array([[venue.length_m / 2, venue.width_m / 2]]))[0]
+    return pixels_per_meter(venue.H, points_m) >= center
+
+
+def _boxes_near_camera(boxes: pl.DataFrame, venue) -> np.ndarray:
+    from aifootball.geometry.homography import apply_homography
+    from aifootball.geometry.undistort import undistort_points
+
+    if boxes.is_empty():
+        return np.zeros(0, dtype=bool)
+    feet = np.column_stack([((boxes["x1"] + boxes["x2"]) / 2).to_numpy(), boxes["y2"].to_numpy()])
+    return near_camera(apply_homography(venue.H, undistort_points(feet.astype(float), venue.calib)), venue)
 
 
 def _eval_box_matches(pred: pl.DataFrame, gt: pl.DataFrame, iou_thresh: float) -> dict:
@@ -264,22 +281,15 @@ def evaluate_ball(detections: pl.DataFrame, labels: pl.DataFrame, venue, conf_mi
 def ball_size_px(points_px: np.ndarray, venue) -> np.ndarray:
     """Ожидаемый диаметр мяча в пикселях в точках кадра, по гомографии.
 
-    Мяч — шар, перспективой пола он не сплющивается, поэтому берём наибольший
-    масштаб «пикселей на метр» в точке (старшее сингулярное число якобиана).
+    Мяч — шар, перспективой пола он не сплющивается, поэтому масштаб берём
+    наибольший по направлениям — как в pixels_per_meter.
     """
-    from aifootball.geometry.homography import apply_homography
+    from aifootball.geometry.homography import apply_homography, pixels_per_meter
     from aifootball.geometry.undistort import undistort_points
 
     pts = np.asarray(points_px, dtype=float).reshape(-1, 2)
-    H_inv = np.linalg.inv(venue.H)
     meters = apply_homography(venue.H, undistort_points(pts, venue.calib))
-    step = 0.1
-    base = apply_homography(H_inv, meters)
-    along_x = (apply_homography(H_inv, meters + [step, 0.0]) - base) / step
-    along_y = (apply_homography(H_inv, meters + [0.0, step]) - base) / step
-    jacobians = np.stack([along_x, along_y], axis=2)  # (n, 2, 2): столбцы — d px / d x_m, d px / d y_m
-    px_per_m = np.linalg.svd(jacobians, compute_uv=False)[:, 0]
-    return BALL_DIAMETER_M * px_per_m
+    return BALL_DIAMETER_M * pixels_per_meter(venue.H, meters)
 
 
 def _ratio(num, den) -> float | None:

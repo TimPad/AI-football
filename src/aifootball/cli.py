@@ -137,14 +137,14 @@ def cmd_eval(args, venue) -> None:
     if args.gt_detections and args.gt_detections.exists():
         gt_det = schemas.read(args.gt_detections, "detections")
         pred_det = schemas.read(args.match / "detections.parquet", "detections")
-        results["detections"] = evaluate_detections(pred_det, gt_det)
+        results["detections"] = evaluate_detections(pred_det, gt_det, venue)
 
     if args.gt_state and args.gt_state.exists():
         gt_state = schemas.read(args.gt_state, "state")
         pred_state = schemas.read(args.match / "state.parquet", "state")
         pred_tracks = schemas.read(args.match / "tracks.parquet", "tracks")
         results["tracking"] = evaluate_tracking(pred_tracks, gt_state)
-        results["projection_error"] = evaluate_projection_error(pred_state, gt_state, venue.width_m)
+        results["projection_error"] = evaluate_projection_error(pred_state, gt_state, venue)
 
     out_path = args.match / "eval.json"
     schemas.write_json(results, out_path)

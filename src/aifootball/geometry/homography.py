@@ -27,6 +27,24 @@ def apply_homography(H: np.ndarray, points: np.ndarray) -> np.ndarray:
     return cv2.perspectiveTransform(points.reshape(-1, 1, 2), H).reshape(-1, 2)
 
 
+def pixels_per_meter(H: np.ndarray, points_m: np.ndarray, step_m: float = 0.1) -> np.ndarray:
+    """Масштаб кадра в точках поля: сколько пикселей занимает метр.
+
+    Берётся наибольший масштаб по направлениям (старшее сингулярное число якобиана
+    «метры -> пиксели»): вдоль луча зрения пол сплющен, поперёк — нет. Чем ближе
+    точка к камере, тем он больше.
+    """
+    points_m = np.asarray(points_m, dtype=np.float64).reshape(-1, 2)
+    if len(points_m) == 0:
+        return np.zeros(0)
+    to_px = np.linalg.inv(H)
+    base = apply_homography(to_px, points_m)
+    along_x = (apply_homography(to_px, points_m + [step_m, 0.0]) - base) / step_m
+    along_y = (apply_homography(to_px, points_m + [0.0, step_m]) - base) / step_m
+    jacobians = np.stack([along_x, along_y], axis=2)
+    return np.linalg.svd(jacobians, compute_uv=False)[:, 0]
+
+
 def leave_one_out_error(px: np.ndarray, m: np.ndarray) -> float:
     """Честная ошибка: каждая точка проверяется гомографией, посчитанной без неё.
 
