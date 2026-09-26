@@ -165,7 +165,7 @@ def cmd_eval_ball(args, venue) -> None:
     print(f"eval-ball: мяч виден {first['visible']}, нет в кадре {first['absent']}, не видно {first['hidden']}")
     print("  conf    recall  найдено  ложные(нет в кадре)  precision  recall <6px / 6-10px / >=10px")
     for r in results:
-        sizes = " / ".join(f"{b['found']}/{b['visible']}" for b in r["by_size"].values())
+        sizes = " / ".join(f"{b['found']}/{b['visible']}" for b in r["by_size"].values()) if r["by_size"] else "нет гомографии"
         print(f"  {r['conf_min']:<6}  {_fmt(r['recall'])}   {r['found']:>3}/{r['visible']:<3}  "
               f"{r['false_alarm_frames']:>3}/{r['absent']:<3} {_fmt(r['false_alarm_rate'])}       "
               f"{_fmt(r['precision'])}     {sizes}")

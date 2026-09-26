@@ -254,15 +254,17 @@ def evaluate_ball(detections: pl.DataFrame, labels: pl.DataFrame, venue, conf_mi
     false_alarms = sum(frame_id in by_frame for frame_id in absent["frame_id"].to_list())
     top_wrong += false_alarms
 
-    by_size = {}
-    sizes = ball_size_px(visible.select("x", "y").to_numpy(), venue) if len(visible) else np.zeros(0)
-    for name, lo, hi in BALL_SIZE_BINS:
-        in_bin = (sizes >= lo) & (sizes < hi)
-        by_size[name] = {
-            "visible": int(in_bin.sum()),
-            "found": int(found[in_bin].sum()),
-            "recall": _ratio(found[in_bin].sum(), in_bin.sum()),
-        }
+    by_size = None  # без гомографии размер мяча в пикселях не посчитать
+    if venue.H is not None:
+        by_size = {}
+        sizes = ball_size_px(visible.select("x", "y").to_numpy(), venue) if len(visible) else np.zeros(0)
+        for name, lo, hi in BALL_SIZE_BINS:
+            in_bin = (sizes >= lo) & (sizes < hi)
+            by_size[name] = {
+                "visible": int(in_bin.sum()),
+                "found": int(found[in_bin].sum()),
+                "recall": _ratio(found[in_bin].sum(), in_bin.sum()),
+            }
 
     return {
         "conf_min": conf_min,

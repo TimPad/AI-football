@@ -131,3 +131,15 @@ def test_evaluate_ball_splits_recall_by_ball_size(venue):
     # при SCALE_H мяч 2 px — все метки в самой мелкой группе
     assert by_size["<6px"] == {"visible": 2, "found": 1, "recall": 0.5}
     assert by_size["6-10px"]["visible"] == 0
+
+
+def test_evaluate_ball_without_homography_skips_size_split(tmp_path):
+    # до гомографии площадки размер мяча не посчитать, но recall и ложные — можно
+    venue = load_venue(make_venue_dir(tmp_path / "v", polygon=FIELD))
+    labels = _labels([(1, "visible", 100.0, 100.0), (2, "absent", None, None)])
+    dets = _balls([(1, 95, 95, 105, 105, 0.5)])
+
+    res = evaluate_ball(dets, labels, venue, conf_min=0.1)
+
+    assert res["found"] == 1 and res["false_alarm_frames"] == 0
+    assert res["by_size"] is None
