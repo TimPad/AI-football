@@ -2,13 +2,14 @@
 
     python -m aifootball.tools.mark_field --video V --venue DIR [--scale 0.5]
 
-Инструмент по очереди называет точку (в терминале), вы кликаете её на кадре.
+Инструмент по очереди называет точку футзальной разметки (в терминале), вы кликаете её на кадре.
 Мышь: левый клик — поставить точку. Клавиши (не зависят от раскладки):
-    1          точку не видно (закрыта, за кадром) — пропустить
+    1          точки не видно или нет на поле — пропустить
+    Enter      оставить прежнюю точку (жёлтая); в конце — сохранить
     Backspace  вернуться к предыдущей точке
-    Enter      сохранить (когда все точки пройдены)
     Esc        выйти без сохранения
-Результат — <venue>/field_points.json: сырые пиксели кадра по именам точек.
+Прежние точки из field_points.json показаны жёлтым. Результат — <venue>/field_points.json;
+гомографию и размер поля по нему считает tools.fit_field.
 """
 
 import argparse
@@ -20,15 +21,10 @@ import cv2
 import numpy as np
 
 from aifootball.tools.ball_labels import render_view
+from aifootball.tools.fit_field import FIELD_POINTS
 
-POINTS = [
-    ("far_bench", "угол у ДАЛЬНИХ ворот, со стороны СКАМЕЕК"),
-    ("far_stands", "угол у ДАЛЬНИХ ворот, со стороны ТРИБУН"),
-    ("near_stands", "угол у БЛИЖНИХ ворот, со стороны ТРИБУН"),
-    ("near_bench", "угол у БЛИЖНИХ ворот, со стороны СКАМЕЕК"),
-    ("center", "ЦЕНТР поля (центральная точка)"),
-]
-KEY_ESC, KEY_SKIP, KEY_SPACE = 27, ord("1"), 32
+POINTS = [(name, spec[0]) for name, spec in FIELD_POINTS.items()]
+KEY_ESC, KEY_SKIP = 27, ord("1")
 KEY_ENTER = {10, 13}
 KEY_BACKSPACE = {8, 127}
 WINDOW = "mark_field"
@@ -60,7 +56,8 @@ def load_points(path: Path) -> dict[str, tuple[float, float] | None]:
     return {name: None if p is None else (float(p[0]), float(p[1])) for name, p in data.items()}
 
 
-def collect(frame: np.ndarray, scale: float) -> dict | None:
+def collect(frame: np.ndarray, scale: float, previous: dict | None = None) -> dict | None:
+    previous = previous or {}
     placed: dict[str, tuple[float, float] | None] = {}
     ui = {"cursor": None, "click": None}
 
@@ -74,11 +71,18 @@ def collect(frame: np.ndarray, scale: float) -> dict | None:
     idx, announced = 0, -1
     while True:
         if idx != announced:
-            print(f"\n{idx + 1}/{len(POINTS)}: {POINTS[idx][1]}" if idx < len(POINTS)
-                  else "\nвсе точки пройдены: Enter — сохранить, Backspace — поправить последнюю")
+            if idx < len(POINTS):
+                prev = previous.get(POINTS[idx][0])
+                hint = " (Enter — оставить прежнюю)" if prev is not None else ""
+                print(f"\n{idx + 1}/{len(POINTS)}: {POINTS[idx][1]}{hint}")
+            else:
+                print("\nвсе точки пройдены: Enter — сохранить, Backspace — поправить последнюю")
             announced = idx
         header = f"{min(idx + 1, len(POINTS))}/{len(POINTS)} {POINTS[idx][0] if idx < len(POINTS) else 'done: Enter'}"
         shown = render_view(frame, scale, None, ui["cursor"], header)
+        if idx < len(POINTS) and previous.get(POINTS[idx][0]) is not None:
+            p = previous[POINTS[idx][0]]
+            cv2.circle(shown, (int(p[0] * scale), int(p[1] * scale)), 9, (0, 255, 255), 2)
         for i, (name, _) in enumerate(POINTS):
             p = placed.get(name)
             if p is not None:
@@ -103,6 +107,10 @@ def collect(frame: np.ndarray, scale: float) -> dict | None:
         elif key in KEY_BACKSPACE and idx > 0:
             idx -= 1
             placed.pop(POINTS[idx][0], None)
+        elif key in KEY_ENTER and idx < len(POINTS) and previous.get(POINTS[idx][0]) is not None:
+            placed[POINTS[idx][0]] = previous[POINTS[idx][0]]
+            print("   оставлена прежняя")
+            idx += 1
         elif key in KEY_ENTER and idx >= len(POINTS):
             cv2.destroyAllWindows()
             return placed
@@ -118,13 +126,14 @@ def main(argv=None) -> None:
     print("строю фон без игроков (медиана 40 кадров)...")
     frame = background(args.video)
     print(__doc__.split("\n\n", 2)[2])
-    points = collect(frame, args.scale)
+    path = args.venue / "field_points.json"
+    previous = load_points(path) if path.exists() else {}
+    points = collect(frame, args.scale, previous)
     if points is None:
         print("выход без сохранения")
         return
-    path = args.venue / "field_points.json"
     save_points(path, points)
-    print(f"сохранено -> {path}")
+    print(f"сохранено -> {path}; дальше: python -m aifootball.tools.fit_field --venue {args.venue}")
 
 
 if __name__ == "__main__":
