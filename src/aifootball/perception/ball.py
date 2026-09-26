@@ -3,6 +3,8 @@
 import numpy as np
 import polars as pl
 
+from aifootball.geometry.polygons import points_near_polygon
+
 TEAMS = ("A", "B")
 MAX_BALL_SPEED_MS = 25.0  # ~90 км/ч — максимальная скорость удара в футзале
 MAX_BALL_GAP_S = 1.5  # максимальный пропуск детекции мяча для интерполяции
@@ -23,7 +25,6 @@ def process_ball_trajectory(
         return _empty_ball_df()
 
     from aifootball.geometry.homography import apply_homography
-    from aifootball.geometry.polygons import points_in_polygon
     from aifootball.geometry.undistort import undistort_points
 
     balls = detections.filter(pl.col("cls") == "ball").sort("frame_id")
@@ -35,10 +36,11 @@ def process_ball_trajectory(
     center_y = ((balls["y1"] + balls["y2"]) / 2).to_numpy()
     center_px = np.column_stack([center_x, center_y])
 
-    # Проверка на нахождение мяча в границах поля
-    in_pitch = points_in_polygon(center_px, venue.require_polygon())
-    balls = balls.with_columns(in_pitch=pl.Series(in_pitch))
-    balls = balls.filter(pl.col("in_pitch"))
+    # Мяч на поле или не дальше запаса за линией: ауты и игра у борта — тоже мяч
+    near = points_near_polygon(center_px, venue.require_polygon(), venue.ball_margin_px)
+    balls = balls.filter(pl.Series(near))
+    # Один мяч на кадр — самый уверенный кандидат
+    balls = balls.sort("conf", descending=True).unique("frame_id", keep="first").sort("frame_id")
 
     if balls.is_empty():
         return _empty_ball_df()
@@ -213,14 +215,17 @@ def _filter_ball_spikes(ts, x, y, frame_ids):
         return ts, x, y, frame_ids
 
     keep = [True] * len(ts)
+    last = 0  # сравниваем с последней принятой точкой: иначе один ложный мяч роняет и следующий настоящий
     for i in range(1, len(ts)):
-        dt = ts[i] - ts[i - 1]
+        dt = ts[i] - ts[last]
         if dt <= 0:
             keep[i] = False
             continue
-        dist = np.hypot(x[i] - x[i - 1], y[i] - y[i - 1])
+        dist = np.hypot(x[i] - x[last], y[i] - y[last])
         if dist / dt > MAX_BALL_SPEED_MS:
             keep[i] = False
+        else:
+            last = i
 
     keep = np.array(keep, dtype=bool)
     return ts[keep], x[keep], y[keep], frame_ids[keep]

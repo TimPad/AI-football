@@ -46,3 +46,12 @@ def _segments_cross(p1, p2, q1, q2) -> bool:
         return np.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
 
     return side(q1, q2, p1) * side(q1, q2, p2) < 0 and side(p1, p2, q1) * side(p1, p2, q2) < 0
+
+
+def points_near_polygon(points: np.ndarray, polygon: np.ndarray, margin_px: float) -> np.ndarray:
+    """Точки внутри контура или не дальше margin_px за ним (margin_px = 0 — то же, что points_in_polygon)."""
+    if margin_px <= 0:
+        return points_in_polygon(points, polygon)
+    contour = np.asarray(polygon, np.float32).reshape(-1, 1, 2)
+    return np.array([cv2.pointPolygonTest(contour, (float(x), float(y)), True) >= -margin_px
+                     for x, y in np.asarray(points, float).reshape(-1, 2)], dtype=bool)

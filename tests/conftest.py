@@ -24,9 +24,10 @@ VENUE_YAML = {
 SCALE_H = [[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 1.0]]
 
 
-def make_venue_dir(root: Path, polygon=None, H=None) -> Path:
+def make_venue_dir(root: Path, polygon=None, H=None, processing=None) -> Path:
     root.mkdir(parents=True, exist_ok=True)
-    (root / "venue.yaml").write_text(yaml.safe_dump(VENUE_YAML), encoding="utf-8")
+    cfg = {**VENUE_YAML, "processing": {**VENUE_YAML["processing"], **(processing or {})}}
+    (root / "venue.yaml").write_text(yaml.safe_dump(cfg), encoding="utf-8")
     if polygon is not None:
         (root / "pitch_polygon.json").write_text(json.dumps({"points_px": polygon}))
     if H is not None:

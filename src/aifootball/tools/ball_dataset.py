@@ -21,11 +21,11 @@ import polars as pl
 import yaml
 
 from aifootball import schemas
+from aifootball.perception.ball_detect import mask_outside_pitch, pitch_keep_mask
 from aifootball.venue import load_venue
 
 HEIGHT_PER_BALL = 6.7
 MIN_PERSONS_FOR_MAP = 12  # меньше — карту не строим, берём медианный рост
-FILL_BGR = (114, 114, 114)  # серый, которым YOLO сам заполняет поля при letterbox
 
 
 def fit_person_height(persons: pl.DataFrame) -> np.ndarray:
@@ -49,21 +49,6 @@ def fit_person_height(persons: pl.DataFrame) -> np.ndarray:
 
 def ball_diameter_px(coef: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray:
     return (_design(np.asarray(x, float), np.asarray(y, float)) @ coef) / HEIGHT_PER_BALL
-
-
-def pitch_keep_mask(shape: tuple[int, int], polygon: np.ndarray, margin_px: int) -> np.ndarray:
-    """255 — поле и запас margin_px вокруг него, 0 — то, что закрашивается."""
-    keep = np.zeros(shape, np.uint8)
-    cv2.fillPoly(keep, [np.round(polygon).astype(np.int32).reshape(-1, 1, 2)], 255)
-    if margin_px > 0:
-        keep = cv2.dilate(keep, np.ones((2 * margin_px + 1, 2 * margin_px + 1), np.uint8))
-    return keep
-
-
-def mask_outside_pitch(frame: np.ndarray, polygon: np.ndarray, margin_px: int) -> np.ndarray:
-    out = frame.copy()
-    out[pitch_keep_mask(frame.shape[:2], polygon, margin_px) == 0] = FILL_BGR
-    return out
 
 
 def yolo_label(x: float, y: float, diameter: float, width: int, height: int, min_px: float = 0.0) -> str:
@@ -110,20 +95,6 @@ def crop_away_from(x: float | None, y: float | None, keep: np.ndarray, tile: int
         if share > best_share:
             best, best_share = (x0, y0), share
     return best
-
-
-def cover_tiles(box: tuple[int, int, int, int], tile: int, width: int, height: int) -> list[tuple[int, int]]:
-    """Углы вырезок tile x tile, покрывающих box = (x1, y1, x2, y2) с перекрытием, в пределах кадра."""
-    x1, y1, x2, y2 = box
-
-    def origins(lo: int, hi: int, size: int) -> list[int]:
-        n = max(1, int(np.ceil((hi - lo) / tile)))
-        start, stop = max(0, lo), min(size - tile, hi - tile)
-        if n == 1 or stop <= start:
-            return [int(min(max(start, 0), size - tile))]
-        return [int(round(v)) for v in np.linspace(start, stop, n)]
-
-    return [(x0, y0) for y0 in origins(y1, y2, height) for x0 in origins(x1, x2, width)]
 
 
 def time_blocks_split(frame_ids: list[int], val_fraction: float, blocks: int) -> tuple[list[int], list[int]]:

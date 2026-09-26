@@ -26,3 +26,13 @@ def test_missing_markup_is_none_until_required(tmp_path):
         venue.require_polygon()
     with pytest.raises(FileNotFoundError, match="mark_points homography"):
         venue.require_homography()
+
+
+def test_ball_model_settings_default_and_override(tmp_path):
+    plain = load_venue(make_venue_dir(tmp_path / "a"))
+    tuned = load_venue(make_venue_dir(tmp_path / "b", processing={
+        "ball_model": "ball_x/best.pt", "ball_margin_px": 80, "ball_tile": 640}))
+
+    # по умолчанию — как раньше: мяч ищет общая модель, контур без запаса
+    assert (plain.ball_model, plain.ball_margin_px, plain.ball_tile) == (None, 0, 1280)
+    assert (tuned.ball_model, tuned.ball_margin_px, tuned.ball_tile) == ("ball_x/best.pt", 80, 640)

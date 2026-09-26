@@ -218,9 +218,9 @@ def evaluate_ball(detections: pl.DataFrame, labels: pl.DataFrame, venue, conf_mi
     false_alarm_rate — доля кадров «мяча нет в кадре», где детектор что-то нашёл;
     precision — доля кадров с детекцией (visible + absent), где самая уверенная детекция
     и есть мяч: дальше по пайплайну идёт именно она. Кадры hidden не учитываются.
-    Детекции за контуром поля отброшены, как в process_ball_trajectory.
+    Детекции дальше запаса venue.ball_margin_px за контуром поля отброшены, как в process_ball_trajectory.
     """
-    from aifootball.geometry.polygons import points_in_polygon
+    from aifootball.geometry.polygons import points_near_polygon
 
     balls = detections.filter((pl.col("cls") == "ball") & (pl.col("conf") >= conf_min))
     if not balls.is_empty() and venue.pitch_polygon_px is not None:
@@ -228,7 +228,7 @@ def evaluate_ball(detections: pl.DataFrame, labels: pl.DataFrame, venue, conf_mi
             ((balls["x1"] + balls["x2"]) / 2).to_numpy(),
             ((balls["y1"] + balls["y2"]) / 2).to_numpy(),
         ])
-        balls = balls.filter(pl.Series(points_in_polygon(centers, venue.pitch_polygon_px)))
+        balls = balls.filter(pl.Series(points_near_polygon(centers, venue.pitch_polygon_px, venue.ball_margin_px)))
     by_frame = {
         key[0]: g.sort("conf", descending=True).select("x1", "y1", "x2", "y2").to_numpy()
         for key, g in balls.partition_by("frame_id", as_dict=True).items()

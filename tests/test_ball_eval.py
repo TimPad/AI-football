@@ -143,3 +143,14 @@ def test_evaluate_ball_without_homography_skips_size_split(tmp_path):
 
     assert res["found"] == 1 and res["false_alarm_frames"] == 0
     assert res["by_size"] is None
+
+
+def test_evaluate_ball_uses_venue_ball_margin(tmp_path):
+    # мяч в 10 px за линией (аут): при запасе 20 px детекция засчитывается, без запаса — отброшена
+    labels = _labels([(1, "visible", 1010.0, 500.0)])
+    dets = _balls([(1, 1005, 495, 1015, 505, 0.9)])
+    strict = load_venue(make_venue_dir(tmp_path / "a", polygon=FIELD, H=SCALE_H))
+    loose = load_venue(make_venue_dir(tmp_path / "b", polygon=FIELD, H=SCALE_H, processing={"ball_margin_px": 20}))
+
+    assert evaluate_ball(dets, labels, strict, conf_min=0.1)["found"] == 0
+    assert evaluate_ball(dets, labels, loose, conf_min=0.1)["found"] == 1

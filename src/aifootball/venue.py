@@ -39,6 +39,11 @@ class Venue:
     min_team_observations: int = 10
     max_gap_s: float = 1.0
     max_physical_speed: float = 10.0
+    # Мяч: своя дообученная модель (путь внутри каталога моделей) вместо общей COCO,
+    # размер вырезки в полном разрешении и запас за контуром поля — ауты и игра у борта.
+    ball_model: str | None = None
+    ball_tile: int = 1280
+    ball_margin_px: int = 0
 
     def require_polygon(self) -> np.ndarray:
         if self.pitch_polygon_px is None:
@@ -78,6 +83,9 @@ def load_venue(root: Path) -> Venue:
         min_team_observations=int(proc.get("min_team_observations", 10)),
         max_gap_s=float(proc.get("max_gap_s", 1.0)),
         max_physical_speed=float(proc.get("max_physical_speed", 10.0)),
+        ball_model=proc.get("ball_model"),
+        ball_tile=int(proc.get("ball_tile", 1280)),
+        ball_margin_px=int(proc.get("ball_margin_px", 0)),
     )
 
 

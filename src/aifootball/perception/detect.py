@@ -3,6 +3,7 @@
 import math
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -64,14 +65,18 @@ def detect_video(
     weights: Path,
     batch_size: int = 16,
     progress_every: int = 250,
+    ball_detector: Callable[[np.ndarray], tuple[np.ndarray, np.ndarray]] | None = None,
 ) -> pl.DataFrame:
+    """Люди — общей моделью weights. Мяч — ею же, либо ball_detector (кадр -> боксы xyxy, уверенности),
+    если у установки своя модель мяча: тогда общая модель ищет только людей."""
     if not weights.exists():
         raise FileNotFoundError(f"нет весов модели: {weights}")
     from ultralytics import YOLO  # тяжёлый импорт — только когда реально детектируем
 
     model = YOLO(str(weights))
     device = pick_device()
-    conf = min(venue.conf_person, venue.conf_ball)
+    classes = [PERSON] if ball_detector else list(CLASS_NAMES)
+    conf = venue.conf_person if ball_detector else min(venue.conf_person, venue.conf_ball)
     rows: list[dict] = []
     started = time.perf_counter()
 
@@ -81,9 +86,7 @@ def detect_video(
         if not items:
             return
         frames = [item[2] for item in items]
-        results = model.predict(
-            frames, imgsz=venue.imgsz, device=device, classes=list(CLASS_NAMES), conf=conf, verbose=False
-        )
+        results = model.predict(frames, imgsz=venue.imgsz, device=device, classes=classes, conf=conf, verbose=False)
         for (frame_id, ts, frame), res in zip(items, results):
             boxes = res.boxes
             rows.extend(boxes_to_rows(
@@ -91,6 +94,10 @@ def detect_video(
                 boxes.xyxy.cpu().numpy(), boxes.cls.cpu().numpy(), boxes.conf.cpu().numpy(),
                 venue.conf_person, venue.conf_ball,
             ))
+            if ball_detector:
+                ball_xyxy, ball_conf = ball_detector(frame)
+                rows.extend(boxes_to_rows(frame_id, ts, frame, ball_xyxy, np.full(len(ball_conf), BALL), ball_conf,
+                                          venue.conf_person, venue.conf_ball))
 
     total_frames = 0
     for frame_id, ts, frame in iter_frames(video, venue.target_fps):

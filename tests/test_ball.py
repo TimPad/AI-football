@@ -159,3 +159,49 @@ def test_detect_passes_ignores_owner_change_after_long_gap():
     passes = detect_passes(_ball(ball_xs), _players(owners, player_xs))
 
     assert passes["passes_total"] == {"A": 0, "B": 0}
+
+
+def _ball_dets(rows):
+    """rows: (frame_id, cx, cy, conf) — бокс 10x10 px вокруг центра."""
+    n = len(rows)
+    return pl.DataFrame({
+        "frame_id": [r[0] for r in rows], "ts": [r[0] / 10 for r in rows], "cls": ["ball"] * n,
+        "x1": [r[1] - 5 for r in rows], "y1": [r[2] - 5 for r in rows],
+        "x2": [r[1] + 5 for r in rows], "y2": [r[2] + 5 for r in rows],
+        "conf": [r[3] for r in rows],
+        "torso_l": [np.nan] * n, "torso_a": [np.nan] * n, "torso_b": [np.nan] * n,
+    }, schema=schemas.DETECTIONS)
+
+
+def test_ball_trajectory_takes_most_confident_detection_per_frame(venue):
+    # в кадре 1 два кандидата: неуверенный (x=300 px) идёт первым, уверенный (x=100 px) — вторым
+    dets = _ball_dets([(1, 300, 100, 0.2), (1, 100, 100, 0.9), (2, 105, 100, 0.9)])
+
+    state = process_ball_trajectory(dets, venue)
+
+    assert state.filter(pl.col("frame_id") == 1)["x_m"].to_list() == pytest.approx([10.0])
+
+
+def test_ball_trajectory_drops_spike_but_keeps_next_good_point(venue):
+    # кадр 3 — ложный мяч за 20 м; кадр 4 снова рядом с кадром 2 и должен остаться
+    dets = _ball_dets([(1, 100, 100, 0.9), (2, 105, 100, 0.9), (3, 300, 100, 0.9), (4, 110, 100, 0.9)])
+
+    state = process_ball_trajectory(dets, venue)
+    real = state.filter(~pl.col("interpolated"))
+
+    assert real["frame_id"].to_list() == [1, 2, 4]
+    assert real.filter(pl.col("frame_id") == 4)["x_m"].to_list() == pytest.approx([11.0])
+
+
+def test_ball_trajectory_keeps_ball_within_margin_outside_contour(tmp_path):
+    # поле 0..400 px; запас 20 px: мяч в 10 px за линией (аут, игра у борта) остаётся, в 50 px — нет
+    from aifootball.venue import load_venue
+    from conftest import SCALE_H, make_venue_dir
+
+    venue = load_venue(make_venue_dir(tmp_path / "v", polygon=[[0, 0], [400, 0], [400, 200], [0, 200]], H=SCALE_H,
+                                      processing={"ball_margin_px": 20}))
+    dets = _ball_dets([(1, 395, 100, 0.9), (2, 410, 100, 0.9), (3, 450, 100, 0.9)])
+
+    state = process_ball_trajectory(dets, venue)
+
+    assert state.filter(~pl.col("interpolated"))["frame_id"].to_list() == [1, 2]

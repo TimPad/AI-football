@@ -1,6 +1,6 @@
 import numpy as np
 
-from aifootball.geometry.polygons import is_simple_polygon, points_in_polygon
+from aifootball.geometry.polygons import is_simple_polygon, points_in_polygon, points_near_polygon
 
 SQUARE = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=np.float32)
 
@@ -33,3 +33,11 @@ def test_real_misordered_markup():
     assert not is_simple_polygon(clicked)
     fixed = clicked[:5] + [clicked[6], clicked[5]]
     assert is_simple_polygon(fixed)
+
+
+def test_points_near_polygon_with_margin():
+    square = np.array([[0, 0], [100, 0], [100, 100], [0, 100]], np.float32)
+    pts = np.array([[50, 50], [105, 50], [130, 50]], float)
+
+    assert points_near_polygon(pts, square, margin_px=0).tolist() == [True, False, False]
+    assert points_near_polygon(pts, square, margin_px=10).tolist() == [True, True, False]

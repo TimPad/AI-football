@@ -31,7 +31,19 @@ def cmd_detect(args, venue) -> None:
     from aifootball.perception.detect import detect_video  # тянет torch — только здесь
 
     started = time.perf_counter()
-    detections = detect_video(args.video, venue, args.models / venue.model)
+    ball_detector = None
+    if venue.ball_model:
+        import cv2
+
+        from aifootball.perception.ball_detect import BallDetector
+        from aifootball.perception.detect import pick_device
+
+        cap = cv2.VideoCapture(str(args.video))
+        frame_shape = (int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
+        cap.release()
+        ball_detector = BallDetector(args.models / venue.ball_model, venue.require_polygon(), frame_shape,
+                                     venue.ball_tile, venue.ball_margin_px, venue.conf_ball, pick_device())
+    detections = detect_video(args.video, venue, args.models / venue.model, ball_detector=ball_detector)
     schemas.write(detections, args.match / "detections.parquet", "detections")
     schemas.write_json(
         {
@@ -41,6 +53,7 @@ def cmd_detect(args, venue) -> None:
             "target_fps": venue.target_fps,
             "model": venue.model,
             "imgsz": venue.imgsz,
+            "ball_model": venue.ball_model,
             "schema_version": schemas.SCHEMA_VERSION,
             "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         },

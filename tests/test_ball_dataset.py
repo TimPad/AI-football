@@ -7,12 +7,10 @@ import yaml
 from aifootball import schemas
 from aifootball.tools.ball_dataset import (
     ball_diameter_px,
-    cover_tiles,
     crop_around,
     crop_away_from,
     export_dataset,
     fit_person_height,
-    mask_outside_pitch,
     time_blocks_split,
     yolo_label,
 )
@@ -47,18 +45,6 @@ def test_person_height_follows_position_and_ignores_outliers():
 
     assert ball_diameter_px(coef, np.array([500.0]), np.array([500.0]))[0] == pytest.approx(90 / 6.7, rel=0.02)
     assert ball_diameter_px(coef, np.array([100.0]), np.array([900.0]))[0] == pytest.approx(130 / 6.7, rel=0.02)
-
-
-def test_mask_outside_pitch_keeps_margin():
-    frame = np.full((100, 200, 3), 200, np.uint8)
-    polygon = np.array([[50, 20], [150, 20], [150, 80], [50, 80]], np.float32)
-
-    masked = mask_outside_pitch(frame, polygon, margin_px=10)
-
-    assert (masked[50, 100] == 200).all()  # поле
-    assert (masked[50, 45] == 200).all()   # запас у линии
-    assert (masked[50, 20] == 114).all()   # дальше запаса — закрашено серым
-    assert (frame[50, 20] == 200).all()    # исходный кадр не тронут
 
 
 def test_yolo_label_normalized_and_clipped():
@@ -140,17 +126,6 @@ def test_crop_away_from_prefers_pitch():
     keep[1000:, :] = 255  # поле — нижняя половина кадра
     x0, y0 = crop_away_from(None, None, keep, tile=640, seed=1)
     assert (keep[y0:y0 + 640, x0:x0 + 640] > 0).mean() >= 0.5
-
-
-def test_cover_tiles_cover_box_with_overlap():
-    tiles = cover_tiles((48, 230, 2425, 1944), tile=1280, width=2592, height=1944)
-
-    assert len(tiles) == 4
-    covered = np.zeros((1944, 2592), bool)
-    for x0, y0 in tiles:
-        assert 0 <= x0 <= 2592 - 1280 and 0 <= y0 <= 1944 - 1280
-        covered[y0:y0 + 1280, x0:x0 + 1280] = True
-    assert covered[230:1944, 48:2425].all()
 
 
 def test_export_tiles(tmp_path):
