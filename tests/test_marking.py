@@ -79,3 +79,31 @@ def test_finish_problem_blocks_bad_markup_before_window_closes():
     assert "минимум 3" in finish_problem([(0, 0), (1, 1)], homography=False)
     assert "минимум 4" in finish_problem([(0, 0)], homography=True)
     assert finish_problem(square, homography=True) is None
+
+
+def test_field_points_roundtrip_keeps_skipped(tmp_path):
+    from aifootball.tools.mark_field import load_points, save_points
+
+    path = tmp_path / "field_points.json"
+    save_points(path, {"far_bench": (10.04, 20.0), "near_stands": None})
+
+    assert load_points(path) == {"far_bench": (10.0, 20.0), "near_stands": None}
+
+
+def test_background_removes_moving_object(tmp_path):
+    import cv2
+
+    from aifootball.tools.mark_field import background
+
+    # «игрок» в каждом кадре в своём месте — на медиане его не остаётся
+    path = tmp_path / "v.mp4"
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter.fourcc(*"mp4v"), 10.0, (160, 120))
+    for i in range(30):
+        frame = np.full((120, 160, 3), 100, np.uint8)
+        cv2.rectangle(frame, (i * 5, 40), (i * 5 + 10, 80), (255, 255, 255), -1)
+        writer.write(frame)
+    writer.release()
+
+    bg = background(path, samples=30)
+
+    assert np.abs(bg.astype(int) - 100).max() < 15
