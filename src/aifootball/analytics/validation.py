@@ -296,3 +296,91 @@ def ball_size_px(points_px: np.ndarray, venue) -> np.ndarray:
 
 def _ratio(num, den) -> float | None:
     return round(float(num) / float(den), 3) if den else None
+
+
+PASS_MATCH_TOL_S = 1.0  # приём мяча по журналу и по пайплайну: клавишу жмут с запаздыванием
+
+
+def truth_from_touches(touches: pl.DataFrame) -> tuple[list[tuple[float, float, str | None]], list[dict]]:
+    """Эталон из ручного журнала владения: интервалы (начало, конец, команда | None) и передачи.
+
+    Мяч принадлежит команде от момента, когда его получил её игрок, до следующей отметки —
+    полёт паса засчитывается отдающим. Передача — две отметки игроков подряд: своему — точная,
+    сопернику — неточная (сюда же попадает отбор). После dead мяч ничей до следующей отметки.
+    """
+    ev = touches.sort("ts").to_dicts()
+    teams = ("A", "B")
+    intervals = [(a["ts"], b["ts"], a["event"] if a["event"] in teams else None) for a, b in zip(ev, ev[1:])]
+    passes = [{"team": a["event"], "completed": b["event"] == a["event"], "ts_receive": b["ts"]}
+              for a, b in zip(ev, ev[1:]) if a["event"] in teams and b["event"] in teams]
+    return intervals, passes
+
+
+def evaluate_possession(ball_state: pl.DataFrame, player_state: pl.DataFrame, touches: pl.DataFrame,
+                        tol_s: float = PASS_MATCH_TOL_S) -> dict:
+    """Сравнивает владение и передачи пайплайна с ручным журналом на отрезке от первой до последней отметки."""
+    from aifootball.perception.ball import POSSESSION_RADIUS_M, compute_possession, pass_events
+
+    intervals, truth_passes = truth_from_touches(touches)
+    if not intervals:
+        raise ValueError("в журнале меньше двух отметок")
+    t0, t1 = intervals[0][0], intervals[-1][1]
+    in_span = (pl.col("ts") >= t0) & (pl.col("ts") < t1)
+    ball = ball_state.filter(in_span)
+    players = player_state.filter(in_span)
+
+    truth_s = {"A": 0.0, "B": 0.0, "dead": 0.0}
+    for start, end, team in intervals:
+        truth_s[team or "dead"] += end - start
+    in_play = truth_s["A"] + truth_s["B"]
+    truth_pct = {t: round(truth_s[t] / in_play * 100, 1) if in_play else 0.0 for t in ("A", "B")}
+    pipe = compute_possession(ball, players)
+
+    # Покадрово: чья команда у мяча по журналу и по пайплайну (ближайший игрок в радиусе, как в compute_possession)
+    frames = players.select("frame_id", "ts").unique().sort("frame_id")
+    starts = np.array([s for s, _, _ in intervals])
+    truth_team = [intervals[max(0, np.searchsorted(starts, ts, side="right") - 1)][2] for ts in frames["ts"]]
+    joined = ball.join(players, on="frame_id", suffix="_player")
+    joined = joined.with_columns(dist=pl.Series(np.hypot(joined["x_m"].to_numpy() - joined["x_m_player"].to_numpy(),
+                                                         joined["y_m"].to_numpy() - joined["y_m_player"].to_numpy())))
+    nearest = joined.filter(pl.col("dist") <= POSSESSION_RADIUS_M).sort("dist").group_by("frame_id").first()
+    owner = dict(zip(nearest["frame_id"].to_list(), nearest["team"].to_list()))
+    step = float(np.median(np.diff(frames["ts"].to_numpy()))) if frames.height > 1 else 0.0
+    agreement = {g: {"A": 0.0, "B": 0.0, "none": 0.0} for g in ("A", "B", "dead")}
+    for fid, g in zip(frames["frame_id"].to_list(), truth_team):
+        p = owner.get(fid)
+        agreement[g or "dead"][p if p in ("A", "B") else "none"] += step
+    agreement = {g: {p: round(v, 1) for p, v in row.items()} for g, row in agreement.items()}
+
+    # Передачи: пара «эталон — пайплайн» с той же командой отдающего и приёмом в пределах tol_s
+    pipe_passes = [p for p in pass_events(ball_state, player_state) if t0 <= p["ts_receive"] < t1]
+    used, matched = set(), []
+    for tp in truth_passes:
+        best = None
+        for i, pp in enumerate(pipe_passes):
+            dt = abs(pp["ts_receive"] - tp["ts_receive"])
+            if i not in used and pp["team"] == tp["team"] and dt <= tol_s and (best is None or dt < best[1]):
+                best = (i, dt)
+        if best is not None:
+            used.add(best[0])
+            matched.append((tp, pipe_passes[best[0]]))
+
+    def counts(passes):
+        return {t: {"total": sum(p["team"] == t for p in passes),
+                    "completed": sum(p["team"] == t and p["completed"] for p in passes)} for t in ("A", "B")}
+
+    matched_ids = {id(tp) for tp, _ in matched}
+    return {
+        "span_s": [round(t0, 2), round(t1, 2)],
+        "possession": {"truth_s": {k: round(v, 1) for k, v in truth_s.items()}, "truth_pct": truth_pct,
+                       "pipeline_s": pipe["possession_s"], "pipeline_pct": pipe["possession_pct"]},
+        "possession_by_time_s": agreement,
+        "passes": {
+            "truth": counts(truth_passes), "pipeline": counts(pipe_passes),
+            "matched": len(matched), "recall": _ratio(len(matched), len(truth_passes)),
+            "precision": _ratio(len(matched), len(pipe_passes)),
+            "completed_agree": sum(tp["completed"] == pp["completed"] for tp, pp in matched),
+            "missed_ts": [round(tp["ts_receive"], 1) for tp in truth_passes if id(tp) not in matched_ids],
+            "false_ts": [round(pp["ts_receive"], 1) for i, pp in enumerate(pipe_passes) if i not in used],
+        },
+    }

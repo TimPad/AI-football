@@ -8,6 +8,7 @@
     python -m aifootball.cli check   --venue DIR --match DIR
     python -m aifootball.cli render  --video V --venue DIR --match DIR [--seconds 60]
     python -m aifootball.cli eval-ball --venue DIR --match DIR --labels data/gt/<матч>/ball.parquet
+    python -m aifootball.cli eval-passes --venue DIR --match DIR --touches data/gt/<матч>/touches.parquet
 """
 
 import argparse
@@ -184,6 +185,30 @@ def cmd_eval_ball(args, venue) -> None:
               f"{_fmt(r['precision'])}     {sizes}")
 
 
+def cmd_eval_passes(args, venue) -> None:
+    from aifootball.analytics.validation import evaluate_possession
+    from aifootball.perception.ball import process_ball_trajectory
+
+    touches = schemas.read(args.touches, "touches")
+    state = schemas.read(args.match / "state.parquet", "state")
+    ball_state = process_ball_trajectory(schemas.read(args.match / "detections.parquet", "detections"), venue)
+    r = evaluate_possession(ball_state, state, touches)
+    schemas.write_json({"touches": str(args.touches), **r}, args.match / "eval_passes.json")
+
+    poss, ps = r["possession"], r["passes"]
+    print(f"eval-passes: отрезок {r['span_s'][0]:.0f}–{r['span_s'][1]:.0f} с")
+    print(f"  владение A/B: эталон {poss['truth_pct']['A']}% / {poss['truth_pct']['B']}%, "
+          f"пайплайн {poss['pipeline_pct']['A']}% / {poss['pipeline_pct']['B']}%")
+    print("  по времени (с), строки — эталон, столбцы — пайплайн: A / B / никто")
+    for g, row in r["possession_by_time_s"].items():
+        print(f"    {g:5s} {row['A']:6.1f} {row['B']:6.1f} {row['none']:6.1f}")
+    for t in ("A", "B"):
+        print(f"  пасы {t}: эталон {ps['truth'][t]['completed']}/{ps['truth'][t]['total']} точных, "
+              f"пайплайн {ps['pipeline'][t]['completed']}/{ps['pipeline'][t]['total']}")
+    print(f"  совпало пасов {ps['matched']}: recall {_fmt(ps['recall'])}, precision {_fmt(ps['precision'])}, "
+          f"точность паса совпала у {ps['completed_agree']}")
+
+
 def _fmt(x) -> str:
     return "  —  " if x is None else f"{x:.3f}"
 
@@ -217,6 +242,8 @@ def build_parser() -> argparse.ArgumentParser:
     evb.add_argument("--labels", type=Path, required=True, help="ручная разметка мяча (tools.label_ball)")
     evb.add_argument("--detections", type=Path, default=None, help="по умолчанию detections.parquet матча")
     evb.add_argument("--conf", type=float, nargs="+", default=[0.05, 0.10, 0.25], help="пороги уверенности")
+    evp = add("eval-passes")
+    evp.add_argument("--touches", type=Path, required=True, help="ручной журнал владения (tools.label_touches)")
     run = add("run", video=True, models=True, seconds=True)
     run.add_argument("--redetect", action="store_true")
     return parser
@@ -224,7 +251,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 COMMANDS = {
     "detect": cmd_detect, "track": cmd_track, "project": cmd_project, "metrics": cmd_metrics,
-    "check": cmd_check, "eval": cmd_eval, "eval-ball": cmd_eval_ball, "render": cmd_render, "run": cmd_run,
+    "check": cmd_check, "eval": cmd_eval, "eval-ball": cmd_eval_ball, "eval-passes": cmd_eval_passes,
+    "render": cmd_render, "run": cmd_run,
 }
 
 

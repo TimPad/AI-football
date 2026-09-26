@@ -139,7 +139,23 @@ def detect_passes(
     min_possession_s: float = MIN_POSSESSION_S,
     max_flight_s: float = MAX_PASS_FLIGHT_S,
 ) -> dict:
-    """Считает передачи по командам: смену владельца мяча между игроками.
+    """Считает передачи по командам (см. pass_events)."""
+    passes_total = {"A": 0, "B": 0}
+    passes_completed = {"A": 0, "B": 0}
+    for p in pass_events(ball_state, player_state, possession_radius_m, min_possession_s, max_flight_s):
+        passes_total[p["team"]] += 1
+        passes_completed[p["team"]] += p["completed"]
+    return _passes_result(passes_total, passes_completed)
+
+
+def pass_events(
+    ball_state: pl.DataFrame,
+    player_state: pl.DataFrame,
+    possession_radius_m: float = POSSESSION_RADIUS_M,
+    min_possession_s: float = MIN_POSSESSION_S,
+    max_flight_s: float = MAX_PASS_FLIGHT_S,
+) -> list[dict]:
+    """Передачи — смены владельца мяча между игроками: {team, completed, ts_pass, ts_receive}.
 
     Владелец в кадре — ближайший к мячу игрок команды в пределах possession_radius_m.
     Владение засчитывается, если длится не меньше min_possession_s, поэтому пас в одно
@@ -148,15 +164,13 @@ def detect_passes(
     потеряться детектором.
     """
     if ball_state.is_empty() or player_state.is_empty():
-        return _passes_result({"A": 0, "B": 0}, {"A": 0, "B": 0})
+        return []
 
     # Владеть мячом может только игрок команды: судья и неопознанные треки пас не прерывают
     candidates = player_state.filter(pl.col("team").is_in(TEAMS))
     joined = ball_state.join(candidates, on="frame_id", suffix="_player")
-    passes_total = {"A": 0, "B": 0}
-    passes_completed = {"A": 0, "B": 0}
     if joined.is_empty():
-        return _passes_result(passes_total, passes_completed)
+        return []
 
     dx = joined["x_m"].to_numpy() - joined["x_m_player"].to_numpy()
     dy = joined["y_m"].to_numpy() - joined["y_m_player"].to_numpy()
@@ -169,7 +183,7 @@ def detect_passes(
         .sort("frame_id")
     )
     if owners.is_empty():
-        return _passes_result(passes_total, passes_completed)
+        return []
 
     # Серии кадров подряд у одного владельца; короткие серии — шум, их выбрасываем
     sample_step = float(np.median(np.diff(ball_state["ts"].to_numpy()))) if len(ball_state) > 1 else 0.1
@@ -187,16 +201,15 @@ def detect_passes(
     )
 
     rows = runs.to_dicts()
+    events = []
     for prev, current in zip(rows, rows[1:]):
         if current["track_id"] == prev["track_id"]:
             continue  # владелец вернул мяч себе после чужого касания
         if current["ts_start"] - prev["ts_end"] > max_flight_s:
             continue
-        passes_total[prev["team"]] += 1
-        if current["team"] == prev["team"]:
-            passes_completed[prev["team"]] += 1
-
-    return _passes_result(passes_total, passes_completed)
+        events.append({"team": prev["team"], "completed": current["team"] == prev["team"],
+                       "ts_pass": prev["ts_end"], "ts_receive": current["ts_start"]})
+    return events
 
 
 def _passes_result(passes_total: dict, passes_completed: dict) -> dict:

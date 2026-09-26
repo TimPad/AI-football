@@ -65,7 +65,16 @@ BALL_LABELS = {
     "y": pl.Float32,
 }
 
-SCHEMAS = {"detections": DETECTIONS, "tracks": TRACKS, "state": STATE, "ball_labels": BALL_LABELS}
+# Ручной журнал владения мячом (эталон, tools.label_touches): момент, когда мяч получил новый
+# игрок команды A или B, или мяч вышел из игры (dead: аут, гол, фол, остановка).
+TOUCHES = {
+    "frame_id": pl.Int32,
+    "ts": pl.Float64,
+    "event": pl.Utf8,  # A | B | dead
+}
+
+SCHEMAS = {"detections": DETECTIONS, "tracks": TRACKS, "state": STATE, "ball_labels": BALL_LABELS,
+           "touches": TOUCHES}
 
 
 class SchemaError(Exception):
