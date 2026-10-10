@@ -1,8 +1,9 @@
+import numpy as np
 import polars as pl
 import pytest
 
 from aifootball import schemas
-from aifootball.perception.stitch import stitch_tracks
+from aifootball.perception.stitch import split_on_color_change, stitch_tracks
 
 
 def _track(track_id, start_ts, duration=2.0, a=100.0, b=100.0, foot_x=100.0, foot_y=100.0):
@@ -77,3 +78,51 @@ def test_does_not_stitch_far_positions():
     stitched = stitch_tracks(df, max_gap_s=2.0, max_spatial_dist_px=100.0)
 
     assert stitched["track_id"].n_unique() == 2
+
+
+CENTERS = np.array([[100.0, 100.0], [180.0, 100.0]])  # цвет формы команд A и B
+
+
+def _recolor(rows, start, a, b=100.0, end=None):
+    for row in rows[start:end]:
+        row["torso_a"], row["torso_b"] = a, b
+    return rows
+
+
+def test_splits_track_when_color_changes_for_good():
+    # ByteTrack перескочил на соперника: с 2-й секунды у трека цвет формы другой команды
+    rows = _recolor(_track(1, start_ts=0.0, duration=4.0, a=100.0), start=20, a=180.0)
+    df = pl.DataFrame(rows, schema=schemas.TRACKS)
+
+    split = split_on_color_change(df, CENTERS)
+
+    ids = split.sort("frame_id")["track_id"].to_list()
+    assert ids[:20] == [1] * 20
+    assert len(set(ids[20:])) == 1 and ids[20] != 1
+
+
+def test_does_not_split_on_short_color_noise():
+    rows = _recolor(_track(1, start_ts=0.0, duration=4.0, a=100.0), start=20, end=25, a=180.0)
+    df = pl.DataFrame(rows, schema=schemas.TRACKS)
+
+    assert split_on_color_change(df, CENTERS)["track_id"].unique().to_list() == [1]
+
+
+def test_ignores_color_while_torso_is_covered_by_another_box():
+    # Игрок 1 полторы секунды за игроком 2 другой команды: цвет торса смешан, но трек тот же
+    covered = _recolor(_track(1, start_ts=0.0, duration=4.0, a=100.0, foot_x=100.0), start=10, end=25, a=180.0)
+    other = _track(2, start_ts=1.0, duration=1.5, a=180.0, foot_x=105.0)
+    df = pl.DataFrame(covered + other, schema=schemas.TRACKS)
+
+    split = split_on_color_change(df, CENTERS)
+
+    assert split.filter(pl.col("x1") == 90.0)["track_id"].unique().to_list() == [1]
+    assert split["track_id"].n_unique() == 2
+
+
+def test_does_not_split_when_color_drifts_within_team():
+    # Оранжевая форма от света гуляет: цвет сдвинулся на 40, но остался ближе к своей команде
+    rows = _recolor(_track(1, start_ts=0.0, duration=4.0, a=200.0), start=20, a=160.0)
+    df = pl.DataFrame(rows, schema=schemas.TRACKS)
+
+    assert split_on_color_change(df, CENTERS)["track_id"].unique().to_list() == [1]

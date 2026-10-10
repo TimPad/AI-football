@@ -15,24 +15,11 @@ MIN_OBSERVATIONS = 10
 
 def assign_teams(tracks: pl.DataFrame, min_observations: int = MIN_OBSERVATIONS) -> pl.DataFrame:
     """Заполняет role и team. Длинные треки на поле — player A/B, остальные — unknown."""
-    per_track = (
-        tracks.filter(pl.col("in_pitch") & pl.col("torso_a").is_not_nan())
-        .group_by("track_id")
-        .agg(
-            n=pl.len(),
-            a=pl.col("torso_a").median(),
-            b=pl.col("torso_b").median(),
-        )
-        .filter(pl.col("n") >= min_observations)
-        .sort("track_id")
-    )
+    per_track = _track_colors(tracks, min_observations)
     if len(per_track) < 2:
         return tracks.with_columns(role=pl.lit("unknown"), team=pl.lit(None, dtype=pl.Utf8))
 
-    # Только a и b (цветность), без яркости L: освещение в зале неровное,
-    # а цвет формы от него почти не зависит.
-    features = per_track.select("a", "b").to_numpy().astype(np.float32)
-    labels = _two_clusters(features)
+    labels, _ = _two_clusters(per_track.select("a", "b").to_numpy().astype(np.float32))
     teams = pl.DataFrame(
         {"track_id": per_track["track_id"], "team_new": labels},
         schema={"track_id": pl.Int32, "team_new": pl.Utf8},
@@ -45,6 +32,34 @@ def assign_teams(tracks: pl.DataFrame, min_observations: int = MIN_OBSERVATIONS)
             role=pl.when(pl.col("team").is_null()).then(pl.lit("unknown")).otherwise(pl.lit("player"))
         )
         .select(tracks.columns)
+    )
+
+
+def team_color_centers(tracks: pl.DataFrame, min_observations: int = MIN_OBSERVATIONS) -> np.ndarray | None:
+    """Цвет формы команд (a, b): строка 0 — A, строка 1 — B, как в assign_teams. None — треков меньше двух."""
+    per_track = _track_colors(tracks, min_observations)
+    if len(per_track) < 2:
+        return None
+    _, centers = _two_clusters(per_track.select("a", "b").to_numpy().astype(np.float32))
+    return centers
+
+
+def _track_colors(tracks: pl.DataFrame, min_observations: int) -> pl.DataFrame:
+    """Медианный цвет торса (a, b) каждого трека, достаточно долго бывшего на поле.
+
+    Только a и b (цветность), без яркости L: освещение в зале неровное,
+    а цвет формы от него почти не зависит.
+    """
+    return (
+        tracks.filter(pl.col("in_pitch") & pl.col("torso_a").is_not_nan())
+        .group_by("track_id")
+        .agg(
+            n=pl.len(),
+            a=pl.col("torso_a").median(),
+            b=pl.col("torso_b").median(),
+        )
+        .filter(pl.col("n") >= min_observations)
+        .sort("track_id")
     )
 
 
@@ -137,10 +152,11 @@ def assign_roles(tracks: pl.DataFrame, venue) -> pl.DataFrame:
     )
 
 
-def _two_clusters(features: np.ndarray) -> list[str]:
-    """k-means на 2 кластера. Имена стабильны: «A» — кластер с меньшим a (зеленее)."""
+def _two_clusters(features: np.ndarray) -> tuple[list[str], np.ndarray]:
+    """k-means на 2 кластера: метки и центры (A, B). Имена стабильны: «A» — кластер с меньшим a (зеленее)."""
     cv2.setRNGSeed(0)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 50, 0.1)
     _, labels, centers = cv2.kmeans(features, 2, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
     first = int(np.argmin(centers[:, 0]))
-    return ["A" if label == first else "B" for label in labels.ravel()]
+    names = ["A" if label == first else "B" for label in labels.ravel()]
+    return names, centers[[first, 1 - first]].astype(float)

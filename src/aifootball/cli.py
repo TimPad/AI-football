@@ -22,7 +22,7 @@ from aifootball import schemas
 from aifootball.analytics.checks import phase1_checks
 from aifootball.analytics.metrics import compute_metrics
 from aifootball.perception.frames import video_fps
-from aifootball.perception.teams import assign_roles, assign_teams
+from aifootball.perception.teams import assign_roles, assign_teams, team_color_centers
 from aifootball.perception.track import track_people
 from aifootball.state.project import project_tracks
 from aifootball.venue import load_venue
@@ -68,11 +68,12 @@ def cmd_detect(args, venue) -> None:
 
 
 def cmd_track(args, venue) -> None:
-    from aifootball.perception.stitch import stitch_tracks
+    from aifootball.perception.stitch import split_on_color_change, stitch_tracks
 
     detections = schemas.read(args.match / "detections.parquet", "detections")
     raw_tracks = track_people(detections, venue)
-    stitched_tracks = stitch_tracks(raw_tracks, max_gap_s=venue.max_gap_s * 5.0)
+    split_tracks = split_on_color_change(raw_tracks, team_color_centers(raw_tracks, venue.min_team_observations))
+    stitched_tracks = stitch_tracks(split_tracks, max_gap_s=venue.max_gap_s * 5.0)
     assigned_teams = assign_teams(stitched_tracks, min_observations=venue.min_team_observations)
     tracks = assign_roles(assigned_teams, venue)
     schemas.write(tracks, args.match / "tracks.parquet", "tracks")
