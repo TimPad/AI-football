@@ -50,7 +50,7 @@ def test_compute_possession_team_assignment():
         "interpolated": [False, False, False, False],
     })
 
-    poss = compute_possession(ball_state, player_state, possession_radius_m=1.8)
+    poss = compute_possession(ball_state, player_state)
 
     assert poss["possession_pct"]["A"] == 50.0
     assert poss["possession_pct"]["B"] == 50.0
@@ -205,3 +205,41 @@ def test_ball_trajectory_keeps_ball_within_margin_outside_contour(tmp_path):
     state = process_ball_trajectory(dets, venue)
 
     assert state.filter(~pl.col("interpolated"))["frame_id"].to_list() == [1, 2]
+
+
+def _crowd(frames, dt=0.1):
+    """frames[i] — список (игрок, x) в кадре i+1; y у всех 5.0, как у мяча."""
+    rows = [{"frame_id": i + 1, "ts": dt * (i + 1), "track_id": p[0], "role": p[1], "team": p[2],
+             "x_m": float(x), "y_m": 5.0, "vx": 0.0, "vy": 0.0, "speed": 0.0, "interpolated": False}
+            for i, frame in enumerate(frames) for p, x in frame]
+    return pl.DataFrame(rows, schema_overrides={"team": pl.Utf8})
+
+
+def test_defender_pressing_owner_does_not_take_the_ball():
+    # Единоборство: мяч у ног A1 (0.6 м), защитник B1 вплотную к мячу (0.1 м) — мяч всё ещё у A1
+    from aifootball.perception.ball import detect_passes
+
+    frames = [[(A1, 10.1)]] * 5 + [[(A1, 10.6), (B1, 9.9)]] * 10 + [[(A1, 10.1)]] * 5
+    passes = detect_passes(_ball([10] * 20), _crowd(frames))
+
+    assert passes["passes_total"] == {"A": 0, "B": 0}
+
+
+def test_tackle_counts_once_owner_loses_contact():
+    # Отбор: B1 забрал мяч, A1 отстал больше чем на радиус удержания
+    from aifootball.perception.ball import detect_passes
+
+    frames = [[(A1, 10.1)]] * 5 + [[(A1, 7.5), (B1, 10.1)]] * 6
+    passes = detect_passes(_ball([10] * 11), _crowd(frames))
+
+    assert passes["passes_total"] == {"A": 1, "B": 0}
+    assert passes["passes_completed"] == {"A": 0, "B": 0}
+
+
+def test_owner_needs_to_be_close_to_take_the_ball():
+    # Мяч катится в 1.5 м от игрока: в радиусе удержания, но не захвата — владельца нет
+    from aifootball.perception.ball import ball_owners
+
+    owners = ball_owners(_ball([10] * 6), _crowd([[(A1, 11.5)]] * 6))
+
+    assert owners.is_empty()

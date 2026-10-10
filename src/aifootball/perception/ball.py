@@ -8,8 +8,13 @@ from aifootball.geometry.polygons import points_near_polygon
 TEAMS = ("A", "B")
 MAX_BALL_SPEED_MS = 25.0  # ~90 км/ч — максимальная скорость удара в футзале
 MAX_BALL_GAP_S = 1.5  # максимальный пропуск детекции мяча для интерполяции
-POSSESSION_RADIUS_M = 1.8  # радиус контроля мяча игроком в метрах
-MIN_POSSESSION_S = 0.3  # владение короче — касание или смена ближайшего, а не приём мяча
+# Владение с гистерезисом (подобрано по журналу владения Ярославля 1:00–4:00): захватить мяч может
+# игрок ближе TAKE_RADIUS_M, ближайший к мячу OWNER_CONFIRM_S подряд; дальше владелец держит мяч,
+# пока он не дальше KEEP_RADIUS_M, даже если соперник подошёл ближе — иначе каждое единоборство
+# даёт пару ложных перехватов. Захват 1.0 м, а не 1.8: мяч, катящийся мимо, — не приём.
+KEEP_RADIUS_M = 1.8
+TAKE_RADIUS_M = 1.0
+OWNER_CONFIRM_S = 0.2  # 3 кадра при 15 fps; заодно отсекает мигание ближайшего между соседями
 MAX_PASS_FLIGHT_S = 3.0  # дольше пас в футзале не летит; за больший разрыв владельцев не связываем
 
 
@@ -81,68 +86,91 @@ def process_ball_trajectory(
     })
 
 
-def compute_possession(
+def ball_owners(
     ball_state: pl.DataFrame,
     player_state: pl.DataFrame,
-    possession_radius_m: float = POSSESSION_RADIUS_M,
-) -> dict:
-    """Вычисляет статистику владения мячом по командам."""
+    keep_radius_m: float = KEEP_RADIUS_M,
+    take_radius_m: float = TAKE_RADIUS_M,
+    confirm_s: float = OWNER_CONFIRM_S,
+) -> pl.DataFrame:
+    """Владелец мяча по кадрам: frame_id, ts, track_id, team — только кадры, где он есть.
+
+    Владеть мячом может только игрок команды: судья и неопознанные треки не мешают.
+    Новый владелец — ближайший к мячу игрок в пределах take_radius_m, бывший ближайшим
+    confirm_s подряд. Владелец держит мяч, пока он в keep_radius_m и есть в кадре.
+    """
+    empty = pl.DataFrame(schema={"frame_id": pl.Int32, "ts": pl.Float64, "track_id": pl.Int32, "team": pl.Utf8})
     if ball_state.is_empty() or player_state.is_empty():
-        return {"possession_s": {"A": 0.0, "B": 0.0, "loose": 0.0}, "possession_pct": {"A": 0.0, "B": 0.0}}
+        return empty
 
-    # Объединяем позиции мяча и игроков по кадрам
-    joined = ball_state.join(player_state, on="frame_id", suffix="_player")
-    if joined.is_empty():
-        return {"possession_s": {"A": 0.0, "B": 0.0, "loose": 0.0}, "possession_pct": {"A": 0.0, "B": 0.0}}
-
-    dx = joined["x_m"].to_numpy() - joined["x_m_player"].to_numpy()
-    dy = joined["y_m"].to_numpy() - joined["y_m_player"].to_numpy()
-    dist = np.hypot(dx, dy)
-
-    joined = joined.with_columns(dist=pl.Series(dist))
-
-    # Находим ближайшего игрока к мячу на каждом кадре
-    nearest = (
-        joined.filter(pl.col("dist") <= possession_radius_m)
-        .sort("dist")
-        .group_by("frame_id")
-        .first()
+    candidates = player_state.filter(pl.col("team").is_in(TEAMS)).select("frame_id", "track_id", "team", "x_m", "y_m")
+    joined = (
+        ball_state.select("frame_id", "ts", "x_m", "y_m")
+        .join(candidates, on="frame_id", suffix="_player")
+        .with_columns(dist=((pl.col("x_m") - pl.col("x_m_player")) ** 2 + (pl.col("y_m") - pl.col("y_m_player")) ** 2).sqrt())
+        .sort("frame_id", "dist")
     )
+    by_frame = {key[0]: group for key, group in joined.partition_by("frame_id", as_dict=True).items()}
+    step = float(np.median(np.diff(ball_state["ts"].to_numpy()))) if len(ball_state) > 1 else 0.1
+    confirm_frames = max(1, round(confirm_s / step))
 
-    if nearest.is_empty():
+    rows = []
+    owner = None  # (track_id, team)
+    challenger, streak = None, 0
+    for frame_id, ts in ball_state.select("frame_id", "ts").sort("frame_id").iter_rows():
+        group = by_frame.get(frame_id)
+        dist = dict(zip(group["track_id"].to_list(), group["dist"].to_list())) if group is not None else {}
+        if owner is not None and dist.get(owner[0], np.inf) <= keep_radius_m:
+            challenger, streak = None, 0
+            rows.append((frame_id, ts, *owner))
+            continue
+        owner = None
+        if group is None or group["dist"][0] > take_radius_m:
+            challenger, streak = None, 0
+            continue
+        nearest = int(group["track_id"][0])
+        streak = streak + 1 if nearest == challenger else 1
+        challenger = nearest
+        if streak >= confirm_frames:
+            owner = (nearest, group["team"][0])
+            rows.append((frame_id, ts, *owner))
+    return pl.DataFrame(rows, schema=empty.schema, orient="row") if rows else empty
+
+
+def compute_possession(ball_state: pl.DataFrame, player_state: pl.DataFrame) -> dict:
+    """Вычисляет статистику владения мячом по командам (владелец — ball_owners)."""
+    owners = ball_owners(ball_state, player_state)
+    if owners.is_empty():
         return {"possession_s": {"A": 0.0, "B": 0.0, "loose": 0.0}, "possession_pct": {"A": 0.0, "B": 0.0}}
 
-    # Подсчет времени владения мячом
     sample_step = float(np.median(np.diff(ball_state["ts"].to_numpy()))) if len(ball_state) > 1 else 0.1
-
-    poss_a_frames = len(nearest.filter(pl.col("team") == "A"))
-    poss_b_frames = len(nearest.filter(pl.col("team") == "B"))
+    poss_a_frames = owners.filter(pl.col("team") == "A").height
+    poss_b_frames = owners.filter(pl.col("team") == "B").height
     total_frames = max(1, poss_a_frames + poss_b_frames)
-
-    poss_a_s = round(poss_a_frames * sample_step, 1)
-    poss_b_s = round(poss_b_frames * sample_step, 1)
-    loose_s = round((len(ball_state["frame_id"].unique()) - (poss_a_frames + poss_b_frames)) * sample_step, 1)
-
-    pct_a = round(poss_a_frames / total_frames * 100, 1)
-    pct_b = round(poss_b_frames / total_frames * 100, 1)
+    loose_s = round((ball_state["frame_id"].n_unique() - total_frames) * sample_step, 1)
 
     return {
-        "possession_s": {"A": poss_a_s, "B": poss_b_s, "loose": max(0.0, loose_s)},
-        "possession_pct": {"A": pct_a, "B": pct_b},
+        "possession_s": {
+            "A": round(poss_a_frames * sample_step, 1),
+            "B": round(poss_b_frames * sample_step, 1),
+            "loose": max(0.0, loose_s),
+        },
+        "possession_pct": {
+            "A": round(poss_a_frames / total_frames * 100, 1),
+            "B": round(poss_b_frames / total_frames * 100, 1),
+        },
     }
 
 
 def detect_passes(
     ball_state: pl.DataFrame,
     player_state: pl.DataFrame,
-    possession_radius_m: float = POSSESSION_RADIUS_M,
-    min_possession_s: float = MIN_POSSESSION_S,
     max_flight_s: float = MAX_PASS_FLIGHT_S,
 ) -> dict:
     """Считает передачи по командам (см. pass_events)."""
     passes_total = {"A": 0, "B": 0}
     passes_completed = {"A": 0, "B": 0}
-    for p in pass_events(ball_state, player_state, possession_radius_m, min_possession_s, max_flight_s):
+    for p in pass_events(ball_state, player_state, max_flight_s):
         passes_total[p["team"]] += 1
         passes_completed[p["team"]] += p["completed"]
     return _passes_result(passes_total, passes_completed)
@@ -151,60 +179,26 @@ def detect_passes(
 def pass_events(
     ball_state: pl.DataFrame,
     player_state: pl.DataFrame,
-    possession_radius_m: float = POSSESSION_RADIUS_M,
-    min_possession_s: float = MIN_POSSESSION_S,
     max_flight_s: float = MAX_PASS_FLIGHT_S,
 ) -> list[dict]:
-    """Передачи — смены владельца мяча между игроками: {team, completed, ts_pass, ts_receive}.
+    """Передачи — смены владельца мяча (ball_owners): {team, completed, ts_pass, ts_receive}.
 
-    Владелец в кадре — ближайший к мячу игрок команды в пределах possession_radius_m.
-    Владение засчитывается, если длится не меньше min_possession_s, поэтому пас в одно
-    касание сливается со следующим. Передача сопернику — неточный пас. Если между
-    владениями прошло больше max_flight_s, это не пас: мяч мог выйти из игры или
-    потеряться детектором.
+    Передача сопернику — неточный пас (сюда же попадает отбор). Если между владениями
+    прошло больше max_flight_s, это не пас: мяч мог выйти из игры или потеряться детектором.
     """
-    if ball_state.is_empty() or player_state.is_empty():
-        return []
-
-    # Владеть мячом может только игрок команды: судья и неопознанные треки пас не прерывают
-    candidates = player_state.filter(pl.col("team").is_in(TEAMS))
-    joined = ball_state.join(candidates, on="frame_id", suffix="_player")
-    if joined.is_empty():
-        return []
-
-    dx = joined["x_m"].to_numpy() - joined["x_m_player"].to_numpy()
-    dy = joined["y_m"].to_numpy() - joined["y_m_player"].to_numpy()
-    joined = joined.with_columns(dist=pl.Series(np.hypot(dx, dy)))
-    owners = (
-        joined.filter(pl.col("dist") <= possession_radius_m)
-        .sort("dist")
-        .group_by("frame_id")
-        .first()
-        .sort("frame_id")
-    )
+    owners = ball_owners(ball_state, player_state)
     if owners.is_empty():
         return []
 
-    # Серии кадров подряд у одного владельца; короткие серии — шум, их выбрасываем
-    sample_step = float(np.median(np.diff(ball_state["ts"].to_numpy()))) if len(ball_state) > 1 else 0.1
-    runs = (
+    # Серии кадров у одного владельца; кадры без владельца (полёт мяча) серию не прерывают
+    rows = (
         owners.with_columns(run=(pl.col("track_id") != pl.col("track_id").shift(1)).fill_null(True).cum_sum())
         .group_by("run", maintain_order=True)
-        .agg(
-            pl.col("track_id").first(),
-            pl.col("team").first(),
-            frames=pl.len(),
-            ts_start=pl.col("ts").min(),
-            ts_end=pl.col("ts").max(),
-        )
-        .filter(pl.col("frames") * sample_step >= min_possession_s - 1e-9)
+        .agg(pl.col("track_id").first(), pl.col("team").first(), ts_start=pl.col("ts").min(), ts_end=pl.col("ts").max())
+        .to_dicts()
     )
-
-    rows = runs.to_dicts()
     events = []
     for prev, current in zip(rows, rows[1:]):
-        if current["track_id"] == prev["track_id"]:
-            continue  # владелец вернул мяч себе после чужого касания
         if current["ts_start"] - prev["ts_end"] > max_flight_s:
             continue
         events.append({"team": prev["team"], "completed": current["team"] == prev["team"],

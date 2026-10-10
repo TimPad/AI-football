@@ -319,7 +319,7 @@ def truth_from_touches(touches: pl.DataFrame) -> tuple[list[tuple[float, float, 
 def evaluate_possession(ball_state: pl.DataFrame, player_state: pl.DataFrame, touches: pl.DataFrame,
                         tol_s: float = PASS_MATCH_TOL_S) -> dict:
     """Сравнивает владение и передачи пайплайна с ручным журналом на отрезке от первой до последней отметки."""
-    from aifootball.perception.ball import POSSESSION_RADIUS_M, compute_possession, pass_events
+    from aifootball.perception.ball import ball_owners, compute_possession, pass_events
 
     intervals, truth_passes = truth_from_touches(touches)
     if not intervals:
@@ -336,15 +336,12 @@ def evaluate_possession(ball_state: pl.DataFrame, player_state: pl.DataFrame, to
     truth_pct = {t: round(truth_s[t] / in_play * 100, 1) if in_play else 0.0 for t in ("A", "B")}
     pipe = compute_possession(ball, players)
 
-    # Покадрово: чья команда у мяча по журналу и по пайплайну (ближайший игрок в радиусе, как в compute_possession)
+    # Покадрово: чья команда у мяча по журналу и по пайплайну (ball_owners, как в compute_possession)
     frames = players.select("frame_id", "ts").unique().sort("frame_id")
     starts = np.array([s for s, _, _ in intervals])
     truth_team = [intervals[max(0, np.searchsorted(starts, ts, side="right") - 1)][2] for ts in frames["ts"]]
-    joined = ball.join(players, on="frame_id", suffix="_player")
-    joined = joined.with_columns(dist=pl.Series(np.hypot(joined["x_m"].to_numpy() - joined["x_m_player"].to_numpy(),
-                                                         joined["y_m"].to_numpy() - joined["y_m_player"].to_numpy())))
-    nearest = joined.filter(pl.col("dist") <= POSSESSION_RADIUS_M).sort("dist").group_by("frame_id").first()
-    owner = dict(zip(nearest["frame_id"].to_list(), nearest["team"].to_list()))
+    owners = ball_owners(ball, players)
+    owner = dict(zip(owners["frame_id"].to_list(), owners["team"].to_list()))
     step = float(np.median(np.diff(frames["ts"].to_numpy()))) if frames.height > 1 else 0.0
     agreement = {g: {"A": 0.0, "B": 0.0, "none": 0.0} for g in ("A", "B", "dead")}
     for fid, g in zip(frames["frame_id"].to_list(), truth_team):
