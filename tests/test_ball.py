@@ -26,35 +26,12 @@ def test_process_ball_trajectory_filters_spikes_and_interpolates(venue):
 
 
 def test_compute_possession_team_assignment():
-    ball_state = pl.DataFrame({
-        "frame_id": [1, 2, 3, 4],
-        "ts": [0.1, 0.2, 0.3, 0.4],
-        "x_m": [10.0, 10.0, 30.0, 30.0],
-        "y_m": [5.0, 5.0, 5.0, 5.0],
-        "speed": [0.0, 0.0, 0.0, 0.0],
-        "interpolated": [False, False, False, False],
-    })
-
-    # Игрок команды А у мяча в кадрах 1 и 2; игрок команды Б — в кадрах 3 и 4
-    player_state = pl.DataFrame({
-        "frame_id": [1, 2, 3, 4],
-        "ts": [0.1, 0.2, 0.3, 0.4],
-        "track_id": [1, 1, 2, 2],
-        "role": ["player", "player", "player", "player"],
-        "team": ["A", "A", "B", "B"],
-        "x_m": [10.2, 10.1, 30.1, 30.2],
-        "y_m": [5.0, 5.0, 5.0, 5.0],
-        "vx": [0.0, 0.0, 0.0, 0.0],
-        "vy": [0.0, 0.0, 0.0, 0.0],
-        "speed": [0.0, 0.0, 0.0, 0.0],
-        "interpolated": [False, False, False, False],
-    })
-
-    poss = compute_possession(ball_state, player_state)
+    # Игрок команды А у мяча первые 6 кадров, игрок команды Б — следующие 6
+    xs = [10] * 6 + [30] * 6
+    poss = compute_possession(_ball(xs), _players([A1] * 6 + [B1] * 6, xs))
 
     assert poss["possession_pct"]["A"] == 50.0
     assert poss["possession_pct"]["B"] == 50.0
-
 
 
 def _ball(xs, dt=0.1):
@@ -229,7 +206,7 @@ def test_tackle_counts_once_owner_loses_contact():
     # Отбор: B1 забрал мяч, A1 отстал больше чем на радиус удержания
     from aifootball.perception.ball import detect_passes
 
-    frames = [[(A1, 10.1)]] * 5 + [[(A1, 7.5), (B1, 10.1)]] * 6
+    frames = [[(A1, 10.1)]] * 5 + [[(A1, 6.5), (B1, 10.1)]] * 6
     passes = detect_passes(_ball([10] * 11), _crowd(frames))
 
     assert passes["passes_total"] == {"A": 1, "B": 0}
@@ -237,9 +214,9 @@ def test_tackle_counts_once_owner_loses_contact():
 
 
 def test_owner_needs_to_be_close_to_take_the_ball():
-    # Мяч катится в 1.5 м от игрока: в радиусе удержания, но не захвата — владельца нет
+    # Мяч катится в 2 м от игрока: в радиусе удержания, но не захвата — владельца нет
     from aifootball.perception.ball import ball_owners
 
-    owners = ball_owners(_ball([10] * 6), _crowd([[(A1, 11.5)]] * 6))
+    owners = ball_owners(_ball([10] * 6), _crowd([[(A1, 12.0)]] * 6))
 
     assert owners.is_empty()
