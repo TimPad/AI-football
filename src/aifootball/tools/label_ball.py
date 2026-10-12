@@ -1,6 +1,7 @@
 """Эталонная разметка мяча на кадрах, которые видит детектор.
 
     python -m aifootball.tools.label_ball --video V --venue DIR --out data/gt/<матч>/ball.parquet [--count 200] [--scale 1]
+        [--frames кадры.txt]   — вместо равномерной выборки: номера кадров, по одному в строке
 
 Мышь: левый клик — центр мяча (по лупе в углу удобнее целиться).
 Клавиши (не зависят от раскладки):
@@ -126,11 +127,16 @@ def main(argv=None) -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--count", type=int, default=200, help="сколько кадров, равномерно по видео")
     parser.add_argument("--scale", type=float, default=1.0, help="масштаб окна")
+    parser.add_argument("--frames", type=Path, default=None,
+                        help="файл с номерами кадров (по одному в строке) вместо равномерной выборки")
     args = parser.parse_args(argv)
 
     venue = load_venue(args.venue)
     clip = Clip(args.video)
-    frame_ids = spread(sampled_frame_ids(clip.total, clip.fps, venue.target_fps), args.count)
+    if args.frames:
+        frame_ids = [int(line) for line in args.frames.read_text().split()]
+    else:
+        frame_ids = spread(sampled_frame_ids(clip.total, clip.fps, venue.target_fps), args.count)
     labels = BallLabels(args.out, src_fps=clip.fps)
     print(__doc__.split("\n\n", 2)[2])
     run(clip, labels, frame_ids, args.scale)
