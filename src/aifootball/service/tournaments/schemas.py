@@ -9,7 +9,7 @@ ClockMode = Literal['clean','running','mixed']
 
 
 class Input(BaseModel):
-    model_config=ConfigDict(extra='forbid',str_strip_whitespace=True)
+    model_config=ConfigDict(extra='forbid',str_strip_whitespace=True,json_schema_serialization_defaults_required=True)
 
 
 class Timeouts(Input):

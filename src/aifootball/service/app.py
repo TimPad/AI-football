@@ -1,3 +1,5 @@
+from pathlib import Path
+from fastapi.responses import FileResponse
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -9,7 +11,7 @@ from aifootball.service.errors import DomainError, error_body
 from aifootball.service.auth.routes import router as auth_router
 
 
-def create_app(settings=None):
+def create_app(settings=None, *, web_dist=None):
     settings = settings or Settings()
     app = FastAPI(title='Кабинет турниров', version='0.1.0')
     app.state.settings = settings
@@ -52,5 +54,18 @@ def create_app(settings=None):
             return {'status': 'ready', 'schema_version': version}
         except SQLAlchemyError:
             return JSONResponse({'status': 'not_ready'}, status_code=503)
+
+    dist = Path(web_dist) if web_dist is not None else Path(__file__).resolve().parents[3] / 'web' / 'dist'
+
+    @app.get('/{path:path}', include_in_schema=False)
+    def frontend(path: str):
+        target = (dist / path).resolve()
+        if not target.is_relative_to(dist.resolve()) or path.startswith('api/'):
+            raise DomainError('not_found', 'Страница не найдена', status=404)
+        if target.is_file() and target.suffix in {'.html', '.js', '.css', '.svg', '.png', '.ico', '.woff2'}:
+            return FileResponse(target)
+        if path.startswith('assets/') or Path(path).suffix or not (dist / 'index.html').is_file():
+            raise DomainError('not_found', 'Файл не найден', status=404)
+        return FileResponse(dist / 'index.html', headers={'Cache-Control': 'no-cache'})
 
     return app

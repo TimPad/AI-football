@@ -11,13 +11,15 @@ from aifootball.service.auth.security import check_origin, token_hash, current_s
 from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
 
+from aifootball.service.views import SessionView
+
 router = APIRouter(prefix='/auth')
 # Равная стоимость хеширования для неизвестного пользователя.
 _hasher = PasswordHasher()
 _dummy_hash = _hasher.hash(token_urlsafe(32))
 
 
-@router.post('/login')
+@router.post('/login',response_model=SessionView)
 def login(data: Login, request: Request, response: Response):
     check_origin(request, required=True)
     now = utcnow()
@@ -49,7 +51,7 @@ def login(data: Login, request: Request, response: Response):
         return {'id': str(admin.id), 'login': admin.login, 'csrf_token': csrf}
 
 
-@router.get('/me')
+@router.get('/me',response_model=SessionView)
 def me(request: Request):
     admin, auth = current_session(request)
     return {'id': str(admin.id), 'login': admin.login, 'csrf_token': auth.csrf_token}

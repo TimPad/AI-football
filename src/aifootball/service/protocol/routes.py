@@ -9,6 +9,8 @@ from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match,MatchCommand
 from aifootball.service.protocol.models import ProtocolVersion
 
+from aifootball.service.views import Page,VersionView
+
 router=APIRouter()
 
 
@@ -21,7 +23,7 @@ def history(mid:UUID,db:Session=Depends(get_session),limit:int=Query(50,ge=1,le=
     return result
 
 
-@router.get('/matches/{mid}/versions',dependencies=[Depends(require_admin)])
+@router.get('/matches/{mid}/versions',response_model=Page[VersionView],dependencies=[Depends(require_admin)])
 def versions(mid:UUID,db:Session=Depends(get_session),limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0)):
     get_entity(db,Match,mid)
     return list_entities(db,ProtocolVersion,where=[ProtocolVersion.match_id==mid],limit=limit,offset=offset,order=ProtocolVersion.number.desc())

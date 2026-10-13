@@ -11,6 +11,8 @@ from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
 from aifootball.service.tournaments.models import Tournament
 
+from aifootball.service.views import Page,NamedView,EntryView,RosterView
+
 router=APIRouter()
 
 
@@ -26,16 +28,16 @@ def register_named(path,cls):
             if any(v is None for v in values.values()): raise DomainError('validation','Не очищайте обязательные поля')
             for key,value in values.items(): setattr(row,key,value)
         return as_dict(row)
-    router.add_api_route(path,listing,methods=['GET'],dependencies=[Depends(require_admin)],name=f'list_{cls.__tablename__}')
-    router.add_api_route(path,create,methods=['POST'],status_code=201,dependencies=[Depends(require_csrf)],name=f'create_{cls.__tablename__}')
-    router.add_api_route(path+'/{entity_id}',update,methods=['PATCH'],dependencies=[Depends(require_csrf)],name=f'update_{cls.__tablename__}')
+    router.add_api_route(path,listing,methods=['GET'],response_model=Page[NamedView],dependencies=[Depends(require_admin)],name=f'list_{cls.__tablename__}')
+    router.add_api_route(path,create,methods=['POST'],response_model=NamedView,status_code=201,dependencies=[Depends(require_csrf)],name=f'create_{cls.__tablename__}')
+    router.add_api_route(path+'/{entity_id}',update,methods=['PATCH'],response_model=NamedView,dependencies=[Depends(require_csrf)],name=f'update_{cls.__tablename__}')
 
 
 register_named('/teams',Team)
 register_named('/players',Player)
 
 
-@router.get('/tournaments/{tid}/entries',dependencies=[Depends(require_admin)])
+@router.get('/tournaments/{tid}/entries',response_model=Page[EntryView],dependencies=[Depends(require_admin)])
 def entries(tid:UUID,db:Session=Depends(get_session),limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0)):
     get_entity(db,Tournament,tid)
     result=list_entities(db,Entry,where=[Entry.tournament_id==tid],limit=limit,offset=offset)
@@ -43,7 +45,7 @@ def entries(tid:UUID,db:Session=Depends(get_session),limit:int=Query(50,ge=1,le=
     return result
 
 
-@router.post('/tournaments/{tid}/entries',status_code=201,dependencies=[Depends(require_csrf)])
+@router.post('/tournaments/{tid}/entries',response_model=EntryView,status_code=201,dependencies=[Depends(require_csrf)])
 def create_entry(tid:UUID,data:EntryCreate,db:Session=Depends(get_session)):
     with db.begin():
         tournament=get_entity(db,Tournament,tid); team=get_entity(db,Team,data.team_id)
@@ -53,11 +55,11 @@ def create_entry(tid:UUID,data:EntryCreate,db:Session=Depends(get_session)):
     return result
 
 
-@router.get('/entries/{eid}/players',dependencies=[Depends(require_admin)])
+@router.get('/entries/{eid}/players',response_model=RosterView,dependencies=[Depends(require_admin)])
 def roster(eid:UUID,db:Session=Depends(get_session)):
     return roster_view(db,get_entity(db,Entry,eid))
 
 
-@router.put('/entries/{eid}/players',dependencies=[Depends(require_csrf)])
+@router.put('/entries/{eid}/players',response_model=RosterView,dependencies=[Depends(require_csrf)])
 def update_roster(eid:UUID,data:RosterUpdate,db:Session=Depends(get_session)):
     with db.begin(): return set_roster(db,get_entity(db,Entry,eid,lock=True),data)

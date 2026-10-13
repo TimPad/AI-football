@@ -10,30 +10,32 @@ from aifootball.service.errors import DomainError,RevisionConflict
 from aifootball.service.tournaments.models import Tournament,RegulationVersion
 from aifootball.service.tournaments.schemas import Regulation,TournamentCreate,TournamentPatch,RegulationCreate
 
+from aifootball.service.views import Page,TournamentView,RegulationView,Preset
+
 router=APIRouter(prefix='/tournaments')
 
 
-@router.get('/regulation-presets',dependencies=[Depends(require_admin)])
+@router.get('/regulation-presets',response_model=Page[Preset],dependencies=[Depends(require_admin)])
 def presets():
     return {'items':[{'name':'Футзал — стартовый шаблон','rules':Regulation().model_dump()}],'total':1}
 
 
-@router.get('',dependencies=[Depends(require_admin)])
+@router.get('',response_model=Page[TournamentView],dependencies=[Depends(require_admin)])
 def listing(db:Session=Depends(get_session),limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0)):
     return list_entities(db,Tournament,limit=limit,offset=offset)
 
 
-@router.post('',status_code=201,dependencies=[Depends(require_csrf)])
+@router.post('',response_model=TournamentView,status_code=201,dependencies=[Depends(require_csrf)])
 def create(data:TournamentCreate,db:Session=Depends(get_session)):
     row=Tournament(**data.model_dump()); db.add(row); db.commit(); return as_dict(row)
 
 
-@router.get('/{tid}',dependencies=[Depends(require_admin)])
+@router.get('/{tid}',response_model=TournamentView,dependencies=[Depends(require_admin)])
 def detail(tid:UUID,db:Session=Depends(get_session)):
     return as_dict(get_entity(db,Tournament,tid))
 
 
-@router.patch('/{tid}',dependencies=[Depends(require_csrf)])
+@router.patch('/{tid}',response_model=TournamentView,dependencies=[Depends(require_csrf)])
 def update(tid:UUID,data:TournamentPatch,db:Session=Depends(get_session)):
     with db.begin():
         row=get_entity(db,Tournament,tid,lock=True)
@@ -52,14 +54,14 @@ def update(tid:UUID,data:TournamentPatch,db:Session=Depends(get_session)):
     return as_dict(row)
 
 
-@router.get('/{tid}/regulations',dependencies=[Depends(require_admin)])
+@router.get('/{tid}/regulations',response_model=Page[RegulationView],dependencies=[Depends(require_admin)])
 def regulations(tid:UUID,db:Session=Depends(get_session),limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0)):
     get_entity(db,Tournament,tid)
     return list_entities(db,RegulationVersion,where=[RegulationVersion.tournament_id==tid],
                          limit=limit,offset=offset,order=RegulationVersion.version.desc())
 
 
-@router.post('/{tid}/regulations',status_code=201,dependencies=[Depends(require_csrf)])
+@router.post('/{tid}/regulations',response_model=RegulationView,status_code=201,dependencies=[Depends(require_csrf)])
 def new_regulation(tid:UUID,data:RegulationCreate,db:Session=Depends(get_session)):
     with db.begin():
         tournament=get_entity(db,Tournament,tid,lock=True)

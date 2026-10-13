@@ -1,0 +1,18 @@
+import type {components,operations} from './types';
+type S=components['schemas'];
+export type Regulation=S['Regulation-Output'];
+export type Tournament=S['TournamentView'];
+export type Named=S['NamedView'];
+export type Entry=S['EntryView'];
+export type Roster=S['RosterView'];
+export type Match=S['MatchView'];
+export type Version=S['VersionView'];
+export type RegVersion=S['RegulationView'];
+export type Session=S['SessionView'];
+export type Protocol=S['ProtocolDocument'];
+export type MatchEvent=Protocol['events'][number];
+export type Command=operations['command_api_v1_matches__mid__commands_post']['requestBody']['content']['application/json'];
+export type DraftCommand=Command extends infer C? C extends Command ? Pick<C,'kind'|'payload'>:never:never;
+export const statuses:Record<Match['status'],string>={scheduled:'Запланирован',live:'Идёт матч',ended:'Завершён',postponed:'Перенесён',cancelled:'Отменён'};
+export const sections:Record<keyof Protocol['completeness'],string>={goals:'Голы',assists:'Голевые передачи',fouls:'Фолы',cards:'Карточки',lineup:'Составы',time:'Игровое время'};
+export const kinds:Record<MatchEvent['kind'],string>={goal:'Гол',foul:'Фол',card:'Карточка',penalty_awarded:'Назначение пенальти',penalty_attempt:'Пенальти',shootout_attempt:'Серия пенальти',timeout:'Тайм-аут',substitution:'Замена',stoppage:'Остановка',period_start:'Начало тайма',period_end:'Конец тайма'};

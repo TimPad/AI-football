@@ -16,15 +16,17 @@ from aifootball.service.protocol.commands import execute_command,record_command
 from aifootball.service.tournaments.models import Tournament,RegulationVersion
 from aifootball.service.errors import DomainError
 
+from aifootball.service.views import Page,MatchView
+
 router=APIRouter()
 
 
-@router.post('/tournaments/{tid}/matches',status_code=201)
+@router.post('/tournaments/{tid}/matches',response_model=MatchView,status_code=201)
 def new_match(tid:UUID,data:MatchCreate,db:Session=Depends(get_session),actor=Depends(require_csrf)):
     with db.begin(): return create_match(db,tid,data,actor)
 
 
-@router.get('/tournaments/{tid}/matches',dependencies=[Depends(require_admin)])
+@router.get('/tournaments/{tid}/matches',response_model=Page[MatchView],dependencies=[Depends(require_admin)])
 def calendar(tid:UUID,day:date|None=None,db:Session=Depends(get_session),limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0)):
     tournament=get_entity(db,Tournament,tid); where=[Match.tournament_id==tid]
     if day:
@@ -36,11 +38,11 @@ def calendar(tid:UUID,day:date|None=None,db:Session=Depends(get_session),limit:i
     return result
 
 
-@router.get('/matches/{mid}',dependencies=[Depends(require_admin)])
+@router.get('/matches/{mid}',response_model=MatchView,dependencies=[Depends(require_admin)])
 def detail(mid:UUID,db:Session=Depends(get_session)): return get_match_view(db,mid)
 
 
-@router.post('/matches/{mid}/commands')
+@router.post('/matches/{mid}/commands',response_model=MatchView)
 def command(mid:UUID,data:CommandRequest,db:Session=Depends(get_session),actor=Depends(require_csrf)):
     return execute_command(db,mid,data,actor)
 
@@ -66,7 +68,7 @@ def preview(tid:UUID,rid:UUID,data:PreviewRules,db:Session=Depends(get_session))
     return {'items':items,'total':len(items)}
 
 
-@router.post('/tournaments/{tid}/regulations/{rid}/apply')
+@router.post('/tournaments/{tid}/regulations/{rid}/apply',response_model=Page[MatchView])
 def apply_rules(tid:UUID,rid:UUID,data:ApplyRules,db:Session=Depends(get_session),actor=Depends(require_csrf)):
     with db.begin():
         version=get_entity(db,RegulationVersion,rid)
