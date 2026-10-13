@@ -17,3 +17,9 @@ runs/
 
 # макеты брейншторма
 .superpowers/
+.env
+node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/
+.pytest_cache/

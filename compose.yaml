@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${PGUSER:-aifootball}
+      POSTGRES_DB: ${PGDATABASE:-aifootball}
+      POSTGRES_PASSWORD: ${PGPASSWORD:?Set PGPASSWORD in .env}
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - service_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+volumes:
+  service_pg:
