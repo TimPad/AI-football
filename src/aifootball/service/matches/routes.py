@@ -11,6 +11,7 @@ from aifootball.service.matches.models import Match
 from aifootball.service.matches.schemas import MatchCreate,PreviewRules,ApplyRules
 from aifootball.service.matches.operations import create_match,get_match_view
 from aifootball.service.protocol.schemas import Command
+from aifootball.service.protocol.command_schemas import CommandRequest
 from aifootball.service.protocol.commands import execute_command,record_command
 from aifootball.service.tournaments.models import Tournament,RegulationVersion
 from aifootball.service.errors import DomainError
@@ -40,7 +41,7 @@ def detail(mid:UUID,db:Session=Depends(get_session)): return get_match_view(db,m
 
 
 @router.post('/matches/{mid}/commands')
-def command(mid:UUID,data:Command,db:Session=Depends(get_session),actor=Depends(require_csrf)):
+def command(mid:UUID,data:CommandRequest,db:Session=Depends(get_session),actor=Depends(require_csrf)):
     return execute_command(db,mid,data,actor)
 
 

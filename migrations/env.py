@@ -5,6 +5,7 @@ from aifootball.service.auth import models
 from aifootball.service.tournaments import models as tournament_models
 from aifootball.service.catalog import models as catalog_models
 from aifootball.service.matches import models as match_models
+from aifootball.service.protocol import models as protocol_models
 
 config = context.config
 url = config.attributes.get('database_url') or Settings().database_url
@@ -17,3 +18,4 @@ else:
         context.configure(connection=connection, target_metadata=Base.metadata)
         with context.begin_transaction():
             context.run_migrations()
+

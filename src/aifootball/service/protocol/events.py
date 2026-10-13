@@ -17,7 +17,7 @@ class EventBase(Input):
     elapsed_ms:Millis|None=None
     video_ms:Millis|None=None
     notes:str=Field(default='',max_length=4000)
-    created_at:datetime=Field(default_factory=utcnow)
+    created_at:datetime|None=None
 
 
 class Goal(EventBase):

@@ -44,7 +44,9 @@ def apply_mutation(db,match,command,actor):
         if data.status!=match.status and data.status not in allowed[match.status]:
             raise DomainError('status_transition','Недопустимый переход статуса матча')
         match.status=data.status
-    else: raise DomainError('command','Неизвестная команда изменения матча')
+    else:
+        from aifootball.service.protocol.mutations import apply_protocol_mutation
+        apply_protocol_mutation(db,match,command,actor)
 
 
 def record_command(db,match,command,actor,mutation=None):
