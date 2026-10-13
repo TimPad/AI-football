@@ -39,6 +39,7 @@ class ClockState(Input):
     anchor_utc_ms:int|None=None
     break_started_utc_ms:int|None=None
     source:Literal['manual']='manual'
+    warning:str|None=None
 
 
 class ProtocolDocument(Input):

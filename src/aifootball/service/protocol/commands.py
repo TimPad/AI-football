@@ -24,7 +24,31 @@ def request_digest(command):
 def apply_mutation(db,match,command,actor):
     if not match.protocol.get('draft',True) and command.kind not in ['reopen','publish','unpublish']:
         raise DomainError('confirmed','Сначала откройте новую редакцию протокола')
-    if command.kind=='update_match':
+    if command.kind.startswith('clock_'):
+        from aifootball.service.protocol.clock import transition_clock
+        from aifootball.service.protocol.schemas import ClockState,ProtocolDocument
+        from aifootball.service.protocol.events import PeriodBoundary
+        from aifootball.service.protocol.payloads import ClockSet,Empty
+        from aifootball.service.tournaments.models import RegulationVersion
+        from aifootball.service.tournaments.rules import resolve_rules
+        from aifootball.service.db import utcnow
+        from uuid import uuid4
+        rules=resolve_rules(match,get_entity(db,RegulationVersion,match.regulation_id))
+        action=command.kind.removeprefix('clock_')
+        data=validate_payload(ClockSet if action=='set' else Empty,command.payload)
+        if action=='start' and match.status not in ['scheduled','live']:
+            raise DomainError('clock','Верните матч в статус запланированного перед началом игры')
+        state=transition_clock(ClockState.model_validate(match.clock),action,
+            now_ms=int(utcnow().timestamp()*1000),regulation=rules,
+            elapsed_ms=data.elapsed_ms if action=='set' else None)
+        match.clock=state.model_dump(mode='json')
+        if action in ['start','end_period']:
+            doc=ProtocolDocument.model_validate(match.protocol)
+            doc.events.append(PeriodBoundary(id=uuid4(),kind='period_start' if action=='start' else 'period_end',
+                period=state.period,elapsed_ms=state.elapsed_ms,created_at=utcnow()))
+            match.protocol=doc.model_dump(mode='json')
+        if action=='start': match.status='live'
+    elif command.kind=='update_match':
         data=validate_payload(MatchUpdate,command.payload)
         values=data.model_dump(exclude_unset=True)
         if values.get('regulation_override') is not None and not values.get('override_reason',match.override_reason):
