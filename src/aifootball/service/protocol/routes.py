@@ -9,7 +9,7 @@ from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match,MatchCommand
 from aifootball.service.protocol.models import ProtocolVersion
 
-from aifootball.service.views import Page,VersionView
+from aifootball.service.views import Page,VersionView,PublicProtocol
 
 router=APIRouter()
 
@@ -29,7 +29,7 @@ def versions(mid:UUID,db:Session=Depends(get_session),limit:int=Query(50,ge=1,le
     return list_entities(db,ProtocolVersion,where=[ProtocolVersion.match_id==mid],limit=limit,offset=offset,order=ProtocolVersion.number.desc())
 
 
-@router.get('/public/protocols/{public_id}')
+@router.get('/public/protocols/{public_id}',response_model=PublicProtocol)
 def public_protocol(public_id:UUID,db:Session=Depends(get_session)):
     version=db.scalar(select(ProtocolVersion).join(Match,Match.published_version_id==ProtocolVersion.id).where(ProtocolVersion.public_id==public_id))
     if version is None: raise DomainError('not_found','Опубликованный протокол не найден',status=404)

@@ -9,6 +9,7 @@ from aifootball.service.protocol.schemas import ReportedTotals,ShootoutTotals,Co
 class EventChange(Input):
     event:Event
     related_events:list[Event]=Field(default_factory=list,max_length=3)
+    remove_related_ids:list[UUID]=Field(default_factory=list,max_length=3)
 
 
 class EventRemove(Input):

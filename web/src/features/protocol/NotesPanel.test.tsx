@@ -1,0 +1,4 @@
+import {it,expect,vi,afterEach} from 'vitest';import {render,screen,fireEvent,act} from '@testing-library/react';import {NotesPanel} from './ProtocolPanels';import type {Match} from '../../api/domain';
+vi.mock('../auth/Auth',()=>({useAuth:()=>({session:{id:'test-admin'}})}));
+afterEach(()=>{vi.useRealTimers();localStorage.clear()});
+it('debounces notes once and does not send an endless stream after acknowledgement',async()=>{vi.useFakeTimers();const dispatch=vi.fn().mockResolvedValue(undefined);const m={id:'m',protocol:{notes:'',public_notes:'',draft:true}} as Match;render(<NotesPanel match={m} dispatch={dispatch} disabled={false}/>);fireEvent.change(screen.getByLabelText('Внутренние заметки'),{target:{value:'Заметка'}});await act(async()=>{await vi.advanceTimersByTimeAsync(600)});await act(async()=>{await vi.advanceTimersByTimeAsync(3000)});expect(dispatch).toHaveBeenCalledTimes(1);expect(dispatch.mock.calls[0][0].payload.notes).toBe('Заметка')});

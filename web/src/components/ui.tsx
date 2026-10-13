@@ -1,7 +1,7 @@
-import {useEffect,useState,type ReactNode} from 'react';
+import {useEffect,useState,cloneElement,isValidElement,type ReactElement,type ReactNode} from 'react';
 import {errorText} from '../api/client';
 export function ErrorBox({error}:{error:unknown}){return error?<div className="error" role="alert">{errorText(error)}</div>:null}
-export function Field({label,children}:{label:string,children:ReactNode}){return <label className="field"><span>{label}</span>{children}</label>}
+export function Field({label,children}:{label:string,children:ReactNode}){return <label className="field"><span>{label}</span>{isValidElement(children)?cloneElement(children as ReactElement<{'aria-label'?:string}>,{'aria-label':label}):children}</label>}
 export function Check({label,checked,onChange}:{label:string,checked:boolean,onChange:(v:boolean)=>void}){return <label className="check"><input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)}/>{label}</label>}
 export function useLoad<T>(load:()=>Promise<T>,key:string){
  const [data,setData]=useState<T>();const [error,setError]=useState<unknown>();const [tick,setTick]=useState(0);

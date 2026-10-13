@@ -510,7 +510,7 @@ export interface components {
              * Notes
              * @default
              */
-            notes: string;
+            notes?: string;
             /** Created At */
             created_at?: string | null;
             /**
@@ -531,7 +531,7 @@ export interface components {
              * Reason
              * @default
              */
-            reason: string;
+            reason?: string;
         };
         /** Card */
         "Card-Output": {
@@ -753,7 +753,7 @@ export interface components {
              * Acknowledge Incomplete
              * @default false
              */
-            acknowledge_incomplete: boolean;
+            acknowledge_incomplete?: boolean;
         };
         /** ConfirmCommand */
         ConfirmCommand: {
@@ -813,6 +813,8 @@ export interface components {
             event: components["schemas"]["Goal-Input"] | components["schemas"]["Foul-Input"] | components["schemas"]["Card-Input"] | components["schemas"]["PenaltyAwarded-Input"] | components["schemas"]["PenaltyAttempt-Input"] | components["schemas"]["ShootoutAttempt-Input"] | components["schemas"]["Timeout-Input"] | components["schemas"]["Substitution-Input"] | components["schemas"]["Stoppage-Input"] | components["schemas"]["PeriodBoundary-Input"];
             /** Related Events */
             related_events?: (components["schemas"]["Goal-Input"] | components["schemas"]["Foul-Input"] | components["schemas"]["Card-Input"] | components["schemas"]["PenaltyAwarded-Input"] | components["schemas"]["PenaltyAttempt-Input"] | components["schemas"]["ShootoutAttempt-Input"] | components["schemas"]["Timeout-Input"] | components["schemas"]["Substitution-Input"] | components["schemas"]["Stoppage-Input"] | components["schemas"]["PeriodBoundary-Input"])[];
+            /** Remove Related Ids */
+            remove_related_ids?: string[];
         };
         /** EventRemove */
         EventRemove: {
@@ -830,7 +832,7 @@ export interface components {
              * Enabled
              * @default false
              */
-            enabled: boolean;
+            enabled?: boolean;
             /** Periods S */
             periods_s?: number[];
             /**
@@ -838,7 +840,7 @@ export interface components {
              * @default clean
              * @enum {string}
              */
-            clock_mode: "clean" | "running" | "mixed";
+            clock_mode?: "clean" | "running" | "mixed";
             /** Mixed Stop Last S */
             mixed_stop_last_s?: number | null;
         };
@@ -879,7 +881,7 @@ export interface components {
              * Notes
              * @default
              */
-            notes: string;
+            notes?: string;
             /** Created At */
             created_at?: string | null;
             /**
@@ -895,12 +897,12 @@ export interface components {
              * Accumulated
              * @default true
              */
-            accumulated: boolean;
+            accumulated?: boolean;
             /**
              * Reason
              * @default
              */
-            reason: string;
+            reason?: string;
         };
         /** Foul */
         "Foul-Output": {
@@ -950,23 +952,23 @@ export interface components {
              * Enabled
              * @default true
              */
-            enabled: boolean;
+            enabled?: boolean;
             /**
              * Warning Threshold
              * @default 5
              */
-            warning_threshold: number;
+            warning_threshold?: number;
             /**
              * Reset
              * @default period
              * @enum {string}
              */
-            reset: "period" | "match";
+            reset?: "period" | "match";
             /**
              * Extra Carry
              * @default true
              */
-            extra_carry: boolean;
+            extra_carry?: boolean;
         };
         /** Fouls */
         "Fouls-Output": {
@@ -1011,7 +1013,7 @@ export interface components {
              * Notes
              * @default
              */
-            notes: string;
+            notes?: string;
             /** Created At */
             created_at?: string | null;
             /**
@@ -1027,17 +1029,17 @@ export interface components {
              * Assist Known
              * @default false
              */
-            assist_known: boolean;
+            assist_known?: boolean;
             /**
              * Own Goal
              * @default false
              */
-            own_goal: boolean;
+            own_goal?: boolean;
             /**
              * From Penalty
              * @default false
              */
-            from_penalty: boolean;
+            from_penalty?: boolean;
             /** Penalty Id */
             penalty_id?: string | null;
         };
@@ -1183,7 +1185,7 @@ export interface components {
              * Venue Label
              * @default
              */
-            venue_label: string;
+            venue_label?: string;
             /** Referees */
             referees?: string[];
             regulation_override?: components["schemas"]["Regulation-Input"] | null;
@@ -1375,7 +1377,7 @@ export interface components {
              * Notes
              * @default
              */
-            notes: string;
+            notes?: string;
             /** Created At */
             created_at?: string | null;
             /**
@@ -1455,7 +1457,7 @@ export interface components {
              * Notes
              * @default
              */
-            notes: string;
+            notes?: string;
             /** Created At */
             created_at?: string | null;
             /**
@@ -1469,7 +1471,7 @@ export interface components {
              * Reason
              * @default
              */
-            reason: string;
+            reason?: string;
         };
         /** PenaltyAwarded */
         "PenaltyAwarded-Output": {
@@ -1525,7 +1527,7 @@ export interface components {
              * Notes
              * @default
              */
-            notes: string;
+            notes?: string;
             /** Created At */
             created_at?: string | null;
             /**
@@ -1568,17 +1570,17 @@ export interface components {
              * Win
              * @default 3
              */
-            win: number;
+            win?: number;
             /**
              * Draw
              * @default 1
              */
-            draw: number;
+            draw?: number;
             /**
              * Loss
              * @default 0
              */
-            loss: number;
+            loss?: number;
         };
         /** Points */
         "Points-Output": {
@@ -1689,6 +1691,347 @@ export interface components {
              */
             draft: boolean;
         };
+        /** PublicCard */
+        PublicCard: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Period */
+            period: number | null;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "card";
+            /** Player Id */
+            player_id: string | null;
+            /**
+             * Card
+             * @enum {string}
+             */
+            card: "yellow" | "second_yellow" | "red";
+            /** Previous Yellow Id */
+            previous_yellow_id: string | null;
+            /** Reason */
+            reason: string;
+        };
+        /** PublicDocument */
+        PublicDocument: {
+            /** Events */
+            events: (components["schemas"]["PublicGoal"] | components["schemas"]["PublicFoul"] | components["schemas"]["PublicCard"] | components["schemas"]["PublicPenaltyAwarded"] | components["schemas"]["PublicPenaltyAttempt"] | components["schemas"]["PublicShootoutAttempt"] | components["schemas"]["PublicTimeout"] | components["schemas"]["PublicSubstitution"] | components["schemas"]["PublicStoppage"] | components["schemas"]["PublicPeriodBoundary"])[];
+            /** Reported Totals */
+            reported_totals: {
+                [key: string]: unknown;
+            };
+            /** Shootout Totals */
+            shootout_totals: {
+                [key: string]: unknown;
+            };
+            /** Completeness */
+            completeness: {
+                [key: string]: string;
+            };
+            /**
+             * Result Type
+             * @enum {string}
+             */
+            result_type: "played" | "technical";
+            /** Technical Reason */
+            technical_reason: string | null;
+            /** Public Notes */
+            public_notes: string;
+            /** Draft */
+            draft: boolean;
+        };
+        /** PublicFoul */
+        PublicFoul: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Period */
+            period: number | null;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "foul";
+            /** Player Id */
+            player_id: string | null;
+            /** Victim Id */
+            victim_id: string | null;
+            /** Accumulated */
+            accumulated: boolean;
+            /** Reason */
+            reason: string;
+        };
+        /** PublicGoal */
+        PublicGoal: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Period */
+            period: number | null;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "goal";
+            /** Player Id */
+            player_id: string | null;
+            /** Assist Id */
+            assist_id: string | null;
+            /** Assist Known */
+            assist_known: boolean;
+            /** Own Goal */
+            own_goal: boolean;
+            /** From Penalty */
+            from_penalty: boolean;
+            /** Penalty Id */
+            penalty_id: string | null;
+        };
+        /** PublicLineup */
+        PublicLineup: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Shirt Number */
+            shirt_number: string | null;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+        };
+        /** PublicPenaltyAttempt */
+        PublicPenaltyAttempt: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Period */
+            period: number | null;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "penalty_attempt";
+            /** Player Id */
+            player_id: string | null;
+            /**
+             * Penalty Id
+             * Format: uuid
+             */
+            penalty_id: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "goal" | "saved" | "off_target" | "unknown";
+        };
+        /** PublicPenaltyAwarded */
+        PublicPenaltyAwarded: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Period */
+            period: number | null;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "penalty_awarded";
+            /** Player Id */
+            player_id: string | null;
+            /** Reason */
+            reason: string;
+        };
+        /** PublicPeriodBoundary */
+        PublicPeriodBoundary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Period */
+            period: number;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "period_end" | "period_start";
+        };
+        /** PublicProtocol */
+        PublicProtocol: {
+            /** Number */
+            number: number;
+            /**
+             * Confirmed At
+             * Format: date-time
+             */
+            confirmed_at: string;
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
+            /** Home Name */
+            home_name: string;
+            /** Away Name */
+            away_name: string;
+            /**
+             * Scheduled At
+             * Format: date-time
+             */
+            scheduled_at: string;
+            /** Venue Label */
+            venue_label: string;
+            regulation: components["schemas"]["PublicRegulation"];
+            /** Lineup */
+            lineup: components["schemas"]["PublicLineup"][];
+            protocol: components["schemas"]["PublicDocument"];
+            projection: components["schemas"]["Projection"];
+        };
+        /** PublicRegulation */
+        PublicRegulation: {
+            rules: components["schemas"]["Regulation-Output"];
+            /** Total S */
+            total_s: number;
+        };
+        /** PublicShootoutAttempt */
+        PublicShootoutAttempt: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Period */
+            period: number | null;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "shootout_attempt";
+            /** Player Id */
+            player_id: string | null;
+            /** Attempt Number */
+            attempt_number: number;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "goal" | "saved" | "off_target" | "unknown";
+        };
+        /** PublicStoppage */
+        PublicStoppage: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Period */
+            period: number | null;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "stoppage";
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "injury" | "technical" | "other";
+            /** Duration Ms */
+            duration_ms: number | null;
+        };
+        /** PublicSubstitution */
+        PublicSubstitution: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Period */
+            period: number | null;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "substitution";
+            /** Player Out Id */
+            player_out_id: string | null;
+            /** Player In Id */
+            player_in_id: string | null;
+        };
+        /** PublicTimeout */
+        PublicTimeout: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Period */
+            period: number | null;
+            /** Elapsed Ms */
+            elapsed_ms: number | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "timeout";
+            /** Duration Ms */
+            duration_ms: number | null;
+        };
         /** Publish */
         Publish: {
             /**
@@ -1722,7 +2065,7 @@ export interface components {
              * @default clean
              * @enum {string}
              */
-            clock_mode: "clean" | "running" | "mixed";
+            clock_mode?: "clean" | "running" | "mixed";
             /** Mixed Stop Last S */
             mixed_stop_last_s?: number | null;
             /**
@@ -1730,14 +2073,14 @@ export interface components {
              * @default remaining
              * @enum {string}
              */
-            clock_display: "elapsed" | "remaining";
+            clock_display?: "elapsed" | "remaining";
             /** Break S */
             break_s?: number[];
             /**
              * Schedule Slot S
              * @default 5400
              */
-            schedule_slot_s: number;
+            schedule_slot_s?: number;
             timeouts?: components["schemas"]["Timeouts-Input"];
             extra?: components["schemas"]["Extra-Input"];
             shootout?: components["schemas"]["Shootout-Input"];
@@ -1745,34 +2088,34 @@ export interface components {
              * Players On Pitch
              * @default 5
              */
-            players_on_pitch: number;
+            players_on_pitch?: number;
             /**
              * Tournament Roster Limit
              * @default 30
              */
-            tournament_roster_limit: number;
+            tournament_roster_limit?: number;
             /**
              * Match Roster Limit
              * @default 14
              */
-            match_roster_limit: number;
+            match_roster_limit?: number;
             /**
              * Pitch Length M
              * @default 40
              */
-            pitch_length_m: number;
+            pitch_length_m?: number;
             /**
              * Pitch Width M
              * @default 20
              */
-            pitch_width_m: number;
+            pitch_width_m?: number;
             fouls?: components["schemas"]["Fouls-Input"];
             points?: components["schemas"]["Points-Input"];
             /**
              * Allow Draw
              * @default true
              */
-            allow_draw: boolean;
+            allow_draw?: boolean;
         };
         /** Regulation */
         "Regulation-Output": {
@@ -2120,12 +2463,12 @@ export interface components {
              * Enabled
              * @default false
              */
-            enabled: boolean;
+            enabled?: boolean;
             /**
              * Initial Attempts
              * @default 5
              */
-            initial_attempts: number;
+            initial_attempts?: number;
         };
         /** Shootout */
         "Shootout-Output": {
@@ -2159,7 +2502,7 @@ export interface components {
              * Notes
              * @default
              */
-            notes: string;
+            notes?: string;
             /** Created At */
             created_at?: string | null;
             /**
@@ -2255,7 +2598,7 @@ export interface components {
              * Notes
              * @default
              */
-            notes: string;
+            notes?: string;
             /** Created At */
             created_at?: string | null;
             /**
@@ -2268,7 +2611,7 @@ export interface components {
              * @default other
              * @enum {string}
              */
-            reason: "injury" | "technical" | "other";
+            reason?: "injury" | "technical" | "other";
             /** Duration Ms */
             duration_ms?: number | null;
         };
@@ -2327,7 +2670,7 @@ export interface components {
              * Notes
              * @default
              */
-            notes: string;
+            notes?: string;
             /** Created At */
             created_at?: string | null;
             /**
@@ -2421,7 +2764,7 @@ export interface components {
              * Notes
              * @default
              */
-            notes: string;
+            notes?: string;
             /** Created At */
             created_at?: string | null;
             /**
@@ -2468,23 +2811,23 @@ export interface components {
              * Allowed
              * @default true
              */
-            allowed: boolean;
+            allowed?: boolean;
             /**
              * Duration S
              * @default 60
              */
-            duration_s: number;
+            duration_s?: number;
             /**
              * Count
              * @default 1
              */
-            count: number;
+            count?: number;
             /**
              * Scope
              * @default period
              * @enum {string}
              */
-            scope: "period" | "match";
+            scope?: "period" | "match";
         };
         /** Timeouts */
         "Timeouts-Output": {
@@ -2530,7 +2873,7 @@ export interface components {
              * Timezone
              * @default Europe/Moscow
              */
-            timezone: string;
+            timezone?: string;
         };
         /** TournamentPatch */
         TournamentPatch: {
@@ -3590,7 +3933,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PublicProtocol"];
                 };
             };
             /** @description Validation Error */

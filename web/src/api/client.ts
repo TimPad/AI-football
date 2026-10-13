@@ -8,7 +8,7 @@ export async function api<T>(path:string,options:RequestInit={}):Promise<T>{
  if(options.body && typeof options.body==='string')headers.set('Content-Type','application/json');
  if(options.method && !['GET','HEAD'].includes(options.method))headers.set('X-CSRF-Token',csrf);
  let response:Response;
- try{response=await fetch(`/api/v1${path}`,{...options,headers,credentials:'same-origin'})}catch{throw new ApiError('network','Не удалось связаться с сервером. Правки сохранены в этом браузере.')}
+ try{response=await fetch(`/api/v1${path}`,{...options,signal:options.signal??AbortSignal.timeout(30000),headers,credentials:'same-origin'})}catch{throw new ApiError('network','Не удалось связаться с сервером. Правки сохранены в этом браузере.')}
  if(!response.ok){
   let error;try{error=(await response.json()).error}catch{error=null}
   if(response.status===401)window.dispatchEvent(new Event('session-expired'));

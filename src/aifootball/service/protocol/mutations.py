@@ -27,21 +27,31 @@ def apply_protocol_mutation(db,match,command,actor):
         data=validate_payload(payloads.EventChange,command.payload)
         changing=[data.event,*data.related_events]
         if len({e.id for e in changing})!=len(changing): raise DomainError('duplicate_event','Событие повторяется')
-        if data.related_events:
+        if data.related_events or data.remove_related_ids:
             ids={getattr(e,'penalty_id',None) for e in changing if e.kind in ['goal','penalty_attempt']}
             award_ids={e.id for e in changing if e.kind=='penalty_awarded'}
             if any(e.kind not in ['goal','penalty_attempt','penalty_awarded'] for e in changing) or len(ids|award_ids)!=1 or None in ids:
                 raise DomainError('related_event','Связанные события должны относиться к одному пенальти')
         by_id={e.id:e for e in doc.events}
+        removed=set(data.remove_related_ids)
+        if removed:
+            link=getattr(data.event,'penalty_id',None) or data.event.id
+            if kind!='replace_event' or removed & {e.id for e in changing}:
+                raise DomainError('related_event','Отмена связанных событий допустима только при исправлении пенальти')
+            for eid in removed:
+                old=by_id.get(eid)
+                if old is None or old.kind not in ['goal','penalty_attempt','penalty_awarded'] or (getattr(old,'penalty_id',None) or old.id)!=link:
+                    raise DomainError('related_event','Связанные события должны относиться к одному пенальти')
         for e in changing:
             old=by_id.get(e.id)
             if kind=='add_event' and old: raise DomainError('duplicate_event','Событие уже существует',status=409)
-            if kind=='replace_event' and not old: raise DomainError('not_found','Событие не найдено',status=404)
+            if kind=='replace_event' and e.id==data.event.id and not old: raise DomainError('not_found','Событие не найдено',status=404)
             e.created_at=old.created_at if old else utcnow()
         if kind=='add_event': doc.events.extend(changing)
         else:
             replacements={e.id:e for e in changing}
-            doc.events=[replacements.get(e.id,e) for e in doc.events]
+            doc.events=[replacements.get(e.id,e) for e in doc.events if e.id not in removed]
+            doc.events.extend(e for e in changing if e.id not in by_id)
     elif kind=='remove_event':
         data=validate_payload(payloads.EventRemove,command.payload); ids={data.event_id,*data.related_ids}
         selected=[e for e in doc.events if e.id in ids]

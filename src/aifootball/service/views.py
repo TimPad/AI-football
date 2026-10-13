@@ -86,3 +86,44 @@ class VersionView(EntityView):
     confirmed_at: datetime
     published_at: datetime | None
     public_id: UUID | None
+
+# Build a separate, narrow public event schema. Serialization never supplies
+# private note/time fields omitted by the public snapshot endpoint.
+from typing import Annotated, Union, get_args
+from pydantic import Field, create_model, ConfigDict
+from aifootball.service.protocol.events import Event
+_public_events=[]
+for event_type in get_args(get_args(Event)[0]):
+    fields={name:(field.annotation,Field()) for name,field in event_type.model_fields.items()
+            if name not in {'notes','video_ms','created_at'}}
+    _public_events.append(create_model('Public'+event_type.__name__,__config__=ConfigDict(extra='forbid'),**fields))
+PublicEvent=Annotated[Union[tuple(_public_events)],Field(discriminator='kind')]
+class PublicLineup(BaseModel):
+    player_id: UUID
+    display_name: str
+    shirt_number: str | None
+    side: Literal['home','away']
+class PublicDocument(BaseModel):
+    events: list[PublicEvent]
+    reported_totals: dict
+    shootout_totals: dict
+    completeness: dict[str,str]
+    result_type: Literal['played','technical']
+    technical_reason: str | None
+    public_notes: str
+    draft: bool
+class PublicRegulation(BaseModel):
+    rules: Regulation
+    total_s: int
+class PublicProtocol(BaseModel):
+    number: int
+    confirmed_at: datetime
+    published_at: datetime
+    home_name: str
+    away_name: str
+    scheduled_at: datetime
+    venue_label: str
+    regulation: PublicRegulation
+    lineup: list[PublicLineup]
+    protocol: PublicDocument
+    projection: Projection

@@ -64,3 +64,17 @@ def test_failed_command_has_no_audit_or_partial_write(admin_client,match_factory
     saved=admin_client.get(f"/api/v1/matches/{m['id']}").json()
     assert saved['revision']==m['revision'] and saved['protocol']['events']==[]
     assert admin_client.get(f"/api/v1/matches/{m['id']}/history").json()['total']==count
+
+
+def test_edit_penalty_outcome_atomically_removes_or_adds_goal(match_factory,send_command):
+    m=match_factory(); award=event('penalty_awarded'); attempt=event('penalty_attempt',penalty_id=award['id'],outcome='goal'); goal=event(from_penalty=True,penalty_id=award['id'])
+    r=send_command(m,'add_event',{'event':attempt,'related_events':[award,goal]});assert r.status_code==200
+    missed=send_command(r.json(),'replace_event',{'event':{**attempt,'outcome':'saved'},'remove_related_ids':[goal['id']]})
+    assert missed.status_code==200,missed.text
+    assert missed.json()['projection']['event_score']['home']==0
+    scored=send_command(missed.json(),'replace_event',{'event':attempt,'related_events':[goal]})
+    assert scored.status_code==200,scored.text
+    assert scored.json()['projection']['event_score']['home']==1
+    unrelated=event('foul'); r=send_command(scored.json(),'add_event',{'event':unrelated})
+    bad=send_command(r.json(),'replace_event',{'event':{**attempt,'outcome':'saved'},'remove_related_ids':[unrelated['id'],goal['id']]})
+    assert bad.status_code==422
