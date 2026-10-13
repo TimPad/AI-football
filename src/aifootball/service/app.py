@@ -15,6 +15,8 @@ def create_app(settings=None):
     app.state.settings = settings
     app.state.engine = make_engine(settings.database_url)
     app.include_router(auth_router, prefix='/api/v1')
+    from aifootball.service.tournaments.routes import router as tournament_router
+    app.include_router(tournament_router, prefix='/api/v1')
 
     @app.exception_handler(DomainError)
     async def domain_error(request, error):

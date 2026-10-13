@@ -2,6 +2,7 @@ from alembic import context
 from aifootball.service.config import Settings
 from aifootball.service.db import Base, make_engine
 from aifootball.service.auth import models
+from aifootball.service.tournaments import models as tournament_models
 
 config = context.config
 url = config.attributes.get('database_url') or Settings().database_url

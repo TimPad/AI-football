@@ -61,3 +61,26 @@ def admin_client(client, seed_admin):
     assert r.status_code == 200
     client.headers['X-CSRF-Token'] = r.json()['csrf_token']
     return client
+
+
+@pytest.fixture
+def regulation_data():
+    return {'periods_s': [1200,1200], 'clock_mode':'clean', 'clock_display':'remaining',
+        'mixed_stop_last_s':None, 'break_s':[600], 'schedule_slot_s':5400,
+        'timeouts':{'allowed':True,'duration_s':60,'count':1,'scope':'period'},
+        'extra':{'enabled':False,'periods_s':[300,300],'clock_mode':'clean','mixed_stop_last_s':None},
+        'shootout':{'enabled':False,'initial_attempts':5},'players_on_pitch':5,
+        'tournament_roster_limit':30,'match_roster_limit':14,'pitch_length_m':40,'pitch_width_m':20,
+        'fouls':{'enabled':True,'warning_threshold':5,'reset':'period','extra_carry':True},
+        'points':{'win':3,'draw':1,'loss':0},'allow_draw':True}
+
+
+@pytest.fixture
+def tournament_factory(admin_client):
+    def create(**changes):
+        data={'name':'Тестовый кубок','season':'2026','starts_on':'2026-10-01',
+              'ends_on':'2026-12-31','timezone':'Europe/Moscow', **changes}
+        r=admin_client.post('/api/v1/tournaments', json=data)
+        assert r.status_code==201, r.text
+        return r.json()
+    return create
