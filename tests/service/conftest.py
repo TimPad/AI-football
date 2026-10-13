@@ -84,3 +84,43 @@ def tournament_factory(admin_client):
         assert r.status_code==201, r.text
         return r.json()
     return create
+
+
+@pytest.fixture
+def match_factory(admin_client,tournament_factory,regulation_data):
+    from uuid import uuid4
+    def create(**changes):
+        t=tournament_factory()
+        reg=admin_client.post(f"/api/v1/tournaments/{t['id']}/regulations",json={'variant_name':'Группа','rules':regulation_data}).json()
+        entries=[]; selections=[]
+        for side,name in [('home','Север'),('away','Юг')]:
+            team=admin_client.post('/api/v1/teams',json={'name':name}).json()
+            r=admin_client.post(f"/api/v1/tournaments/{t['id']}/entries",json={'team_id':team['id']})
+            assert r.status_code==201,r.text
+            entry=r.json(); entries.append(entry)
+            players=[]
+            for n in [1,2]:
+                player=admin_client.post('/api/v1/players',json={'name':f'{name} {n}'}).json()
+                players.append({'player_id':player['id'],'shirt_number':str(n)})
+            roster=admin_client.put(f"/api/v1/entries/{entry['id']}/players",json={'expected_revision':0,'players':players})
+            assert roster.status_code==200,roster.text
+            selections += [{'entry_player_id':p['id'],'side':side} for p in roster.json()['players']]
+        r=admin_client.post(f"/api/v1/tournaments/{t['id']}/matches",json={'home_entry_id':entries[0]['id'],
+            'away_entry_id':entries[1]['id'],'regulation_id':reg['id'],
+            'scheduled_at':'2026-10-20T18:00:00+03:00',**changes})
+        assert r.status_code==201,r.text
+        m=r.json()
+        r=admin_client.post(f"/api/v1/matches/{m['id']}/commands",json={'request_id':str(uuid4()),
+            'expected_revision':m['revision'],'kind':'set_lineup','payload':{'players':selections}})
+        assert r.status_code==200,r.text
+        return r.json()
+    return create
+
+
+@pytest.fixture
+def send_command(admin_client):
+    from uuid import uuid4
+    def send(m,kind,payload,request_id=None):
+        return admin_client.post(f"/api/v1/matches/{m['id']}/commands",json={'request_id':request_id or str(uuid4()),
+            'expected_revision':m['revision'],'kind':kind,'payload':payload})
+    return send
