@@ -4,7 +4,7 @@ from uuid import UUID
 from typing import Generic, TypeVar, Literal
 from pydantic import BaseModel
 from aifootball.service.tournaments.schemas import Regulation
-from aifootball.service.protocol.schemas import ProtocolDocument, ClockState
+from aifootball.service.protocol.schemas import ProtocolDocument, ClockState, ReportedTotals, ShootoutTotals, Completeness
 from aifootball.service.protocol.projection import Projection
 
 T = TypeVar('T')
@@ -105,9 +105,9 @@ class PublicLineup(BaseModel):
     side: Literal['home','away']
 class PublicDocument(BaseModel):
     events: list[PublicEvent]
-    reported_totals: dict
-    shootout_totals: dict
-    completeness: dict[str,str]
+    reported_totals: ReportedTotals
+    shootout_totals: ShootoutTotals
+    completeness: Completeness
     result_type: Literal['played','technical']
     technical_reason: str | None
     public_notes: str

@@ -1725,18 +1725,9 @@ export interface components {
         PublicDocument: {
             /** Events */
             events: (components["schemas"]["PublicGoal"] | components["schemas"]["PublicFoul"] | components["schemas"]["PublicCard"] | components["schemas"]["PublicPenaltyAwarded"] | components["schemas"]["PublicPenaltyAttempt"] | components["schemas"]["PublicShootoutAttempt"] | components["schemas"]["PublicTimeout"] | components["schemas"]["PublicSubstitution"] | components["schemas"]["PublicStoppage"] | components["schemas"]["PublicPeriodBoundary"])[];
-            /** Reported Totals */
-            reported_totals: {
-                [key: string]: unknown;
-            };
-            /** Shootout Totals */
-            shootout_totals: {
-                [key: string]: unknown;
-            };
-            /** Completeness */
-            completeness: {
-                [key: string]: string;
-            };
+            reported_totals: components["schemas"]["ReportedTotals-Output"];
+            shootout_totals: components["schemas"]["ShootoutTotals-Output"];
+            completeness: components["schemas"]["Completeness"];
             /**
              * Result Type
              * @enum {string}

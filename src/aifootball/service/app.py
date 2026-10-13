@@ -1,8 +1,9 @@
 from pathlib import Path
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse,HTMLResponse
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from alembic.script import ScriptDirectory
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from aifootball.service.config import Settings
@@ -16,6 +17,7 @@ def create_app(settings=None, *, web_dist=None):
     app = FastAPI(title='Кабинет турниров', version='0.1.0')
     app.state.settings = settings
     app.state.engine = make_engine(settings.database_url)
+    expected_schema = ScriptDirectory(str(Path(__file__).resolve().parents[3] / 'migrations')).get_current_head()
     app.include_router(auth_router, prefix='/api/v1')
     from aifootball.service.tournaments.routes import router as tournament_router
     app.include_router(tournament_router, prefix='/api/v1')
@@ -51,6 +53,8 @@ def create_app(settings=None, *, web_dist=None):
             with app.state.engine.connect() as db:
                 db.execute(text('SELECT 1'))
                 version = db.execute(text('SELECT version_num FROM alembic_version')).scalar_one()
+            if version != expected_schema:
+                return JSONResponse({'status': 'not_ready', 'reason': 'migration_required'}, status_code=503)
             return {'status': 'ready', 'schema_version': version}
         except SQLAlchemyError:
             return JSONResponse({'status': 'not_ready'}, status_code=503)
@@ -60,10 +64,12 @@ def create_app(settings=None, *, web_dist=None):
     @app.get('/{path:path}', include_in_schema=False)
     def frontend(path: str):
         target = (dist / path).resolve()
-        if not target.is_relative_to(dist.resolve()) or path.startswith('api/'):
+        if not target.is_relative_to(dist.resolve()) or path == 'api' or path.startswith('api/'):
             raise DomainError('not_found', 'Страница не найдена', status=404)
         if target.is_file() and target.suffix in {'.html', '.js', '.css', '.svg', '.png', '.ico', '.woff2'}:
             return FileResponse(target)
+        if not (dist / 'index.html').is_file() and not path.startswith('assets/') and not Path(path).suffix:
+            return HTMLResponse('<!doctype html><html lang="ru"><meta charset="utf-8"><title>AI Football</title><h1>Соберите интерфейс</h1><p>В каталоге проекта выполните: npm --prefix web ci и npm --prefix web run build.</p></html>', status_code=503)
         if path.startswith('assets/') or Path(path).suffix or not (dist / 'index.html').is_file():
             raise DomainError('not_found', 'Файл не найден', status=404)
         return FileResponse(dist / 'index.html', headers={'Cache-Control': 'no-cache'})

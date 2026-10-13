@@ -6,8 +6,8 @@ export function useProtocolCommands(matchId:string){
    for(const delay of [1000,3000,10000])timers.push(setTimeout(()=>{if(q?.items[0]?.state==='uncertain'&&!q.blocked&&navigator.onLine)q.retry().catch(()=>{})},delay));
   }).catch(setError);
   const interval=setInterval(()=>q?.heartbeat(),5000);const storage=()=>q?.heartbeat();const online=()=>{if(q?.items[0]?.state==='uncertain')q.retry().catch(()=>{})};const unload=(e:BeforeUnloadEvent)=>{if(q?.items.length){e.preventDefault();e.returnValue=''}};
-  window.addEventListener('storage',storage);window.addEventListener('online',online);window.addEventListener('beforeunload',unload);
-  return()=>{active=false;q?.dispose();timers.forEach(clearTimeout);clearInterval(interval);window.removeEventListener('storage',storage);window.removeEventListener('online',online);window.removeEventListener('beforeunload',unload)};
+  const leave=()=>q?.dispose();window.addEventListener('pagehide',leave);window.addEventListener('storage',storage);window.addEventListener('online',online);window.addEventListener('beforeunload',unload);
+  return()=>{active=false;q?.dispose();timers.forEach(clearTimeout);clearInterval(interval);window.removeEventListener('pagehide',leave);window.removeEventListener('storage',storage);window.removeEventListener('online',online);window.removeEventListener('beforeunload',unload)};
  },[matchId,session?.id]);
  useEffect(()=>{if(!queue?.items.some(c=>c.state==='uncertain'))return;const timers=[1000,3000,10000].map(ms=>setTimeout(()=>{if(queue.items[0]?.state==='uncertain'&&!queue.blocked&&navigator.onLine)queue.retry().catch(()=>{})},ms));return()=>timers.forEach(clearTimeout)},[queue,queue?.items[0]?.requestId,queue?.items[0]?.state]);
  return {queue,store,error};
