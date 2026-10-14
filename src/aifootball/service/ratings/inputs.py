@@ -58,15 +58,31 @@ def _category_complete(document,category,pid,ranges):
     if ranges is None:return False
     declarations=document.get('completeness',{}).get(category,[]);covered=[]
     for d in declarations:
-        if d['status']=='complete' and (d.get('player_ids') is None or pid in d['player_ids']):covered.extend(d.get('intervals') or [[0,document['duration_ms']]])
+        if d['status']=='complete' and (d.get('player_ids') is None or pid in d['player_ids']):covered.extend([[0,document['duration_ms']]] if d.get('intervals') is None else d['intervals'])
     return duration_s(intersection(ranges,intervals(covered)))==duration_s(ranges)
 
 
-def _official(protocol,clock):
+def _official(protocol,clock,manual=None,links=None):
     offsets={};cursor=0;rules=protocol['regulation']['rules']
     for index,seconds in enumerate(rules['periods_s']+(rules['extra']['periods_s'] if rules['extra']['enabled'] else []),1):offsets[str(index)]=cursor;cursor+=seconds*1000
-    return canonical_actions({**protocol['protocol'],'clock_basis':clock,'period_offsets_ms':offsets},[],[])
+    return canonical_actions({**protocol['protocol'],'clock_basis':clock,'period_offsets_ms':offsets},manual or [],links or [])
 
+
+
+def _without_superseded_video(snapshot,clock,action):
+    """Remove only dependent facts; independent manual annotations remain usable."""
+    raw=action.document['actions']
+    removed={a['id'] for a in raw if a.get('source_episode_id') and a.get('decision')!='rejected'}
+    while True:
+        dependents={a['id'] for a in raw if a.get('shot_id') in removed}
+        if dependents<=removed:break
+        removed|=dependents
+    affected={'shot':'shots','goal_candidate':'shots','pass':'passes','carry':'carries','duel':'duels','recovery':'recoveries',
+        'shot_block':'shot_blocks','turnover':'turnovers','save':'saves','distribution':'distribution','error':'errors'}
+    categories={affected[a['kind']] for a in raw if a['id'] in removed}
+    safe=[{**a,'clock_basis':clock,'source_refs':[{'kind':'manual','id':a['id'],'version_id':str(action.id)}]} for a in raw if a['id'] not in removed]
+    links=[l for l in action.document['links'] if l['source_event_id'] not in removed and l['canonical_event_id'] not in removed]
+    return _official(snapshot,clock,safe,links),categories
 
 def performances(db,tid,selected,settings,scope):
     result=[];details={}
@@ -75,6 +91,8 @@ def performances(db,tid,selected,settings,scope):
         if match.status=='cancelled' or snapshot['status']!='ended' or snapshot['protocol']['result_type']!='played':continue
         reasons=[];pd=part.document if part else None
         part_valid=bool(part and pd['time_basis']==settings['time_basis'] and (part.source_protocol_version_id==protocol.id if protocol else False))
+        if part_valid and pd['clock_basis']=='video' and (run is None or part.source_analysis_run_id!=run.id):
+            part_valid=False;reasons.append('superseded_video_source')
         if not part_valid:reasons.append('missing_or_incompatible_participation')
         full=bool(part_valid and pd['analysis_scope']=='full_match')
         if not full:reasons.append('unknown_full_match_participation')
@@ -86,6 +104,10 @@ def performances(db,tid,selected,settings,scope):
             source_ids={x.source_analysis_run_id for x in (part,action) if x and x.source_analysis_run_id}
             if source_ids and source_ids!={match.published_analysis_run_id}:action_valid=False;full=False;reasons.append('unpublished_video_source')
         actions=deepcopy(action.canonical_actions) if action_valid else _official(snapshot,clock)
+        superseded_categories=set()
+        if scope=='private' and action_valid and any(a.get('source_episode_id') and a.get('decision')!='rejected' for a in action.document['actions']) and (run is None or action.source_analysis_run_id!=run.id):
+            actions,superseded_categories=_without_superseded_video(snapshot,clock,action)
+            reasons.append('superseded_video_source')
         pview=participation_view(part) if part_valid else None
         duration=pd['duration_ms'] if part_valid else sum(snapshot['regulation']['rules']['periods_s'])*1000
         people={p['player_id']:p for p in pd['players']} if part_valid else {}
@@ -100,13 +122,15 @@ def performances(db,tid,selected,settings,scope):
                 if e.get('on_pitch_s')==0:continue
                 if presence and presence.get('presence') is not None:
                     spans=next((r['intervals'] for r in presence['roles'] if r['role']==role),None)
-                    if spans is None:spans=_remaining(presence['presence'],intervals([pair for r in presence['roles'] for pair in r['intervals']]))
+                    if spans is None:spans=_remaining(intervals(presence['presence']),intervals([pair for r in presence['roles'] for pair in r['intervals']]))
                 else:spans=[[0,duration]]
-                play=spans if part_valid and pd['time_basis'] in ('running_clock','official_clean') else intersection(spans,pd['play_intervals']) if part_valid and pd['play_intervals'] is not None else spans
+                spans=intervals(spans)
+                play=spans if part_valid and pd['time_basis'] in ('running_clock','official_clean') else intersection(spans,intervals(pd['play_intervals'])) if part_valid and pd['play_intervals'] is not None else spans
                 categories={key:value for key,value in snapshot['protocol']['completeness'].items() if key in ('goals','assists','fouls','cards')} if protocol else {}
                 if action_valid:
                     for category in action.document['completeness']:
                         categories[category]='complete' if full and action.document['analysis_scope']=='full_match' and _category_complete(action.document,category,pid,play) else 'partial'
+                for category in superseded_categories:categories[category]='unknown'
                 # No physical time is substituted for participation; explicit manual
                 # ranges can remain valid despite an additional partial video.
                 eligible=e.get('eligible_play_s') if full else None
@@ -127,7 +151,7 @@ def performances(db,tid,selected,settings,scope):
                     time=a.get('start_ms')
                     if time is not None and not any(a0<=time<b0 for a0,b0 in spans):continue
                     if time is None and not provenance['single_role']:continue
-                    moment={k:a.get(k) for k in ('id','kind','player_id','role','start_ms','end_ms','clock_basis','success','outcome','penalty_conceded')}
+                    moment={k:a.get(k) for k in ('id','kind','player_id','role','start_ms','end_ms','clock_basis','success','outcome','penalty_conceded','own_goal','counts_as_player_goal','non_penalty_goal')}
                     moment['role']=role;moment['verified']=True
                     if scope=='private':moment['source_refs']=a['source_refs']
                     moments.append(moment)

@@ -133,3 +133,13 @@ def test_reference_rejects_missing_exposure_and_different_policy_edition(policy)
     with pytest.raises(ValueError):build_reference([changed,*rows[1:]],policy=policy,cutoff='2026-10-14T00:00:00Z')
     ref=reference(policy);new=deepcopy(policy);new['ratio_prior_strength']=11
     with pytest.raises(ValueError):score_match(complete_features(),role='fixo',policy=new,reference=ref)
+
+
+def test_available_reference_without_attempts_gives_neutral_later_observation(policy):
+    rows=cohort(policy,role='goalkeeper');zero=MetricFact(None,0,0,'percent','complete','no_opportunities')
+    rows=[replace(r,facts={**r.facts,'save_pct':zero}) for r in rows]
+    ref=build_reference(rows,policy=policy,cutoff='2026-10-14T00:00:00Z')
+    current={**rows[0].facts,'save_pct':MetricFact(100,1,1,'percent','complete',None)}
+    result=score_match(current,role='goalkeeper',policy=policy,reference=ref)
+    assert result['score']==50 and result['feature_scores']['save_pct']==50
+    assert 'save_pct' not in result['smoothed']  # no invented reference percentage

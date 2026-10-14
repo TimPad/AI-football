@@ -175,3 +175,70 @@ def test_same_fingerprint_produces_identical_frozen_leaderboard(admin_client,ana
     a=admin_client.get(path,params={'snapshot_id':one['snapshot_id']}).json()
     b=admin_client.get(path,params={'snapshot_id':two['snapshot_id']}).json()
     assert a['items']==b['items'] and a['edition']==b['edition']
+
+
+def test_replacement_video_review_invalidates_old_episode_facts_but_preserves_old_snapshot(admin_client,analytics_match,send_command):
+    from .test_understanding import imported,review
+    from .test_analysis_assignments import save_assignments,command
+    match,protocol,part,actions=prepare(admin_client,analytics_match,send_command)
+    run=imported(admin_client,match)
+    accepted=review(admin_client,match,run);assert accepted.status_code==200,accepted.text
+    run=admin_client.get(f"/api/v1/matches/{match['id']}/analysis/runs/{run['id']}").json()
+    saved=save_assignments(admin_client,match,run);assert saved.status_code==200,saved.text
+    confirmed=command(admin_client,match,saved.json(),'confirm');assert confirmed.status_code==200,confirmed.text;run=confirmed.json()
+    pid=next(p['player_id'] for p in run['context']['rosters'] if p['side']=='home')
+    recovery=str(uuid4());doc=deepcopy(actions['document']);doc['source_analysis_run_id']=run['id']
+    doc['actions']=[{'id':recovery,'kind':'recovery','player_id':pid,'start_ms':1000,'source_video_ms':1000,'source_episode_id':'e1'},
+        {'id':str(uuid4()),'kind':'pass','player_id':pid,'start_ms':2000,'success':True}]
+    r=admin_client.put(f"/api/v1/matches/{match['id']}/performance-actions",json={'request_id':str(uuid4()),'expected_revision':1,
+        'expected_match_revision':match['revision'],'status':'confirmed','document':doc});assert r.status_code==200,r.text
+    first=calculate(admin_client,match).json()
+    def player(snapshot):return next(r for r in admin_client.get(f"/api/v1/matches/{match['id']}/ratings",params={'snapshot_id':snapshot['snapshot_id']}).json()['items'] if r['player_id']==pid)
+    assert player(first)['facts']['recoveries_rate10']['value']==1
+    copied=command(admin_client,match,run,'reviews');assert copied.status_code==200,copied.text
+    rejected=review(admin_client,match,copied.json(),'rejected');assert rejected.status_code==200,rejected.text
+    replacement=admin_client.get(f"/api/v1/matches/{match['id']}/analysis/runs/{copied.json()['id']}").json()
+    changed=command(admin_client,match,replacement,'confirm');assert changed.status_code==200,changed.text
+    second=calculate(admin_client,match).json();value=player(second)
+    assert value['facts']['recoveries_rate10']['value'] is None
+    assert value['facts']['pass_completion_pct']['value']==100  # independent manual fact remains valid
+    assert 'superseded_video_source' in value['reasons']
+    assert all(m['id']!=recovery for m in value['moments'])
+    assert player(first)['facts']['recoveries_rate10']['value']==1
+
+
+def test_explicit_empty_category_intervals_do_not_mean_whole_match():
+    from aifootball.service.ratings.inputs import _category_complete
+    doc={'duration_ms':600000,'completeness':{'passes':[{'status':'complete','player_ids':None,'intervals':[]}]}}
+    assert _category_complete(doc,'passes','p1',[[0,600000]]) is False
+    doc['completeness']['passes'][0]['intervals']=None
+    assert _category_complete(doc,'passes','p1',[[0,600000]]) is True
+
+
+def test_unsorted_valid_intervals_use_same_action_ranges_as_exposure(admin_client,analytics_match,send_command):
+    match,protocol,part,actions=prepare(admin_client,analytics_match,send_command)
+    pid=part['document']['players'][0]['player_id'];doc=deepcopy(part['document'])
+    person=doc['players'][0];person['presence']=[[300000,600000],[0,300000]];person['roles'][0]['intervals']=[[300000,600000],[0,300000]]
+    doc['play_intervals']=[[300000,600000],[0,100000]]
+    saved=admin_client.put(f"/api/v1/matches/{match['id']}/participation",json={'request_id':str(uuid4()),'expected_revision':1,
+        'expected_match_revision':match['revision'],'status':'confirmed','document':doc});assert saved.status_code==200,saved.text
+    assert saved.json()['exposures'][pid]['ala']['eligible_play_s']==400
+    adoc=deepcopy(actions['document']);adoc['source_participation_version_id']=saved.json()['id']
+    adoc['actions']=[{'id':str(uuid4()),'kind':'recovery','player_id':pid,'start_ms':50000}]
+    saved_actions=admin_client.put(f"/api/v1/matches/{match['id']}/performance-actions",json={'request_id':str(uuid4()),'expected_revision':1,
+        'expected_match_revision':match['revision'],'status':'confirmed','document':adoc});assert saved_actions.status_code==200,saved_actions.text
+    calculate(admin_client,match)
+    row=next(p for p in admin_client.get(f"/api/v1/matches/{match['id']}/ratings").json()['items'] if p['player_id']==pid)
+    assert row['facts']['recoveries_rate10']['value']==1.5
+
+
+def test_saved_match_explanation_retains_own_goal_flag_without_positive_credit(admin_client,analytics_match,send_command):
+    pid=next(p['player_id'] for p in analytics_match['lineup'] if p['side']=='home')
+    changed=send_command(analytics_match,'add_event',{'event':{'id':str(uuid4()),'kind':'goal','player_id':pid,
+        'side':'home','own_goal':True,'assist_known':True,'period':1,'elapsed_ms':1000}})
+    assert changed.status_code==200,changed.text
+    match,protocol,part,actions=prepare(admin_client,changed.json(),send_command)
+    calculate(admin_client,match)
+    row=next(p for p in admin_client.get(f"/api/v1/matches/{match['id']}/ratings").json()['items'] if p['player_id']==pid)
+    assert row['facts']['npg_count']['value']==0
+    assert row['explanation']['positive']==[] and row['explanation']['errors'][0]['text']=='Автогол'

@@ -73,7 +73,7 @@ def score_match(features,*,role,policy,reference):
         if fact.unit=='percent':
             if fact.numerator is None or fact.denominator is None or fact.numerator>fact.denominator:raise ValueError('Invalid percentage facts')
             if metric['mean'] is None:
-                result['feature_scores'][key]=None;result['reasons'].append('no_reference_opportunities:'+key);continue
+                result['feature_scores'][key]=50;continue
             strength=policy['ratio_prior_strength']
             value=100*(fact.numerator+strength*metric['mean'])/(fact.denominator+strength)
             result['smoothed'][key]=value

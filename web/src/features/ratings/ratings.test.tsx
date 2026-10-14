@@ -60,3 +60,24 @@ it('preserves malformed nested participation as a recoverable corrupt draft',()=
  expect(()=>render(<ParticipationForm value={overview()} actorId="admin1" onSaved={vi.fn()}/>)).not.toThrow();
  expect(screen.getByRole('alert')).toHaveTextContent('Повреждён черновик');
 });
+
+import {waitFor} from '@testing-library/react';
+import {PlayerRatingHistory} from './PlayerRatingHistory';
+it('keeps historical snapshot in the leaderboard player link',()=>{
+ const row={player_id:'p1',display_name:'Демо',role:null,rank:null,qualification:'preliminary',score:null,display_rating:null,match_count:1,rated_match_count:0,eligible_play_minutes:10,played_minutes:10,known_played_minutes:10,rated_minutes:0,weight_sum:0,coverage:0,baseline_influence:null,facts:{},teams:[],reasons:[]} as RatingSummary;
+ render(<MemoryRouter><RankingTable rows={[row]} tournamentId="t1" snapshotId="edition-A"/></MemoryRouter>);
+ expect(screen.getByRole('link',{name:'Демо'})).toHaveAttribute('href','/players/p1/analysis?tournament_id=t1&snapshot_id=edition-A');
+});
+it('requests selected historical player edition and offers an explicit latest view',async()=>{
+ const requests:string[]=[];vi.stubGlobal('fetch',vi.fn(async(url)=>{requests.push(String(url));return new Response(JSON.stringify(String(url).includes('/tournaments')?{items:[],total:0}:{snapshot_id:'edition-A',summary:[],matches:[]}))}));
+ render(<MemoryRouter><PlayerRatingHistory playerId="p1" initialTournament="t1" initialSnapshot="edition-A"/></MemoryRouter>);
+ await waitFor(()=>expect(requests.some(url=>url.includes('/players/p1/ratings'))).toBe(true));
+ expect(requests.find(url=>url.includes('/players/p1/ratings'))).toContain('snapshot_id=edition-A');
+ await userEvent.click(screen.getByRole('button',{name:'Открыть текущий срез'}));
+ await waitFor(()=>expect(requests.some(url=>url.endsWith('/players/p1/ratings?tournament_id=t1'))).toBe(true));
+});
+it('discloses unresolved passes beside their resolved-attempt percentage',async()=>{
+ render(<MatchRating value={{score:null,display_rating:null,components:{},reasons:[],facts:{pass_completion_pct:{value:100,numerator:1,denominator:1,unit:'percent',completeness:'complete',reason:null},pass_completion_unresolved_count:{value:1,numerator:1,denominator:null,unit:'count',completeness:'complete',reason:null}}}}/>);
+ await userEvent.click(screen.getByText('Компоненты и исходные показатели'));
+ expect(screen.getByText('Неопределённые исходы: Точность передач, %')).toBeVisible();
+});

@@ -8,7 +8,7 @@ or model confidence never supplies a completeness declaration.
 from collections import defaultdict
 from aifootball.ratings.schema import MetricFact,MatchPerformance
 from aifootball.ratings.registry import REGISTRY
-from aifootball.ratings.actions import discipline_cost
+from aifootball.ratings.actions import discipline_cost,valid_block_link
 
 
 def _missing(numerator,denominator,unit,reason,completeness='unknown'):
@@ -54,7 +54,9 @@ def build_features(performance:MatchPerformance,actions:list[dict],*,profile_id:
         resolved=[a for a in items if type(a.get(field)) is bool];unresolved=len(items)-len(resolved)
         n=sum(a[field] for a in resolved);d=len(resolved)
         facts[stem+'_unresolved_count']=MetricFact(unresolved,unresolved,None,'count','complete',None)
-        facts[feature]=_ratio(n,d,'percent',known,unresolved=unresolved)
+        if feature=='shots_on_target_pct' and unresolved:
+            facts[feature]=_missing(n,len(items),'percent','unresolved_attempts','partial')
+        else:facts[feature]=_ratio(n,d,'percent',known,unresolved=unresolved)
     goals=[a for a in valid if a['kind']=='goal' and not a.get('own_goal') and a.get('side') in (side,None)]
     unknown_goals=any(a.get('player_id') is None for a in goals)
     npg=sum(a.get('non_penalty_goal',not a.get('from_penalty')) for a in own if a['kind']=='goal' and not a.get('own_goal'))
@@ -69,10 +71,15 @@ def build_features(performance:MatchPerformance,actions:list[dict],*,profile_id:
     percentage('distribution','distribution_pct',[a for a in own if a['kind']=='distribution'],category_ok(['distribution'],{'distribution'}))
     for stem,feature,kind,category in [('recoveries','recoveries_rate10','recovery','recoveries'),('blocks','blocks_rate10','shot_block','shot_blocks')]:
         items=[a for a in own if a['kind']==kind]
-        linked=all(a.get('shot_id') for a in items) if kind=='shot_block' else True
+        by_id={a['id']:a for a in valid}
+        linked=all(valid_block_link(a,by_id.get(a.get('shot_id'))) for a in items) if kind=='shot_block' else True
         count_rate(stem,feature,len(items),category_ok([category],{kind}) and linked)
     # A possession chain is local to the same verified clock, never across gaps.
     last=None;keypasses=[];chain_unknown=False
+    potential_passes=[a for a in own if a['kind']=='pass' and a.get('success') is True]
+    team_shots=[a for a in valid if a.get('side')==side and a.get('counts_as_shot',a['kind']=='shot' or a['kind']=='goal' and not a.get('own_goal'))]
+    if potential_passes and team_shots and (any(not a.get('possession_id') for a in potential_passes) or any(not a.get('possession_id') for a in team_shots)):
+        chain_unknown=True
     timed=sorted(valid,key=lambda a:(a.get('start_ms') is None,a.get('start_ms') or 0,a['id']))
     for a in timed:
         if a.get('clock_basis',clock)!=clock or a.get('start_ms') is None or a.get('chain_complete') is False:
@@ -110,7 +117,8 @@ def build_features(performance:MatchPerformance,actions:list[dict],*,profile_id:
     unknown_faced=any(a['kind']=='goal' and a.get('side')!=side and not a.get('own_goal') and a.get('start_ms') is None for a in valid)
     unresolved_saves=sum(a['kind']=='save' and a.get('success') is None for a in own)
     gk_known=p.role=='goalkeeper' and meta.get('presence_verified') and category_ok(['saves','goals'],{'save'}) and not unknown_faced
-    facts['save_pct']=_ratio(len(saves),len(saves)+len(conceded),'percent',gk_known,unresolved=unresolved_saves)
+    facts['save_unresolved_count']=MetricFact(unresolved_saves,unresolved_saves,None,'count','complete',None)
+    facts['save_pct']=_missing(len(saves),len(saves)+len(conceded)+unresolved_saves,'percent','unresolved_attempts','partial') if unresolved_saves else _ratio(len(saves),len(saves)+len(conceded),'percent',gk_known)
     return {**p.facts,**facts}
 
 

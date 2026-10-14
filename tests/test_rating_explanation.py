@@ -31,3 +31,10 @@ def test_public_moments_never_link_unpublished_evidence_and_text_is_plain():
     public=explain_rating(score(scope='public'),{},[action(notes='PRIVATE-NOTE')])
     assert public['positive'][0]['evidence']==[] and 'PRIVATE-NOTE' not in str(public)
     assert '<img' not in private['text']
+
+
+def test_own_goal_never_appears_as_a_positive_goal():
+    own=action('goal',own_goal=True,counts_as_player_goal=False)
+    value=explain_rating(score(),{},[own])
+    assert value['positive']==[]
+    assert value['errors'][0]['text']=='Автогол'

@@ -45,6 +45,16 @@ def _same_context(target,source,*,manual_pair=False):
         if abs(first-second)>2000:raise ValueError('Canonical events are separated in time')
 
 
+
+def valid_block_link(block,shot):
+    if shot is None or not (shot.get('counts_as_shot') or shot.get('kind')=='shot'):return False
+    if shot.get('decision')=='rejected' or shot.get('review_status')=='rejected':return False
+    if block.get('side') is None or shot.get('side') is None or block['side']==shot['side']:return False
+    if block.get('player_id') is not None and block.get('player_id')==shot.get('player_id'):return False
+    if block.get('clock_basis','game')!=shot.get('clock_basis','game'):return False
+    first,second=block.get('start_ms'),shot.get('start_ms')
+    return first is None or second is None or abs(first-second)<=2000
+
 def canonical_actions(protocol:dict,reviewed_actions:list[dict],links:list[dict])->list[dict]:
     events=protocol.get('events',[])
     if len(events)>10000 or len(reviewed_actions)>10000 or len(links)>20000:raise ValueError('Action limit exceeded')
@@ -96,6 +106,14 @@ def canonical_actions(protocol:dict,reviewed_actions:list[dict],links:list[dict]
         del records[sid]
     if any(r['kind']=='shot' and r.get('outcome')=='goal' for r in records.values()):
         raise ValueError('Goal attempt must link to one official goal before counting shots')
+    aliases={r['id']:r['id'] for r in records.values()}
+    for record in records.values():
+        for ref in record['source_refs']:
+            if ref['kind'] in ('manual','protocol'):aliases[ref['id']]=record['id']
+    for record in records.values():
+        if record['kind']!='shot_block' or record.get('shot_id') is None:continue
+        record['shot_id']=aliases.get(record['shot_id'],record['shot_id'])
+        if not valid_block_link(record,records.get(record['shot_id'])):raise ValueError('Block requires a compatible active opponent shot')
     incident_pairs=set()
     for link in links:
         if link.get('kind','canonical')=='canonical':continue

@@ -11,15 +11,16 @@ def explain_rating(score,facts,actions):
     ordered=sorted(actions,key=lambda a:(a.get('start_ms') is None,a.get('start_ms') or 0,a['id']))
     for a in ordered:
         if not a.get('verified') or a.get('decision')=='rejected' or a.get('review_status')=='rejected' or a.get('player_id')!=pid or a.get('role') not in (None,role):continue
-        kind=a['kind'];good=kind in ('goal','recovery','shot_block') or kind in ('save','distribution','pass','carry','duel') and a.get('success') is True
-        bad=kind in ('turnover','error','foul','card') or kind in ('pass','distribution','duel') and a.get('success') is False
+        own_goal=a['kind']=='goal' and a.get('own_goal',False)
+        kind=a['kind'];good=(kind=='goal' and not own_goal) or kind in ('recovery','shot_block') or kind in ('save','distribution','pass','carry','duel') and a.get('success') is True
+        bad=own_goal or kind in ('turnover','error','foul','card') or kind in ('pass','distribution','duel') and a.get('success') is False
         if not good and not bad:continue
         evidence=[]
         if not public:
             for ref in a.get('source_refs',[]):
                 if ref.get('kind')=='understanding' and ref.get('run_id'):
                     evidence.extend({'run_id':ref['run_id'],'evidence_id':eid} for eid in ref.get('evidence_ids',[]))
-        item={'canonical_action_id':a['id'],'role':role,'text':LABELS.get(kind,'Подтверждённое действие') if good else 'Неточная передача' if kind=='pass' else LABELS.get(kind,'Неудачное действие'),
+        item={'canonical_action_id':a['id'],'role':role,'text':'Автогол' if own_goal else LABELS.get(kind,'Подтверждённое действие') if good else 'Неточная передача' if kind=='pass' else LABELS.get(kind,'Неудачное действие'),
             'start_ms':a.get('start_ms'),'clock_basis':a.get('clock_basis'),'evidence':evidence}
         (positive if good else errors).append(item)
     value=score.get('display_rating');components=score.get('components',{})

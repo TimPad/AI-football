@@ -64,3 +64,23 @@ def test_goal_attempt_cannot_remain_unlinked_and_double_official_shot():
     protocol={'events':[{'id':'g','kind':'goal','player_id':'p','side':'home'}]}
     with pytest.raises(ValueError):
         canonical_actions(protocol,[{'id':'s','kind':'shot','player_id':'p','side':'home','outcome':'goal'}],[])
+
+
+@pytest.mark.parametrize('invalid',['missing','rejected','same_side','different_time','wrong_kind'])
+def test_canonical_block_rejects_invalid_shot_reference(invalid):
+    shot={'id':'shot','kind':'shot','player_id':'opponent','side':'away','clock_basis':'game','start_ms':1000}
+    block={'id':'block','kind':'shot_block','player_id':'blocker','side':'home','clock_basis':'game','start_ms':1000,'shot_id':'shot'}
+    if invalid=='missing':block['shot_id']='absent'
+    if invalid=='rejected':shot['decision']='rejected'
+    if invalid=='same_side':shot['side']='home'
+    if invalid=='different_time':shot['start_ms']=9000
+    if invalid=='wrong_kind':shot['kind']='pass'
+    with pytest.raises(ValueError):canonical_actions({'events':[]},[shot,block],[])
+
+
+def test_block_reference_resolves_deduplicated_source_to_canonical_shot():
+    goal={'id':'goal','kind':'goal','player_id':'opponent','side':'away','start_ms':1000}
+    shot={'id':'shot','kind':'shot','player_id':'opponent','side':'away','start_ms':1000,'outcome':'goal'}
+    block={'id':'block','kind':'shot_block','player_id':'blocker','side':'home','start_ms':1000,'shot_id':'shot'}
+    facts=canonical_actions({'events':[goal]},[shot,block],[{'canonical_event_id':'goal','source_event_id':'shot'}])
+    assert next(f for f in facts if f['id']=='block')['shot_id']=='goal'

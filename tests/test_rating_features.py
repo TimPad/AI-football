@@ -148,3 +148,25 @@ def test_unattributed_actions_do_not_prove_individual_zero_for_affected_team():
     event=action('recovery',player_id=None)
     assert build(actions=[event])['recoveries_rate10'].value is None
     assert build(actions=[{**event,'side':'away'}])['recoveries_rate10'].value==0
+
+
+def test_unknown_shot_target_and_save_outcomes_block_full_percentage():
+    events=[action('shot',on_target=True),action('shot',start_ms=2000,on_target=None)]
+    value=build(actions=events)['shots_on_target_pct']
+    assert value.value is None and value.numerator==1 and value.denominator==2
+    row=performance(role='goalkeeper')
+    saves=[action('save',success=True),action('save',start_ms=2000,success=None)]
+    value=build(row,saves)['save_pct'];assert value.value is None
+    assert value.reason=='unresolved_attempts'
+
+
+def test_unlinked_successful_pass_before_shot_does_not_prove_zero_key_passes():
+    events=[action('pass',success=True,possession_id=None),action('shot',player_id=OTHER,on_target=True,start_ms=2000,possession_id=None)]
+    assert build(actions=events)['key_pass_rate10'].value is None
+    # No shots under complete annotation is a real zero, even without a chain.
+    assert build(actions=events[:1])['key_pass_rate10'].value==0
+
+
+def test_block_requires_a_real_active_opponent_shot():
+    block=action('shot_block',shot_id='missing')
+    assert build(actions=[block])['blocks_rate10'].value is None
