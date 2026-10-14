@@ -26,6 +26,8 @@ class Limits:
     files: int = 2048
     json: int = 64 * 1024 * 1024
     thumb: int = 2 * 1024 * 1024
+    evidence: int = 512 * 1024
+    understanding_json: int = 8 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,7 @@ class ValidatedResult:
     checks: dict
     files: dict[str, bytes]
     content_hash: str
+    understanding: dict | None = None
 
 
 def canonical(value):
@@ -97,16 +100,19 @@ def read_archive(source, limits=Limits(), *, job=False):
         ensure(Path(source).stat().st_size <= limits.compressed, 'Превышен размер ZIP')
         source = Path(source).read_bytes()
     ensure(isinstance(source, bytes) and len(source) <= limits.compressed, 'Превышен размер ZIP')
-    files = {}; total = 0
+    files = {}; total = 0; evidence_count = 0
     try:
         with ZipFile(BytesIO(source)) as archive:
             ensure(len(archive.infolist()) <= limits.files, 'Превышено число файлов ZIP')
             for info in archive.infolist():
                 name = info.filename
-                allowed = name in JOB_FILES if job else name in RESULT_JSON or bool(re.fullmatch(r'thumbs/[A-Za-z0-9_-]{1,100}\.jpg', name))
+                allowed = name in JOB_FILES if job else name in RESULT_JSON or name == 'understanding.json' or bool(re.fullmatch(r'(thumbs|evidence)/[A-Za-z0-9_-]{1,100}\.jpg', name))
                 ensure(allowed and name not in files and not info.is_dir(), f'Недопустимый файл ZIP: {name[:100]}')
                 ensure(not stat.S_ISLNK(info.external_attr >> 16) and not (info.flag_bits & 1), 'Ссылки/зашифрованные файлы запрещены')
-                cap = limits.thumb if name.endswith('.jpg') else limits.json
+                if name.startswith('evidence/'):
+                    evidence_count += 1
+                    ensure(evidence_count <= 500, 'Превышено число доказательств')
+                cap = min(limits.evidence, 512 * 1024) if name.startswith('evidence/') else limits.thumb if name.endswith('.jpg') else min(limits.json, limits.understanding_json, 8 * 1024 * 1024) if name == 'understanding.json' else limits.json
                 ensure(info.file_size <= cap and total + info.file_size <= limits.unpacked, 'Превышен распакованный размер ZIP')
                 with archive.open(info) as stream:
                     raw = stream.read(min(cap, limits.unpacked - total) + 1)
@@ -115,6 +121,13 @@ def read_archive(source, limits=Limits(), *, job=False):
                 total += len(raw); files[name] = raw
     except (BadZipFile, RuntimeError, OSError, EOFError, NotImplementedError) as exc:
         raise ExchangeError('Не читается ZIP или нарушена его целостность') from exc
+    if not job and 'manifest.json' in files:
+        version = load_json(files['manifest.json'], 'manifest.json').get('contract_version')
+        ensure(version in ('1', '2'), 'Неподдерживаемая версия контракта')
+        if version == '1':
+            ensure('understanding.json' not in files and not any(name.startswith('evidence/') for name in files), 'Версия контракта 1 не содержит понимание')
+        else:
+            ensure('understanding.json' in files, 'Версия контракта 2 требует understanding.json')
     return files
 
 
@@ -148,7 +161,7 @@ def validate_result(source, limits=Limits()):
     tracks = load_json(files['track-index.json'], 'track-index.json')
     checks = load_json(files['checks.json'], 'checks.json')
     try:
-        ensure(manifest['contract_version'] == '1' and report['schema_version'] == '1', 'Неподдерживаемая версия контракта')
+        ensure(manifest['contract_version'] in ('1', '2') and report['schema_version'] == '1', 'Неподдерживаемая версия контракта')
         for key in ['run_id', 'job_id', 'match_id', 'camera_profile_id']: uuid(manifest[key], key)
         hash_value(manifest['context_hash'], 'context_hash')
         ensure(manifest['units'] == UNITS, 'Несовместимые единицы измерения')
@@ -226,5 +239,21 @@ def validate_result(source, limits=Limits()):
     except (KeyError, TypeError, AttributeError, ValueError, OSError) as exc:
         if isinstance(exc, ExchangeError): raise
         raise ExchangeError('Структура или содержимое пакета не соответствует контракту') from exc
+    understanding = None
+    if manifest['contract_version'] == '2':
+        from aifootball.understanding.schema import validate_understanding
+        try:
+            understanding = validate_understanding(load_json(files['understanding.json'], 'understanding.json'),
+                manifest=manifest, tracks=tracks, files=files)
+            ensure({item['path'] for item in understanding['evidence']} == {name for name in files if name.startswith('evidence/')}, 'Перечень evidence не совпадает с пакетом')
+            for assertion in understanding['summary']:
+                for ref in assertion['metric_refs']:
+                    period = next((p for p in report['periods'] if p['key'] == ref['period_key']), None)
+                    ensure(period is not None, 'Нет периода metric reference')
+                    owner = period.get('teams', {}).get(ref['team']) if 'team' in ref else next((p for p in period['players'] if p['track_id'] == ref['track_id']), None)
+                    ensure(owner is not None and owner.get(ref['metric_name']) is not None, 'Нет измеренной metric reference')
+        except ValueError as exc:
+            if isinstance(exc, ExchangeError): raise
+            raise ExchangeError(str(exc)) from None
     content_hash = sha256(canonical({'manifest': manifest, 'files': {name: sha256(raw).hexdigest() for name, raw in sorted(files.items()) if name != 'manifest.json'}})).hexdigest()
-    return ValidatedResult(manifest, report, tracks, checks, files, content_hash)
+    return ValidatedResult(manifest, report, tracks, checks, files, content_hash, understanding)

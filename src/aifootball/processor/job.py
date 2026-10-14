@@ -86,7 +86,7 @@ def track_intervals(times, duration, max_gap=1.0):
     return [pair for pair in out if pair[0] < pair[1]]
 
 
-def package_result(job_path, video_path, artifacts, output_path, *, halves=None, partial_recording=False):
+def package_result(job_path, video_path, artifacts, output_path, *, halves=None, partial_recording=False, understanding=None, evidence_files=None):
     import polars as pl
     from aifootball import schemas
     from aifootball.venue import load_venue
@@ -152,7 +152,15 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
               'partial': partial, 'warnings': ['Частичная запись или неполное покрытие обработки'] if partial else []}
     for name, value in [('report.json', report), ('track-index.json', {'tracks': indexed}), ('checks.json', checks)]:
         files[name] = canonical(value)
-    manifest = {'contract_version': '1', 'run_id': str(uuid4()), 'job_id': job.contract['job_id'],
+    if understanding is not None:
+        ensure(isinstance(evidence_files, dict) and len(evidence_files) <= 500, 'Неверный реестр доказательств')
+        ensure(all(isinstance(raw, bytes) and len(raw) <= 512 * 1024 for raw in evidence_files.values()), 'Размер доказательства')
+        ensure(not (set(files) & set(evidence_files)), 'Конфликт имён доказательств')
+        files.update(evidence_files); files['understanding.json'] = canonical(understanding)
+        ensure(len(files['understanding.json']) <= 8 * 1024 * 1024, 'Размер understanding.json')
+    else:
+        ensure(not evidence_files, 'Доказательства требуют understanding')
+    manifest = {'contract_version': '2' if understanding is not None else '1', 'run_id': str(uuid4()), 'job_id': job.contract['job_id'],
                 'match_id': job.contract['match_id'], 'context_hash': job.contract['context_hash'],
                 'camera_profile_id': context['camera']['id'], 'primary_period_key': primary['key'],
                 'source_video': source, 'processor': {'name': 'aifootball', 'version': '0.1.0', 'model': venue.model},
