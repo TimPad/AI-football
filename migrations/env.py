@@ -8,6 +8,7 @@ from aifootball.service.matches import models as match_models
 from aifootball.service.protocol import models as protocol_models
 from aifootball.service.halls import models as hall_models
 from aifootball.service.analysis import models as analysis_models
+from aifootball.service.ratings import models as rating_models
 
 config = context.config
 url = config.attributes.get('database_url') or Settings().database_url
