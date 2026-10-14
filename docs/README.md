@@ -13,7 +13,8 @@
 
 ## Архитектура и следующие этапы
 
-- [YOLO + DeepSeek V4.1 Flash](superpowers/specs/2026-10-14-deepseek-match-understanding-design.md): спецификация локальной проверки номеров и эпизодов, восстановления и последующего переноса на прерываемую GPU-ВМ; реализация ещё не выполнена.
+- [YOLO + Qwen3.8-Omni-Flash](superpowers/specs/2026-10-14-qwen-match-understanding-design.md): спецификация локальной проверки номеров и эпизодов, восстановления и последующего переноса на прерываемую GPU-ВМ; реализация ещё не выполнена.
+- [План локальной реализации Qwen](superpowers/plans/2026-10-14-qwen-match-understanding.md): API, клипы со звуком, восстановление, результат версии 2, кабинет и приёмка; ожидает проверки и выбора способа исполнения.
 - [HTML-схема](architecture/2026-10-13-video-analytics.html): скачайте файл и откройте в браузере; на GitHub отображается исходный HTML.
 - [Контракт внешней обработки](specs/2026-10-13-external-processing-and-report-import.md).
 - [План внедрения](superpowers/plans/2026-10-13-video-analytics-import.md): первая поставка выполнена; вторая и третья — план.
