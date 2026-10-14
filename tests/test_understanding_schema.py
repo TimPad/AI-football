@@ -129,3 +129,17 @@ def test_actual_token_overrun_remains_reportable(case):
     # Estimates cannot retract tokens already billed by the provider.
     case[0]['budget'].update(requests=1,max_input_tokens=100,input_tokens=120)
     assert validate(case)['budget']['input_tokens']==120
+
+
+@pytest.mark.parametrize('kind',['kickoff','kick_in','corner','free_kick_candidate','penalty_candidate',
+    'timeout','shot_candidate','save_candidate','goal_candidate','substitution_candidate',
+    'keeper_out_candidate','pressing_candidate','compact_block_candidate','unknown'])
+def test_supported_futsal_event_is_preserved_as_observation(case,kind):
+    case[0]['events']=[event(kind=kind)]
+    assert validate(case)['events'][0]['kind']==kind
+
+
+@pytest.mark.parametrize('kind',['pre_match','playing','stoppage','break','post_match','unknown'])
+def test_supported_game_state_remains_bounded(case,kind):
+    case[0]['states']=[{'kind':kind,'start_ms':1000,'end_ms':2000,'evidence_ids':[],'limitations':[]}]
+    assert validate(case)['states'][0]['kind']==kind
