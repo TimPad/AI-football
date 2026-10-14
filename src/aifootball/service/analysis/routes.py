@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request, UploadFile, File, Header
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from aifootball.service.db import get_session
-from aifootball.service.auth.security import require_admin, require_analytics_admin
+from aifootball.service.auth.security import require_admin, require_analytics_admin, require_analytics_reader
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
 from aifootball.service.analysis.models import AnalysisJob, AnalysisRun
@@ -103,12 +103,12 @@ from aifootball.service.analysis.understanding import get_understanding,review_u
 
 
 @router.get('/matches/{mid}/analysis/runs/{rid}/understanding',response_model=UnderstandingView)
-def understanding_detail(mid:UUID,rid:UUID,admin=Depends(require_analytics_admin),db:Session=Depends(get_session)):
+def understanding_detail(mid:UUID,rid:UUID,admin=Depends(require_analytics_reader),db:Session=Depends(get_session)):
     return get_understanding(db,scoped_run(db,mid,rid))
 
 
 @router.get('/matches/{mid}/analysis/runs/{rid}/understanding/evidence/{eid}')
-def understanding_evidence(mid:UUID,rid:UUID,eid:str,request:Request,admin=Depends(require_analytics_admin),db:Session=Depends(get_session)):
+def understanding_evidence(mid:UUID,rid:UUID,eid:str,request:Request,admin=Depends(require_analytics_reader),db:Session=Depends(get_session)):
     run=scoped_run(db,mid,rid)
     evidence=next((item for item in (run.understanding or {}).get('evidence',[]) if item['id']==eid),None)
     if evidence is None:raise DomainError('not_found','Доказательство не найдено',status=404)

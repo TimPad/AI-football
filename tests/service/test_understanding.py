@@ -46,6 +46,16 @@ def test_private_understanding_is_separate_and_goal_review_cannot_change_protoco
     assert image.headers['X-Content-Type-Options']=='nosniff'
 
 
+def test_private_get_and_image_work_with_session_cookie_without_csrf_header(admin_client,analytics_match):
+    run=imported(admin_client,analytics_match)
+    with TestClient(admin_client.app) as browser:
+        browser.cookies.update(admin_client.cookies)
+        assert browser.get(path(analytics_match,run)).status_code==200
+        assert browser.get(path(analytics_match,run)+'/evidence/f1').status_code==200
+        # Writes still require the anti-forgery header.
+        assert review(browser,analytics_match,run).status_code==403
+
+
 def test_understanding_requires_admin_plus_and_scoped_evidence(admin_client,analytics_match):
     run=imported(admin_client,analytics_match)
     assert admin_client.get(path({'id':str(uuid4())},run)).status_code==404

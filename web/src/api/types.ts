@@ -558,6 +558,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/understanding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Understanding Detail */
+        get: operations["understanding_detail_api_v1_matches__mid__analysis_runs__rid__understanding_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/understanding/evidence/{eid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Understanding Evidence */
+        get: operations["understanding_evidence_api_v1_matches__mid__analysis_runs__rid__understanding_evidence__eid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/understanding/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Understanding Review */
+        put: operations["understanding_review_api_v1_matches__mid__analysis_runs__rid__understanding_reviews_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tid}/matches": {
         parameters: {
             query?: never;
@@ -3507,6 +3558,11 @@ export interface components {
         /** RunSummary */
         RunSummary: {
             /**
+             * Has Understanding
+             * @default false
+             */
+            has_understanding?: boolean;
+            /**
              * Id
              * Format: uuid
              */
@@ -3537,6 +3593,11 @@ export interface components {
         };
         /** RunView */
         RunView: {
+            /**
+             * Has Understanding
+             * @default false
+             */
+            has_understanding?: boolean;
             /**
              * Id
              * Format: uuid
@@ -4337,6 +4398,80 @@ export interface components {
             thumb: string | null;
             /** Has Metrics */
             has_metrics: boolean;
+        };
+        /** UnderstandingReviewUpdate */
+        UnderstandingReviewUpdate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /** Event Id */
+            event_id: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accepted" | "corrected" | "rejected";
+            /** Correction */
+            correction?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Reason
+             * @default
+             */
+            reason?: string;
+        };
+        /** UnderstandingView */
+        UnderstandingView: {
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /** Source Run Id */
+            source_run_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "review" | "confirmed";
+            /** Revision */
+            revision: number;
+            /** Understanding */
+            understanding: {
+                [key: string]: unknown;
+            } | null;
+            /** Reviews */
+            reviews: {
+                [key: string]: unknown;
+            };
+            /** Side Map Verified */
+            side_map_verified: boolean;
+            /** Identity Suggestions */
+            identity_suggestions: {
+                [key: string]: unknown;
+            }[];
+            /** Effective Events */
+            effective_events: {
+                [key: string]: unknown;
+            }[];
+            /** Verified Summary */
+            verified_summary: {
+                [key: string]: unknown;
+            }[];
+            /** History */
+            history: {
+                [key: string]: unknown;
+            }[];
         };
         /** UnpublishCommand */
         UnpublishCommand: {
@@ -5769,6 +5904,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicAnalysis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    understanding_detail_api_v1_matches__mid__analysis_runs__rid__understanding_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnderstandingView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    understanding_evidence_api_v1_matches__mid__analysis_runs__rid__understanding_evidence__eid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+                eid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    understanding_review_api_v1_matches__mid__analysis_runs__rid__understanding_reviews_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnderstandingReviewUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnderstandingView"];
                 };
             };
             /** @description Validation Error */
