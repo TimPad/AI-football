@@ -13,6 +13,7 @@
 
 ## Архитектура и следующие этапы
 
+- [YOLO + DeepSeek V4.1 Flash](superpowers/specs/2026-10-14-deepseek-match-understanding-design.md): спецификация локальной проверки номеров и эпизодов, восстановления и последующего переноса на прерываемую GPU-ВМ; реализация ещё не выполнена.
 - [HTML-схема](architecture/2026-10-13-video-analytics.html): скачайте файл и откройте в браузере; на GitHub отображается исходный HTML.
 - [Контракт внешней обработки](specs/2026-10-13-external-processing-and-report-import.md).
 - [План внедрения](superpowers/plans/2026-10-13-video-analytics-import.md): первая поставка выполнена; вторая и третья — план.
