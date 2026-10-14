@@ -13,6 +13,7 @@ class Match(Entity,Base):
     override_reason=Column(String)
     scheduled_at=Column(DateTime(timezone=True),nullable=False)
     venue_label=Column(String(200),nullable=False,default='')
+    stage_label=Column(String(100))
     hall_id=Column(Uuid,ForeignKey('halls.id',name='fk_match_hall'))
     hall_snapshot=Column(JSONB)
     camera_profile_id=Column(Uuid,ForeignKey('camera_profiles.id',name='fk_match_camera'))

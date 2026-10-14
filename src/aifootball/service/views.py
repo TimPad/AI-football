@@ -108,6 +108,7 @@ class LineupView(EntityView):
     shirt_number: str | None
     display_name: str
 class MatchView(EntityView):
+    stage_label: str | None = None
     match_id: UUID
     tournament_id: UUID
     home_entry_id: UUID

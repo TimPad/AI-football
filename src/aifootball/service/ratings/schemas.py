@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated,Literal,Any
 from uuid import UUID
-from pydantic import BaseModel,Field,StrictBool
+from pydantic import field_validator, BaseModel,Field,StrictBool
 from aifootball.service.tournaments.schemas import Input
 
 Millis=Annotated[int,Field(strict=True,ge=0,le=86400000)]
@@ -178,3 +178,150 @@ class ActionsOverview(BaseModel):
     protocol_versions:list[dict[str,Any]]
     analysis_runs:list[dict[str,Any]]
     participation_versions:list[ParticipationSummary]
+
+
+class RatingCalculate(Input):
+    request_id:UUID
+    expected_revision:int=Field(strict=True,ge=0)
+    scope:Literal['private','public']='private'
+    profile_id:Literal['per10','per10-possession']='per10'
+    time_basis:Literal['reviewed_effective','official_clean','running_clock']='reviewed_effective'
+    level:str=Field(default='amateur',min_length=1,max_length=100)
+    cutoff:datetime|None=None
+
+    @field_validator('cutoff')
+    @classmethod
+    def aware_cutoff(cls,value):
+        if value is not None and value.tzinfo is None:raise ValueError('Укажите часовой пояс cutoff')
+        return value
+
+
+class RatingPublish(Input):
+    request_id:UUID
+    expected_revision:int=Field(strict=True,ge=0)
+    snapshot_id:UUID
+
+
+class PerformancePublication(Input):
+    request_id:UUID
+    expected_revision:int=Field(strict=True,ge=0)
+    expected_match_revision:int=Field(strict=True,ge=0)
+    participation_version_id:UUID|None=None
+    action_version_id:UUID|None=None
+    approve_policy:StrictBool=False
+
+
+class MetricFactView(BaseModel):
+    value:float|None
+    numerator:float|None
+    denominator:float|None
+    unit:str
+    completeness:str
+    reason:str|None
+
+
+class RatingMatchView(BaseModel):
+    match_id:UUID
+    player_id:UUID
+    display_name:str
+    role:str
+    team_id:UUID
+    team_name:str
+    stage_label:str|None=None
+    scheduled_at:str
+    appeared:bool|None
+    eligible_play_minutes:float|None
+    played_minutes:float|None
+    coverage:float|None
+    score:float|None
+    display_rating:float|None
+    components:dict[str,float|None]
+    contributions:dict[str,float|None]
+    feature_scores:dict[str,float|None]
+    facts:dict[str,MetricFactView]
+    reasons:list[str]
+    model_version:str
+    reference_version:str
+    profile_id:str
+    time_basis:str
+    moments:list[dict[str,Any]]=Field(default_factory=list)
+    physical:dict[str,Any]=Field(default_factory=dict)
+    explanation:dict[str,Any]=Field(default_factory=dict)
+
+
+class RatingSummaryView(BaseModel):
+    player_id:UUID
+    display_name:str
+    role:str|None
+    rank:int|None
+    qualification:Literal['qualified','preliminary','unknown']
+    score:float|None
+    display_rating:float|None
+    match_count:int
+    rated_match_count:int
+    eligible_play_minutes:float
+    played_minutes:float|None
+    known_played_minutes:float
+    rated_minutes:float
+    weight_sum:float
+    coverage:float|None
+    baseline_influence:float|None
+    facts:dict[str,MetricFactView]=Field(default_factory=dict)
+    teams:list[dict[str,str]]=Field(default_factory=list)
+    reasons:list[str]=Field(default_factory=list)
+
+
+class RatingPage(BaseModel):
+    snapshot_id:UUID|None
+    calculated_at:datetime|None=None
+    published_at:datetime|None=None
+    scope:Literal['private','public']
+    edition:dict[str,str]=Field(default_factory=dict)
+    label:str='Пилотная методика'
+    items:list[RatingSummaryView]
+    total:int
+    limit:int
+    offset:int
+    reason:str|None=None
+    filters:dict[str,Any]=Field(default_factory=dict)
+
+
+class RatingPlayerHistory(BaseModel):
+    snapshot_id:UUID|None
+    summary:list[RatingSummaryView]
+    matches:list[RatingMatchView]
+
+
+class RatingSnapshotResult(BaseModel):
+    stale:bool=False
+    snapshot_id:UUID
+    revision:int
+    scope:Literal['private','public']
+    calculated_at:datetime
+    published_at:datetime|None
+    source_fingerprint:str
+    summary:dict[str,Any]
+    settings:dict[str,Any]
+
+
+class AnalyticsOverview(BaseModel):
+    revision:int
+    policy:dict[str,Any]
+    private_snapshot_id:UUID|None
+    public_snapshot_id:UUID|None
+    policy_approved:bool
+    snapshots:list[RatingSnapshotResult]
+    sources:list[dict[str,Any]]
+
+
+class PerformancePublicationView(BaseModel):
+    revision:int
+    match_id:UUID
+    participation_version_id:UUID|None
+    action_version_id:UUID|None
+    policy_approved:bool
+
+
+class MatchRatingsView(BaseModel):
+    snapshot_id:UUID|None
+    items:list[RatingMatchView]
