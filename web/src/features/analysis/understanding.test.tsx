@@ -36,6 +36,15 @@ it('shows current verified summary, rejection and immutable confirmed review',()
  show({...value,status:'confirmed',reviews:{e1:{decision:'rejected'}},effective_events:[],verified_summary:[{text:'Проверенный эпизод',event_ids:['e2'],player_ids:[]}]},false);
  expect(screen.getByText('Проверенный эпизод')).toBeVisible();expect(screen.getByText('Отклонён')).toBeVisible();expect(screen.queryByRole('button',{name:'Принять эпизод e1'})).toBeNull();
 });
+it('separates full temporal coverage from incomplete processing stages',()=>{
+ show({...value,understanding:{...value.understanding!,coverage:{status:'complete',covered_intervals:[[0,5000]],unknown_intervals:[]},processing:{status:'partial',tasks_planned:2,tasks_completed:1,scene_tasks_planned:1,scene_tasks_completed:1,identity_tasks_planned:1,identity_tasks_completed:0,issues:['Бюджет обработки исчерпан']}}});
+ expect(screen.getByText('Частичная обработка')).toBeVisible();expect(screen.getByText('Бюджет обработки исчерпан')).toBeVisible();expect(screen.queryByText(/Обработаны все окна файла/)).toBeNull();
+});
+it('keeps phases visible separately and makes the entire timeline inspectable',()=>{
+ show({...value,understanding:{...value.understanding!,states:Array.from({length:201},(_,i)=>({kind:'playing',start_ms:i*1000,end_ms:(i+1)*1000,limitations:[]})),phases:[{kind:'attack',team:'A',start_ms:0,end_ms:1000,limitations:[]}]}});
+ fireEvent.click(screen.getByText('Состояния игры и фазы'));expect(screen.getByText(/Атака/)).toBeVisible();
+ fireEvent.click(screen.getByRole('button',{name:'Показать ещё состояния'}));fireEvent.click(screen.getByRole('button',{name:'Показать ещё состояния'}));expect(screen.getByText('03:20–03:21')).toBeVisible();
+});
 it('ordinary admin never requests closed understanding even for a v2 report',async()=>{
  const preview={...run,manifest:{source_video:{duration_s:240}},report:{match:{processed_s:120},periods:[]},checks:{critical_errors:[],warnings:[]},passed:true};
  vi.mocked(api).mockImplementation(async path=>String(path).endsWith('/runs/run')?preview:{analysis_revision:0,jobs:[],runs:[{...run,has_understanding:true}]});

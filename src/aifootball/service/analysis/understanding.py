@@ -30,7 +30,8 @@ def get_understanding(db,run):
     job=get_entity(db,AnalysisJob,run.job_id)
     suggestions=resolve_identity((run.understanding or {}).get('observations',[]),job.context['rosters'],
         side_map=run.side_map if run.side_map_verified else None,
-        track_intervals={track['track_id']:track['intervals'] for track in run.tracks['tracks']})
+        track_intervals={track['track_id']:track['intervals'] for track in run.tracks['tracks']},
+        track_teams={track['track_id']:track['team'] for track in run.tracks['tracks']})
     assignments={row.track_id:str(row.player_id) for row in db.scalars(select(AnalysisAssignment).where(
         AnalysisAssignment.run_id==run.id,AnalysisAssignment.player_id.is_not(None)))}
     events=_effective(run);summary=[]
@@ -63,25 +64,30 @@ def review_understanding(db,match_id,run_id,actor_id,data):
     original=next((item for item in run.understanding['events'] if item['id']==data.event_id),None)
     if original is None:raise DomainError('not_found','Эпизод не найден',status=404)
     if (data.decision=='corrected')!=(data.correction is not None):raise DomainError('understanding_correction','Исправлению нужны изменённые поля; другим решениям они не нужны')
+    before=deepcopy(run.understanding_reviews.get(data.event_id))
+    current_correction=(before or {}).get('correction') or {}
+    correction=({**current_correction,**data.correction} if data.decision=='corrected' else
+                deepcopy(current_correction) if data.decision=='accepted' and current_correction else None)
     if data.correction is not None:
         if not data.correction or not set(data.correction)<=set(original)-{'id'}:
             raise DomainError('understanding_correction','Недопустимые поля исправления')
+    if correction is not None:
         candidate=deepcopy(run.understanding)
-        corrected={**original,**data.correction}
+        corrected={**original,**correction}
         candidate['events']=[corrected if item['id']==data.event_id else item for item in candidate['events']]
         try:
             job=get_entity(db,AnalysisJob,run.job_id)
             validate_understanding(candidate,manifest=run.manifest,tracks=run.tracks,rosters=job.context['rosters'])
         except ValueError as exc:raise DomainError('understanding_correction','Исправление нарушает границы, типы или ссылки эпизода') from exc
     if data.decision in ('accepted','corrected'):
-        effective={**original,**(data.correction or {})}
+        effective={**original,**(correction or {})}
         tracks={item['track_id']:item for item in run.tracks['tracks']}
         for tid in effective['track_ids']:
             # Candidate boundaries are uncertain, but another minute is not the same episode.
             if not any(max(a,effective['start_ms']/1000-2)<min(b,effective['end_ms']/1000+2) for a,b in tracks[tid]['intervals']):
                 raise DomainError('understanding_time','Фрагмент игрока не наблюдался рядом с эпизодом')
-    before=deepcopy(run.understanding_reviews.get(data.event_id));run.revision+=1
-    after={'decision':data.decision,'correction':deepcopy(data.correction),'reason':data.reason.strip(),
+    run.revision+=1
+    after={'decision':data.decision,'correction':deepcopy(correction),'reason':data.reason.strip(),
            'actor_id':str(actor_id),'revision':run.revision}
     run.understanding_reviews={**run.understanding_reviews,data.event_id:after}
     db.add(AnalysisUnderstandingDecision(run_id=run.id,event_id=data.event_id,actor_id=actor_id,

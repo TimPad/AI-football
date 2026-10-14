@@ -36,3 +36,15 @@ def test_scene_prompt_grounds_track_ids_in_normalized_frame_boxes(tmp_path):
         'track_teams':{1:'A',99:'B'}}))
     assert payload['window']['track_boxes']=={'f25':[[1,.1,.2,.3,.8]]}
     assert payload['window']['track_teams']=={'1':'A'}
+
+
+def test_identity_prompt_retains_cv_team_and_scope_without_full_frame_boxes(tmp_path):
+    from aifootball.understanding.prompts import identity_prompt
+    payload=json.loads(identity_prompt(window(tmp_path),measured={
+        'analysis_scope':'highlights','track_teams':{1:'B',99:'A'},
+        'track_boxes':{'f25':[[1,.1,.2,.3,.8]]},'api_key':'not-for-model'}))
+    assert payload['window']['track_teams']=={'1':'B'}
+    assert payload['scope']=='highlights'
+    assert payload['window']['track_boxes']=={}
+    assert payload['window']['evidence_tracks']=={'f25':1}
+    assert 'not-for-model' not in json.dumps(payload)

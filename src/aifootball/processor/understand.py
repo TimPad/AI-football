@@ -69,6 +69,7 @@ def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mo
         if index%2==1 and pending:tasks.append(('identity',pending.pop(0)))
     tasks.extend(('identity',window) for window in pending)
     successful=[];identity_results=[];evidence={};image_files={};issues=[];response_models=set()
+    completed={'match':0,'identity':0}
     for kind,spec in tasks:
         try:
             window=spec if kind=='identity' else make_window(video,start_ms=spec['start_ms'],end_ms=spec['end_ms'],
@@ -79,7 +80,7 @@ def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mo
         if len(evidence)+len(new_ids)>500:
             issues.append('Достигнут предел доказательств; дальнейшие окна не отправлены');break
         measured=_context(window,tracks,source,analysis_scope)
-        prompt=identity_prompt(window) if kind=='identity' else match_prompt(window,measured=measured)
+        prompt=identity_prompt(window,measured=measured) if kind=='identity' else match_prompt(window,measured=measured)
         key='understanding:'+sha256(canonical({'stage':stage_key,'kind':kind,'window':window.id,
             'prompt':prompt,'images':[frame.sha256 for frame in window.frames],
             'media':window.media.sha256 if window.media else None})).hexdigest()
@@ -140,6 +141,7 @@ def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mo
                 image_files[item['path']]=frame.path.read_bytes()
             result={**result,'window_id':kind+'-'+window.id,'evidence':window_evidence}
             (identity_results if kind=='identity' else successful).append(result)
+            completed[kind]+=1
         if stop:break
     merged=reconcile_windows(successful,duration_ms=duration,source_sha256=source['sha256'],prompt_version=PROMPT_VERSION)
     observations=merged['observations']+[item for result in identity_results for item in result['document']['observations']]
@@ -148,13 +150,23 @@ def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mo
         if state['kind']=='unknown' and issues:state['limitations']=sorted(set(state['limitations']+issues))[:100]
     context={key:job.contract[key] if key in job.contract else job.contract['context']['camera']['id'] for key in
              ('job_id','match_id','context_hash','camera_profile_id')}
-    doc={'schema_version':'1','source':{'sha256':source['sha256'],'duration_ms':duration,'width':source['width'],
+    task_count=len(tasks);done=sum(completed.values())
+    processing={'status':'unavailable' if not done else 'complete' if done==task_count and not issues else 'partial',
+        'tasks_planned':task_count,'tasks_completed':done,
+        'scene_tasks_planned':len(scene_specs),'scene_tasks_completed':completed['match'],
+        'identity_tasks_planned':len(identity_jobs),'identity_tasks_completed':completed['identity'],
+        'issues':sorted(set(issues))[:100]}
+    cv_teams={}
+    for (tid,),group in tracks.partition_by('track_id',as_dict=True).items():
+        teams={team for team in group['team'].to_list() if team is not None}
+        cv_teams[tid]=next(iter(teams)) if len(teams)==1 else None
+    doc={'schema_version':'1','processing':processing,'source':{'sha256':source['sha256'],'duration_ms':duration,'width':source['width'],
         'height':source['height'],'analysis_scope':analysis_scope},'context':context,
         'provider':{'name':'qwen','model':config.model,'response_model':','.join(sorted(response_models)) or None,
                     'endpoint':config.base_url,'region':'ap-southeast-1' if 'ap-southeast-1.' in config.base_url else None,
                     'prompt_version':PROMPT_VERSION,'settings':{'mode':mode,'reasoning_effort':'none'}},
         'budget':budget.snapshot(),'coverage':merged['coverage'],'evidence':[evidence[key] for key in sorted(evidence)],
-        'observations':observations,'identity_suggestions':resolve_identity(observations,job.contract['context']['rosters'],side_map=None),
+        'observations':observations,'identity_suggestions':resolve_identity(observations,job.contract['context']['rosters'],side_map=None,track_teams=cv_teams),
         'states':merged['states'],'phases':merged['phases'],'events':merged['events'],'summary':merged['summary']}
     manifest={'source_video':source,**context}
     track_index={'tracks':[{'track_id':tid} for tid in tracks['track_id'].unique().to_list()]}

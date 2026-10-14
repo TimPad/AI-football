@@ -153,6 +153,72 @@ def test_schema_repair_is_one_additional_paid_attempt(case):
     assert doc['coverage']['status']=='complete'
 
 
+def test_invalid_metric_type_is_repaired_and_does_not_poison_resume(case):
+    from aifootball.processor.understand import run_understanding
+    from aifootball.understanding.types import InferenceResult
+    job,video,artifacts,ws,budget=case
+    class Malformed(Client):
+        def infer(self,window,prompt,*,max_output_tokens):
+            if not self.calls:
+                self.calls[window.id]+=1
+                return InferenceResult({'time_basis':'window','observations':[],'states':[],'phases':[],'events':[],
+                    'summary':[{'text':'Метрика','event_ids':[],'metric_refs':[{'period_key':'all','track_id':1,'metric_name':[]}]}]},
+                    {'prompt_tokens':100,'completion_tokens':10},'malformed','qwen3.8-omni-flash')
+            return super().infer(window,prompt,max_output_tokens=max_output_tokens)
+    client=Malformed();doc,_=run_understanding(job,video,artifacts,ws,client=client,budget=budget,mode='frames')
+    assert doc['budget']['requests']==6 and doc['coverage']['status']=='complete'
+    resumed=Client();run_understanding(job,video,artifacts,ws,client=resumed,budget=budget,mode='frames')
+    assert not resumed.calls
+
+
+def test_resume_skips_malformed_raw_receipt_after_interrupted_validation(case,monkeypatch):
+    from aifootball.processor.understand import run_understanding
+    from aifootball.understanding.types import InferenceResult
+    job,video,artifacts,ws,budget=case;put=ws.put_json;crashed=False
+    def interrupt(key,value):
+        nonlocal crashed
+        put(key,value)
+        if key.startswith('raw:') and not crashed:
+            crashed=True;raise RuntimeError('interrupted after receipt')
+    class Malformed(Client):
+        def infer(self,window,prompt,*,max_output_tokens):
+            return InferenceResult({'time_basis':'window','observations':[],'states':[],'phases':[],'events':[],
+                'summary':[{'text':'Метрика','event_ids':[],'metric_refs':[{'period_key':'all','track_id':1,'metric_name':[]}]}]},
+                {'prompt_tokens':100,'completion_tokens':10},'malformed','qwen3.8-omni-flash')
+    monkeypatch.setattr(ws,'put_json',interrupt)
+    with pytest.raises(RuntimeError):run_understanding(job,video,artifacts,ws,client=Malformed(),budget=budget,mode='frames')
+    resumed=Client();doc,_=run_understanding(job,video,artifacts,ws,client=resumed,budget=budget,mode='frames')
+    assert doc['coverage']['status']=='complete' and doc['budget']['requests']==6
+
+
+@pytest.mark.parametrize('unfinished',['identity','refinement'])
+def test_processing_status_exposes_unfinished_tasks_even_with_full_temporal_coverage(case,monkeypatch,unfinished):
+    from aifootball.processor import understand as module
+    from aifootball.processor.workspace import Workspace
+    from aifootball.processor.budget import Budget
+    from aifootball.understanding.types import InferenceResult
+    from understanding_fixtures import make_frame
+    job,video,artifacts,ws,_=case
+    write_video(video,n_frames=32,fps=4,size=(400,200))
+    specs=[{'id':'scene','start_ms':0,'end_ms':8000,'fps':1,'track_ids':[1]}]
+    if unfinished=='refinement':specs.append({'id':'refine','start_ms':0,'end_ms':5000,'fps':1,'track_ids':[1]})
+    monkeypatch.setattr(module,'plan_windows',lambda **kwargs:specs)
+    monkeypatch.setattr(module,'select_player_frames',lambda *args:{1:[make_frame(ws.root,frame_id=0,video_ms=0)]} if unfinished=='identity' else {})
+    class Playing(Client):
+        def infer(self,window,prompt,*,max_output_tokens):
+            self.calls[window.id]+=1
+            return InferenceResult({'time_basis':'window','observations':[],'events':[],'phases':[],'summary':[],
+                'states':[{'kind':'playing','start_ms':0,'end_ms':window.end_ms-window.start_ms,
+                           'evidence_ids':[window.frames[0].id],'limitations':[]}]},
+                {'prompt_tokens':100,'completion_tokens':20},'fake','qwen3.8-omni-flash')
+    limited=Workspace(ws.root/'partial',{'source':'test'})
+    result,_=module.run_understanding(job,video,artifacts,limited,client=Playing(),budget=Budget(limited,max_requests=1),mode='frames')
+    assert result['coverage']['status']=='complete'
+    assert result['processing']['status']=='partial'
+    assert result['processing']['tasks_planned']==2 and result['processing']['tasks_completed']==1
+    assert any('Бюджет' in issue for issue in result['processing']['issues'])
+
+
 def test_invalid_budget_is_rejected_before_source_or_api(tmp_path):
     from aifootball.processor.job import process_job
     with pytest.raises(ValueError,match='budget|бюджет'):

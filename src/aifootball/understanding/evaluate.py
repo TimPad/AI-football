@@ -59,9 +59,13 @@ def evaluate_understanding(predicted:dict,labels:dict,*,tolerance_ms=2000)->dict
     numbered=[o for o in truth if o.get('number') is not None];observations=[o for o in predicted.get('observations',[]) if included(o) and o.get('number') is not None]
     pairs=_match(observations,numbered,lambda p,t:abs(p['video_ms']-t['video_ms']) if p['track_id']==t['track_id'] else float('inf'),tolerance_ms)
     correct=sum(observations[i]['number']==numbered[j]['number'] for i,j in pairs)
-    identities={o['track_id']:o['player_id'] for o in truth if o.get('player_id') is not None}
+    identities={}
+    for observation in truth:
+        if observation.get('player_id') is not None:
+            identities.setdefault(observation['track_id'],set()).add(observation['player_id'])
+    conflicting={tid for tid,people in identities.items() if len(people)>1}
     suggestions=[s for s in predicted.get('identity_suggestions',[]) if s.get('player_id') is not None and s['track_id'] in identities]
-    hits=sum(s['player_id']==identities[s['track_id']] for s in suggestions)
+    hits=sum(s['track_id'] not in conflicting and s['player_id'] in identities[s['track_id']] for s in suggestions)
     covered=_ranges(predicted.get('coverage',{}).get('covered_intervals',[]));coverage=_ranges(labels.get('coverage',[]))
     if intervals:coverage=[pair for a in coverage for b in intervals if (pair:=[max(a[0],b[0]),min(a[1],b[1])])[0]<pair[1]]
     total=sum(b-a for a,b in coverage);known=sum(_overlap(a,b) for a in coverage for b in covered)
@@ -77,6 +81,7 @@ def evaluate_understanding(predicted:dict,labels:dict,*,tolerance_ms=2000)->dict
     return {'source_sha256':source,'split':labels['split'],'tolerance_ms':tolerance_ms,'events':events,
         'numbers':{'labelled':len(numbered),'observed':len(pairs),'correct':correct,'accuracy':_ratio(correct,len(pairs)),
                    'coverage':_ratio(len(pairs),len(numbered)),'unknown_labels':unknown},
-        'identity':{'labelled':len(identities),'suggested':len(suggestions),'correct':hits,'precision':_ratio(hits,len(suggestions)),'coverage':_ratio(len(suggestions),len(identities))},
+        'identity':{'labelled':len(identities),'suggested':len(suggestions),'correct':hits,'precision':_ratio(hits,len(suggestions)),
+                    'coverage':_ratio(len(suggestions),len(identities)),'conflicting_tracks':len(conflicting)},
         'coverage':{'labelled_ms':total,'known_ms':known,'known_fraction':_ratio(known,total)},
         'states':{'labelled_ms':labelled,'known_ms':known_state,'correct_ms':correct_state,'accuracy':_ratio(correct_state,known_state),'coverage':_ratio(known_state,labelled)}}

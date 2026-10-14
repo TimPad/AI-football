@@ -27,6 +27,30 @@ def test_unknown_file_coverage_is_valid_but_not_full_match(case):
     assert out is not case[0]
 
 
+@pytest.mark.parametrize('name',[[],{},True,3,None])
+def test_malformed_metric_name_is_a_repairable_validation_error(case,name):
+    case[0]['summary']=[{'text':'Метрика','event_ids':[],'metric_refs':[{
+        'period_key':'all','track_id':case[2]['tracks'][0]['track_id'],'metric_name':name}]}]
+    with pytest.raises(ValueError):validate(case)
+
+
+def test_number_without_image_evidence_is_rejected(case):
+    case[0]['observations']=[{'track_id':case[2]['tracks'][0]['track_id'],'video_ms':1000,
+        'role':'player','number':'7','team':'A','evidence_ids':[],'visible_features':[],'limitations':[]}]
+    with pytest.raises(ValueError,match='evidence'):validate(case)
+
+
+def test_processing_counts_are_bounded_consistent_and_optional_for_legacy(case):
+    assert 'processing' not in validate(case)
+    case[0]['processing']={'status':'complete','tasks_planned':1,'tasks_completed':1,
+        'scene_tasks_planned':1,'scene_tasks_completed':1,'identity_tasks_planned':0,'identity_tasks_completed':0,'issues':[]}
+    assert validate(case)['processing']['status']=='complete'
+    case[0]['processing']['issues']=['Бюджет обработки исчерпан']
+    with pytest.raises(ValueError,match='processing status'):validate(case)
+    case[0]['processing'].update(status='partial',identity_tasks_completed=1)
+    with pytest.raises(ValueError,match='stage count'):validate(case)
+
+
 @pytest.mark.parametrize('mutate',[
     lambda d:d.update(extra=1),
     lambda d:d.update(schema_version='9'),
@@ -72,6 +96,8 @@ def test_player_uuid_must_belong_to_roster(case):
     tid=case[2]['tracks'][0]['track_id']
     suggestion={'track_id':tid,'player_id':'11111111-1111-4111-8111-111111111111',
                 'status':'candidate','number':'7','team':'A','evidence_ids':[],'reasons':[]}
+    case[0]['evidence']=[{'id':'f1','frame_id':25,'video_ms':1000,'path':'evidence/f1.jpg','sha256':'a'*64,'crop':None,'kind':'overview'}]
+    suggestion['evidence_ids']=['f1']
     case[0]['identity_suggestions']=[suggestion]
     with pytest.raises(ValueError,match='roster'):validate(case,rosters=[])
     assert validate(case,rosters=[{'player_id':suggestion['player_id']}])['identity_suggestions'][0]['player_id']==suggestion['player_id']

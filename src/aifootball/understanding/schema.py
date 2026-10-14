@@ -92,6 +92,7 @@ def validate_items(document,*,duration,track_ids,evidence_ids,media=None):
         require(type(item['role']) is str and item['role'] in ROLES,'role');require(item['team'] in ('A','B',None),'team')
         require(item['number'] is None or (type(item['number']) is str and re.fullmatch(r'[0-9]{1,3}',item['number'])),'number')
         refs(item['evidence_ids'],evidence_ids,'evidence');notes(item['limitations'])
+        if item['number'] is not None:require(bool(item['evidence_ids']),'number evidence')
         for feature in bounded_list(item['visible_features'],'visible_features',20):string(feature,'feature',500)
     for kind in ('states','phases'):
         for item in bounded_list(document[kind],kind):
@@ -123,13 +124,13 @@ def validate_items(document,*,duration,track_ids,evidence_ids,media=None):
         for ref in bounded_list(item['metric_refs'],'metric refs',100):
             fields(ref,'period_key metric_name','team track_id');string(ref['period_key'],'period',50,False)
             require(('team' in ref)^('track_id' in ref),'metric owner')
-            require(ref['metric_name'] in METRICS,'metric name')
+            require(type(ref['metric_name']) is str and ref['metric_name'] in METRICS,'metric name')
             if 'team' in ref:require(ref['team'] in ('A','B'),'metric team')
             else:require(type(ref['track_id']) is int and ref['track_id'] in track_ids,'metric track')
 
 
 def validate_understanding(document,*,manifest,tracks,files=None,rosters=None):
-    fields(document,'schema_version source context provider budget coverage evidence observations identity_suggestions states phases events summary')
+    fields(document,'schema_version source context provider budget coverage evidence observations identity_suggestions states phases events summary','processing')
     finite(document)
     require(document['schema_version']=='1','schema version')
     require(len(json.dumps(document,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode())<=MAX_JSON,'JSON size')
@@ -174,6 +175,18 @@ def validate_understanding(document,*,manifest,tracks,files=None,rosters=None):
     require(cursor==duration,'coverage partition')
     expected='unavailable' if not coverage['covered_intervals'] else 'partial' if coverage['unknown_intervals'] else 'complete'
     require(coverage['status']==expected,'coverage status')
+    if 'processing' in document:
+        processing=document['processing']
+        fields(processing,'status tasks_planned tasks_completed scene_tasks_planned scene_tasks_completed identity_tasks_planned identity_tasks_completed issues')
+        for key in ('tasks_planned','tasks_completed','scene_tasks_planned','scene_tasks_completed','identity_tasks_planned','identity_tasks_completed'):
+            integer(processing[key],key,0,100000)
+        notes(processing['issues'])
+        for stage in ('scene','identity'):
+            require(processing[f'{stage}_tasks_completed']<=processing[f'{stage}_tasks_planned'],'stage count')
+        for kind in ('planned','completed'):
+            require(processing[f'tasks_{kind}']==processing[f'scene_tasks_{kind}']+processing[f'identity_tasks_{kind}'],'task count')
+        status='unavailable' if not processing['tasks_completed'] else 'complete' if processing['tasks_completed']==processing['tasks_planned'] and not processing['issues'] else 'partial'
+        require(processing['status']==status,'processing status')
     evidence_ids=set();paths=set()
     for item in bounded_list(document['evidence'],'evidence',500):
         fields(item,'id frame_id video_ms path sha256 crop kind')
@@ -203,6 +216,7 @@ def validate_understanding(document,*,manifest,tracks,files=None,rosters=None):
         if item['player_id'] is not None:
             uuid_value(item['player_id']);require(item['status']=='candidate','identity status')
             if roster_ids is not None:require(item['player_id'] in roster_ids,'identity roster')
+            require(item['number'] is not None and item['team'] is not None and bool(item['evidence_ids']),'identity evidence')
     out=deepcopy(document);out['source'].setdefault('analysis_scope','unknown');return out
 
 

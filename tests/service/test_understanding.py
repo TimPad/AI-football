@@ -105,6 +105,27 @@ def test_corrected_then_rejected_changes_only_verified_projection(admin_client,a
     assert rejected.json()['understanding']['events'][0]['kind']=='goal_candidate'
 
 
+def test_accepting_current_corrected_episode_preserves_its_correction(admin_client,analytics_match):
+    run=imported(admin_client,analytics_match)
+    corrected=review(admin_client,analytics_match,run,'corrected',correction={'kind':'shot_candidate'})
+    assert corrected.status_code==200
+    accepted=review(admin_client,analytics_match,run,'accepted',revision=1)
+    assert accepted.status_code==200,accepted.text
+    assert accepted.json()['effective_events'][0]['kind']=='shot_candidate'
+    assert accepted.json()['reviews']['e1']['correction']=={'kind':'shot_candidate'}
+    assert 'удар' in accepted.json()['verified_summary'][0]['text']
+    assert accepted.json()['understanding']['events'][0]['kind']=='goal_candidate'
+
+
+def test_next_partial_correction_updates_current_episode(admin_client,analytics_match):
+    run=imported(admin_client,analytics_match)
+    assert review(admin_client,analytics_match,run,'corrected',correction={'kind':'shot_candidate'}).status_code==200
+    changed=review(admin_client,analytics_match,run,'corrected',revision=1,correction={'end_ms':3000})
+    assert changed.status_code==200,changed.text
+    assert changed.json()['effective_events'][0]['kind']=='shot_candidate'
+    assert changed.json()['reviews']['e1']['correction']=={'kind':'shot_candidate','end_ms':3000}
+
+
 def test_confirmed_source_is_immutable_and_review_clone_preserves_decisions(admin_client,analytics_match):
     run=imported(admin_client,analytics_match)
     assert review(admin_client,analytics_match,run).status_code==200
@@ -150,6 +171,16 @@ def test_identity_suggestion_waits_for_explicit_side_confirmation(admin_client,a
     later=admin_client.get(path(analytics_match,run)).json()
     assert later['side_map_verified'] is True
     assert later['identity_suggestions'][0]['player_id'] in {p['player_id'] for p in run['context']['rosters'] if p['side']=='home'}
+
+
+def test_cv_team_conflict_prevents_number_uuid_hint_after_side_confirmation(admin_client,analytics_match):
+    def mutate(manifest,doc):
+        doc['observations']=[{'track_id':1,'video_ms':1000,'role':'player','number':'1','team':'B',
+            'evidence_ids':['f1'],'visible_features':[],'limitations':[]}]
+    run=imported(admin_client,analytics_match,mutate)
+    run=save_assignments(admin_client,analytics_match,run).json()
+    hint=admin_client.get(path(analytics_match,run)).json()['identity_suggestions'][0]
+    assert hint['status']=='conflict' and hint['player_id'] is None
 
 
 def test_correction_cannot_attach_player_track_from_another_time(admin_client,analytics_match):

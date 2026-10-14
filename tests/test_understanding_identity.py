@@ -22,6 +22,21 @@ def test_same_number_requires_confirmed_side_map():
     assert resolve([observation()],side_map={'A':'away','B':'home'})[0]['player_id']==AWAY
 
 
+def test_unsupported_number_cannot_yield_uuid_even_if_side_is_confirmed():
+    result=resolve([observation(evidence_ids=[])])[0]
+    assert result['player_id'] is None and result['status']=='unknown'
+
+
+def test_number_team_contradicting_cv_track_is_a_conflict():
+    result=resolve([observation()],track_teams={1:'B'})[0]
+    assert result['player_id'] is None and result['status']=='conflict'
+
+
+def test_a_model_team_label_without_any_cv_side_anchor_is_not_a_uuid_hint():
+    result=resolve([observation()],track_teams={1:None})[0]
+    assert result['player_id'] is None and result['status']=='unknown'
+
+
 def test_conflicting_numbers_do_not_use_majority_vote():
     result=resolve([observation(),observation(),observation(number='17')])[0]
     assert result['player_id'] is None and result['status']=='conflict'

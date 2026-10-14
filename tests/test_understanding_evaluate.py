@@ -41,3 +41,15 @@ def test_rejects_wrong_source_and_leaking_splits(change):
 def test_states_compare_duration_only_on_labelled_known_time():
     pred,truth=documents();pred['states']=[{'kind':'playing','start_ms':0,'end_ms':3000},{'kind':'unknown','start_ms':3000,'end_ms':5000}];truth['states']=[{'kind':'playing','start_ms':0,'end_ms':5000}]
     assert evaluate_understanding(pred,truth)['states']=={'labelled_ms':5000,'known_ms':3000,'correct_ms':3000,'accuracy':1,'coverage':.6}
+
+
+def test_mixed_identity_track_cannot_score_as_a_correct_whole_track_assignment():
+    pred,truth=documents()
+    truth['observations']=[{'track_id':1,'video_ms':1000,'number':'7','player_id':'demo-a'},
+                           {'track_id':1,'video_ms':8000,'number':'8','player_id':'demo-b'}]
+    pred['identity_suggestions']=[{'track_id':1,'player_id':'demo-b','status':'candidate'}]
+    result=evaluate_understanding(pred,truth)['identity']
+    assert result['precision']==0 and result['correct']==0
+    assert result['conflicting_tracks']==1
+    truth['observations'].reverse()
+    assert evaluate_understanding(pred,truth)['identity']==result
