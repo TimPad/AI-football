@@ -175,8 +175,10 @@ def validate_result(source, limits=Limits()):
             ensure(item['size'] == len(files[name]) and item['sha256'] == sha256(files[name]).hexdigest(), f'Целостность файла: {name}')
         for name, raw in files.items():
             if name.endswith('.jpg'):
-                from PIL import Image
-                with Image.open(BytesIO(raw)) as image:
+                # Decode only the declared format. Ultralytics globally patches
+                # Image.open to auto-install HEIF plugins on any decoding error.
+                from PIL.JpegImagePlugin import JpegImageFile
+                with JpegImageFile(BytesIO(raw)) as image:
                     ensure(image.format == 'JPEG' and image.width * image.height <= 4000000, 'Неверная миниатюра')
                     image.verify()
         pitch = report['pitch']
@@ -236,7 +238,7 @@ def validate_result(source, limits=Limits()):
         ensure(checks['partial'] or report['match']['processed_s'] >= duration - 1, 'Неполное покрытие должно быть помечено как частичное')
         ensure(isinstance(checks['critical_errors'], list) and isinstance(checks['warnings'], list) and
                all(isinstance(x, str) for x in checks['critical_errors'] + checks['warnings']), 'Неверные проверки качества')
-    except (KeyError, TypeError, AttributeError, ValueError, OSError) as exc:
+    except (KeyError, TypeError, AttributeError, ValueError, OSError, SyntaxError) as exc:
         if isinstance(exc, ExchangeError): raise
         raise ExchangeError('Структура или содержимое пакета не соответствует контракту') from exc
     understanding = None

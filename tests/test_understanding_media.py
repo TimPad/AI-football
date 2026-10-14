@@ -8,6 +8,13 @@ import pytest
 from conftest import write_video
 
 
+def test_portrait_evidence_fits_exchange_pixel_limit(tmp_path):
+    from aifootball.processor.media import _save_frame
+    frame=_save_frame(np.zeros((6000,1000,3),dtype=np.uint8),frame_id=0,video_ms=0,out=tmp_path)
+    image=cv2.imread(str(frame.path))
+    assert image.shape[0]*image.shape[1]<=4_000_000
+
+
 @pytest.mark.parametrize('mode',['frames','native'])
 def test_window_retains_source_offset_and_missing_audio(tmp_path,mode):
     if mode=='native' and not shutil.which('ffmpeg'):pytest.skip('FFmpeg unavailable')

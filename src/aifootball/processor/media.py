@@ -36,7 +36,8 @@ def _probe(video):
 
 def _save_frame(frame,*,frame_id,video_ms,out,crop=None):
     image=frame
-    if image.shape[1]>1280:image=cv2.resize(image,(1280,max(2,round(image.shape[0]*1280/image.shape[1]))),interpolation=cv2.INTER_AREA)
+    scale=min(1,1280/max(image.shape[:2]))
+    if scale<1:image=cv2.resize(image,(max(2,round(image.shape[1]*scale)),max(2,round(image.shape[0]*scale))),interpolation=cv2.INTER_AREA)
     for _ in range(8):
         okay,encoded=cv2.imencode('.jpg',image,[cv2.IMWRITE_JPEG_QUALITY,82])
         if not okay:raise ValueError('Не удалось сохранить JPEG')

@@ -84,6 +84,20 @@ def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mo
             'prompt':prompt,'images':[frame.sha256 for frame in window.frames],
             'media':window.media.sha256 if window.media else None})).hexdigest()
         cached=workspace.get_json(key);stop=False
+        def validated_response(document):
+            result=validate_window_response(document,window)
+            if kind=='identity' and any(result['document'][field] for field in ('events','states','phases','summary')):
+                raise ValueError('Identity response has scene claims')
+            return result
+        if cached is None:
+            for rid in budget.reservations_for(key):
+                receipt=workspace.get_json('raw:'+rid)
+                if receipt is None:continue
+                budget.settle_call(rid,receipt['usage'])
+                try:validated=validated_response(receipt['document'])
+                except ValueError:continue
+                cached={'document':validated,'usage':receipt['usage'],'request_id':receipt['request_id'],'model':receipt['model']}
+                workspace.put_json(key,cached);break
         if cached is None:
             repaired=False;validated=None
             estimate=len(prompt.encode())//2+1600*len(window.frames)+(round((window.end_ms-window.start_ms)*1.2) if window.media else 0)
@@ -107,9 +121,7 @@ def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mo
                     'model':response.response_model,'prompt_sha256':sha256(prompt.encode()).hexdigest()})
                 budget.settle_call(reservation,response.usage)
                 try:
-                    validated=validate_window_response(response.document,window)
-                    if kind=='identity' and any(validated['document'][field] for field in ('events','states','phases','summary')):
-                        raise ValueError('Identity response has scene claims')
+                    validated=validated_response(response.document)
                 except ValueError:
                     if not repaired and attempt<2:
                         repaired=True;prompt+='\nИсправь схему и ссылки; только переданные IDs, локальное время, неизвестное не выдумывай.';continue
@@ -119,8 +131,11 @@ def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mo
         if cached is not None:
             result=cached['document'];response_models.add(cached['model'])
             # Cached global timestamps and references are rechecked by reconciliation/schema.
+            referenced={eid for field in ('observations','states','phases','events')
+                        for item in result['document'][field] for eid in item['evidence_ids']}
             window_evidence=[]
             for frame in window.frames:
+                if frame.id not in referenced:continue
                 item=_evidence(frame);evidence[frame.id]=item;window_evidence.append(item)
                 image_files[item['path']]=frame.path.read_bytes()
             result={**result,'window_id':kind+'-'+window.id,'evidence':window_evidence}

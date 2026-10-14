@@ -16,5 +16,5 @@ test('private episode review, safe retry, confirmation and a new review version'
  const guest=await browser.newContext();const r=await guest.request.get(`/api/v1/matches/${data.match_id}/analysis/runs/${data.run_id}/understanding/evidence/f1`);expect(r.status()).toBe(401);await guest.close();
  // Inspect the actual rendered layout at desktop and mobile sizes.
  await page.screenshot({path:'test-results/understanding-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Кадры эпизода e1'}).click();await expect(page.getByAltText(/Кадр.*00:01/).first()).toBeVisible();await page.screenshot({path:'test-results/understanding-mobile.png',fullPage:true});
- await page.getByRole('button',{name:'Выйти',exact:true}).click();await login('e2e-admin');const denied=await page.request.get(`/api/v1/matches/${data.match_id}/analysis/runs/${data.run_id}/understanding`);expect(denied.status()).toBe(403);
+ await page.setViewportSize({width:1440,height:1000});await page.getByRole('button',{name:'Выйти',exact:true}).click();await login('e2e-admin');const denied=await page.request.get(`/api/v1/matches/${data.match_id}/analysis/runs/${data.run_id}/understanding`);expect(denied.status()).toBe(403);
 });

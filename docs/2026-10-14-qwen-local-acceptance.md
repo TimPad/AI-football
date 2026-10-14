@@ -1,0 +1,95 @@
+# Локальная поставка Qwen: приёмка 14 октября 2026
+
+Реализован путь job.zip → локальные CV/необязательный Qwen → result v1/v2 →
+закрытая проверка номеров/эпизодов → подтверждённая версия. Ни live API,
+ни спортивная точность этой записью не подтверждаются.
+
+## Проверенные механизмы
+
+- Строгие схемы, границы видео/окна, UUID/состав, JPEG, хеши и совместимость v1.
+- SSE/JSON/text-only/usage, ошибки, retry/repair, ограничение тела и числа запросов:
+  тестовый HTTP transport, без платного обращения к провайдеру.
+- Настоящий FFmpeg: немой клип и клип с синтетическим звуком, реальные смещения кадров.
+- Детекции по частям; завершение дочернего процесса через `os._exit` и возобновление.
+  Готовые части не вызывают YOLO снова; tracking воспроизводится через все части.
+- Закрытый API, cookie-only просмотр кадров, CSRF на запись, конкурентные ревизии,
+  неизменяемые подтверждённые версии, журнал решений, точный backup/restore.
+- Chromium: старый импорт и v2, сопоставление, исправление/отклонение/принятие,
+  потеря ответа, повтор той же команды, новая версия, запрет гостю/обычному админу.
+  Проверены реальные страницы шириной 1440 и 390 пикселей.
+- Полный frontend: 35 Vitest tests; 9 браузерных сценариев; production build.
+- Полный backend: 537 tests; один медленный YOLO-тест исключён стандартной настройкой.
+- Linux amd64 container CPU smoke на синтетическом видео: FFmpeg, JPEG,
+  случайные веса YOLO, workspace/бюджет; torch 2.14.0+cu130, CUDA runtime 13.0.
+  GPU available=False. Проверка выполнена под эмуляцией на Mac и не является CUDA-тестом.
+
+Синтетические игроки/кадры обозначены как демонстрационные. Они не подтверждают
+личности людей в реальной записи и не измеряют точность Qwen.
+
+## Недоступные проверки
+
+Регион пользователя: Singapore,
+`https://ap-southeast-1.maas.qwencloudapi.com/compatible-mode/v1`,
+модель `qwen3.8-omni-flash`. На момент приёмки локальная конфигурация ключа
+неполна. Платные обращения не выполнялись. Поддержку конкретным endpoint
+видео/JSON/usage и фактические токены нужно проверить реальным smoke-запуском.
+Ключ хранится локально; его нельзя включать в Git, пакет результата или отчёт.
+
+Доступная Ярославская запись — фрагмент 60–240 секунды исходной трансляции,
+не полный матч. Полной независимой разметки номеров/событий и контрольного
+полного матча нет. Сравнение baseline/номерного/расширенного режима по реальной
+точности, расходам и времени ручной сверки **не выполнено**. Недостающие категории
+не получают 100% recall. Финальный счёт не выводится из нарезки.
+
+Компьютер проверки — Mac; реальной Linux GPU нет. MPS и CPU не подтверждают
+CUDA, совместимость host driver или поведение прерываемой облачной ВМ.
+
+## Воспроизводимая оценка
+
+`understanding.evaluate.evaluate_understanding` сравнивает события один-к-одному
+по типу и обеим границам (допуск 2000 ms), считает precision/recall, ошибки времени,
+номера/личности, известное покрытие и состояния. Источник проверяется по SHA256;
+интервалы tune/control не пересекаются. Неоценённые категории возвращают null.
+Это проверка по предоставленной разметке, а не гарантия качества самой разметки.
+
+Разметка JSON: `source_sha256`, `split: tune|control`, `events`
+(`kind,start_ms,end_ms`), `observations` (`track_id,video_ms,number,player_id`),
+`states` (`kind,start_ms,end_ms`), `coverage: [[start_ms,end_ms]]`.
+Можно добавить непересекающиеся `tune_intervals`/`control_intervals`.
+Неизвестный номер/личность задаётся null. Демо-UUID не является реальным именем.
+
+```sh
+# Настройки ключа/endpoint — только локальный .env. Лимиты включают retries.
+.venv/bin/python scripts/verify_match_understanding.py \
+  --job job.zip --video match.mp4 --labels control.json \
+  --work-dir output/qwen-native --mode native --max-requests 8 \
+  --analysis-scope continuous_excerpt
+# Проверка уже сохранённого пакета без API:
+.venv/bin/python scripts/verify_match_understanding.py \
+  --result result.zip --labels control.json --work-dir output/evaluation
+```
+
+Для frames/native нужны отдельные рабочие каталоги и общий учёт расходов
+оператором: бюджет каждого каталога независим. Для восстановления используйте
+тот же каталог, лимиты и `--resume`. Сохранённый ответ не вызывается заново.
+Результат включает usage, wall time и память; время ручной проверки пока null.
+
+## Контейнер
+
+`Dockerfile.processor` закрепляет digest Python 3.12 и использует текущий `uv.lock`.
+Контекст не включает .env, видео, модели, БД или node_modules. Установлены FFmpeg
+и Linux-wheels torch из lock (CUDA runtime не заменён CPU-only сборкой).
+
+```sh
+docker build --platform linux/amd64 -f Dockerfile.processor -t aifootball-processor:local .
+docker run --rm --platform linux/amd64 aifootball-processor:local --help
+docker run --rm --gpus all --env-file .env -v "$PWD/output:/work" \
+  -v "$PWD/models:/models:ro" aifootball-processor:local process-job \
+  --job /work/job.zip --video /work/match.mp4 --output /work/result.zip \
+  --models /models --work-dir /work/progress --understand --vlm-max-requests 8
+```
+
+Файлы `/work` должны быть доступны UID 10001. Для GPU нужен Linux-хост с
+совместимым NVIDIA driver и container runtime; actual CUDA smoke обязателен
+перед использованием. Очередь, S3, lease/fencing и развёртывание ВМ остаются
+следующей инфраструктурной поставкой.

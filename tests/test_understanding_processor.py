@@ -52,6 +52,21 @@ def test_completed_windows_are_not_called_again_after_real_restart(case):
     assert all(name.startswith('evidence/') and name.endswith('.jpg') for name in files)
 
 
+def test_saved_provider_receipt_is_recovered_if_completed_window_write_is_interrupted(case,monkeypatch):
+    from aifootball.processor.understand import run_understanding
+    job,video,artifacts,ws,budget=case;put=ws.put_json;interrupted=False
+    def crash(key,value):
+        nonlocal interrupted
+        if key.startswith('understanding:') and not interrupted:
+            interrupted=True;raise RuntimeError('power loss before completed-window commit')
+        return put(key,value)
+    monkeypatch.setattr(ws,'put_json',crash);first=Client()
+    with pytest.raises(RuntimeError):run_understanding(job,video,artifacts,ws,client=first,budget=budget,mode='frames')
+    resumed=Client();doc,_=run_understanding(job,video,artifacts,ws,client=resumed,budget=budget,mode='frames')
+    assert resumed.calls[next(iter(first.calls))]==0
+    assert doc['budget']['requests']==5
+
+
 @pytest.mark.parametrize('mode',['native','frames'])
 def test_full_file_coverage_is_not_full_match_statement(case,mode):
     from aifootball.processor.understand import run_understanding
@@ -60,6 +75,23 @@ def test_full_file_coverage_is_not_full_match_statement(case,mode):
     assert doc['source']['analysis_scope']=='highlights'
     assert doc['coverage']['status']=='complete'
     assert doc['identity_suggestions']==[]
+
+
+def test_exported_evidence_contains_referenced_frames_only(case):
+    from aifootball.processor.understand import run_understanding
+    from aifootball.understanding.types import InferenceResult
+    job,video,artifacts,ws,budget=case
+    class OneEvidence(Client):
+        def infer(self,window,prompt,*,max_output_tokens):
+            self.calls[window.id]+=1
+            return InferenceResult({'time_basis':'window','observations':[],'phases':[],'events':[],'summary':[],
+                'states':[{'kind':'playing','start_ms':0,'end_ms':window.end_ms-window.start_ms,
+                           'evidence_ids':[window.frames[0].id],'limitations':[]}]},
+                {'prompt_tokens':100,'completion_tokens':20},'fake','qwen3.8-omni-flash')
+    doc,files=run_understanding(job,video,artifacts,ws,client=OneEvidence(),budget=budget,mode='frames')
+    refs={eid for s in doc['states'] for eid in s['evidence_ids']}
+    assert {e['id'] for e in doc['evidence']}==refs
+    assert len(files)<10
 
 
 def test_request_budget_stops_before_next_paid_attempt(case):

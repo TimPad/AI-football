@@ -78,6 +78,14 @@ def test_new_evidence_limits_are_independent_of_legacy_thumbs():
     with pytest.raises(ExchangeError):validate_result(raw,Limits(understanding_json=100))
 
 
+def test_invalid_jpeg_never_invokes_ultralytics_optional_plugin_installer(monkeypatch):
+    import ultralytics.utils.checks as checks
+    def forbidden(*args,**kwargs):raise AssertionError('Image validation attempted package installation')
+    monkeypatch.setattr(checks,'check_requirements',forbidden)
+    with pytest.raises(ExchangeError):
+        validate_result(rewrite(result_v2(),lambda m,f:f.update({'evidence/f1.jpg':b'not a jpeg'})))
+
+
 def test_summary_cannot_reference_an_absent_measured_metric():
     def mutate(manifest,doc):
         doc['summary']=[{'text':'Измерение','event_ids':[],'metric_refs':[{'period_key':'absent','track_id':1,'metric_name':'distance_m'}]}]

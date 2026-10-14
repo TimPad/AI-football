@@ -36,6 +36,12 @@ class Budget:
     def snapshot(self):
         with self.workspace.exclusive():return self._snapshot(self._state())
 
+    def reservations_for(self,key):
+        """Find persisted receipts even if the completed-window commit was interrupted."""
+        hashed=sha256(key.encode()).hexdigest()
+        with self.workspace.exclusive():
+            return [rid for rid,entry in self._state()['entries'].items() if entry['key_sha256']==hashed]
+
     def reserve_call(self,key,input_estimate,output_limit):
         if type(key) is not str or not key or any(type(v) is not int or v<0 for v in (input_estimate,output_limit)):
             raise ValueError('invalid budget reservation')

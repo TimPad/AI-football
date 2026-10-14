@@ -88,6 +88,28 @@ npm --prefix web run build
 
 [Полная инструкция, контракт и ограничения](docs/2026-10-14-analysis-stage1.md).
 
+Для подсказок номеров и эпизодов установите `uv sync --locked --extra web --extra vlm`,
+заполните локальные `DASHSCOPE_API_KEY` и `DASHSCOPE_BASE_URL` из `.env.example`.
+Ключ должен относиться к выбранному региону Singapore. Исходное видео и короткие
+выбранные кадры/клипы передаются региональному Qwen API при явном `--understand`.
+
+```sh
+.venv/bin/python -m aifootball.cli process-job --job job.zip --video match.mp4 \
+  --output result.zip --understand --work-dir output/match-work \
+  --vlm-mode native --analysis-scope continuous_excerpt --partial-recording \
+  --vlm-max-requests 8 --vlm-max-input-tokens 60000 --vlm-max-output-tokens 20000
+# После остановки: та же команда с --resume и теми же лимитами.
+```
+
+Нужны FFmpeg/ffprobe. Без `--understand` платных запросов нет. `frames` вместо
+`native` отправляет JPEG без нативного клипа. Результат v2 содержит наблюдения и
+закрытые JPEG; MP4/WAV остаются локально. В кабинете Админ+ проверяет номер по
+кадрам и принимает, исправляет или отклоняет эпизоды. Это не меняет протокол.
+Лимит запросов жёсткий; токены до ответа оцениваются приблизительно, а фактический
+расход сохраняется. Прерванный запрос с неизвестным расходом не возвращает бюджет.
+
+[Приёмка Qwen, ограничения и контейнер](docs/2026-10-14-qwen-local-acceptance.md).
+
 ## Проверки
 
 При подготовленной `.env` и работающем PostgreSQL:

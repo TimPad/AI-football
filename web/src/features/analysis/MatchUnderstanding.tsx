@@ -27,7 +27,7 @@ export function MatchUnderstanding({value,run,actorId,editable,onChanged,onDirty
  if(!source)return <section className="surface"><h2>Эпизоды матча</h2><p className="muted">В этой версии нет анализа эпизодов.</p></section>;
  const events=source.events.map(e=>({...e,...value!.reviews[e.id]?.correction}));
  const filtered=events.filter(e=>(group==='all'||(group==='reviewed'?!!value!.reviews[e.id]:group==='unreviewed'?!value!.reviews[e.id]:e.kind===group))&&(!player||e.track_ids.some(t=>run.assignments.some(a=>a.track_id===t&&a.player_id===player))));
- const scope:Record<string,string>={full_match:'Полная запись матча',excerpt:'Фрагмент записи',highlights:'Нарезка моментов',unknown:'Полнота записи не установлена'};
+ const scope:Record<string,string>={full_match:'Полная запись матча',continuous_excerpt:'Фрагмент записи',highlights:'Нарезка моментов',unknown:'Полнота записи не установлена'};
  const stateLabels:Record<string,string>={pre_match:'До матча',playing:'Игра',stoppage:'Остановка',break:'Перерыв',post_match:'После матча',unknown:'Неизвестно',attack:'Атака',defend:'Защита',transition:'Переход'};
  return <section className="surface match-understanding"><div className="panel-head"><div><h2>Эпизоды матча</h2><p className="muted">Наблюдения по видео требуют проверки. Решения здесь не меняют официальный протокол.</p></div><span className="status">{scope[source.source.analysis_scope]??scope.unknown}</span></div>
  <p>{source.coverage.status==='complete'?'Обработаны все окна файла':source.coverage.status==='partial'?'Обработана часть окон файла':'Окна файла не обработаны'}. Время указано от начала исходника.</p>
