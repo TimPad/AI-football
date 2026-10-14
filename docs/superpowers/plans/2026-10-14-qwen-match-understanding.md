@@ -12,6 +12,9 @@
 
 ## Global Constraints
 
+Дополнение: [проверенный разбор FootballVideoAnalyst](../../2026-10-14-football-video-analyst-review.md).
+Его интерфейсные идеи включены в существующие задачи; код Gemini/Streamlit не переносится.
+
 - Модель `qwen3.8-omni-flash`, API файлового анализа; realtime-модель не используется.
 - `DASHSCOPE_API_KEY` и `DASHSCOPE_BASE_URL` относятся к одному региону/workspace и читаются из окружения.
 - Платные запросы включаются только `--understand`; обычный `process-job` сохраняет результат версии 1.
@@ -47,6 +50,8 @@
 Во время исполнения использовать изолированную ветку `codex/qwen-match-understanding`, основанную на текущем коммите со спецификацией и планом; не потерять локальные изменения `AGENTS.md`. До изменения кода прочитать `using-git-worktrees`, на каждом цикле — `test-driven-development`; при ошибке — `systematic-debugging`. Не запускать реальный API в обычном pytest/CI.
 
 ## Task 1: Типы, строгая схема и синтетические данные
+
+- [ ] Расширить ещё не реализованную схему понимания: `source.analysis_scope` enum full_match/continuous_excerpt/highlights/unknown, default unknown для старых synthetic fixtures. Значение устанавливается оператором после ответа VLM, не моделью; недопустимое значение отклонить. Tests разделяют coverage файла и полноту спортивных фактов; job/report v1 остаются прежними.
 
 **Files:** создать `src/aifootball/understanding/{__init__,types,schema}.py`, `tests/understanding_fixtures.py`, `tests/test_understanding_schema.py`.
 
@@ -230,6 +235,8 @@ def test_window_retains_source_offset_and_missing_audio(tmp_path):
 
 ## Task 6: Окна, промпты и все категории понимания матча
 
+- [ ] Промпт и tests учитывают analysis_scope: монтаж не трактуется как непрерывный матч; неизвестное покрытие не заполняется. Summary содержит ограничения/ссылки, не выводит ФИО или итоговый счёт из хайлайтов. Видимое табло — кандидат с временем, не правка официального счёта; комментарий не доказывает событие.
+
 **Files:** создать `src/aifootball/understanding/{windows,prompts}.py`, `tests/test_understanding_windows.py`, `tests/test_understanding_prompts.py`.
 
 **Interfaces:** `plan_windows(*, duration_ms: int, tracks: pl.DataFrame, ball_candidates: list[dict], mode='native') -> list[dict]` — specs id/start_ms/end_ms/fps/track_ids/kind; `identity_prompt(window: Window) -> str`, `match_prompt(window: Window, *, measured: dict) -> str`. Связь со схемой задачи 1 — те же enums и evidence ids.
@@ -276,6 +283,8 @@ def test_same_number_without_side_map_has_no_unique_uuid():
 - [ ] Коммит `feat: reconcile identities and uncertain match episodes`.
 
 ## Task 8: Локальная оркестрация и режим understand
+
+- [ ] Добавить `analysis_scope='unknown'` в process_job/run_understanding и CLI `--analysis-scope full_match|continuous_excerpt|highlights|unknown`. Настройка входит в fingerprint понимания/кэш, но не меняет CV context/hash и не заставляет повторять готовые детекции. Tests проверяют смену scope при resume и понимают complete как покрытие файла, не матча.
 
 **Files:** создать `src/aifootball/processor/understand.py`, `tests/test_understanding_processor.py`; изменить `processor/job.py`, `cli.py`.
 
@@ -362,6 +371,8 @@ def test_goal_review_cannot_change_protocol(admin_client, analytics_match):
 
 ## Task 11: Кабинет проверки номеров и эпизодов
 
+- [ ] Дополнить отдельный приватный UnderstandingView проверенной сводкой из текущих accepted/corrected решений, исходную model summary оставить явно гипотезой. Сводка/фильтр по UUID обновляются при correction/reject/переназначении/новой версии; неподтверждённые эпизоды исключены. Вычисление сводки разместить в service/analysis/understanding.py из Task 10, добавить service/UI tests. Навигация игрок → эпизод открывает evidence и video_ms; без оригинала нет обещания проигрывания. В overview показать analysis_scope, стадию/готовые окна/partial. Official metadata — из сервиса; расхождение с наблюдавшимся табло не меняет protocol. VK seek и веб-хранилище исходника остаются следующей поставкой.
+
 **Files:** создать `web/src/features/analysis/{MatchUnderstanding,EvidenceGallery,understanding.test}.tsx`; изменить `IdentityReview.tsx`, `AnalysisTab.tsx`, `web/src/api/{domain,types}.ts`; создать `web/e2e/match-understanding.spec.ts`, дополнить fixtures E2E через существующие scripts.
 
 **Interfaces:** `MatchUnderstanding({runId,matchId,actorId,editable,onChanged})` грузит отдельный закрытый UnderstandingView только при canManage; `EvidenceGallery({matchId,runId,evidence})`; IdentityReview получает optional suggestions и callback просмотра evidence. Текущий select остаётся решением пользователя, не автоматически выбранным UUID.
@@ -384,6 +395,8 @@ it('does not turn a number suggestion into an assignment', () => {
 - [ ] Коммит `feat: inspect and review match episodes in analysis cabinet`.
 
 ## Task 12: Реальная локальная приёмка, сравнение и контейнер
+
+- [ ] В acceptance добавить highlights/continuous_excerpt/unknown cases, неподтверждённый final score, rejected summary fact, неверную UUID-привязку и отсутствие оригинала. Synthetic tests проверяют механизмы ограничения/навигации; реальную точность summary оценить по независимой разметке. Не выдавать положительный synthetic case за качество модели.
 
 **Files:** создать `scripts/verify_match_understanding.py`, `src/aifootball/understanding/evaluate.py`, `tests/test_understanding_evaluate.py`, `Dockerfile.processor`, `.dockerignore`, `docs/2026-10-14-qwen-local-acceptance.md`; изменить README/докиндекс/статус AGENTS.md только после реальной проверки.
 

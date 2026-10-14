@@ -25,6 +25,7 @@
 
 ## Исследования и история
 
+- [Разбор FootballVideoAnalyst](2026-10-14-football-video-analyst-review.md): проверенный код, полезные идеи карточек/сводок и дополнения к планам; ограничения хайлайтов и перехода по таймкоду.
 - [Baseline CV](baseline.md).
 - [Первичная приёмка CV](phase1-results.md).
 - [Принятые решения сервиса](service-stage1-decisions.md).

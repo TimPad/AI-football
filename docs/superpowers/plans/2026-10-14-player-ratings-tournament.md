@@ -111,6 +111,8 @@ def test_confirmed_cv_goal_does_not_double_protocol_goal():
 
 ## Task 3: Реестр, нормализация и турнирные показатели
 
+- [ ] Учитывать scope/полноту каждого источника в provenance фактов. highlights/continuous_excerpt/unknown не дают полного видео-знаменателя/полноты действий матча; complete processing и full_match сами по себе её не подтверждают. Tests: один монтажный гол не даёт полный рейтинг; независимая полная ручная разметка по тому же игроку может обеспечить факты/полноту. Не запрещать рейтинг по надёжным источникам из-за неполного дополнительного видео.
+
 **Files:** создать `ratings/{registry,features}.py`, `tests/test_rating_features.py`.
 
 **Interfaces:** `build_features(performance: MatchPerformance, actions: list[dict], *, profile_id: str) -> dict[str, MetricFact]`; `aggregate_facts(rows: list[MatchPerformance]) -> dict[str, MetricFact]`. Registry включает definitions, unit, direction good/bad, required sources, numerator/denominator и допустимые базы времени.
@@ -185,6 +187,8 @@ def test_small_sample_is_pulled_to_baseline():
 
 ## Task 6: Immutable snapshots, API и публикация
 
+- [ ] Хранить объяснение балла/выбранные key moments в рамках rating snapshot с component/metric/canonical_action ids и ролью; private и public объяснения собираются из соответствующих разрешённых источников. Переназначение игрока, reject или новая версия не меняют старый snapshot, но инвалидируют текущий черновой расчёт. Tests исключают приватный текст/кадры в public и чужие UUID/отклонённые факты в новой версии.
+
 **Files:** создать `0012_tournament_ratings.py`, `service/ratings/{queries,calculation}.py`, `tests/service/test_ratings_snapshots.py`; расширить models/schemas/routes, scripts/verify_service_backup.py. Source roles/actions versions из 0011; snapshot после них.
 
 **Interfaces:** RatingPolicyVersion, RatingReferenceVersion, TournamentRatingSnapshot, PlayerRatingRow с unique(snapshot,match,player,role) и tournament summary rows; RatingCommand (actor/request_id/hash/response). `calculate_snapshot(db, tid, actor_id, request_id, *, scope='private') -> dict`, `publish_snapshot(...)`, `get_rankings(db, tid, snapshot_id, filters, pagination) -> dict`. Транзакционно зафиксировать выбранные источники, одна версия на матч; fingerprint включает pointer IDs, input hashes, participation/actions, policy/ref. Если вход изменился во время расчёта, snapshot stale и публикация отклонена.
@@ -208,6 +212,8 @@ def test_new_run_does_not_add_second_appearance(ratings_client):
 
 ## Task 7: Интерфейсы матч/турнир/игрок и ручная разметка
 
+- [ ] Создать `src/aifootball/ratings/explanation.py` и `tests/test_rating_explanation.py`: `explain_rating(score, facts, actions) -> dict` строит короткий шаблонный текст и до трёх полезных действий/до трёх ошибок из подтверждённого вклада и роли, без API. Утверждения содержат source ids; пустая выборка не означает отсутствие ошибок. В MatchRating показать объяснение, раскрываемые детали и key moments; ручной факт открывает журнал, видеофакт — разрешённый evidence. Переход по времени не обещает плеер без оригинала. Tests: нет оценки → причина, rejected/foreign player excluded, same input → same explanation, unpublished evidence → no public link, HTML rendered as text. Подробное обоснование: [FootballVideoAnalyst review](../../2026-10-14-football-video-analyst-review.md).
+
 **Files:** создать `web/src/features/ratings/{MatchRating,TournamentRatings,PlayerRatingHistory,ParticipationEditor,ActionReview,ratings.test}.tsx`; изменить tournaments/TournamentPage.tsx, analysis/AnalysisTab.tsx, catalog/CatalogPage.tsx и api/domain/types.ts; public/PublicPages.tsx для published aggregates. Создать `web/e2e/tournament-ratings.spec.ts` и synthetic E2E seed.
 
 **Interfaces:** DTO из Task 6; ActionReview редактирует подтверждённые факты/полноту и связывает Qwen episode с protocol/action. ParticipationEditor показывает присутствие/роль/time_basis/unknown, не выставляет минуты из observed_s. MatchRating показывает компоненты+причину; TournamentRatings фильтрует role/team/stage/qualification в фиксированном snapshot; PlayerRatingHistory не смешивает reference/time_basis разных турниров.
@@ -229,6 +235,8 @@ it('shows missing data without a zero rating', () => {
 - [ ] Коммит `feat: display explainable player and tournament ratings`.
 
 ## Task 8: Локальная приёмка и калибровка политики
+
+- [ ] Проверить объяснение независимо от расчётного кода: все утверждения/действия соответствуют фактам этой роли/UUID/snapshot, хайлайты не создают полную оценку, reject/новая привязка обновляют новую сводку. С тренером проверить полезность выбранных положительных/отрицательных примеров; без полной записи/разметки не заявлять спортивную точность.
 
 **Files:** создать `scripts/verify_tournament_ratings.py`, `docs/player-ratings-local-acceptance.md`; дополнить README/doc index/CHANGELOG и existing backup checker. Advanced model training в этой задаче не выполняется.
 
