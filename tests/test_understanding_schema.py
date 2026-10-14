@@ -123,3 +123,9 @@ def test_malformed_event_fields_raise_contract_error(case,item):
 def test_free_summary_without_fact_reference_is_rejected(case):
     case[0]['summary']=[{'text':'Игрок был лучшим','event_ids':[],'metric_refs':[]}]
     with pytest.raises(ValueError):validate(case)
+
+
+def test_actual_token_overrun_remains_reportable(case):
+    # Estimates cannot retract tokens already billed by the provider.
+    case[0]['budget'].update(requests=1,max_input_tokens=100,input_tokens=120)
+    assert validate(case)['budget']['input_tokens']==120

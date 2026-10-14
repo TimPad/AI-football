@@ -160,8 +160,8 @@ def validate_understanding(document,*,manifest,tracks,files=None,rosters=None):
     for key in budget:
         if key=='usage_unknown':require(type(budget[key]) is bool,'usage_unknown')
         else:integer(budget[key],key,0,10**12)
-    for key,limit in [('requests','max_requests'),('input_tokens','max_input_tokens'),('output_tokens','max_output_tokens')]:
-        require(budget[key]<=budget[limit],'budget exceeded')
+    # Actual usage can exceed a pre-request estimate. Preserve it and stop future calls.
+    require(budget['requests']<=budget['max_requests'],'request budget exceeded')
     coverage=document['coverage'];fields(coverage,'covered_intervals unknown_intervals status')
     ranges=[]
     for kind in ('covered_intervals','unknown_intervals'):
