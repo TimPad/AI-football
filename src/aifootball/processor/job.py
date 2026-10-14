@@ -3,7 +3,6 @@ import json
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from types import SimpleNamespace
 from uuid import uuid4
 from zipfile import ZipFile, ZIP_DEFLATED
 import math
@@ -173,8 +172,6 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
 
 
 def process_job(job_path, video_path, output_path, *, models=Path('models'), artifacts=None, halves=None, partial_recording=False):
-    from aifootball.venue import load_venue
-    from aifootball import cli
     job = read_job(job_path); source = source_for_job(job, video_path)
     if artifacts is not None:
         meta = load_json((Path(artifacts) / 'meta.json').read_bytes(), 'meta.json')
@@ -183,17 +180,12 @@ def process_job(job_path, video_path, output_path, *, models=Path('models'), art
                'Артефакты не подтверждают происхождение камеры/видео/контекста задания')
         return package_result(job_path, video_path, artifacts, output_path, halves=halves, partial_recording=partial_recording)
     work = Path(output_path).parent / ('processor-' + uuid4().hex)
-    venue_root = work / 'venue'; venue_root.mkdir(parents=True)
-    for name, raw in job.files.items(): (venue_root / name).write_bytes(raw)
-    venue = load_venue(venue_root)
-    args = SimpleNamespace(video=Path(video_path), match=work, models=Path(models))
-    for name, command in [('Детекция', cli.cmd_detect), ('Трекинг', cli.cmd_track),
-                          ('Координаты', cli.cmd_project), ('Метрики', cli.cmd_metrics), ('Проверки', cli.cmd_check)]:
-        print(name, flush=True); command(args, venue)
-    meta_path = work / 'meta.json'; meta = json.loads(meta_path.read_text())
-    meta.update(source_sha256=source['sha256'], context_hash=job.contract['context_hash'])
-    meta_path.write_bytes(canonical(meta))
-    return package_result(job_path, video_path, work, output_path, halves=halves, partial_recording=partial_recording)
+    from aifootball.processor.cv import run_cv
+    from aifootball.processor.workspace import Workspace
+    workspace = Workspace(work, {'source': source['sha256'], 'context_hash': job.contract['context_hash']})
+    root = run_cv(Path(job_path), Path(video_path), workspace, models=Path(models))
+    return package_result(job_path, video_path, root, output_path, halves=halves, partial_recording=partial_recording)
+
 
 
 def normalize_report(report):

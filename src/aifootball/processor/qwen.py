@@ -6,7 +6,6 @@ import json
 import math
 import os
 from pathlib import Path
-import time
 from urllib.parse import urlsplit
 
 from aifootball.analytics.exchange import load_json

@@ -1,7 +1,6 @@
 """Reserve before every paid attempt. Unknown usage never refunds its reservation."""
 from hashlib import sha256
 from uuid import uuid4
-from aifootball.analytics.exchange import canonical
 
 
 class Budget:
