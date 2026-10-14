@@ -40,7 +40,9 @@ def build_features(performance:MatchPerformance,actions:list[dict],*,profile_id:
         return _in(t,roles) and _in(t,ranges)
     own=[a for a in valid if a.get('player_id')==pid and located(a)]
     uncertain={a['kind'] for a in valid if a.get('player_id')==pid and (a.get('start_ms') is None and not meta.get('single_role') or a.get('clock_basis',clock)!=clock)}
-    def category_ok(names,kinds):return complete(*names) and not uncertain.intersection(kinds)
+    def category_ok(names,kinds):
+        unidentified=any(a['kind'] in kinds and a.get('player_id') is None and a.get('side') in (side,None) for a in valid)
+        return complete(*names) and not uncertain.intersection(kinds) and not unidentified
     def exposure(feature):
         denom=REGISTRY[feature]['denominator']
         return meta.get(denom) if profile_id=='per10-possession' and denom in ('possession_s','without_possession_s') else p.eligible_play_s

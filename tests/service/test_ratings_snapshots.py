@@ -156,3 +156,12 @@ def test_new_confirmed_source_marks_current_private_snapshot_stale(admin_client,
         'expected_match_revision':match['revision'],'status':'confirmed','document':actions['document']})
     assert saved.status_code==200,saved.text
     assert next(v for v in admin_client.get(base(match)+'/analytics').json()['snapshots'] if v['snapshot_id']==first['snapshot_id'])['stale'] is True
+
+
+def test_match_api_includes_gated_overall_score_from_frozen_role_segments(admin_client,analytics_match,send_command):
+    match,protocol,part,actions=prepare(admin_client,analytics_match,send_command)
+    calculate(admin_client,match)
+    response=admin_client.get(f"/api/v1/matches/{match['id']}/ratings")
+    assert response.status_code==200,response.text
+    assert len(response.json()['overall'])==4
+    assert all(r['score'] is None and r['role']=='overall' and r['eligible_play_minutes']==10 for r in response.json()['overall'])

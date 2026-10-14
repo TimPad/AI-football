@@ -25,4 +25,4 @@ export async function all<T>(path:string):Promise<T[]>{
  while(items.length<total){const page=await api<{items:T[],total:number}>(`${path}${path.includes('?')?'&':'?'}limit=100&offset=${items.length}`);total=page.total;items.push(...page.items);if(!page.items.length)break}
  return items;
 }
-export const errorText=(e:unknown)=>e instanceof ApiError? [e.message,...Object.values(e.fields)].join(' · '):e instanceof Error?e.message:'Не удалось сохранить';
+export const errorText=(e:unknown)=>typeof e==='string'?e:e instanceof ApiError? [e.message,...Object.values(e.fields)].join(' · '):e instanceof Error?e.message:'Не удалось сохранить';

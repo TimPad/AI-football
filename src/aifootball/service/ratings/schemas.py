@@ -323,5 +323,6 @@ class PerformancePublicationView(BaseModel):
 
 
 class MatchRatingsView(BaseModel):
+    overall:list[RatingMatchView]=Field(default_factory=list)
     snapshot_id:UUID|None
     items:list[RatingMatchView]

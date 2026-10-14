@@ -609,6 +609,246 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{mid}/participation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Participation */
+        get: operations["participation_api_v1_matches__mid__participation_get"];
+        /** Save */
+        put: operations["save_api_v1_matches__mid__participation_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/participation/versions/{vid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Version */
+        get: operations["version_api_v1_matches__mid__participation_versions__vid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/performance-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Actions */
+        get: operations["actions_api_v1_matches__mid__performance_actions_get"];
+        /** Save Action Version */
+        put: operations["save_action_version_api_v1_matches__mid__performance_actions_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/performance-actions/versions/{vid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Actions Version */
+        get: operations["actions_version_api_v1_matches__mid__performance_actions_versions__vid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tid}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Analytics */
+        get: operations["analytics_api_v1_tournaments__tid__analytics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tid}/analytics/calculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate */
+        post: operations["calculate_api_v1_tournaments__tid__analytics_calculate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tid}/analytics/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish */
+        post: operations["publish_api_v1_tournaments__tid__analytics_publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/performance-publication": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Publish Performance */
+        put: operations["publish_performance_api_v1_matches__mid__performance_publication_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tid}/ratings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ratings */
+        get: operations["ratings_api_v1_tournaments__tid__ratings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/tournaments/{tid}/ratings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Ratings */
+        get: operations["public_ratings_api_v1_public_tournaments__tid__ratings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/players/{pid}/ratings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History */
+        get: operations["history_api_v1_players__pid__ratings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/players/{pid}/ratings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public History */
+        get: operations["public_history_api_v1_public_players__pid__ratings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/ratings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Match Rating */
+        get: operations["match_rating_api_v1_matches__mid__ratings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/matches/{mid}/ratings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Match Rating */
+        get: operations["public_match_rating_api_v1_public_matches__mid__ratings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tid}/matches": {
         parameters: {
             query?: never;
@@ -887,6 +1127,357 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionDocument */
+        "ActionDocument-Input": {
+            /**
+             * Clock Basis
+             * @enum {string}
+             */
+            clock_basis: "game" | "video";
+            /**
+             * Analysis Scope
+             * @default unknown
+             * @enum {string}
+             */
+            analysis_scope?: "full_match" | "continuous_excerpt" | "highlights" | "unknown";
+            /** Duration Ms */
+            duration_ms: number;
+            /** Source Participation Version Id */
+            source_participation_version_id?: string | null;
+            /** Source Analysis Run Id */
+            source_analysis_run_id?: string | null;
+            /** Source Protocol Version Id */
+            source_protocol_version_id?: string | null;
+            /** Actions */
+            actions?: components["schemas"]["ActionInput-Input"][];
+            /** Links */
+            links?: components["schemas"]["ActionLink-Input"][];
+            /** Completeness */
+            completeness?: {
+                [key: string]: components["schemas"]["CategoryCoverage-Input"][];
+            };
+            /**
+             * Notes
+             * @default
+             */
+            notes?: string;
+        };
+        /** ActionDocument */
+        "ActionDocument-Output": {
+            /**
+             * Clock Basis
+             * @enum {string}
+             */
+            clock_basis: "game" | "video";
+            /**
+             * Analysis Scope
+             * @default unknown
+             * @enum {string}
+             */
+            analysis_scope: "full_match" | "continuous_excerpt" | "highlights" | "unknown";
+            /** Duration Ms */
+            duration_ms: number;
+            /** Source Participation Version Id */
+            source_participation_version_id: string | null;
+            /** Source Analysis Run Id */
+            source_analysis_run_id: string | null;
+            /** Source Protocol Version Id */
+            source_protocol_version_id: string | null;
+            /** Actions */
+            actions: components["schemas"]["ActionInput-Output"][];
+            /** Links */
+            links: components["schemas"]["ActionLink-Output"][];
+            /** Completeness */
+            completeness: {
+                [key: string]: components["schemas"]["CategoryCoverage-Output"][];
+            };
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
+        /** ActionInput */
+        "ActionInput-Input": {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "shot" | "pass" | "carry" | "duel" | "recovery" | "shot_block" | "turnover" | "save" | "distribution" | "error" | "goal_candidate";
+            /** Player Id */
+            player_id?: string | null;
+            /** Recipient Id */
+            recipient_id?: string | null;
+            /** Opponent Id */
+            opponent_id?: string | null;
+            /** Side */
+            side?: ("home" | "away") | null;
+            /** Role */
+            role?: ("goalkeeper" | "fixo" | "ala" | "pivot" | "universal" | "unknown") | null;
+            /** Start Ms */
+            start_ms?: number | null;
+            /** End Ms */
+            end_ms?: number | null;
+            /** Success */
+            success?: boolean | null;
+            /** On Target */
+            on_target?: boolean | null;
+            /**
+             * Outcome
+             * @default unknown
+             * @enum {string}
+             */
+            outcome?: "goal" | "saved" | "off_target" | "success" | "failure" | "unknown";
+            /** Possession Id */
+            possession_id?: string | null;
+            /** Start Xy */
+            start_xy?: number[] | null;
+            /** End Xy */
+            end_xy?: number[] | null;
+            /**
+             * Attacking Direction
+             * @default unknown
+             * @enum {string}
+             */
+            attacking_direction?: "left" | "right" | "unknown";
+            /**
+             * Penalty Conceded
+             * @default false
+             */
+            penalty_conceded?: boolean;
+            /** Source Episode Id */
+            source_episode_id?: string | null;
+            /** Source Video Ms */
+            source_video_ms?: number | null;
+            /** Shot Id */
+            shot_id?: string | null;
+            /**
+             * Decision
+             * @default accepted
+             * @enum {string}
+             */
+            decision?: "accepted" | "rejected";
+            /**
+             * Notes
+             * @default
+             */
+            notes?: string;
+        };
+        /** ActionInput */
+        "ActionInput-Output": {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "shot" | "pass" | "carry" | "duel" | "recovery" | "shot_block" | "turnover" | "save" | "distribution" | "error" | "goal_candidate";
+            /** Player Id */
+            player_id: string | null;
+            /** Recipient Id */
+            recipient_id: string | null;
+            /** Opponent Id */
+            opponent_id: string | null;
+            /** Side */
+            side: ("home" | "away") | null;
+            /** Role */
+            role: ("goalkeeper" | "fixo" | "ala" | "pivot" | "universal" | "unknown") | null;
+            /** Start Ms */
+            start_ms: number | null;
+            /** End Ms */
+            end_ms: number | null;
+            /** Success */
+            success: boolean | null;
+            /** On Target */
+            on_target: boolean | null;
+            /**
+             * Outcome
+             * @default unknown
+             * @enum {string}
+             */
+            outcome: "goal" | "saved" | "off_target" | "success" | "failure" | "unknown";
+            /** Possession Id */
+            possession_id: string | null;
+            /** Start Xy */
+            start_xy: number[] | null;
+            /** End Xy */
+            end_xy: number[] | null;
+            /**
+             * Attacking Direction
+             * @default unknown
+             * @enum {string}
+             */
+            attacking_direction: "left" | "right" | "unknown";
+            /**
+             * Penalty Conceded
+             * @default false
+             */
+            penalty_conceded: boolean;
+            /** Source Episode Id */
+            source_episode_id: string | null;
+            /** Source Video Ms */
+            source_video_ms: number | null;
+            /** Shot Id */
+            shot_id: string | null;
+            /**
+             * Decision
+             * @default accepted
+             * @enum {string}
+             */
+            decision: "accepted" | "rejected";
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
+        /** ActionLink */
+        "ActionLink-Input": {
+            /**
+             * Kind
+             * @default canonical
+             * @enum {string}
+             */
+            kind?: "canonical" | "incident";
+            /**
+             * Canonical Event Id
+             * Format: uuid
+             */
+            canonical_event_id: string;
+            /**
+             * Source Event Id
+             * Format: uuid
+             */
+            source_event_id: string;
+        };
+        /** ActionLink */
+        "ActionLink-Output": {
+            /**
+             * Kind
+             * @default canonical
+             * @enum {string}
+             */
+            kind: "canonical" | "incident";
+            /**
+             * Canonical Event Id
+             * Format: uuid
+             */
+            canonical_event_id: string;
+            /**
+             * Source Event Id
+             * Format: uuid
+             */
+            source_event_id: string;
+        };
+        /** ActionsOverview */
+        ActionsOverview: {
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /** Match Revision */
+            match_revision: number;
+            /** Revision */
+            revision: number;
+            current: components["schemas"]["ActionsView"] | null;
+            /** Versions */
+            versions: components["schemas"]["ParticipationSummary"][];
+            /** Lineup */
+            lineup: {
+                [key: string]: unknown;
+            }[];
+            /** Rules */
+            rules: {
+                [key: string]: unknown;
+            };
+            /** Pitch */
+            pitch: {
+                [key: string]: unknown;
+            } | null;
+            /** Protocol Versions */
+            protocol_versions: {
+                [key: string]: unknown;
+            }[];
+            /** Analysis Runs */
+            analysis_runs: {
+                [key: string]: unknown;
+            }[];
+            /** Participation Versions */
+            participation_versions: components["schemas"]["ParticipationSummary"][];
+        };
+        /** ActionsSave */
+        ActionsSave: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /** Expected Match Revision */
+            expected_match_revision: number;
+            /**
+             * Status
+             * @default review
+             * @enum {string}
+             */
+            status?: "review" | "confirmed";
+            document: components["schemas"]["ActionDocument-Input"];
+        };
+        /** ActionsView */
+        ActionsView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "review" | "confirmed";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /**
+             * Created By
+             * Format: uuid
+             */
+            created_by: string;
+            /** Context Hash */
+            context_hash: string;
+            document: components["schemas"]["ActionDocument-Output"];
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
+            /** Lineup */
+            lineup: {
+                [key: string]: unknown;
+            }[];
+            /** Canonical Actions */
+            canonical_actions: {
+                [key: string]: unknown;
+            }[];
+        };
         /** AddEventCommand */
         AddEventCommand: {
             /**
@@ -933,6 +1524,27 @@ export interface components {
             units: {
                 [key: string]: string;
             };
+        };
+        /** AnalyticsOverview */
+        AnalyticsOverview: {
+            /** Revision */
+            revision: number;
+            /** Policy */
+            policy: {
+                [key: string]: unknown;
+            };
+            /** Private Snapshot Id */
+            private_snapshot_id: string | null;
+            /** Public Snapshot Id */
+            public_snapshot_id: string | null;
+            /** Policy Approved */
+            policy_approved: boolean;
+            /** Snapshots */
+            snapshots: components["schemas"]["RatingSnapshotResult"][];
+            /** Sources */
+            sources: {
+                [key: string]: unknown;
+            }[];
         };
         /** ApplyMatch */
         ApplyMatch: {
@@ -1174,6 +1786,32 @@ export interface components {
             created_at: string;
             /** Size */
             size: number;
+        };
+        /** CategoryCoverage */
+        "CategoryCoverage-Input": {
+            /**
+             * Status
+             * @default unknown
+             * @enum {string}
+             */
+            status?: "unknown" | "partial" | "complete";
+            /** Intervals */
+            intervals?: number[][] | null;
+            /** Player Ids */
+            player_ids?: string[] | null;
+        };
+        /** CategoryCoverage */
+        "CategoryCoverage-Output": {
+            /**
+             * Status
+             * @default unknown
+             * @enum {string}
+             */
+            status: "unknown" | "partial" | "complete";
+            /** Intervals */
+            intervals: number[][] | null;
+            /** Player Ids */
+            player_ids: string[] | null;
         };
         /** ClockEndPeriodCommand */
         ClockEndPeriodCommand: {
@@ -1861,6 +2499,20 @@ export interface components {
             /** Partial */
             partial: boolean;
         };
+        /** InitialFive */
+        "InitialFive-Input": {
+            /** Home */
+            home?: string[];
+            /** Away */
+            away?: string[];
+        };
+        /** InitialFive */
+        "InitialFive-Output": {
+            /** Home */
+            home: string[];
+            /** Away */
+            away: string[];
+        };
         /** JobCreate */
         JobCreate: {
             /**
@@ -1978,8 +2630,52 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** Manpower */
+        "Manpower-Input": {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Start Ms */
+            start_ms: number;
+            /** End Ms */
+            end_ms: number;
+            /** Max Players */
+            max_players: number;
+            /**
+             * Powerplay
+             * @default false
+             */
+            powerplay?: boolean;
+            /** Reason */
+            reason: string;
+        };
+        /** Manpower */
+        "Manpower-Output": {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Start Ms */
+            start_ms: number;
+            /** End Ms */
+            end_ms: number;
+            /** Max Players */
+            max_players: number;
+            /**
+             * Powerplay
+             * @default false
+             */
+            powerplay: boolean;
+            /** Reason */
+            reason: string;
+        };
         /** MatchCreate */
         MatchCreate: {
+            /** Stage Label */
+            stage_label?: string | null;
             /** Broadcast Url */
             broadcast_url?: string | null;
             /** Broadcast Embed Url */
@@ -2022,8 +2718,19 @@ export interface components {
             /** Override Reason */
             override_reason?: string | null;
         };
+        /** MatchRatingsView */
+        MatchRatingsView: {
+            /** Overall */
+            overall?: components["schemas"]["RatingMatchView"][];
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Items */
+            items: components["schemas"]["RatingMatchView"][];
+        };
         /** MatchUpdate */
         MatchUpdate: {
+            /** Stage Label */
+            stage_label?: string | null;
             /** Broadcast Url */
             broadcast_url?: string | null;
             /** Broadcast Embed Url */
@@ -2054,6 +2761,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Stage Label */
+            stage_label?: string | null;
             /**
              * Match Id
              * Format: uuid
@@ -2119,6 +2828,21 @@ export interface components {
             away: components["schemas"]["EntryView"];
             /** Server Now Ms */
             server_now_ms: number;
+        };
+        /** MetricFactView */
+        MetricFactView: {
+            /** Value */
+            value: number | null;
+            /** Numerator */
+            numerator: number | null;
+            /** Denominator */
+            denominator: number | null;
+            /** Unit */
+            unit: string;
+            /** Completeness */
+            completeness: string;
+            /** Reason */
+            reason: string | null;
         };
         /** MetricValues */
         MetricValues: {
@@ -2251,6 +2975,201 @@ export interface components {
             items: components["schemas"]["VersionView"][];
             /** Total */
             total: number;
+        };
+        /** ParticipationDocument */
+        "ParticipationDocument-Input": {
+            /**
+             * Clock Basis
+             * @enum {string}
+             */
+            clock_basis: "game" | "video";
+            /**
+             * Time Basis
+             * @enum {string}
+             */
+            time_basis: "reviewed_effective" | "official_clean" | "running_clock";
+            /**
+             * Analysis Scope
+             * @default unknown
+             * @enum {string}
+             */
+            analysis_scope?: "full_match" | "continuous_excerpt" | "highlights" | "unknown";
+            /** Duration Ms */
+            duration_ms: number;
+            /** Source Analysis Run Id */
+            source_analysis_run_id?: string | null;
+            /** Source Protocol Version Id */
+            source_protocol_version_id?: string | null;
+            initial_five?: components["schemas"]["InitialFive-Input"];
+            /** Players */
+            players?: components["schemas"]["PlayerParticipation-Input"][];
+            /** Play Intervals */
+            play_intervals?: number[][] | null;
+            possession_intervals?: components["schemas"]["PossessionIntervals-Input"];
+            /** Manpower */
+            manpower?: components["schemas"]["Manpower-Input"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes?: string;
+        };
+        /** ParticipationDocument */
+        "ParticipationDocument-Output": {
+            /**
+             * Clock Basis
+             * @enum {string}
+             */
+            clock_basis: "game" | "video";
+            /**
+             * Time Basis
+             * @enum {string}
+             */
+            time_basis: "reviewed_effective" | "official_clean" | "running_clock";
+            /**
+             * Analysis Scope
+             * @default unknown
+             * @enum {string}
+             */
+            analysis_scope: "full_match" | "continuous_excerpt" | "highlights" | "unknown";
+            /** Duration Ms */
+            duration_ms: number;
+            /** Source Analysis Run Id */
+            source_analysis_run_id: string | null;
+            /** Source Protocol Version Id */
+            source_protocol_version_id: string | null;
+            initial_five: components["schemas"]["InitialFive-Output"];
+            /** Players */
+            players: components["schemas"]["PlayerParticipation-Output"][];
+            /** Play Intervals */
+            play_intervals: number[][] | null;
+            possession_intervals: components["schemas"]["PossessionIntervals-Output"];
+            /** Manpower */
+            manpower: components["schemas"]["Manpower-Output"][];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
+        /** ParticipationOverview */
+        ParticipationOverview: {
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /** Match Revision */
+            match_revision: number;
+            /** Revision */
+            revision: number;
+            current: components["schemas"]["ParticipationView"] | null;
+            /** Versions */
+            versions: components["schemas"]["ParticipationSummary"][];
+            /** Lineup */
+            lineup: {
+                [key: string]: unknown;
+            }[];
+            /** Rules */
+            rules: {
+                [key: string]: unknown;
+            };
+            /** Protocol Versions */
+            protocol_versions: {
+                [key: string]: unknown;
+            }[];
+            /** Analysis Runs */
+            analysis_runs: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** ParticipationSave */
+        ParticipationSave: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /** Expected Match Revision */
+            expected_match_revision: number;
+            /**
+             * Status
+             * @default review
+             * @enum {string}
+             */
+            status?: "review" | "confirmed";
+            document: components["schemas"]["ParticipationDocument-Input"];
+        };
+        /** ParticipationSummary */
+        ParticipationSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "review" | "confirmed";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ParticipationView */
+        ParticipationView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "review" | "confirmed";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /**
+             * Created By
+             * Format: uuid
+             */
+            created_by: string;
+            /** Context Hash */
+            context_hash: string;
+            document: components["schemas"]["ParticipationDocument-Output"];
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
+            /** Lineup */
+            lineup: {
+                [key: string]: unknown;
+            }[];
+            /** Exposures */
+            exposures: {
+                [key: string]: {
+                    [key: string]: {
+                        [key: string]: number | null;
+                    };
+                };
+            };
         };
         /** PenaltyAttempt */
         "PenaltyAttempt-Input": {
@@ -2402,6 +3321,43 @@ export interface components {
              */
             reason: string;
         };
+        /** PerformancePublication */
+        PerformancePublication: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /** Expected Match Revision */
+            expected_match_revision: number;
+            /** Participation Version Id */
+            participation_version_id?: string | null;
+            /** Action Version Id */
+            action_version_id?: string | null;
+            /**
+             * Approve Policy
+             * @default false
+             */
+            approve_policy?: boolean;
+        };
+        /** PerformancePublicationView */
+        PerformancePublicationView: {
+            /** Revision */
+            revision: number;
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /** Participation Version Id */
+            participation_version_id: string | null;
+            /** Action Version Id */
+            action_version_id: string | null;
+            /** Policy Approved */
+            policy_approved: boolean;
+        };
         /** PeriodBoundary */
         "PeriodBoundary-Input": {
             /**
@@ -2506,6 +3462,46 @@ export interface components {
             track_ids: number[];
             metrics: components["schemas"]["MetricValues"];
         };
+        /** PlayerParticipation */
+        "PlayerParticipation-Input": {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Presence */
+            presence?: number[][] | null;
+            /**
+             * Completeness
+             * @default unknown
+             * @enum {string}
+             */
+            completeness?: "complete" | "partial" | "unknown";
+            /** Appeared */
+            appeared?: boolean | null;
+            /** Roles */
+            roles?: components["schemas"]["RoleIntervals-Input"][];
+        };
+        /** PlayerParticipation */
+        "PlayerParticipation-Output": {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Presence */
+            presence: number[][] | null;
+            /**
+             * Completeness
+             * @default unknown
+             * @enum {string}
+             */
+            completeness: "complete" | "partial" | "unknown";
+            /** Appeared */
+            appeared: boolean | null;
+            /** Roles */
+            roles: components["schemas"]["RoleIntervals-Output"][];
+        };
         /** PlayerPatch */
         PlayerPatch: {
             /** Photo Id */
@@ -2602,6 +3598,20 @@ export interface components {
              * @default 0
              */
             loss: number;
+        };
+        /** PossessionIntervals */
+        "PossessionIntervals-Input": {
+            /** Home */
+            home?: number[][] | null;
+            /** Away */
+            away?: number[][] | null;
+        };
+        /** PossessionIntervals */
+        "PossessionIntervals-Output": {
+            /** Home */
+            home: number[][] | null;
+            /** Away */
+            away: number[][] | null;
         };
         /** Preset */
         Preset: {
@@ -3238,6 +4248,268 @@ export interface components {
             kind: "publish";
             payload: components["schemas"]["Publish"];
         };
+        /** RatingCalculate */
+        RatingCalculate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Scope
+             * @default private
+             * @enum {string}
+             */
+            scope?: "private" | "public";
+            /**
+             * Profile Id
+             * @default per10
+             * @enum {string}
+             */
+            profile_id?: "per10" | "per10-possession";
+            /**
+             * Time Basis
+             * @default reviewed_effective
+             * @enum {string}
+             */
+            time_basis?: "reviewed_effective" | "official_clean" | "running_clock";
+            /**
+             * Level
+             * @default amateur
+             */
+            level?: string;
+            /** Cutoff */
+            cutoff?: string | null;
+        };
+        /** RatingMatchView */
+        RatingMatchView: {
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Role */
+            role: string;
+            /**
+             * Team Id
+             * Format: uuid
+             */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Stage Label */
+            stage_label?: string | null;
+            /** Scheduled At */
+            scheduled_at: string;
+            /** Appeared */
+            appeared: boolean | null;
+            /** Eligible Play Minutes */
+            eligible_play_minutes: number | null;
+            /** Played Minutes */
+            played_minutes: number | null;
+            /** Coverage */
+            coverage: number | null;
+            /** Score */
+            score: number | null;
+            /** Display Rating */
+            display_rating: number | null;
+            /** Components */
+            components: {
+                [key: string]: number | null;
+            };
+            /** Contributions */
+            contributions: {
+                [key: string]: number | null;
+            };
+            /** Feature Scores */
+            feature_scores: {
+                [key: string]: number | null;
+            };
+            /** Facts */
+            facts: {
+                [key: string]: components["schemas"]["MetricFactView"];
+            };
+            /** Reasons */
+            reasons: string[];
+            /** Model Version */
+            model_version: string;
+            /** Reference Version */
+            reference_version: string;
+            /** Profile Id */
+            profile_id: string;
+            /** Time Basis */
+            time_basis: string;
+            /** Moments */
+            moments?: {
+                [key: string]: unknown;
+            }[];
+            /** Physical */
+            physical?: {
+                [key: string]: unknown;
+            };
+            /** Explanation */
+            explanation?: {
+                [key: string]: unknown;
+            };
+        };
+        /** RatingPage */
+        RatingPage: {
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Calculated At */
+            calculated_at?: string | null;
+            /** Published At */
+            published_at?: string | null;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "private" | "public";
+            /** Edition */
+            edition?: {
+                [key: string]: string;
+            };
+            /**
+             * Label
+             * @default Пилотная методика
+             */
+            label?: string;
+            /** Items */
+            items: components["schemas"]["RatingSummaryView"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Reason */
+            reason?: string | null;
+            /** Filters */
+            filters?: {
+                [key: string]: unknown;
+            };
+        };
+        /** RatingPlayerHistory */
+        RatingPlayerHistory: {
+            /** Snapshot Id */
+            snapshot_id: string | null;
+            /** Summary */
+            summary: components["schemas"]["RatingSummaryView"][];
+            /** Matches */
+            matches: components["schemas"]["RatingMatchView"][];
+        };
+        /** RatingPublish */
+        RatingPublish: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Snapshot Id
+             * Format: uuid
+             */
+            snapshot_id: string;
+        };
+        /** RatingSnapshotResult */
+        RatingSnapshotResult: {
+            /**
+             * Stale
+             * @default false
+             */
+            stale?: boolean;
+            /**
+             * Snapshot Id
+             * Format: uuid
+             */
+            snapshot_id: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "private" | "public";
+            /**
+             * Calculated At
+             * Format: date-time
+             */
+            calculated_at: string;
+            /** Published At */
+            published_at: string | null;
+            /** Source Fingerprint */
+            source_fingerprint: string;
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            };
+            /** Settings */
+            settings: {
+                [key: string]: unknown;
+            };
+        };
+        /** RatingSummaryView */
+        RatingSummaryView: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Role */
+            role: string | null;
+            /** Rank */
+            rank: number | null;
+            /**
+             * Qualification
+             * @enum {string}
+             */
+            qualification: "qualified" | "preliminary" | "unknown";
+            /** Score */
+            score: number | null;
+            /** Display Rating */
+            display_rating: number | null;
+            /** Match Count */
+            match_count: number;
+            /** Rated Match Count */
+            rated_match_count: number;
+            /** Eligible Play Minutes */
+            eligible_play_minutes: number;
+            /** Played Minutes */
+            played_minutes: number | null;
+            /** Known Played Minutes */
+            known_played_minutes: number;
+            /** Rated Minutes */
+            rated_minutes: number;
+            /** Weight Sum */
+            weight_sum: number;
+            /** Coverage */
+            coverage: number | null;
+            /** Baseline Influence */
+            baseline_influence: number | null;
+            /** Facts */
+            facts?: {
+                [key: string]: components["schemas"]["MetricFactView"];
+            };
+            /** Teams */
+            teams?: {
+                [key: string]: string;
+            }[];
+            /** Reasons */
+            reasons?: string[];
+        };
         /** Regulation */
         "Regulation-Input": {
             /** Periods S */
@@ -3464,6 +4736,26 @@ export interface components {
         "ReportedTotals-Output": {
             home: components["schemas"]["TeamTotals-Output"];
             away: components["schemas"]["TeamTotals-Output"];
+        };
+        /** RoleIntervals */
+        "RoleIntervals-Input": {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "goalkeeper" | "fixo" | "ala" | "pivot" | "universal" | "unknown";
+            /** Intervals */
+            intervals?: number[][];
+        };
+        /** RoleIntervals */
+        "RoleIntervals-Output": {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "goalkeeper" | "fixo" | "ala" | "pivot" | "universal" | "unknown";
+            /** Intervals */
+            intervals: number[][];
         };
         /** RosterPerson */
         RosterPerson: {
@@ -6005,6 +7297,550 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnderstandingView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    participation_api_v1_matches__mid__participation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParticipationOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_api_v1_matches__mid__participation_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParticipationSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParticipationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    version_api_v1_matches__mid__participation_versions__vid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParticipationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    actions_api_v1_matches__mid__performance_actions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionsOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_action_version_api_v1_matches__mid__performance_actions_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionsSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    actions_version_api_v1_matches__mid__performance_actions_versions__vid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analytics_api_v1_tournaments__tid__analytics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calculate_api_v1_tournaments__tid__analytics_calculate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RatingCalculate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatingSnapshotResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_api_v1_tournaments__tid__analytics_publish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RatingPublish"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatingSnapshotResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_performance_api_v1_matches__mid__performance_publication_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PerformancePublication"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerformancePublicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ratings_api_v1_tournaments__tid__ratings_get: {
+        parameters: {
+            query?: {
+                snapshot_id?: string | null;
+                position?: string | null;
+                team_id?: string | null;
+                stage_label?: string | null;
+                qualification?: ("qualified" | "preliminary" | "unknown") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatingPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_ratings_api_v1_public_tournaments__tid__ratings_get: {
+        parameters: {
+            query?: {
+                snapshot_id?: string | null;
+                position?: string | null;
+                team_id?: string | null;
+                stage_label?: string | null;
+                qualification?: ("qualified" | "preliminary" | "unknown") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatingPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_api_v1_players__pid__ratings_get: {
+        parameters: {
+            query: {
+                tournament_id: string;
+                snapshot_id?: string | null;
+            };
+            header?: never;
+            path: {
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatingPlayerHistory"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_history_api_v1_public_players__pid__ratings_get: {
+        parameters: {
+            query: {
+                tournament_id: string;
+                snapshot_id?: string | null;
+            };
+            header?: never;
+            path: {
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatingPlayerHistory"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_rating_api_v1_matches__mid__ratings_get: {
+        parameters: {
+            query?: {
+                snapshot_id?: string | null;
+            };
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchRatingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_match_rating_api_v1_public_matches__mid__ratings_get: {
+        parameters: {
+            query?: {
+                snapshot_id?: string | null;
+            };
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchRatingsView"];
                 };
             };
             /** @description Validation Error */

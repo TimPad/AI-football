@@ -94,6 +94,8 @@ def canonical_actions(protocol:dict,reviewed_actions:list[dict],links:list[dict]
             if target.get(key) is None and source.get(key) is not None:target[key]=deepcopy(source[key])
         if target.get('start_ms') is not None and source.get('start_ms')==target['start_ms']:target['clock_basis']=source['clock_basis']
         del records[sid]
+    if any(r['kind']=='shot' and r.get('outcome')=='goal' for r in records.values()):
+        raise ValueError('Goal attempt must link to one official goal before counting shots')
     incident_pairs=set()
     for link in links:
         if link.get('kind','canonical')=='canonical':continue

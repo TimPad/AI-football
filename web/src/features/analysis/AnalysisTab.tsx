@@ -1,3 +1,4 @@
+import {RatingWorkbench} from '../ratings/RatingWorkbench';
 import {useState} from 'react';
 import {api} from '../../api/client';
 import type {AnalysisOverview,AnalysisRun,AnalysisJob,PublicAnalysis} from '../../api/domain';
@@ -9,6 +10,10 @@ import {IdentityReview} from './IdentityReview';
 import {AnalysisReport,measure,Heatmap} from './AnalysisReport';
 
 export function AnalysisTab({matchId,actorId,canManage}:{matchId:string,actorId:string,canManage:boolean}){
+ const [mode,setMode]=useState('video');
+ return <>{canManage&&<div className="tabs"><button className={mode==='video'?'active':''} onClick={()=>setMode('video')}>Видео и CV</button><button className={mode==='ratings'?'active':''} onClick={()=>setMode('ratings')}>Участие, действия и оценки</button></div>}{mode==='ratings'&&canManage?<RatingWorkbench matchId={matchId} actorId={actorId}/>:<VideoAnalysisTab matchId={matchId} actorId={actorId} canManage={canManage}/>}</>;
+}
+function VideoAnalysisTab({matchId,actorId,canManage}:{matchId:string,actorId:string,canManage:boolean}){
  const state=useLoad(()=>api<AnalysisOverview>(`/matches/${matchId}/analysis`),matchId);const [selected,setSelected]=useState<string>();
  const key=`aifootball:analysis-command:v1:${actorId}:${matchId}`;
  const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);const [file,setFile]=useState<File>();

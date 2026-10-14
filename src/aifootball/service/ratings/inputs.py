@@ -128,7 +128,7 @@ def performances(db,tid,selected,settings,scope):
                     if time is not None and not any(a0<=time<b0 for a0,b0 in spans):continue
                     if time is None and not provenance['single_role']:continue
                     moment={k:a.get(k) for k in ('id','kind','player_id','role','start_ms','end_ms','clock_basis','success','outcome','penalty_conceded')}
-                    moment['role']=role
+                    moment['role']=role;moment['verified']=True
                     if scope=='private':moment['source_refs']=a['source_refs']
                     moments.append(moment)
                 physical={k:v for k,v in metrics.get((run.id,pid),{}).items() if k in ('distance_m','observed_s','hsr_m','sprints','vmax_ms','m_per_min')} if run else {}

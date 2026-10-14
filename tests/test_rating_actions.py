@@ -57,3 +57,10 @@ def test_incident_max_cost_keeps_first_yellow_as_a_separate_incident():
     rows=canonical_actions({'events':events},[],[{'kind':'incident','canonical_event_id':'foul','source_event_id':'dismissal'}])
     assert discipline_cost(rows,'p')==7
     with pytest.raises(ValueError):canonical_actions({'events':events},[],[{'kind':'incident','canonical_event_id':'first','source_event_id':'dismissal'}])
+
+
+def test_goal_attempt_cannot_remain_unlinked_and_double_official_shot():
+    import pytest
+    protocol={'events':[{'id':'g','kind':'goal','player_id':'p','side':'home'}]}
+    with pytest.raises(ValueError):
+        canonical_actions(protocol,[{'id':'s','kind':'shot','player_id':'p','side':'home','outcome':'goal'}],[])

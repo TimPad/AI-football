@@ -30,3 +30,6 @@ export type AnalysisJob=S['JobView'];
 export type AnalysisAssignment=S['AssignmentInput'];
 export type AnalysisHistory=S['PlayerHistoryView'];
 export type PublicAnalysis=S['PublicAnalysis'];
+export type PlayerRating=S['RatingMatchView'];
+export type TournamentRating=S['RatingSummaryView'];
+export type RatingSnapshot=S['RatingSnapshotResult'];

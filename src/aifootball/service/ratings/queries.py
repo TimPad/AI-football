@@ -1,11 +1,14 @@
 from copy import deepcopy
+from collections import defaultdict
+from aifootball.ratings.aggregate import tournament_rating
+from aifootball.ratings.explanation import explain_rating
 from sqlalchemy import select
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
 from aifootball.service.tournaments.models import Tournament
 from aifootball.service.catalog.models import Player
 from aifootball.service.ratings.models import TournamentRatingSnapshot,PlayerRatingRow,RatingPolicyVersion,RatingReferenceVersion
-from aifootball.service.ratings.calculation import rating_state,current_policy,snapshot_view,make_summaries
+from aifootball.service.ratings.calculation import rating_state,current_policy,snapshot_view,make_summaries,summary_facts
 from aifootball.service.ratings.inputs import selected_inputs,digest
 
 
@@ -74,4 +77,21 @@ def match_ratings(db,mid,snapshot_id=None,*,scope='private'):
     from aifootball.service.matches.models import Match
     match=get_entity(db,Match,mid);snapshot=resolve_snapshot(db,match.tournament_id,snapshot_id,scope)
     if snapshot is None:return {'snapshot_id':None,'items':[]}
-    return {'snapshot_id':snapshot.id,'items':[v for v in _rows(db,snapshot) if v['match_id']==str(mid)]}
+    rows=[v for v in _rows(db,snapshot) if v['match_id']==str(mid)]
+    policy=get_entity(db,RatingPolicyVersion,snapshot.policy_id).document
+    groups=defaultdict(list)
+    for row in rows:groups[row['player_id']].append(row)
+    overall=[]
+    for pid,segments in groups.items():
+        combined=tournament_rating(segments,match_min_minutes=policy['match_min_minutes'],coverage_min=policy['coverage_min'])
+        match_value=combined['matches'][0] if combined['matches'] else {'score':None,'coverage':None}
+        value=deepcopy(segments[0]);value.update(role='overall',score=match_value['score'],
+            display_rating=None if match_value['score'] is None else round(1+9*match_value['score']/100,1),
+            coverage=match_value['coverage'],eligible_play_minutes=None if any(v['eligible_play_minutes'] is None for v in segments) else sum(v['eligible_play_minutes'] for v in segments),
+            played_minutes=combined['played_minutes'],facts=summary_facts(segments),moments=[])
+        value['reasons']=sorted({reason for r in segments for reason in r['reasons']})
+        if value['score'] is None and not value['reasons']:value['reasons']=['short_appearance_or_insufficient_coverage']
+        if len(segments)>1:value['components']={};value['contributions']={};value['feature_scores']={}
+        value['explanation']=explain_rating({**value,'scope':scope},value['facts'],[])
+        overall.append(value)
+    return {'snapshot_id':snapshot.id,'items':rows,'overall':overall}

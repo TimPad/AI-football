@@ -6,6 +6,7 @@ import json
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 from aifootball.ratings.reference import build_reference
+from aifootball.ratings.explanation import explain_rating
 from aifootball.ratings.scoring import score_match,policy_hash
 from aifootball.ratings.aggregate import rank_players
 from aifootball.ratings.features import combine_rate
@@ -116,6 +117,8 @@ def calculate_snapshot(db,tid,actor_id,request_id,*,scope='private',expected_rev
             'components':score['components'],'contributions':score['contributions'],'feature_scores':score['feature_scores'],
             'facts':{k:asdict(v) for k,v in row.facts.items()},'reasons':sorted(set(reasons)),
             'model_version':policy.document['model_version'],'reference_version':reference['reference_version'],'profile_id':profile_id,'time_basis':time_basis})
+    for value in values:
+        value['explanation']=explain_rating({**value,'scope':scope},value['facts'],value['moments'])
     summary={'match_count':len({r.match_id for r in rows}),'player_count':len({r.player_id for r in rows}),
         'rated_player_matches':len({(r['player_id'],r['match_id']) for r in values if r['score'] is not None}),
         'selected_match_count':len(manifest),'reference':{role:{key:c[key] for key in ('available','eligible_player_matches')} for role,c in reference['cohorts'].items()}}

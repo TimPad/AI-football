@@ -1,0 +1,28 @@
+import type {components} from '../../api/types';
+type S=components['schemas'];
+export type ParticipationDoc=S['ParticipationDocument-Output'];
+export type Participation=S['ParticipationOverview'];
+export type ParticipationVersion=S['ParticipationView'];
+export type PersonPresence=S['PlayerParticipation-Output'];
+export type Role=PersonPresence['roles'][number]['role'];
+export type ActionDoc=S['ActionDocument-Output'];
+export type Action=S['ActionInput-Output'];
+export type Actions=S['ActionsOverview'];
+export type ActionsVersion=S['ActionsView'];
+export type RatingMatch=S['RatingMatchView'];
+export type RatingSummary=S['RatingSummaryView'];
+export type RatingPage=S['RatingPage'];
+export type Analytics=S['AnalyticsOverview'];
+export type RatingSnapshot=S['RatingSnapshotResult'];
+export type PlayerRatings=S['RatingPlayerHistory'];
+export type Fact=S['MetricFactView'];
+export const roles:Record<Role,string>={goalkeeper:'Вратарь',fixo:'Фиксо',ala:'Ала',pivot:'Пивот',universal:'Универсал',unknown:'Не установлена'};
+export const scopes={full_match:'Полный матч — проверено',continuous_excerpt:'Непрерывный фрагмент',highlights:'Нарезка',unknown:'Полнота неизвестна'};
+export const timeBases={reviewed_effective:'Проверенное время мяча в игре',official_clean:'Официальное чистое время',running_clock:'Время присутствия с паузами'};
+export const completeness={unknown:'Неизвестно',partial:'Частично',complete:'Полностью проверено'};
+export const actionLabels:Record<Action['kind'],string>={shot:'Удар',pass:'Передача',carry:'Ведение',duel:'Единоборство',recovery:'Возврат контроля',shot_block:'Блок удара',turnover:'Потеря',save:'Сейв',distribution:'Ввод вратаря',error:'Ошибка',goal_candidate:'Связь с официальным голом'};
+export const categories:Record<string,string>={shots:'Удары',passes:'Передачи',carries:'Ведения',duels:'Единоборства',recoveries:'Возвраты контроля',shot_blocks:'Блоки ударов',turnovers:'Потери',saves:'Сейвы',distribution:'Вводы вратаря',errors:'Ошибки'};
+export const metrics:Record<string,string>={npg_rate10:'Голы без пенальти / 10 мин',assists_rate10:'Ассисты / 10 мин',shots_on_target_pct:'В створ, %',key_pass_rate10:'Передачи перед ударом / 10 мин',recoveries_rate10:'Возвраты / 10 мин',duel_win_pct:'Выиграно единоборств, %',blocks_rate10:'Блоки / 10 мин',dangerous_turnover_rate10:'Опасные потери / 10 мин',pass_completion_pct:'Точность передач, %',discipline_cost_rate10:'Стоимость нарушений / 10 мин',save_pct:'Отражено ударов, %',distribution_pct:'Точность вводов, %',progression_rate10:'Продвижения / 10 мин',recoveries_count:'Возвраты контроля',npg_count:'Голы без пенальти',assists_count:'Ассисты'};
+export const num=(v:number|null|undefined,digits=1)=>v==null?'—':v.toLocaleString('ru-RU',{maximumFractionDigits:digits});
+export const pct=(v:number|null|undefined)=>v==null?'неизвестно':`${Math.round(v*100)}%`;
+export function reason(value:string){if(value.startsWith('missing:'))return `Нет полного показателя: ${metrics[value.slice(8)]??value.slice(8)}`;return ({insufficient_reference:'Недостаточно базы для сравнения этой роли',unknown_role:'Роль не установлена',unknown_or_insufficient_role_coverage:'Неизвестное или недостаточное покрытие участия',missing_or_incompatible_participation:'Выберите подтверждённое участие на той же версии протокола и базе времени',unknown_full_match_participation:'Участие за полный матч не проверено',missing_or_incompatible_action_version:'Выберите совместимую подтверждённую версию действий',unpublished_video_source:'Связанная версия видеоанализа не опубликована',short_appearance_or_insufficient_coverage:'Участие менее 3 минут или покрытие ниже 80%',no_opportunities:'Не было наблюдаемых возможностей',unknown_exposure:'Время участия неизвестно',incomplete_category:'Категория размечена не полностью',unresolved_attempts:'Исход попыток не установлен',incomplete_aggregate:'Есть матчи с неполными данными'} as Record<string,string>)[value]??value}

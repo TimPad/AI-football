@@ -142,3 +142,9 @@ def test_maps_stay_separate_even_when_scalar_cells_have_same_unit():
     two=performance(match_id=str(uuid4()),provenance={'pitch':{'length_m':44,'width_m':18}},
         facts={'heatmap':MetricFact(5,5,None,'heatmap-seconds','complete',None)})
     assert aggregate_facts([one,two])['heatmap'].value is None
+
+
+def test_unattributed_actions_do_not_prove_individual_zero_for_affected_team():
+    event=action('recovery',player_id=None)
+    assert build(actions=[event])['recoveries_rate10'].value is None
+    assert build(actions=[{**event,'side':'away'}])['recoveries_rate10'].value==0
