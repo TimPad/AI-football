@@ -121,3 +121,9 @@ def test_read_timeout_is_redacted(frame_window):
     def timeout(request):raise httpx.ReadTimeout('test-key',request=request)
     with pytest.raises(QwenError,match='transport') as raised:client(timeout).infer(frame_window,'JSON',max_output_tokens=512)
     assert raised.value.retryable and raised.value.usage_unknown
+
+
+def test_bounded_scene_metadata_can_exceed_short_text_limit(frame_window):
+    result=client(lambda req:httpx.Response(200,content=sse(completed()))).infer(
+        frame_window,'Return JSON '+('x'*12000),max_output_tokens=512)
+    assert result.document=={'events':[]}

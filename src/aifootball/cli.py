@@ -300,6 +300,15 @@ def build_parser() -> argparse.ArgumentParser:
     job.add_argument('--artifacts', type=Path, help='Повторно упаковать артефакты этого же задания/источника')
     job.add_argument('--partial-recording', action='store_true', help='Исходный файл содержит только фрагмент матча')
     job.add_argument('--halves', help='Интервалы относительно исходного видео: 0:40-21:50,27:10-46:00')
+    job.add_argument('--understand', action='store_true', help='Включить платный анализ Qwen API')
+    job.add_argument('--work-dir', type=Path, help='Постоянный каталог обработки')
+    job.add_argument('--resume', action='store_true', help='Продолжить из --work-dir')
+    job.add_argument('--vlm-mode', choices=['native','frames'], default='native')
+    job.add_argument('--analysis-scope', choices=['full_match','continuous_excerpt','highlights','unknown'], default='unknown')
+    job.add_argument('--vlm-max-requests', type=int, default=200)
+    job.add_argument('--vlm-max-input-tokens', type=int, default=300000)
+    job.add_argument('--vlm-max-output-tokens', type=int, default=100000)
+
 
     def add(name, video=False, models=False, seconds=False):
         p = sub.add_parser(name)
@@ -351,7 +360,10 @@ def main(argv=None) -> int:
     if args.command == 'process-job':
         from aifootball.processor.job import process_job
         try:
-            process_job(args.job, args.video, args.output, models=args.models, artifacts=args.artifacts, halves=args.halves, partial_recording=args.partial_recording)
+            process_job(args.job, args.video, args.output, models=args.models, artifacts=args.artifacts, halves=args.halves,
+                partial_recording=args.partial_recording, understand=args.understand, work_dir=args.work_dir, resume=args.resume,
+                vlm_mode=args.vlm_mode, analysis_scope=args.analysis_scope, vlm_max_requests=args.vlm_max_requests,
+                vlm_max_input_tokens=args.vlm_max_input_tokens, vlm_max_output_tokens=args.vlm_max_output_tokens)
         except ValueError as exc:
             print(str(exc), file=sys.stderr)
             return 1

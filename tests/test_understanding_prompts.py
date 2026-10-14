@@ -27,3 +27,12 @@ def test_identity_prompt_carries_evidence_and_does_not_request_player_names(tmp_
     assert payload['response']['observations']==[]
     assert 'player_id' not in payload['response']
     assert payload['enums']['role']==['player','goalkeeper','referee','unknown']
+
+
+def test_scene_prompt_grounds_track_ids_in_normalized_frame_boxes(tmp_path):
+    from aifootball.understanding.prompts import match_prompt
+    payload=json.loads(match_prompt(window(tmp_path),measured={
+        'track_boxes':{'f25':[[1,.1,.2,.3,.8],[99,.1,.1,.2,.2]]},
+        'track_teams':{1:'A',99:'B'}}))
+    assert payload['window']['track_boxes']=={'f25':[[1,.1,.2,.3,.8]]}
+    assert payload['window']['track_teams']=={'1':'A'}

@@ -154,3 +154,36 @@ def test_existing_process_job_still_packages_contract_v1(cv_case,tmp_path):
     assert result.manifest['contract_version']=='1'
     assert result.manifest['source_video']['duration_s']==125
     assert Predictor.calls==125
+
+
+def test_understand_cli_packages_v2_and_scope_change_reuses_cv(cv_case,tmp_path,monkeypatch):
+    from aifootball.processor.job import process_job
+    from aifootball.analytics.exchange import validate_result
+    from test_understanding_processor import Client
+    import aifootball.processor.qwen as qwen
+    job,video,models,_=cv_case;client=Client()
+    monkeypatch.setattr(qwen.QwenConfig,'from_env',classmethod(lambda cls:client.config))
+    monkeypatch.setattr(qwen,'QwenClient',lambda config:client)
+    work=tmp_path/'cli-work'
+    first=validate_result(process_job(job,video,tmp_path/'first.zip',models=models,understand=True,
+        work_dir=work,vlm_mode='frames',analysis_scope='unknown'))
+    assert first.manifest['contract_version']=='2'
+    assert first.understanding['source']['analysis_scope']=='unknown'
+    predictions=Predictor.calls;requests=sum(client.calls.values())
+    second=validate_result(process_job(job,video,tmp_path/'second.zip',models=models,understand=True,
+        work_dir=work,resume=True,vlm_mode='frames',analysis_scope='unknown'))
+    assert sum(client.calls.values())==requests and Predictor.calls==predictions
+    third=validate_result(process_job(job,video,tmp_path/'third.zip',models=models,understand=True,
+        work_dir=work,resume=True,vlm_mode='frames',analysis_scope='highlights'))
+    assert third.understanding['source']['analysis_scope']=='highlights'
+    assert sum(client.calls.values())>requests and Predictor.calls==predictions
+    assert second.report==third.report
+
+
+def test_understand_off_does_not_read_api_configuration(cv_case,tmp_path,monkeypatch):
+    from aifootball.processor.job import process_job
+    import aifootball.processor.qwen as qwen
+    def forbidden(cls):raise AssertionError('API configuration must stay unused')
+    monkeypatch.setattr(qwen.QwenConfig,'from_env',classmethod(forbidden))
+    job,video,models,_=cv_case
+    assert process_job(job,video,tmp_path/'plain.zip',models=models).exists()

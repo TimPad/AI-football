@@ -57,7 +57,7 @@ class QwenClient:
         return base64.b64encode(raw).decode('ascii')
 
     def _body(self,window,prompt,max_output_tokens):
-        if (not isinstance(prompt,str) or len(prompt)>10000 or 'json' not in prompt.lower() or
+        if (not isinstance(prompt,str) or len(prompt.encode())>64*1024 or 'json' not in prompt.lower() or
             type(max_output_tokens) is not int or not 1<=max_output_tokens<=131072 or
             not 0<=window.start_ms<window.end_ms or len(window.frames)>32 or
             window.mode not in ('native','frames')):raise QwenError('request_config')

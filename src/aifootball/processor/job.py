@@ -179,20 +179,45 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
     return output_path
 
 
-def process_job(job_path, video_path, output_path, *, models=Path('models'), artifacts=None, halves=None, partial_recording=False):
+def process_job(job_path, video_path, output_path, *, models=Path('models'), artifacts=None, halves=None,
+                partial_recording=False, understand=False, work_dir=None, resume=False, vlm_mode='native',
+                vlm_max_requests=200, vlm_max_input_tokens=300_000, vlm_max_output_tokens=100_000,
+                analysis_scope='unknown'):
+    from aifootball.processor.cv import run_cv
+    from aifootball.processor.workspace import Workspace
+    ensure(not resume or (work_dir is not None and (Path(work_dir)/'workspace.json').exists()),
+           'resume requires an existing --work-dir workspace')
+    ensure(vlm_mode in ('native','frames') and analysis_scope in ('full_match','continuous_excerpt','highlights','unknown'), 'Неверные параметры понимания')
+    ensure(all(type(value) is int and value >= 0 for value in (vlm_max_requests, vlm_max_input_tokens, vlm_max_output_tokens)), 'Неверный бюджет обработки')
+    client = None
+    if understand:
+        import shutil
+        from aifootball.processor.qwen import QwenClient, QwenConfig
+        client = QwenClient(QwenConfig.from_env())
+        ensure(bool(shutil.which('ffmpeg') and shutil.which('ffprobe')), 'Требуется FFmpeg/ffprobe')
     job = read_job(job_path); source = source_for_job(job, video_path)
     if artifacts is not None:
         meta = load_json((Path(artifacts) / 'meta.json').read_bytes(), 'meta.json')
         ensure(meta.get('camera_profile_id') == job.contract['context']['camera']['id'] and
                meta.get('source_sha256') == source['sha256'] and meta.get('context_hash') == job.contract['context_hash'],
                'Артефакты не подтверждают происхождение камеры/видео/контекста задания')
-        return package_result(job_path, video_path, artifacts, output_path, halves=halves, partial_recording=partial_recording)
-    work = Path(output_path).parent / ('processor-' + uuid4().hex)
-    from aifootball.processor.cv import run_cv
-    from aifootball.processor.workspace import Workspace
+        if not understand:
+            return package_result(job_path, video_path, artifacts, output_path, halves=halves, partial_recording=partial_recording)
+    work = Path(work_dir) if work_dir is not None else Path(output_path).parent / ('processor-' + uuid4().hex)
+    ensure(not (work_dir is not None and (work/'workspace.json').exists() and not resume), 'Existing work-dir requires --resume')
     workspace = Workspace(work, {'source': source['sha256'], 'context_hash': job.contract['context_hash']})
-    root = run_cv(Path(job_path), Path(video_path), workspace, models=Path(models))
-    return package_result(job_path, video_path, root, output_path, halves=halves, partial_recording=partial_recording)
+    with workspace.exclusive():
+        root = Path(artifacts) if artifacts is not None else run_cv(Path(job_path), Path(video_path), workspace, models=Path(models))
+        understanding = None; evidence = None
+        if understand:
+            from aifootball.processor.understand import run_understanding
+            from aifootball.processor.budget import Budget
+            budget = Budget(workspace, max_requests=vlm_max_requests, max_input_tokens=vlm_max_input_tokens,
+                            max_output_tokens=vlm_max_output_tokens)
+            understanding, evidence = run_understanding(job, Path(video_path), root, workspace, client=client,
+                budget=budget, mode=vlm_mode, analysis_scope=analysis_scope)
+        return package_result(job_path, video_path, root, output_path, halves=halves,
+            partial_recording=partial_recording, understanding=understanding, evidence_files=evidence)
 
 
 
