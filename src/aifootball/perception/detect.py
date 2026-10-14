@@ -100,7 +100,8 @@ def detect_video(
                                           venue.conf_person, venue.conf_ball))
 
     total_frames = 0
-    for frame_id, ts, frame in iter_frames(video, venue.target_fps):
+    for frame_id, ts, frame in iter_frames(video, venue.target_fps, expected_width=venue.frame_width,
+                                          expected_height=venue.frame_height):
         batch_meta.append((frame_id, ts, frame))
         total_frames += 1
         if len(batch_meta) >= batch_size:

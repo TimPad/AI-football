@@ -55,6 +55,12 @@ def apply_mutation(db,match,command,actor):
             raise DomainError('override_reason','Объясните исключение из регламента')
         if 'regulation_override' in values and match.protocol['events']:
             raise DomainError('started_match','Нельзя заменить регламент матча с событиями')
+        if 'hall_id' in values or 'camera_profile_id' in values:
+            from aifootball.service.halls.operations import assign_match_hall
+            assign_match_hall(db,match,values.pop('hall_id',match.hall_id),values.pop('camera_profile_id',None),
+                camera_explicit='camera_profile_id' in data.model_fields_set)
+        if 'venue_label' in values and match.hall_snapshot and values['venue_label']!=match.venue_label:
+            raise DomainError('hall_label','Название зала задаётся выбором из справочника')
         for key,value in values.items():
             if value is None and key in ['venue_label','scheduled_at','referees']:
                 raise DomainError('validation','Не очищайте обязательные поля')

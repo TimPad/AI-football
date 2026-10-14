@@ -21,6 +21,12 @@ def test_reports_fps(tiny_video):
     assert video_fps(tiny_video) == pytest.approx(25.0)
 
 
+def test_camera_profile_resolution_must_match_video(tiny_video):
+    assert len(list(iter_frames(tiny_video, 10, expected_width=320, expected_height=240))) == 20
+    with pytest.raises(ValueError, match="разрешение.*320.*240.*1000.*500"):
+        list(iter_frames(tiny_video, 10, expected_width=1000, expected_height=500))
+
+
 def test_missing_file_fails_clearly(tmp_path):
     with pytest.raises(FileNotFoundError, match="не открывается"):
         list(iter_frames(tmp_path / "nope.mp4", target_fps=10))

@@ -39,7 +39,7 @@ def public_protocol(public_id:UUID,db:Session=Depends(get_session)):
         events.append({key:value for key,value in event.items() if key not in ['notes','created_at','video_ms']})
     return {'number':version.number,'confirmed_at':version.confirmed_at,'published_at':version.published_at,
         'home_name':source['home']['team']['name'],'away_name':source['away']['team']['name'],
-        'scheduled_at':source['scheduled_at'],'venue_label':source['venue_label'],
+        'scheduled_at':source['scheduled_at'],'venue_label':source['venue_label'],'hall':source.get('hall_snapshot'),
         'regulation':{'rules':source['regulation']['rules'],'total_s':source['regulation']['total_s']},
         'lineup':[{key:row[key] for key in ['player_id','display_name','shirt_number','side']} for row in source['lineup']],
         'protocol':{key:value for key,value in source['protocol'].items() if key not in ['notes','attachment_ids']}

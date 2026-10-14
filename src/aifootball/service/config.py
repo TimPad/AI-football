@@ -9,3 +9,8 @@ class Settings(BaseSettings):
     secure_cookies: bool = False
     session_hours: int = 12
     attachment_root: Path = Path('data/service/attachments')
+    analysis_zip_limit: int = 100 * 1024 * 1024
+    analysis_unpacked_limit: int = 300 * 1024 * 1024
+    analysis_file_limit: int = 2048
+    analysis_json_limit: int = 64 * 1024 * 1024
+    analysis_thumb_limit: int = 2 * 1024 * 1024

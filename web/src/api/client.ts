@@ -14,7 +14,10 @@ export async function api<T>(path:string,options:RequestInit={}):Promise<T>{
   if(response.status===401)window.dispatchEvent(new Event('session-expired'));
   throw new ApiError(error?.code??'request',error?.message??`Ошибка сервера (${response.status})`,error?.fields??{},error?.current_revision,response.status);
  }
- return response.status===204 ? undefined as T : response.json();
+ if(response.status===204)return undefined as T;
+ // A successful mutation can be committed even if its body is lost. Keep
+ // this error in the same retry category as a transport interruption.
+ try{return await response.json()}catch{throw new ApiError('network','Ответ сервера получен не полностью. Повторите сохранение с тем же ключом отправки.')}
 }
 export const post=<T>(path:string,body:unknown)=>api<T>(path,{method:'POST',body:JSON.stringify(body)});
 export async function all<T>(path:string):Promise<T[]>{

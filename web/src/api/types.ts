@@ -196,6 +196,40 @@ export interface paths {
         patch: operations["update_players_api_v1_players__entity_id__patch"];
         trace?: never;
     };
+    "/api/v1/teams/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_teams__team_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{team_id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Profile */
+        put: operations["profile_api_v1_teams__team_id__profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tid}/entries": {
         parameters: {
             query?: never;
@@ -225,6 +259,298 @@ export interface paths {
         get: operations["roster_api_v1_entries__eid__players_get"];
         /** Update Roster */
         put: operations["update_roster_api_v1_entries__eid__players_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/players/{player_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Player Detail */
+        get: operations["player_detail_api_v1_players__player_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload */
+        post: operations["upload_api_v1_catalog_images_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/images/{identifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download */
+        get: operations["download_api_v1_catalog_images__identifier__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/halls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Halls */
+        get: operations["halls_api_v1_halls_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_v1_halls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/halls/{hid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hall */
+        get: operations["hall_api_v1_halls__hid__get"];
+        /** Update */
+        put: operations["update_api_v1_halls__hid__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/halls/{hid}/camera-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profiles */
+        get: operations["profiles_api_v1_halls__hid__camera_profiles_get"];
+        put?: never;
+        /** Create Profile */
+        post: operations["create_profile_api_v1_halls__hid__camera_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/cv-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Cv */
+        get: operations["export_cv_api_v1_matches__mid__cv_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Job */
+        post: operations["job_api_v1_matches__mid__analysis_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis/jobs/{jid}/package": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Package */
+        get: operations["package_api_v1_matches__mid__analysis_jobs__jid__package_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload */
+        post: operations["upload_api_v1_matches__mid__analysis_imports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Overview */
+        get: operations["overview_api_v1_matches__mid__analysis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_matches__mid__analysis_runs__rid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/thumbs/{tid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thumbnail */
+        get: operations["thumbnail_api_v1_matches__mid__analysis_runs__rid__thumbs__tid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Assign */
+        put: operations["assign_api_v1_matches__mid__analysis_runs__rid__assignments_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Action */
+        post: operations["action_api_v1_matches__mid__analysis_runs__rid___kind__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/players/{pid}/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History */
+        get: operations["history_api_v1_players__pid__analysis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/matches/{mid}/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public */
+        get: operations["public_api_v1_public_matches__mid__analysis_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -404,6 +730,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/tournaments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tournaments */
+        get: operations["tournaments_api_v1_public_tournaments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/tournaments/{tid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tournament */
+        get: operations["tournament_api_v1_public_tournaments__tid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/tournaments/{tid}/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Calendar */
+        get: operations["calendar_api_v1_public_tournaments__tid__matches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/matches/{mid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Match */
+        get: operations["match_api_v1_public_matches__mid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -458,6 +852,37 @@ export interface components {
             kind: "add_event";
             payload: components["schemas"]["EventChange"];
         };
+        /** AnalysisContext */
+        AnalysisContext: {
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /**
+             * Hall Id
+             * Format: uuid
+             */
+            hall_id: string;
+            /** Teams */
+            teams: {
+                [key: string]: components["schemas"]["TeamSnapshot"];
+            };
+            /** Rosters */
+            rosters: components["schemas"]["RosterPerson"][];
+            /** Pitch */
+            pitch: {
+                [key: string]: number;
+            };
+            /** Camera */
+            camera: {
+                [key: string]: unknown;
+            };
+            /** Units */
+            units: {
+                [key: string]: string;
+            };
+        };
         /** ApplyMatch */
         ApplyMatch: {
             /**
@@ -478,6 +903,31 @@ export interface components {
             /** Matches */
             matches: components["schemas"]["ApplyMatch"][];
         };
+        /** AssignmentInput */
+        AssignmentInput: {
+            /** Track Id */
+            track_id: number;
+            /** Player Id */
+            player_id?: string | null;
+            /** Excluded Reason */
+            excluded_reason?: string | null;
+        };
+        /** AssignmentsUpdate */
+        AssignmentsUpdate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /** Side Map */
+            side_map: {
+                [key: string]: "home" | "away";
+            };
+            /** Assignments */
+            assignments: components["schemas"]["AssignmentInput"][];
+        };
         /** AttachmentPayload */
         AttachmentPayload: {
             /**
@@ -486,10 +936,94 @@ export interface components {
              */
             attachment_id: string;
         };
+        /** Body_upload_api_v1_catalog_images_post */
+        Body_upload_api_v1_catalog_images_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_upload_api_v1_matches__mid__analysis_imports_post */
+        Body_upload_api_v1_matches__mid__analysis_imports_post: {
+            /** File */
+            file: string;
+        };
         /** Body_upload_api_v1_matches__mid__attachments_post */
         Body_upload_api_v1_matches__mid__attachments_post: {
             /** File */
             file: string;
+        };
+        /** CameraCreate */
+        CameraCreate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+            /** Expected Hall Revision */
+            expected_hall_revision: number;
+            /** Name */
+            name: string;
+            /** Frame Width */
+            frame_width: number;
+            /** Frame Height */
+            frame_height: number;
+            /** Points */
+            points: components["schemas"]["ControlPoint"][];
+            /** Pitch Polygon Px */
+            pitch_polygon_px: [
+                number,
+                number
+            ][];
+            calibration?: components["schemas"]["LensCalibration"] | null;
+        };
+        /** CameraProfileView */
+        CameraProfileView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Hall Id
+             * Format: uuid
+             */
+            hall_id: string;
+            /** Name */
+            name: string;
+            /** Version */
+            version: number;
+            /** Hall Revision */
+            hall_revision: number;
+            /** Pitch Length M */
+            pitch_length_m: number;
+            /** Pitch Width M */
+            pitch_width_m: number;
+            /** Frame Width */
+            frame_width: number;
+            /** Frame Height */
+            frame_height: number;
+            /** Points */
+            points: {
+                [key: string]: unknown;
+            }[];
+            /** Pitch Polygon Px */
+            pitch_polygon_px: number[][];
+            /** Homography */
+            homography: number[][];
+            /** Calibration */
+            calibration?: {
+                [key: string]: unknown;
+            } | null;
+            /** Reprojection Error M */
+            reprojection_error_m: number;
+            /** Leave One Out Error M */
+            leave_one_out_error_m?: number | null;
+            /** Matches Current Dimensions */
+            matches_current_dimensions: boolean;
         };
         /** Card */
         "Card-Input": {
@@ -574,6 +1108,21 @@ export interface components {
              * @default
              */
             reason: string;
+        };
+        /** CatalogImageView */
+        CatalogImageView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Size */
+            size: number;
         };
         /** ClockEndPeriodCommand */
         ClockEndPeriodCommand: {
@@ -771,6 +1320,19 @@ export interface components {
             kind: "confirm";
             payload: components["schemas"]["Confirm"];
         };
+        /** ControlPoint */
+        ControlPoint: {
+            /** Px */
+            px: [
+                number,
+                number
+            ];
+            /** M */
+            m: [
+                number,
+                number
+            ];
+        };
         /** Empty */
         Empty: Record<string, never>;
         /** EntryCreate */
@@ -805,7 +1367,7 @@ export interface components {
             team_id: string;
             /** Revision */
             revision: number;
-            team: components["schemas"]["NamedView"];
+            team: components["schemas"]["TeamView"];
         };
         /** EventChange */
         EventChange: {
@@ -1097,6 +1659,212 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HallCreate */
+        HallCreate: {
+            /** Name */
+            name: string;
+            /** Address */
+            address: string;
+            /** Pitch Length M */
+            pitch_length_m: number;
+            /** Pitch Width M */
+            pitch_width_m: number;
+            /** Ceiling Height M */
+            ceiling_height_m?: number | null;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
+            /**
+             * Surface
+             * @default
+             */
+            surface?: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+        };
+        /** HallUpdate */
+        HallUpdate: {
+            /** Name */
+            name: string;
+            /** Address */
+            address: string;
+            /** Pitch Length M */
+            pitch_length_m: number;
+            /** Pitch Width M */
+            pitch_width_m: number;
+            /** Ceiling Height M */
+            ceiling_height_m?: number | null;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
+            /**
+             * Surface
+             * @default
+             */
+            surface?: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Archived
+             * @default false
+             */
+            archived?: boolean;
+        };
+        /** HallView */
+        HallView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Name */
+            name: string;
+            /** Archived */
+            archived: boolean;
+            /** Revision */
+            revision: number;
+            /** Address */
+            address: string;
+            /** Pitch Length M */
+            pitch_length_m: number;
+            /** Pitch Width M */
+            pitch_width_m: number;
+            /** Ceiling Height M */
+            ceiling_height_m?: number | null;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
+            /** Surface */
+            surface: string;
+            /** Description */
+            description: string;
+        };
+        /** HistoryMatch */
+        HistoryMatch: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Shirt Number */
+            shirt_number: string | null;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Track Ids */
+            track_ids: number[];
+            metrics: components["schemas"]["MetricValues"];
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Scheduled At
+             * Format: date-time
+             */
+            scheduled_at: string;
+            /** Teams */
+            teams: {
+                [key: string]: components["schemas"]["TeamSnapshot"];
+            };
+            /** Pitch */
+            pitch: {
+                [key: string]: unknown;
+            };
+            /** Partial */
+            partial: boolean;
+        };
+        /** JobCreate */
+        JobCreate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+        };
+        /** JobView */
+        JobView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Context Hash */
+            context_hash: string;
+            /** Context */
+            context: {
+                [key: string]: unknown;
+            };
+        };
+        /** LensCalibration */
+        LensCalibration: {
+            /** K */
+            K: [
+                [
+                    number,
+                    number,
+                    number
+                ],
+                [
+                    number,
+                    number,
+                    number
+                ],
+                [
+                    number,
+                    number,
+                    number
+                ]
+            ];
+            /** Dist */
+            dist: number[];
+        };
         /** LineupSelection */
         LineupSelection: {
             /**
@@ -1161,6 +1929,17 @@ export interface components {
         };
         /** MatchCreate */
         MatchCreate: {
+            /** Broadcast Url */
+            broadcast_url?: string | null;
+            /** Broadcast Embed Url */
+            broadcast_embed_url?: string | null;
+            /**
+             * Hall Id
+             * Format: uuid
+             */
+            hall_id: string;
+            /** Camera Profile Id */
+            camera_profile_id?: string | null;
             /**
              * Home Entry Id
              * Format: uuid
@@ -1194,6 +1973,14 @@ export interface components {
         };
         /** MatchUpdate */
         MatchUpdate: {
+            /** Broadcast Url */
+            broadcast_url?: string | null;
+            /** Broadcast Embed Url */
+            broadcast_embed_url?: string | null;
+            /** Hall Id */
+            hall_id?: string | null;
+            /** Camera Profile Id */
+            camera_profile_id?: string | null;
             /** Scheduled At */
             scheduled_at?: string | null;
             /** Venue Label */
@@ -1251,6 +2038,15 @@ export interface components {
             scheduled_at: string;
             /** Venue Label */
             venue_label: string;
+            /** Hall Id */
+            hall_id?: string | null;
+            hall_snapshot?: components["schemas"]["HallView"] | null;
+            /** Camera Profile Id */
+            camera_profile_id?: string | null;
+            /** Broadcast Url */
+            broadcast_url?: string | null;
+            /** Broadcast Embed Url */
+            broadcast_embed_url?: string | null;
             /** Referees */
             referees: string[];
             /**
@@ -1273,34 +2069,28 @@ export interface components {
             /** Server Now Ms */
             server_now_ms: number;
         };
-        /** NamedCreate */
-        NamedCreate: {
-            /** Name */
-            name: string;
-        };
-        /** NamedPatch */
-        NamedPatch: {
-            /** Name */
-            name?: string | null;
-            /** Archived */
-            archived?: boolean | null;
-        };
-        /** NamedView */
-        NamedView: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Name */
-            name: string;
-            /** Archived */
-            archived: boolean;
+        /** MetricValues */
+        MetricValues: {
+            /** Distance M */
+            distance_m?: number | null;
+            /** Observed S */
+            observed_s?: number | null;
+            /** M Per Min */
+            m_per_min?: number | null;
+            /** Hsr M */
+            hsr_m?: number | null;
+            /** Sprints */
+            sprints?: number | null;
+            /** Vmax Ms */
+            vmax_ms?: number | null;
+            /** Heatmap S */
+            heatmap_s?: number[][] | null;
+            /** Metric Notes */
+            metric_notes?: {
+                [key: string]: string;
+            };
+            /** Missing Track Ids */
+            missing_track_ids?: number[];
         };
         /** Notes */
         Notes: {
@@ -1309,10 +2099,42 @@ export interface components {
             /** Public Notes */
             public_notes?: string | null;
         };
+        /** Overview */
+        Overview: {
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /** Analysis Revision */
+            analysis_revision: number;
+            /** Active Run Id */
+            active_run_id: string | null;
+            /** Published Run Id */
+            published_run_id: string | null;
+            /** Jobs */
+            jobs: components["schemas"]["JobView"][];
+            /** Runs */
+            runs: components["schemas"]["RunSummary"][];
+        };
+        /** Page[CameraProfileView] */
+        Page_CameraProfileView_: {
+            /** Items */
+            items: components["schemas"]["CameraProfileView"][];
+            /** Total */
+            total: number;
+        };
         /** Page[EntryView] */
         Page_EntryView_: {
             /** Items */
             items: components["schemas"]["EntryView"][];
+            /** Total */
+            total: number;
+        };
+        /** Page[HallView] */
+        Page_HallView_: {
+            /** Items */
+            items: components["schemas"]["HallView"][];
             /** Total */
             total: number;
         };
@@ -1323,10 +2145,10 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** Page[NamedView] */
-        Page_NamedView_: {
+        /** Page[PlayerView] */
+        Page_PlayerView_: {
             /** Items */
-            items: components["schemas"]["NamedView"][];
+            items: components["schemas"]["PlayerView"][];
             /** Total */
             total: number;
         };
@@ -1337,10 +2159,31 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[PublicMatch] */
+        Page_PublicMatch_: {
+            /** Items */
+            items: components["schemas"]["PublicMatch"][];
+            /** Total */
+            total: number;
+        };
+        /** Page[PublicTournament] */
+        Page_PublicTournament_: {
+            /** Items */
+            items: components["schemas"]["PublicTournament"][];
+            /** Total */
+            total: number;
+        };
         /** Page[RegulationView] */
         Page_RegulationView_: {
             /** Items */
             items: components["schemas"]["RegulationView"][];
+            /** Total */
+            total: number;
+        };
+        /** Page[TeamView] */
+        Page_TeamView_: {
+            /** Items */
+            items: components["schemas"]["TeamView"][];
             /** Total */
             total: number;
         };
@@ -1564,6 +2407,115 @@ export interface components {
              */
             kind: "period_end" | "period_start";
         };
+        /** PlayerCreate */
+        PlayerCreate: {
+            /** Photo Id */
+            photo_id?: string | null;
+            /** Birth Date */
+            birth_date?: string | null;
+            /** Position */
+            position?: ("goalkeeper" | "defender" | "winger" | "forward" | "universal") | null;
+            /** Height Cm */
+            height_cm?: number | null;
+            /** Weight Kg */
+            weight_kg?: number | null;
+            /** Name */
+            name: string;
+        };
+        /** PlayerHistoryView */
+        PlayerHistoryView: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Match Count */
+            match_count: number;
+            totals: components["schemas"]["MetricValues"];
+            /** Matches */
+            matches: components["schemas"]["HistoryMatch"][];
+        };
+        /** PlayerMetric */
+        PlayerMetric: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Shirt Number */
+            shirt_number: string | null;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Track Ids */
+            track_ids: number[];
+            metrics: components["schemas"]["MetricValues"];
+        };
+        /** PlayerPatch */
+        PlayerPatch: {
+            /** Photo Id */
+            photo_id?: string | null;
+            /** Birth Date */
+            birth_date?: string | null;
+            /** Position */
+            position?: ("goalkeeper" | "defender" | "winger" | "forward" | "universal") | null;
+            /** Height Cm */
+            height_cm?: number | null;
+            /** Weight Kg */
+            weight_kg?: number | null;
+            /** Name */
+            name?: string | null;
+            /** Archived */
+            archived?: boolean | null;
+        };
+        /** PlayerView */
+        PlayerView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Name */
+            name: string;
+            /** Archived */
+            archived: boolean;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision?: number;
+            /** Photo Id */
+            photo_id?: string | null;
+            /** Birth Date */
+            birth_date?: string | null;
+            /** Position */
+            position?: ("goalkeeper" | "defender" | "winger" | "forward" | "universal") | null;
+            /** Height Cm */
+            height_cm?: number | null;
+            /** Weight Kg */
+            weight_kg?: number | null;
+        };
+        /** PointerMutation */
+        PointerMutation: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /** Expected Analysis Revision */
+            expected_analysis_revision: number;
+        };
         /** Points */
         "Points-Input": {
             /**
@@ -1610,6 +2562,33 @@ export interface components {
         PreviewRules: {
             /** Match Ids */
             match_ids: string[];
+        };
+        /** ProfilePlayer */
+        ProfilePlayer: {
+            /** Photo Id */
+            photo_id?: string | null;
+            /** Birth Date */
+            birth_date?: string | null;
+            /** Position */
+            position?: ("goalkeeper" | "defender" | "winger" | "forward" | "universal") | null;
+            /** Height Cm */
+            height_cm?: number | null;
+            /** Weight Kg */
+            weight_kg?: number | null;
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision?: number;
+            /** Name */
+            name: string;
+            /** Shirt Number */
+            shirt_number?: string | null;
         };
         /** Projection */
         Projection: {
@@ -1690,6 +2669,45 @@ export interface components {
              * @default true
              */
             draft: boolean;
+        };
+        /** PublicAnalysis */
+        PublicAnalysis: {
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Pitch */
+            pitch: {
+                [key: string]: unknown;
+            };
+            /** Teams */
+            teams: {
+                [key: string]: components["schemas"]["TeamSnapshot"];
+            };
+            /** Side Map */
+            side_map: {
+                [key: string]: "home" | "away";
+            };
+            /** Primary Period Key */
+            primary_period_key: string;
+            /** Video S */
+            video_s: number;
+            /** Processed S */
+            processed_s: number;
+            /** Partial */
+            partial: boolean;
+            /** Periods */
+            periods: {
+                [key: string]: unknown;
+            }[];
+            /** Players */
+            players: components["schemas"]["PublicPlayer"][];
         };
         /** PublicCard */
         PublicCard: {
@@ -1798,6 +2816,26 @@ export interface components {
             /** Penalty Id */
             penalty_id: string | null;
         };
+        /** PublicHall */
+        PublicHall: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Address */
+            address: string;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
+            /** Pitch Length M */
+            pitch_length_m: number;
+            /** Pitch Width M */
+            pitch_width_m: number;
+        };
         /** PublicLineup */
         PublicLineup: {
             /**
@@ -1814,6 +2852,58 @@ export interface components {
              * @enum {string}
              */
             side: "home" | "away";
+        };
+        /** PublicMatch */
+        PublicMatch: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            tournament: components["schemas"]["PublicTournament"];
+            /** Home Name */
+            home_name: string;
+            /** Away Name */
+            away_name: string;
+            /**
+             * Scheduled At
+             * Format: date-time
+             */
+            scheduled_at: string;
+            /** Venue Label */
+            venue_label: string;
+            hall?: components["schemas"]["PublicHall"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "scheduled" | "live" | "ended" | "postponed" | "cancelled";
+            /** Schedule Slot S */
+            schedule_slot_s: number;
+            /** Broadcast Url */
+            broadcast_url: string | null;
+            /** Broadcast Embed Url */
+            broadcast_embed_url: string | null;
+            /** Public Protocol Id */
+            public_protocol_id: string | null;
+            score: components["schemas"]["PublicScore"];
+        };
+        /** PublicMetrics */
+        PublicMetrics: {
+            /** Distance M */
+            distance_m: number | null;
+            /** Observed S */
+            observed_s: number | null;
+            /** M Per Min */
+            m_per_min: number | null;
+            /** Hsr M */
+            hsr_m: number | null;
+            /** Sprints */
+            sprints: number | null;
+            /** Vmax Ms */
+            vmax_ms: number | null;
+            /** Heatmap S */
+            heatmap_s: number[][] | null;
         };
         /** PublicPenaltyAttempt */
         PublicPenaltyAttempt: {
@@ -1888,6 +2978,24 @@ export interface components {
              */
             kind: "period_end" | "period_start";
         };
+        /** PublicPlayer */
+        PublicPlayer: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Shirt Number */
+            shirt_number: string | null;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            metrics: components["schemas"]["PublicMetrics"];
+        };
         /** PublicProtocol */
         PublicProtocol: {
             /** Number */
@@ -1913,6 +3021,7 @@ export interface components {
             scheduled_at: string;
             /** Venue Label */
             venue_label: string;
+            hall?: components["schemas"]["PublicHall"] | null;
             regulation: components["schemas"]["PublicRegulation"];
             /** Lineup */
             lineup: components["schemas"]["PublicLineup"][];
@@ -1924,6 +3033,13 @@ export interface components {
             rules: components["schemas"]["Regulation-Output"];
             /** Total S */
             total_s: number;
+        };
+        /** PublicScore */
+        PublicScore: {
+            /** Home */
+            home: number | null;
+            /** Away */
+            away: number | null;
         };
         /** PublicShootoutAttempt */
         PublicShootoutAttempt: {
@@ -2022,6 +3138,30 @@ export interface components {
             kind: "timeout";
             /** Duration Ms */
             duration_ms: number | null;
+        };
+        /** PublicTournament */
+        PublicTournament: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Season */
+            season: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /** Timezone */
+            timezone: string;
         };
         /** Publish */
         Publish: {
@@ -2274,6 +3414,23 @@ export interface components {
             home: components["schemas"]["TeamTotals-Output"];
             away: components["schemas"]["TeamTotals-Output"];
         };
+        /** RosterPerson */
+        RosterPerson: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Display Name */
+            display_name: string;
+            /** Shirt Number */
+            shirt_number: string | null;
+        };
         /** RosterPlayer */
         "RosterPlayer-Input": {
             /**
@@ -2310,7 +3467,7 @@ export interface components {
             shirt_number: string | null;
             /** Active */
             active: boolean;
-            player: components["schemas"]["NamedView"];
+            player: components["schemas"]["PlayerView"];
         };
         /** RosterUpdate */
         RosterUpdate: {
@@ -2343,12 +3500,113 @@ export interface components {
             team_id: string;
             /** Revision */
             revision: number;
-            team: components["schemas"]["NamedView"];
+            team: components["schemas"]["TeamView"];
             /** Players */
             players: components["schemas"]["RosterPlayer-Output"][];
         };
+        /** RunSummary */
+        RunSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "review" | "confirmed";
+            /** Revision */
+            revision: number;
+            /** Source Run Id */
+            source_run_id: string | null;
+            /** Partial */
+            partial: boolean;
+            /** Passed */
+            passed: boolean;
+        };
+        /** RunView */
+        RunView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "review" | "confirmed";
+            /** Revision */
+            revision: number;
+            /** Source Run Id */
+            source_run_id: string | null;
+            /** Partial */
+            partial: boolean;
+            /** Passed */
+            passed: boolean;
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /** Analysis Revision */
+            analysis_revision: number;
+            /** Active Run Id */
+            active_run_id: string | null;
+            /** Published Run Id */
+            published_run_id: string | null;
+            context: components["schemas"]["AnalysisContext"];
+            /** Manifest */
+            manifest: {
+                [key: string]: unknown;
+            };
+            /** Report */
+            report: {
+                [key: string]: unknown;
+            };
+            /** Checks */
+            checks: {
+                [key: string]: unknown;
+            };
+            /** Tracks */
+            tracks: components["schemas"]["TrackView"][];
+            /** Side Map */
+            side_map: {
+                [key: string]: "home" | "away";
+            };
+            /** Assignments */
+            assignments: components["schemas"]["AssignmentInput"][];
+            /** Players */
+            players: components["schemas"]["PlayerMetric"][];
+        };
         /** SessionView */
         SessionView: {
+            /**
+             * Can Manage Analytics
+             * @default false
+             */
+            can_manage_analytics?: boolean;
             /**
              * Id
              * Format: uuid
@@ -2706,6 +3964,126 @@ export interface components {
             /** Player In Id */
             player_in_id: string | null;
         };
+        /** TeamCreate */
+        TeamCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /** Logo Id */
+            logo_id?: string | null;
+            /** Players */
+            players?: components["schemas"]["ProfilePlayer"][];
+        };
+        /** TeamMemberView */
+        TeamMemberView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Team Id
+             * Format: uuid
+             */
+            team_id: string;
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Shirt Number */
+            shirt_number: string | null;
+            /** Active */
+            active: boolean;
+            player: components["schemas"]["PlayerView"];
+        };
+        /** TeamPatch */
+        TeamPatch: {
+            /** Name */
+            name?: string | null;
+            /** Archived */
+            archived?: boolean | null;
+            /** Description */
+            description?: string | null;
+            /** Logo Id */
+            logo_id?: string | null;
+        };
+        /** TeamProfile */
+        TeamProfile: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Name */
+            name: string;
+            /** Archived */
+            archived: boolean;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision?: number;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /** Logo Id */
+            logo_id?: string | null;
+            /** Players */
+            players: components["schemas"]["TeamMemberView"][];
+        };
+        /** TeamProfileUpdate */
+        TeamProfileUpdate: {
+            /** Name */
+            name: string;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /** Logo Id */
+            logo_id?: string | null;
+            /** Players */
+            players?: components["schemas"]["ProfilePlayer"][];
+            /** Expected Revision */
+            expected_revision: number;
+        };
+        /** TeamSnapshot */
+        TeamSnapshot: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
         /** TeamTotals */
         "TeamTotals-Input": {
             /** Score */
@@ -2735,6 +4113,35 @@ export interface components {
             period_scores: {
                 [key: string]: number | null;
             };
+        };
+        /** TeamView */
+        TeamView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Name */
+            name: string;
+            /** Archived */
+            archived: boolean;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision?: number;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /** Logo Id */
+            logo_id?: string | null;
         };
         /** Timeout */
         "Timeout-Input": {
@@ -2915,6 +4322,21 @@ export interface components {
             timezone: string;
             /** Revision */
             revision: number;
+        };
+        /** TrackView */
+        TrackView: {
+            /** Track Id */
+            track_id: number;
+            /** Team */
+            team: ("A" | "B") | null;
+            /** Role */
+            role: string;
+            /** Intervals */
+            intervals: number[][];
+            /** Thumb */
+            thumb: string | null;
+            /** Has Metrics */
+            has_metrics: boolean;
         };
         /** UnpublishCommand */
         UnpublishCommand: {
@@ -3314,7 +4736,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_NamedView_"];
+                    "application/json": components["schemas"]["Page_TeamView_"];
                 };
             };
             /** @description Validation Error */
@@ -3337,7 +4759,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NamedCreate"];
+                "application/json": components["schemas"]["TeamCreate"];
             };
         };
         responses: {
@@ -3347,7 +4769,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NamedView"];
+                    "application/json": components["schemas"]["TeamProfile"];
                 };
             };
             /** @description Validation Error */
@@ -3372,7 +4794,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NamedPatch"];
+                "application/json": components["schemas"]["TeamPatch"];
             };
         };
         responses: {
@@ -3382,7 +4804,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NamedView"];
+                    "application/json": components["schemas"]["TeamView"];
                 };
             };
             /** @description Validation Error */
@@ -3414,7 +4836,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_NamedView_"];
+                    "application/json": components["schemas"]["Page_PlayerView_"];
                 };
             };
             /** @description Validation Error */
@@ -3437,7 +4859,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NamedCreate"];
+                "application/json": components["schemas"]["PlayerCreate"];
             };
         };
         responses: {
@@ -3447,7 +4869,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NamedView"];
+                    "application/json": components["schemas"]["PlayerView"];
                 };
             };
             /** @description Validation Error */
@@ -3472,7 +4894,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NamedPatch"];
+                "application/json": components["schemas"]["PlayerPatch"];
             };
         };
         responses: {
@@ -3482,7 +4904,73 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NamedView"];
+                    "application/json": components["schemas"]["PlayerView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_teams__team_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    profile_api_v1_teams__team_id__profile_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamProfile"];
                 };
             };
             /** @description Validation Error */
@@ -3618,6 +5106,669 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RosterView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    player_detail_api_v1_players__player_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_api_v1_catalog_images_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Request-ID": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_api_v1_catalog_images_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogImageView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_api_v1_catalog_images__identifier__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    halls_api_v1_halls_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_HallView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_v1_halls_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HallCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HallView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hall_api_v1_halls__hid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HallView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_api_v1_halls__hid__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HallUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HallView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    profiles_api_v1_halls__hid__camera_profiles_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                hid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_CameraProfileView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_profile_api_v1_halls__hid__camera_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CameraCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CameraProfileView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_cv_api_v1_matches__mid__cv_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_api_v1_matches__mid__analysis_jobs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    package_api_v1_matches__mid__analysis_jobs__jid__package_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                jid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_api_v1_matches__mid__analysis_imports_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Request-ID": string;
+            };
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_api_v1_matches__mid__analysis_imports_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    overview_api_v1_matches__mid__analysis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Overview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_matches__mid__analysis_runs__rid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    thumbnail_api_v1_matches__mid__analysis_runs__rid__thumbs__tid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+                tid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_api_v1_matches__mid__analysis_runs__rid__assignments_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignmentsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    action_api_v1_matches__mid__analysis_runs__rid___kind__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+                kind: "confirm" | "activate" | "publish" | "reviews";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PointerMutation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history_api_v1_players__pid__analysis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerHistoryView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_api_v1_public_matches__mid__analysis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicAnalysis"];
                 };
             };
             /** @description Validation Error */
@@ -4025,6 +6176,135 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tournaments_api_v1_public_tournaments_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PublicTournament_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tournament_api_v1_public_tournaments__tid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicTournament"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calendar_api_v1_public_tournaments__tid__matches_get: {
+        parameters: {
+            query?: {
+                day?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PublicMatch_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_api_v1_public_matches__mid__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicMatch"];
                 };
             };
             /** @description Validation Error */

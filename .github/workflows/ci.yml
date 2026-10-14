@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Backend, frontend and E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgresql+psycopg://aifootball:ci-only-password@127.0.0.1:54329/aifootball
+      ALLOWED_ORIGIN: http://127.0.0.1:8000
+      SECURE_COOKIES: 'false'
+      ATTACHMENT_ROOT: data/service/ci-attachments
+      MPLBACKEND: Agg
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aifootball
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: aifootball
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U aifootball -d aifootball"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: '0.11.7'
+          enable-cache: true
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install Python dependencies
+        run: uv sync --locked --all-extras
+      - name: Install frontend dependencies
+        run: npm --prefix web ci
+      - name: Install Chromium
+        run: web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Check API type generation
+        run: |
+          .venv/bin/python scripts/export_service_openapi.py --output data/service/openapi.json
+          npm --prefix web run types:api
+          git diff --exit-code -- web/src/api/types.ts
+      - name: Build frontend
+        run: npm --prefix web run build
+      - name: Backend tests
+        run: .venv/bin/python -m pytest --tb=line -q
+      - name: Frontend tests
+        run: npm --prefix web run test
+      - name: Browser tests
+        run: npm --prefix web run test:e2e

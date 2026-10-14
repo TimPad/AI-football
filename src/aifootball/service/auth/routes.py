@@ -48,13 +48,15 @@ def login(data: Login, request: Request, response: Response):
         response.set_cookie('af_session', token, httponly=True, samesite='lax', path='/',
                             secure=request.app.state.settings.secure_cookies,
                             max_age=request.app.state.settings.session_hours * 3600)
-        return {'id': str(admin.id), 'login': admin.login, 'csrf_token': csrf}
+        return {'id': str(admin.id), 'login': admin.login, 'csrf_token': csrf,
+                'can_manage_analytics': admin.can_manage_analytics}
 
 
 @router.get('/me',response_model=SessionView)
 def me(request: Request):
     admin, auth = current_session(request)
-    return {'id': str(admin.id), 'login': admin.login, 'csrf_token': auth.csrf_token}
+    return {'id': str(admin.id), 'login': admin.login, 'csrf_token': auth.csrf_token,
+            'can_manage_analytics': admin.can_manage_analytics}
 
 
 @router.post('/logout', status_code=204)

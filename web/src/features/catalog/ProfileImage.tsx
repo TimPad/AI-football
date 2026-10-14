@@ -1,0 +1,10 @@
+import {useRef,useState,useEffect} from 'react';
+import {ImagePlus,X} from 'lucide-react';
+import {api} from '../../api/client';
+import {ErrorBox} from '../../components/ui';
+export const imageUrl=(id:string)=>`/api/v1/catalog/images/${id}`;
+export function ProfileImage({value,onChange,label,disabled=false,onBusyChange}:{value:string|null,onChange:(id:string|null)=>void,label:string,disabled?:boolean,onBusyChange?:(busy:boolean)=>void}){
+ const [busy,setBusy]=useState(false);const [error,setError]=useState<unknown>();const callback=useRef(onChange);callback.current=onChange;const active=useRef(true);useEffect(()=>{active.current=true;return()=>{active.current=false}},[]);const retry=useRef<{signature:string,id:string}|undefined>(undefined);
+ async function upload(file:File){setError(undefined);if(file.size>5*1024*1024){setError(new Error('Максимальный размер изображения — 5 МБ'));return}setBusy(true);onBusyChange?.(true);const signature=`${file.name}:${file.size}:${file.lastModified}`;if(retry.current?.signature!==signature)retry.current={signature,id:crypto.randomUUID()};try{const data=new FormData();data.append('file',file);const saved=await api<{id:string}>('/catalog/images',{method:'POST',body:data,headers:{'X-Request-ID':retry.current!.id}});if(active.current)callback.current(saved.id);retry.current=undefined}catch(e){setError(e)}finally{setBusy(false);onBusyChange?.(false)}}
+ return <div className="profile-image-control"><div className="profile-image-preview">{value?<img src={imageUrl(value)} alt={label}/>:<ImagePlus/>}</div><label className="image-picker"><span>{busy?'Загружаем…':value?'Заменить':'Загрузить'}</span><input type="file" aria-label={label} accept="image/png,image/jpeg,image/webp" disabled={disabled||busy} onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.target.value=''}}/></label>{value&&<button type="button" disabled={disabled||busy} className="quiet" aria-label={`Убрать ${label.toLowerCase()}`} onClick={()=>onChange(null)}><X/></button>}<ErrorBox error={error}/></div>
+}

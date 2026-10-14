@@ -3,38 +3,54 @@ from fastapi import APIRouter,Depends,Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from aifootball.service.auth.security import require_admin,require_csrf
-from aifootball.service.catalog.models import Team,Player,Entry
-from aifootball.service.catalog.schemas import NamedCreate,NamedPatch,EntryCreate,RosterUpdate
+from aifootball.service.catalog.models import Team,Player,Entry,TeamMember
+from aifootball.service.catalog.schemas import NamedCreate,NamedPatch,EntryCreate,RosterUpdate,PlayerCreate,PlayerPatch,TeamCreate,TeamPatch,TeamProfileUpdate,RosterPlayer
+from aifootball.service.catalog.profiles import save_profile,team_profile,check_image
 from aifootball.service.catalog.operations import entry_view,roster_view,set_roster
 from aifootball.service.common import get_entity,as_dict,list_entities
 from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
 from aifootball.service.tournaments.models import Tournament
 
-from aifootball.service.views import Page,NamedView,EntryView,RosterView
+from aifootball.service.views import Page,NamedView,EntryView,RosterView,TeamView,PlayerView,TeamProfile
 
 router=APIRouter()
 
 
-def register_named(path,cls):
+def register_named(path,cls,create_schema,patch_schema,view):
     def listing(db:Session=Depends(get_session),limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0)):
         return list_entities(db,cls,limit=limit,offset=offset)
-    def create(data:NamedCreate,db:Session=Depends(get_session)):
-        row=cls(**data.model_dump()); db.add(row); db.commit(); return as_dict(row)
-    def update(entity_id:UUID,data:NamedPatch,db:Session=Depends(get_session)):
+    def create(data:create_schema,db:Session=Depends(get_session)):
+        with db.begin():
+            if cls is Team: return save_profile(db,data)
+            check_image(db,data.photo_id)
+            row=cls(**data.model_dump()); db.add(row); db.flush(); return as_dict(row)
+    def update(entity_id:UUID,data:patch_schema,db:Session=Depends(get_session)):
         with db.begin():
             row=get_entity(db,cls,entity_id,lock=True)
             values=data.model_dump(exclude_unset=True)
-            if any(v is None for v in values.values()): raise DomainError('validation','Не очищайте обязательные поля')
+            if any(v is None for key,v in values.items() if key in {'name','archived','description'}): raise DomainError('validation','Не очищайте обязательные поля')
+            check_image(db,values.get('logo_id') if cls is Team else values.get('photo_id'))
             for key,value in values.items(): setattr(row,key,value)
+            row.revision+=1
         return as_dict(row)
-    router.add_api_route(path,listing,methods=['GET'],response_model=Page[NamedView],dependencies=[Depends(require_admin)],name=f'list_{cls.__tablename__}')
-    router.add_api_route(path,create,methods=['POST'],response_model=NamedView,status_code=201,dependencies=[Depends(require_csrf)],name=f'create_{cls.__tablename__}')
-    router.add_api_route(path+'/{entity_id}',update,methods=['PATCH'],response_model=NamedView,dependencies=[Depends(require_csrf)],name=f'update_{cls.__tablename__}')
+    router.add_api_route(path,listing,methods=['GET'],response_model=Page[view],dependencies=[Depends(require_admin)],name=f'list_{cls.__tablename__}')
+    router.add_api_route(path,create,methods=['POST'],response_model=TeamProfile if cls is Team else view,status_code=201,dependencies=[Depends(require_csrf)],name=f'create_{cls.__tablename__}')
+    router.add_api_route(path+'/{entity_id}',update,methods=['PATCH'],response_model=view,dependencies=[Depends(require_csrf)],name=f'update_{cls.__tablename__}')
 
 
-register_named('/teams',Team)
-register_named('/players',Player)
+register_named('/teams',Team,TeamCreate,TeamPatch,TeamView)
+register_named('/players',Player,PlayerCreate,PlayerPatch,PlayerView)
+
+
+@router.get('/teams/{team_id}',response_model=TeamProfile,dependencies=[Depends(require_admin)])
+def detail(team_id:UUID,db:Session=Depends(get_session)):
+    return team_profile(db,get_entity(db,Team,team_id))
+
+
+@router.put('/teams/{team_id}/profile',response_model=TeamProfile,dependencies=[Depends(require_csrf)])
+def profile(team_id:UUID,data:TeamProfileUpdate,db:Session=Depends(get_session)):
+    with db.begin(): return save_profile(db,data,team_id)
 
 
 @router.get('/tournaments/{tid}/entries',response_model=Page[EntryView],dependencies=[Depends(require_admin)])
@@ -51,7 +67,10 @@ def create_entry(tid:UUID,data:EntryCreate,db:Session=Depends(get_session)):
         tournament=get_entity(db,Tournament,tid); team=get_entity(db,Team,data.team_id)
         if tournament.archived or team.archived: raise DomainError('archived','Выбранная запись в архиве')
         entry=Entry(tournament_id=tid,team_id=data.team_id); db.add(entry); db.flush()
-        result=entry_view(db,entry)
+        members=db.scalars(select(TeamMember).join(Player,Player.id==TeamMember.player_id).where(TeamMember.team_id==team.id,TeamMember.active,Player.archived.is_(False))).all()
+        if members:
+            result=set_roster(db,entry,RosterUpdate(expected_revision=0,players=[RosterPlayer(player_id=m.player_id,shirt_number=m.shirt_number) for m in members]))
+        else: result=entry_view(db,entry)
     return result
 
 
@@ -63,3 +82,8 @@ def roster(eid:UUID,db:Session=Depends(get_session)):
 @router.put('/entries/{eid}/players',response_model=RosterView,dependencies=[Depends(require_csrf)])
 def update_roster(eid:UUID,data:RosterUpdate,db:Session=Depends(get_session)):
     with db.begin(): return set_roster(db,get_entity(db,Entry,eid,lock=True),data)
+
+
+@router.get('/players/{player_id}', response_model=PlayerView, dependencies=[Depends(require_admin)])
+def player_detail(player_id: UUID, db: Session=Depends(get_session)):
+    return as_dict(get_entity(db, Player, player_id))

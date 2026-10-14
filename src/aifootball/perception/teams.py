@@ -11,6 +11,10 @@ import polars as pl
 # Трек участвует в кластеризации, только если он достаточно долго был на поле:
 # по короткому обрывку цвет формы определяется ненадёжно.
 MIN_OBSERVATIONS = 10
+# Короткая атака у ворот не должна превращать полевого игрока во вратаря.
+GOALKEEPER_MIN_S = 20.0
+GOAL_ZONE_M = 7.0  # зона у ворот с запасом относительно штрафной
+GOAL_CENTER_M = 5.0  # ширина зоны относительно центра ворот
 
 
 def assign_teams(tracks: pl.DataFrame, min_observations: int = MIN_OBSERVATIONS) -> pl.DataFrame:
@@ -82,74 +86,69 @@ def assign_roles(tracks: pl.DataFrame, venue) -> pl.DataFrame:
     pixels = on_pitch.select("foot_x", "foot_y").to_numpy()
     meters = apply_homography(venue.H, undistort_points(pixels, venue.calib))
 
-    pos_df = on_pitch.select("track_id").with_columns(
+    pos_df = on_pitch.select("frame_id", "ts", "track_id", "team", "role", "in_pitch").with_columns(
         x_m=pl.Series(meters[:, 0]),
         y_m=pl.Series(meters[:, 1]),
     )
 
-    track_stats = (
-        pos_df.group_by("track_id")
-        .agg(
-            x_med=pl.col("x_m").median(),
-            y_med=pl.col("y_m").median(),
-            x_min=pl.col("x_m").min(),
-            x_max=pl.col("x_m").max(),
-            count=pl.len(),
-        )
-        .filter(pl.col("count") >= 5)
-    )
+    from aifootball.analytics.periods import find_halves, in_period
+    from aifootball.state.smooth import MAX_GAP_S
 
-    length_m = venue.length_m
-    width_m = venue.width_m
-    half_width = width_m / 2.0
-
+    spans = find_halves(tracks)
+    if not spans:
+        spans = [(float(tracks["ts"].min()), float(tracks["ts"].max()) + 1e-6)]
+    # Роль одна на трек; направление и команда вратаря определяются по каждому тайму.
     gk_tracks = {}
     ref_tracks = set()
-
-    for row in track_stats.iter_rows(named=True):
-        tid = row["track_id"]
-        x_med = row["x_med"]
-        y_med = row["y_med"]
-
-        # Проверка на судью (движется вдоль самой бровки поля)
-        if y_med < 0.4 or y_med > width_m - 0.4:
-            ref_tracks.add(tid)
-            continue
-
-        # Проверка на вратаря: у ворот (в пределах 7м) и по центру ширины поля
-        near_goal_a = (x_med < 7.0) and (abs(y_med - half_width) < 5.0) and (row["x_max"] < length_m / 2.0)
-        near_goal_b = (x_med > length_m - 7.0) and (abs(y_med - half_width) < 5.0) and (row["x_min"] > length_m / 2.0)
-
-        if near_goal_a:
-            gk_tracks[tid] = "A"
-        elif near_goal_b:
-            gk_tracks[tid] = "B"
+    for span in spans:
+        part = in_period(pos_df, [span])
+        candidates = {}
+        for (tid,), g in part.sort("track_id", "ts").group_by("track_id", maintain_order=True):
+            x, y, ts = (g[c].to_numpy() for c in ("x_m", "y_m", "ts"))
+            if len(ts) < 5:
+                continue
+            y_med = float(np.median(y))
+            if y_med < 0.4 or y_med > venue.width_m - 0.4:
+                ref_tracks.add(tid)
+                continue
+            dt = np.diff(ts)
+            continuous = (dt > 0) & (dt <= MAX_GAP_S)
+            for side, near in (
+                ("left", (x < GOAL_ZONE_M) & (abs(y - venue.width_m / 2) < GOAL_CENTER_M)),
+                ("right", (x > venue.length_m - GOAL_ZONE_M) & (abs(y - venue.width_m / 2) < GOAL_CENTER_M)),
+            ):
+                observed = float(dt[continuous & near[:-1] & near[1:]].sum())
+                stays_on_side = np.all(x < venue.length_m / 2) if side == "left" else np.all(x > venue.length_m / 2)
+                if observed >= GOALKEEPER_MIN_S and stays_on_side:
+                    candidates[tid] = side
+        field = part.filter(~pl.col("track_id").is_in([*candidates, *ref_tracks]))
+        sides = defending_sides(field)
+        for tid, side in candidates.items():
+            original = part.filter(pl.col("track_id") == tid)["team"].mode().first()
+            gk_tracks[tid] = (sides[0 if side == "left" else 1] if sides else original)
 
     if not gk_tracks and not ref_tracks:
         return tracks
-
-    rows_role = []
-    rows_team = []
-
-    for row in tracks.iter_rows(named=True):
-        tid = row["track_id"]
-        current_role = row["role"]
-        current_team = row["team"]
-
-        if tid in ref_tracks:
-            rows_role.append("referee")
-            rows_team.append(None)
-        elif tid in gk_tracks:
-            rows_role.append("goalkeeper")
-            rows_team.append(gk_tracks[tid])
-        else:
-            rows_role.append(current_role)
-            rows_team.append(current_team)
-
     return tracks.with_columns(
-        role=pl.Series(rows_role, dtype=pl.Utf8),
-        team=pl.Series(rows_team, dtype=pl.Utf8),
+        role=pl.Series([
+            "referee" if tid in ref_tracks else "goalkeeper" if tid in gk_tracks else role
+            for tid, role in tracks.select("track_id", "role").iter_rows()
+        ], dtype=pl.Utf8),
+        team=pl.Series([
+            None if tid in ref_tracks else gk_tracks.get(tid, team)
+            for tid, team in tracks.select("track_id", "team").iter_rows()
+        ], dtype=pl.Utf8),
     )
+
+
+def defending_sides(positions: pl.DataFrame) -> tuple[str, str] | None:
+    """Команды у левых и правых ворот по медиане полевых игроков; None — данных недостаточно."""
+    med = (positions.filter(pl.col("team").is_in(["A", "B"]) & (pl.col("role") == "player"))
+           .group_by("team").agg(pl.col("x_m").median()).sort("x_m"))
+    if med.height != 2 or abs(med["x_m"][0] - med["x_m"][1]) < 1e-6:
+        return None
+    left = med["team"][0]
+    return left, "B" if left == "A" else "A"
 
 
 def _two_clusters(features: np.ndarray) -> tuple[list[str], np.ndarray]:

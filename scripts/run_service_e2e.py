@@ -27,4 +27,8 @@ app=create_app(settings)
 with Session(app.state.engine) as db:
     if not db.scalar(select(Admin).where(Admin.login=='e2e-admin')):
         create_admin(db,'e2e-admin','e2e-only-password')
+    analyst=db.scalar(select(Admin).where(Admin.login=='e2e-analyst'))
+    if not analyst:analyst=create_admin(db,'e2e-analyst','e2e-only-password')
+    analyst.can_manage_analytics=True
+    db.commit()
 uvicorn.run(app,host='127.0.0.1',port=8181,log_level='warning')

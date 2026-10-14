@@ -84,3 +84,9 @@ def test_sprint_counting_and_compactness():
     assert m["teams"]["A"]["sprints_count"] == 1
     assert m["teams"]["A"]["compactness_m2"] == pytest.approx(50.0)
 
+
+
+def test_long_gap_cannot_complete_sprint():
+    state = _state(1, 'A', np.array([0., .2, 10., 10.2]), np.array([0., 1., 2., 3.]), speed=6.)
+    result = compute_metrics(state, 40., 20.)
+    assert result['tracks']['1']['sprints_count'] == 0

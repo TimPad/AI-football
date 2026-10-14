@@ -32,6 +32,10 @@ def create_match(db,tid,data,actor):
     values['regulation_override']=data.regulation_override.model_dump() if data.regulation_override else None
     values['scheduled_at']=data.scheduled_at.astimezone(timezone.utc)
     match=Match(tournament_id=tid,**values,protocol=ProtocolDocument().model_dump(mode='json'),clock=ClockState().model_dump(mode='json'))
+    from aifootball.service.halls.operations import assign_match_hall
+    # Snapshot before inserting: a supplied FK alone is not a geometry snapshot.
+    match.hall_id=None
+    assign_match_hall(db,match,data.hall_id,data.camera_profile_id,camera_explicit=True)
     db.add(match); db.flush()
     return get_match_view(db,match.id)
 

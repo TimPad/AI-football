@@ -17,6 +17,61 @@ class EntityView(BaseModel):
 class NamedView(EntityView):
     name: str
     archived: bool
+class HallView(NamedView):
+    revision: int
+    address: str
+    pitch_length_m: float
+    pitch_width_m: float
+    ceiling_height_m: float | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    surface: str
+    description: str
+class CameraProfileView(EntityView):
+    hall_id: UUID
+    name: str
+    version: int
+    hall_revision: int
+    pitch_length_m: float
+    pitch_width_m: float
+    frame_width: int
+    frame_height: int
+    points: list[dict]
+    pitch_polygon_px: list[list[float]]
+    homography: list[list[float]]
+    calibration: dict | None = None
+    reprojection_error_m: float
+    leave_one_out_error_m: float | None = None
+    matches_current_dimensions: bool
+class PublicHall(BaseModel):
+    id: UUID
+    name: str
+    address: str
+    latitude: float | None = None
+    longitude: float | None = None
+    pitch_length_m: float
+    pitch_width_m: float
+class TeamView(NamedView):
+    revision: int = 0
+    description: str = ''
+    logo_id: UUID | None = None
+class PlayerView(NamedView):
+    revision: int = 0
+    photo_id: UUID | None = None
+    birth_date: date | None = None
+    position: Literal['goalkeeper','defender','winger','forward','universal'] | None = None
+    height_cm: int | None = None
+    weight_kg: float | None = None
+class TeamMemberView(EntityView):
+    team_id: UUID
+    player_id: UUID
+    shirt_number: str | None
+    active: bool
+    player: PlayerView
+class TeamProfile(TeamView):
+    players: list[TeamMemberView]
+class CatalogImageView(EntityView):
+    size: int
 class TournamentView(NamedView):
     season: str
     starts_on: date
@@ -36,13 +91,13 @@ class EntryView(EntityView):
     tournament_id: UUID
     team_id: UUID
     revision: int
-    team: NamedView
+    team: TeamView
 class RosterPlayer(EntityView):
     entry_id: UUID
     player_id: UUID
     shirt_number: str | None
     active: bool
-    player: NamedView
+    player: PlayerView
 class RosterView(EntryView):
     players: list[RosterPlayer]
 class LineupView(EntityView):
@@ -62,6 +117,11 @@ class MatchView(EntityView):
     override_reason: str | None
     scheduled_at: datetime
     venue_label: str
+    hall_id: UUID | None = None
+    hall_snapshot: HallView | None = None
+    camera_profile_id: UUID | None = None
+    broadcast_url: str | None = None
+    broadcast_embed_url: str | None = None
     referees: list[str]
     status: Literal['scheduled','live','ended','postponed','cancelled']
     revision: int
@@ -75,6 +135,7 @@ class MatchView(EntityView):
     away: EntryView
     server_now_ms: int
 class SessionView(BaseModel):
+    can_manage_analytics: bool = False
     id: UUID
     login: str
     csrf_token: str
@@ -123,7 +184,38 @@ class PublicProtocol(BaseModel):
     away_name: str
     scheduled_at: datetime
     venue_label: str
+    hall: PublicHall | None = None
     regulation: PublicRegulation
     lineup: list[PublicLineup]
     protocol: PublicDocument
     projection: Projection
+
+
+class PublicTournament(BaseModel):
+    id: UUID
+    name: str
+    season: str
+    starts_on: date
+    ends_on: date
+    timezone: str
+
+
+class PublicScore(BaseModel):
+    home: int | None
+    away: int | None
+
+
+class PublicMatch(BaseModel):
+    id: UUID
+    tournament: PublicTournament
+    home_name: str
+    away_name: str
+    scheduled_at: datetime
+    venue_label: str
+    hall: PublicHall | None = None
+    status: Literal['scheduled','live','ended','postponed','cancelled']
+    schedule_slot_s: int
+    broadcast_url: str | None
+    broadcast_embed_url: str | None
+    public_protocol_id: UUID | None
+    score: PublicScore

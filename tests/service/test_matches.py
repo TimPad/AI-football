@@ -11,7 +11,7 @@ def test_match_keeps_roster_and_rules_snapshot(admin_client,match_factory,regula
 def test_foreign_match_links_and_naive_dates(admin_client,match_factory):
     a,b=match_factory(),match_factory()
     data={'home_entry_id':a['home_entry_id'],'away_entry_id':b['away_entry_id'],
-          'regulation_id':a['regulation']['id'],'scheduled_at':'2026-10-20T18:00:00+03:00'}
+          'regulation_id':a['regulation']['id'],'hall_id':a['hall_id'],'scheduled_at':'2026-10-20T18:00:00+03:00'}
     url=f"/api/v1/tournaments/{a['tournament_id']}/matches"
     assert admin_client.post(url,json=data).status_code==422
     data['away_entry_id']=a['away_entry_id']; data['scheduled_at']='2026-10-20T18:00:00'
@@ -21,8 +21,8 @@ def test_foreign_match_links_and_naive_dates(admin_client,match_factory):
 def test_commands_retry_and_conflict(admin_client,match_factory,send_command):
     from uuid import uuid4
     m=match_factory(); key=str(uuid4())
-    first=send_command(m,'update_match',{'venue_label':'Зал'},key)
-    second=send_command(m,'update_match',{'venue_label':'Зал'},key)
+    first=send_command(m,'update_match',{'referees':['Судья']},key)
+    second=send_command(m,'update_match',{'referees':['Судья']},key)
     assert first.status_code==second.status_code==200
     assert first.json()==second.json()
     assert first.json()['id']==m['id']
@@ -34,13 +34,13 @@ def test_regulation_apply_is_atomic(admin_client,match_factory,send_command,regu
     a=match_factory(); tid=a['tournament_id']
     b=admin_client.post(f'/api/v1/tournaments/{tid}/matches',json={
         'home_entry_id':a['home_entry_id'],'away_entry_id':a['away_entry_id'],
-        'regulation_id':a['regulation']['id'],'scheduled_at':'2026-10-21T18:00:00+03:00'}).json()
+        'regulation_id':a['regulation']['id'],'hall_id':a['hall_id'],'scheduled_at':'2026-10-21T18:00:00+03:00'}).json()
     new=admin_client.post(f'/api/v1/tournaments/{tid}/regulations',json={
         'variant_name':'Группа','rules':{**regulation_data,'periods_s':[900,900]}}).json()
     url=f"/api/v1/tournaments/{tid}/regulations/{new['id']}"
     preview=admin_client.post(url+'/preview',json={'match_ids':[a['id'],b['id']]})
     assert preview.status_code==200
-    assert send_command(b,'update_match',{'venue_label':'Изменён'}).status_code==200
+    assert send_command(b,'update_match',{'referees':['Другой судья']}).status_code==200
     payload={'request_id':str(uuid4()),'matches':[{'id':x['id'],'expected_revision':x['revision']} for x in [a,b]]}
     assert admin_client.post(url+'/apply',json=payload).status_code==409
     assert admin_client.get(f"/api/v1/matches/{a['id']}").json()['regulation']['id']==a['regulation']['id']

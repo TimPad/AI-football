@@ -25,3 +25,20 @@ web/playwright-report/
 .pytest_cache/
 
 *.tsbuildinfo
+
+# локальные результаты CV, отчёты и снимки экрана
+output/
+*.webm
+*.mkv
+*.mov
+*.avi
+*.m4v
+*.onnx
+*.safetensors
+*.ckpt
+
+# локальные варианты настроек и отчёты покрытия
+.env.*
+!.env.example
+.coverage*
+htmlcov/

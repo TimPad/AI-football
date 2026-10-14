@@ -87,9 +87,21 @@ def tournament_factory(admin_client):
 
 
 @pytest.fixture
-def match_factory(admin_client,tournament_factory,regulation_data):
+def hall_factory(admin_client):
+    def create(**changes):
+        response=admin_client.post('/api/v1/halls',json={'name':'Тестовый зал','address':'Спортивная, 1',
+            'pitch_length_m':40,'pitch_width_m':20,**changes})
+        assert response.status_code==201,response.text
+        return response.json()
+    return create
+
+
+@pytest.fixture
+def match_factory(admin_client,tournament_factory,regulation_data,hall_factory):
     from uuid import uuid4
     def create(**changes):
+        label=changes.pop('venue_label','Тестовый зал')
+        if 'hall_id' not in changes: changes['hall_id']=hall_factory(name=label)['id']
         t=tournament_factory()
         reg=admin_client.post(f"/api/v1/tournaments/{t['id']}/regulations",json={'variant_name':'Группа','rules':regulation_data}).json()
         entries=[]; selections=[]

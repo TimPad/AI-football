@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Football — архитектура видеоаналитики</title>
+<style>
+:root{color-scheme:light;--bg:#f5f6f4;--paper:#fff;--ink:#182820;--muted:#56665d;--line:#d9e0d9;--green:#245d42;--soft:#edf4ee;--amber:#80561b;--amber-bg:#fbf2df;--blue:#365b86;--blue-bg:#edf2f9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:15px;line-height:1.5}button,a{-webkit-tap-highlight-color:transparent}button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #64987b;outline-offset:4px}a{color:var(--green);text-underline-offset:3px}button,code{overflow-wrap:anywhere}h1,h2,h3,p{margin:0}h1{font-size:clamp(30px,4.2vw,52px);line-height:1.12;letter-spacing:-1.5px;max-width:850px}h2{font-size:21px;letter-spacing:-.4px}h3{font-size:17px}small{font-size:12px}code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{font-size:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.65;margin:12px 0 0;color:var(--ink)}.shell{max-width:1390px;margin:auto;padding:32px 36px 44px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:42px}.brand{display:flex;gap:10px;align-items:center;font-weight:700;letter-spacing:1.2px;font-size:13px}.brand svg{width:32px;height:32px}.meta{color:var(--muted);font-size:12px;text-align:right}.eyebrow{text-transform:uppercase;letter-spacing:1.7px;font-size:11px;font-weight:650;color:var(--muted)}.intro{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;margin-bottom:30px}.intro p{color:var(--muted);max-width:700px;margin-top:17px;font-size:16px}.plan-status{color:var(--amber);border:1px solid #dfcfae;background:var(--amber-bg);padding:10px 14px;border-radius:8px;font-size:12px;max-width:240px;flex-shrink:0}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}.tab{border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--muted);padding:12px 17px;text-align:left;min-height:46px}.tab span{opacity:.7;margin-right:8px;font-size:12px}.tab[aria-selected=true]{background:var(--green);border-color:var(--green);color:white}.tab:hover{border-color:#8fa897}.stage-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:22px}.stage-head p{color:var(--muted);max-width:850px;margin-top:8px}.stage-pill{font-size:12px;white-space:nowrap;padding:6px 10px;background:var(--soft);color:var(--green);border-radius:5px}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:22px;align-items:start}.diagram{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:23px;min-width:0}.diagram-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:19px}.diagram-top small{color:var(--muted)}.flow{display:grid;gap:22px;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch}.flow.second{grid-template-columns:repeat(3,minmax(0,1fr))}.node{position:relative;border:1px solid var(--line);border-radius:8px;padding:14px 12px 13px;background:var(--paper);color:var(--ink);text-align:left;display:flex;flex-direction:column;gap:11px;min-width:0;min-height:188px}.node:hover{border-color:#8fa897}.node[aria-pressed=true]{background:var(--soft);border:2px solid var(--green);padding:13px 11px 12px}.node:not(:last-child)::after{content:'→';position:absolute;right:-21px;top:46%;width:20px;text-align:center;font-size:19px;color:#788b7c;pointer-events:none}.node .number{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted)}.node .location{font-size:11px;line-height:1.35;color:var(--muted);min-height:30px}.node strong{font-size:15px;line-height:1.25;min-height:38px}.node .payload{font-size:12px;color:var(--muted);line-height:1.45;flex:1}.tag{display:inline-block;align-self:flex-start;font-size:11px;line-height:1.4;padding:4px 6px;border-radius:4px;color:var(--amber);background:var(--amber-bg)}.tag.mixed{background:var(--soft);color:var(--green)}.tag.future{background:var(--blue-bg);color:var(--blue)}.turn{display:flex;align-items:center;gap:12px;margin:19px 0;color:var(--muted);font-size:12px}.turn:before,.turn:after{content:'';height:1px;flex:1;background:var(--line)}.boundary{display:flex;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);font-size:13px}.boundary .symbol{color:var(--green);font-size:20px}.boundary p{color:var(--muted)}.boundary strong{color:var(--ink)}.detail{background:var(--ink);color:#f8fbf8;border-radius:12px;padding:23px;min-width:0}.detail .eyebrow{color:#afc4b6}.detail h3{font-size:23px;margin:12px 0 16px;line-height:1.2}.detail p{color:#d0ddd3;font-size:14px}.detail dl{margin:20px 0 0;display:grid;gap:15px}.detail dt{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#afc4b6}.detail dd{margin:4px 0 0;font-size:13px;color:#eef5ef;overflow-wrap:anywhere}.detail .rule{border-top:1px solid #476052;margin-top:20px;padding-top:16px;color:#e4eadb;font-size:13px}.detail code{color:#e6f0df}.states{margin-top:24px}.states .eyebrow{margin-bottom:9px}.state-list{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.state{font-size:12px;background:#e9eee9;padding:7px 10px;border-radius:5px}.state-arrow{color:var(--muted);font-size:14px}.lower{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:28px}.section{border-top:1px solid var(--line);padding-top:20px;min-width:0}.section h2{font-size:18px;margin-bottom:14px}.packages{display:grid;grid-template-columns:1fr 1fr;gap:20px}.package-title{font-size:12px;color:var(--green);font-weight:650}.section p{color:var(--muted);font-size:13px}.principles{list-style:none;padding:0;margin:0;display:grid;gap:11px}.principles li{display:flex;align-items:flex-start;gap:10px;color:var(--muted);font-size:13px}.principles li:before{content:'✓';color:var(--green);flex-shrink:0}.principles strong{color:var(--ink)}.roadmap{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-top:32px}.phase{border-top:3px solid var(--line);padding-top:16px}.phase:first-child{border-color:var(--green)}.phase h3{margin:9px 0;font-size:17px}.phase p{font-size:13px;color:var(--muted)}.phase .outcome{margin-top:12px;font-size:12px;color:var(--green)}details{margin-top:30px;border-top:1px solid var(--line);padding-top:18px}summary{cursor:pointer;font-size:14px;font-weight:600}table{border-collapse:collapse;width:100%;margin-top:14px;font-size:13px}th,td{padding:11px 10px;text-align:left;border-bottom:1px solid var(--line);overflow-wrap:anywhere}th{font-size:12px;color:var(--muted)}.acceptance{padding:16px 0 0;font-size:13px;color:var(--muted)}footer{margin-top:30px;padding-top:20px;border-top:1px solid var(--line);display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap;font-size:12px;color:var(--muted)}footer nav{display:flex;gap:18px;flex-wrap:wrap}[hidden]{display:none!important}
+@media(max-width:1160px){.workspace{grid-template-columns:minmax(0,1fr)}.detail{display:grid;grid-template-columns:1fr 1fr;gap:0 30px}.detail h3{grid-column:1}.detail>p{grid-column:1}.detail dl{grid-column:2;grid-row:2/5;margin-top:12px}.detail .rule{grid-column:1}.intro{align-items:flex-start}.plan-status{max-width:195px}.flow .node{min-height:174px}}
+@media(max-width:720px){.shell{padding:22px 18px 32px}.topline{margin-bottom:28px}.meta{max-width:140px}.intro{display:block}.intro p{font-size:14px}.plan-status{max-width:none;display:inline-block;margin-top:17px}.stage-head{display:block}.stage-pill{display:inline-block;margin-top:12px}.tabs{gap:7px}.tab{flex:1;min-width:150px;padding:10px 12px;font-size:13px}.diagram{padding:18px}.diagram-top{align-items:flex-start}.diagram-top small{max-width:130px;text-align:right}.flow,.flow.second{grid-template-columns:1fr;gap:27px}.node,.flow .node{min-height:0;gap:7px;padding:13px 15px}.node[aria-pressed=true]{padding:12px 14px}.node .location{min-height:0}.node strong{min-height:0}.node .payload{padding-right:6px}.node:not(:last-child)::after{content:'↓';right:auto;left:calc(50% - 10px);top:auto;bottom:-25px}.turn{font-size:11px;text-align:center}.detail{display:block}.detail dl{margin-top:20px}.lower{grid-template-columns:1fr}.roadmap{grid-template-columns:1fr;gap:23px}.packages{gap:15px}.state-list{gap:6px}.state{font-size:11px}.state-arrow{font-size:12px}th,td{padding:9px 5px;font-size:12px}}
+@media(prefers-reduced-motion:no-preference){.node,.tab{transition:background .15s,border-color .15s}}
+@media print{.shell{padding:0}.tabs,footer nav{display:none}.workspace{grid-template-columns:1fr}.detail{background:#fff;color:#182820;border:1px solid #d9e0d9}.detail p,.detail dd,.detail dt,.detail .eyebrow,.detail .rule{color:#182820}.node,.section,.phase{break-inside:avoid}.flow{grid-template-columns:repeat(4,minmax(0,1fr))}.flow.second{grid-template-columns:repeat(3,minmax(0,1fr))}.node{min-height:160px}details{display:block}body{background:white}}
+</style>
+</head>
+<body>
+<main class="shell" id="video-architecture">
+  <header class="topline">
+    <div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="8" fill="#245d42"/><path d="M9 9h14v14H9zM16 9v14" stroke="#ecf5eb"/><circle cx="16" cy="16" r="3.5" stroke="#ecf5eb"/></svg>AI FOOTBALL</div>
+    <div class="meta">Архитектура видеоаналитики<br>Решение от 13.10.2026</div>
+  </header>
+  <div class="intro">
+    <div><div class="eyebrow" style="margin-bottom:13px">План развития системы</div><h1>Видео → люди → статистика</h1><p>Начинаем с обработки на компьютере оператора и импорта результата. Затем подключаем локальный обработчик к кабинету, сохраняя формат обмена и проверку игроков.</p></div>
+    <div class="plan-status">Этап 1 реализован · 14.10.2026.<br><strong>Импорт, Админ+ и статистика работают.</strong></div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Этапы архитектуры">
+    <button type="button" class="tab" role="tab" id="tab-manual" aria-controls="stage-panel" aria-selected="true" data-stage="manual"><span>01</span>Внешний импорт</button>
+    <button type="button" class="tab" role="tab" id="tab-local" aria-controls="stage-panel" aria-selected="false" data-stage="local" tabindex="-1"><span>02</span>Локальный Processor</button>
+    <button type="button" class="tab" role="tab" id="tab-cloud" aria-controls="stage-panel" aria-selected="false" data-stage="cloud" tabindex="-1"><span>03</span>Облако и развитие CV</button>
+  </div>
+  <section id="stage-panel" role="tabpanel" aria-labelledby="tab-manual">
+    <div class="stage-head"><div><h2 id="stage-title">Первая поставка · ручной перенос результатов</h2><p id="stage-summary">Админ+ скачивает задание, обрабатывает локальную запись и загружает ZIP. На сайте проверяет личности и подтверждает статистику.</p></div><span class="stage-pill" id="stage-label">Реализовано · этап 1</span></div>
+    <div class="workspace">
+      <div class="diagram" aria-label="Путь данных от задания до опубликованной статистики">
+        <div class="diagram-top"><div class="eyebrow">Путь данных</div><small>Нажмите на блок<br>для просмотра деталей</small></div>
+        <div class="flow" id="flow-source"></div>
+        <div class="turn">После импорта · проверка и фиксация на сервере ↓</div>
+        <div class="flow second" id="flow-review"></div>
+        <div class="boundary"><span class="symbol" aria-hidden="true">◉</span><p id="boundary-text"><strong>Оригинал остаётся на компьютере.</strong> Сайт получает числа, интервалы, миниатюры и данные о качестве.</p></div>
+      </div>
+      <aside class="detail" id="node-detail" aria-live="polite" aria-atomic="true">
+        <div class="eyebrow">Выбранный компонент</div><h3 id="detail-title">Задание матча</h3><p id="detail-description"></p>
+        <dl><div><dt>Где работает</dt><dd id="detail-location"></dd></div><div><dt>Принимает</dt><dd id="detail-input"></dd></div><div><dt>Возвращает</dt><dd id="detail-output"></dd></div></dl><div class="rule" id="detail-rule"></div>
+      </aside>
+    </div>
+    <div class="states"><div class="eyebrow">Состояния задания и отчёта</div><div class="state-list" id="states"></div></div>
+  </section>
+  <noscript><p>Для интерактивных блоков включите JavaScript. Полный план доступен по ссылке внизу страницы.</p></noscript>
+  <div class="lower">
+    <section class="section"><h2>Один контракт для всех обработчиков</h2><div class="packages"><div><div class="package-title">Сайт → обработчик</div><pre>job.zip
+├ job.json
+├ venue.yaml
+├ homography.json
+├ pitch_polygon.json
+└ calib.json *</pre></div><div><div class="package-title">Обработчик → сайт</div><pre>result.zip
+├ manifest.json
+├ report.json
+├ track-index.json
+├ checks.json
+└ thumbs/*.jpg</pre></div></div><p style="margin-top:14px">* При наличии коррекции объектива. JSON хранит статистику; PDF — только дополнительный документ. Оригинальное видео в пакет результата не входит.</p></section>
+    <section class="section"><h2>Что связывает данные</h2><ul class="principles"><li><span><strong>Задание:</strong> UUID матча, снимок составов и метрической геометрии камеры.</span></li><li><span><strong>Личность:</strong> фрагменты треков → стабильный UUID игрока. Номер на форме — подсказка.</span></li><li><span><strong>Версия:</strong> источник, параметры, модель и ручные назначения сохраняются. Повтор не удваивает показатели.</span></li><li><span><strong>Публикация:</strong> подтверждённая внутренняя версия и публичная версия выбираются отдельно.</span></li><li><span><strong>Качество:</strong> время наблюдения и полнота записи видны; отсутствие данных не означает ноль.</span></li></ul></section>
+  </div>
+  <section class="roadmap" aria-label="Порядок поставки">
+    <div class="phase"><div class="eyebrow">01 · Реализовано</div><h3>Проверить весь путь</h3><p>Админ+, контекст задания, пакет результата, импорт, ручные личности, показатели матча и история игрока, версии и публикация.</p><p class="outcome">Приёмка: реальный фрагмент → демо-UUID → история игрока.</p></div>
+    <div class="phase"><div class="eyebrow">02 · Следующая поставка</div><h3>Подключить компьютер</h3><p>Локальная программа, выбор видео, получение задания по HTTPS, настоящий прогресс и автоматическая доставка результата.</p><p class="outcome">Тот же контракт, меньше ручного переноса.</p></div>
+    <div class="phase"><div class="eyebrow">03 · Последующее развитие</div><h3>Повысить качество и масштаб</h3><p>Сегментация игроков, OCR номера, разделение треков и пересчёт. Для облачного режима — S3 и VM/GPU-обработчик.</p><p class="outcome">Обработка меняется, проверка и отчёты сохраняются.</p></div>
+  </section>
+  <details><summary>Права, границы и критерии приёмки</summary>
+    <table><thead><tr><th>Действие</th><th>Админ</th><th>Админ+</th><th>Зритель</th></tr></thead><tbody><tr><td>Команды, расписание, ручной протокол</td><td>Да</td><td>Да</td><td>Нет</td></tr><tr><td>Внутренний отчёт</td><td>Да</td><td>Да</td><td>Нет</td></tr><tr><td>Задание, импорт, личности, подтверждение</td><td>Нет</td><td>Да</td><td>Нет</td></tr><tr><td>Публикация аналитики</td><td>Нет</td><td>Да</td><td>Нет</td></tr><tr><td>Опубликованные показатели</td><td>Да</td><td>Да</td><td>Да</td></tr></tbody></table>
+    <p class="acceptance">Первый этап принят, когда реальная запись проходит весь путь до истории игрока. Проверяем повторы без дублей, запрет чужого отчёта и конфликтующих фрагментов, отзыв прав, новую версию без второго сыгранного матча и восстановление данных из резервной копии.</p>
+    <p class="acceptance">Зал и размеры вводятся вручную. Геометрия камеры переводит пиксели в метры; адрес и ссылка на Яндекс Карты служат навигации. Протокол со счётом/голами/карточками остаётся самостоятельным. Исполнение произвольного загруженного HTML не требуется.</p>
+  </details>
+  <details><summary>Хранение данных и версии аналитики</summary>
+    <table><thead><tr><th>Компонент</th><th>Что хранится</th></tr></thead><tbody><tr><td>Компьютер оператора</td><td>Оригинальное видео и рабочие артефакты CV на этапах 1–2.</td></tr><tr><td>Приватные файлы сервера</td><td>Принятые пакеты результатов и миниатюры; входят в резервную копию. Позже хранилище можно заменить на S3.</td></tr><tr><td><code>analysis_jobs</code></td><td>Неизменяемое задание: матч, снимки составов и камеры, hash контекста.</td></tr><tr><td><code>analysis_runs</code></td><td>Версии импорта и проверки, источник, пакет, качество, статус.</td></tr><tr><td><code>analysis_assignments</code></td><td>Назначения фрагментов треков стабильным UUID игроков или исключение с причиной.</td></tr><tr><td><code>player_match_metrics</code></td><td>Подтверждённые показатели игрока за матч и версию аналитики.</td></tr><tr><td><code>analysis_commands</code></td><td>Ключи и результаты команд для безопасных повторов после потери ответа.</td></tr><tr><td>Матч</td><td>Отдельные указатели на активную подтверждённую и опубликованную версии.</td></tr></tbody></table>
+    <p class="acceptance">История игрока использует только одну активную версию каждого матча. Предыдущие версии и назначения сохраняются. Полная резервная копия включает PostgreSQL и приватные файлы.</p>
+  </details>
+  <footer><span>Этап 1 работает. Этапы 2–3 — план. Приёмка на реальном фрагменте с демо-UUID; реальные личности и точность ещё требуют проверки.</span><nav aria-label="Документы"><a href="../2026-10-14-analysis-stage1.md">Инструкция оператора ↗</a><a href="../superpowers/plans/2026-10-13-video-analytics-import.md">План внедрения ↗</a><a href="../specs/2026-10-13-external-processing-and-report-import.md">Спецификация ↗</a></nav></footer>
+</main>
+<script>
+(() => {
+  const root = document.getElementById('video-architecture');
+  const stages = {
+    manual: {
+      title:'Первая поставка · ручной перенос результатов', label:'Реализовано · этап 1',
+      summary:'Админ+ скачивает задание, обрабатывает локальную запись и загружает ZIP. На сайте проверяет личности и подтверждает статистику.',
+      boundary:'Оригинал остаётся на компьютере. Сайт получает числа, интервалы, миниатюры и данные о качестве.',
+      states:['Ожидает внешней обработки','На проверке','Подтверждён','Опубликован отдельно'],
+      nodes:[
+        {title:'Задание матча',location:'Кабинет / сервер',payload:'Составы + зал + камера → job.zip',status:'Реализовано',description:'Админ+ выбирает матч. Сервер фиксирует составы, размеры площадки и версию камеры, выдаёт переносимый пакет задания.',input:'UUID матча; составы с UUID игроков; сохранённая калибровка.',output:'job.zip, job_id и context_hash.',rule:'Изменение даты не ломает задание. Изменение состава или камеры требует нового контекста.'},
+        {title:'Обработка видео',location:'Компьютер оператора',payload:'Локальный файл → детекция → треки → метры',status:'Реализовано',description:'Оператор запускает CLI с заданием и локальным видео. Существующий CV считает треки и метрики, новая команда объединяет шаги и проверяет контекст.',input:'job.zip + запись на локальном диске.',output:'Треки, координаты, метрики, отчёт и качество.',rule:'Выдача задания на сайте не означает запуск обработки. Прогресс здесь виден в терминале.'},
+        {title:'Пакет результата',location:'Компьютер оператора',payload:'JSON + фрагменты + миниатюры → result.zip',status:'Реализовано',description:'Упаковщик создаёт результат, привязанный к заданию. Включает реальные изображения игроков, интервалы треков и метаданные источника.',input:'Артефакты CV, исходник для миниатюр, контекст задания.',output:'result.zip с manifest, report, track-index, checks и изображениями.',rule:'Самостоятельный старый report.json не является контрактом импорта. PDF без JSON не создаёт статистику.'},
+        {title:'Импорт и проверка',location:'Кабинет / сервер',payload:'ZIP → формат, контекст, хеши, лимиты',status:'Реализовано',description:'Админ+ возвращается в матч и загружает результат. Сервер проверяет пакет целиком и открывает предварительный отчёт.',input:'result.zip + UUID запроса для безопасного повтора.',output:'Неизменяемый исходный пакет; прогон «На проверке».',rule:'Чужой матч, несовместимая камера или повреждённый архив отклоняются. Старая статистика остаётся доступной.'},
+        {title:'Игроки и подтверждение',location:'Админ+ / кабинет',payload:'Фрагменты треков → UUID игроков',status:'Реализовано',description:'Оператор подтверждает стороны A/B, выбирает людей из исторического состава и исключает дубли. Неизвестные фрагменты остаются без личности.',input:'Миниатюры, команды, интервалы и UUID игроков.',output:'Проверенные назначения; подтверждённая версия аналитики.',rule:'Два пересекающихся фрагмента одного человека блокируют подтверждение. Разделение ошибочного трека требует внешнего пересчёта.'},
+        {title:'Статистика и история',location:'Сервер / PostgreSQL',payload:'Одна активная версия на матч',status:'Реализовано',description:'Сервис сохраняет индивидуальные показатели, происхождение и качество. Карточка игрока объединяет активные результаты разных матчей.',input:'Подтверждённые назначения и метрики основного периода.',output:'Дистанция, HSR, спринты, скорость, тепловые карты и история игрока.',rule:'Несколько треков объединяются без мостов через разрывы. Таймы не суммируются повторно с целым матчем.'},
+        {title:'Публикация зрителям',location:'Гостевой сайт',payload:'Отдельно выбранная публичная версия',status:'Реализовано',description:'Отдельной командой Админ+ публикует подтверждённый отчёт. Зритель видит проверенные показатели рядом с матчем и протоколом.',input:'Выбранная подтверждённая версия и публичный DTO.',output:'Показатели и карты на странице матча.',rule:'До публикации новая версия остаётся внутренней. Приватные миниатюры и файлы не открываются зрителям.'}
+      ]
+    },
+    local: {
+      title:'Вторая поставка · обработка с подключённого компьютера',label:'После приёмки ручного импорта',
+      summary:'Установленная программа получает назначенное задание по HTTPS, предлагает выбрать локальную запись и возвращает результат. Кабинет показывает настоящие этапы обработки.',
+      boundary:'Видео остаётся локальным. Processor сам обращается к серверу по HTTPS; пароль администратора и доступ к БД не передаются.',
+      states:['Назначено','Ожидает подключения','Обрабатывается','На проверке','Подтверждён'],
+      nodes:[
+        {title:'Назначение задания',location:'Админ+ / сервер',payload:'Кнопка в кабинете → задание конкретному Processor',status:'Этап 2',future:true,description:'Админ+ подключает компьютер и назначает ему задачу матча. Снимок контекста и контракт задания остаются теми же.',input:'UUID матча; подключённый обработчик; ограниченные полномочия.',output:'Назначенное задание для локальной программы.',rule:'Браузер не запускает Python напрямую. При отсутствии компьютера задача ждёт.'},
+        {title:'Локальный Processor',location:'Компьютер оператора',payload:'Выбор файла → подтверждение → CV',status:'Этап 2',future:true,description:'Установленная программа получает задание, оператор выбирает видео и подтверждает запуск. Программа исполняет известный CV-пайплайн.',input:'Задание по HTTPS + локально выбранная запись.',output:'Реальные этапы, heartbeat, артефакты обработки.',rule:'Задание содержит данные, а не shell-код. Путь браузерного file input не используется как путь на диске программы.'},
+        {title:'Доставка результата',location:'Processor → сервер',payload:'result.zip автоматически по HTTPS',status:'Этап 2',future:true,description:'Программа упаковывает результат по прежнему контракту и загружает его. Сетевые повторы не создают новые прогоны.',input:'Артефакты CV + job_id и context_hash.',output:'Тот же result.zip и статус доставки.',rule:'Можно сохранить ZIP и перенести вручную. Потеря связи не считается завершением.'},
+        {title:'Прежний импорт',location:'Сервер',payload:'Тот же валидатор и приватное хранилище',status:'Переиспользуется из этапа 1',mixed:true,description:'Валидация и хранение не зависят от способа доставки: пакет проверяется так же, как ручная загрузка.',input:'result.zip, токен обработчика и назначенное задание.',output:'Прогон на ручную проверку.',rule:'Токен ограничен и отзывной. Отзыв права оператора прекращает последующие изменения.'},
+        {title:'Проверка личности',location:'Админ+ / кабинет',payload:'Треки → UUID → подтверждение',status:'Переиспользуется из этапа 1',mixed:true,description:'Автоматическая доставка не отменяет проверку людей. Оператор подтверждает состав и назначения.',input:'Тот же индекс фрагментов и миниатюры.',output:'Подтверждённые назначения.',rule:'Неизвестные игроки не приписываются человеку автоматически.'},
+        {title:'Статистика и версии',location:'Сервер / PostgreSQL',payload:'Матч + игрок + версия',status:'Переиспользуется из этапа 1',mixed:true,description:'Показатели и история используют прежнюю модель активных версий.',input:'Подтверждённый прогон.',output:'История игрока, метрики и происхождение.',rule:'Повтор результата и новая обработка не удваивают число матчей.'},
+        {title:'Публичный отчёт',location:'Гостевой сайт',payload:'Отдельная команда публикации',status:'Переиспользуется из этапа 1',mixed:true,description:'Публикуется выбранная подтверждённая версия, вне зависимости от способа её получения.',input:'Опубликованный указатель прогона.',output:'Проверенные данные для зрителей.',rule:'Ручной протокол и CV-аналитика остаются самостоятельными.'}
+      ]
+    },
+    cloud: {
+      title:'Последующее развитие · качество CV и облачный режим',label:'Отдельные планы после этапа 1',
+      summary:'Сегментация, OCR и пересчёт треков повышают качество. При необходимости оригинал загружается в S3, а VM/GPU-обработчик возвращает тот же пакет результата.',
+      boundary:'В облачном режиме оригинал хранится в приватном S3. Размеры площадки, калибровка и UUID игроков остаются основой аналитики.',
+      states:['Видео загружено','В очереди','Обрабатывается','На проверке','Подтверждён'],
+      nodes:[
+        {title:'Видео и задание',location:'Кабинет / S3',payload:'Приватный оригинал + контекст матча',status:'Будущий облачный режим',future:true,description:'Для автоматической внешней обработки добавляется загрузка исходника в объектное хранилище и задание с ссылкой на него.',input:'Локальное видео, UUID матча и снимок контекста.',output:'S3-объект и задание обработки.',rule:'S3 не обязателен для ручного и подключённого локального пути. Это отдельная инфраструктурная поставка.'},
+        {title:'CV worker',location:'VM / GPU / внешняя среда',payload:'Очередь → lease → детекция / маски / OCR',status:'Будущий этап',future:true,description:'Обработчик получает задачу и видео. Развитие CV добавляет маски, OCR номера с confidence, хранение временных рядов и пересчёт.',input:'Задание, объект видео, модели и геометрия.',output:'Треки/метрики/качество и подсказки личности.',rule:'OCR — подсказка с командой и уверенностью. Окончательная связь с UUID проверяется оператором.'},
+        {title:'Пакет результата',location:'Worker → сервер',payload:'Тот же обмен, новые версии модели',status:'Контракт переиспользуется',mixed:true,description:'Способ исполнения может смениться, но отчёт возвращается по версионированному контракту.',input:'Артефакты обработки и данные происхождения.',output:'result.zip и расширения поддерживаемой версии схемы.',rule:'Не смешивать метрики разных геометрий, моделей и интервалов без явной версии.'},
+        {title:'Валидация',location:'Сервер / приватное хранилище',payload:'Контекст, качество, целостность',status:'Переиспользуется из этапа 1',mixed:true,description:'Облачному результату нужны те же проверки, что локальному. Критические ошибки блокируют подтверждение.',input:'Пакет и идентификатор назначенного задания.',output:'Предварительный отчёт на проверку.',rule:'Сбой worker не удаляет прежнюю подтверждённую статистику.'},
+        {title:'Личности и интервалы',location:'Админ+ / кабинет',payload:'Подсказки → подтверждение / пересчёт',status:'Проверка + новая редактура',future:true,description:'Поверх ручной проверки добавляется редактура интервалов. Разделение/слияние пересчитывает показатели из временных рядов.',input:'Кадры, OCR, фрагменты, исходные временные ряды.',output:'Проверенные личности и новая версия расчёта.',rule:'Нельзя произвольно делить дистанцию готового агрегата между людьми без исходного трека.'},
+        {title:'Версии и история',location:'Сервер / PostgreSQL',payload:'Подтверждённые метрики + происхождение',status:'Переиспользуется из этапа 1',mixed:true,description:'Система хранит результаты разных обработчиков, выбирая один активный результат каждого матча.',input:'Подтверждённая версия.',output:'Сравнимая история игрока и показатели матча.',rule:'Должны быть видны методика, качество и покрытие записи.'},
+        {title:'Публикация',location:'Гостевой сайт',payload:'Проверенные показатели и карты',status:'Переиспользуется из этапа 1',mixed:true,description:'Страницы используют опубликованную версию, а не внутренние сырые результаты worker.',input:'Опубликованный прогон.',output:'Статистика для зрителей.',rule:'Автоматическое завершение обработки не означает автоматическую публикацию.'}
+      ]
+    }
+  };
+  let activeStage = 'manual';
+  const get = id => root.querySelector('#' + id);
+  function selectNode(index) {
+    const node = stages[activeStage].nodes[index];
+    root.querySelectorAll('.node').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.index) === index)));
+    get('detail-title').textContent = node.title;
+    get('detail-description').textContent = node.description;
+    get('detail-location').textContent = node.location;
+    get('detail-input').textContent = node.input;
+    get('detail-output').textContent = node.output;
+    get('detail-rule').textContent = node.rule;
+  }
+  function makeNode(node, index) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'node'; button.dataset.index = index;
+    button.setAttribute('aria-pressed','false');
+    const parts = [['span','number',String(index + 1).padStart(2,'0')],['span','location',node.location],['strong','',node.title],['span','payload',node.payload],['span','tag' + (node.mixed ? ' mixed' : node.future ? ' future' : ''),node.status]];
+    parts.forEach(([tag, cls, value]) => {const el=document.createElement(tag);el.className=cls;el.textContent=value;button.append(el);});
+    button.addEventListener('click', () => selectNode(index)); return button;
+  }
+  function selectStage(key) {
+    activeStage = key; const stage = stages[key];
+    root.querySelectorAll('[role=tab]').forEach(tab => {const selected=tab.dataset.stage===key;tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;});
+    get('stage-panel').setAttribute('aria-labelledby','tab-'+key);
+    get('stage-title').textContent=stage.title;get('stage-summary').textContent=stage.summary;get('stage-label').textContent=stage.label;get('boundary-text').textContent=stage.boundary;
+    get('flow-source').replaceChildren(...stage.nodes.slice(0,4).map(makeNode));
+    get('flow-review').replaceChildren(...stage.nodes.slice(4).map((node,index)=>makeNode(node,index+4)));
+    const states=[];stage.states.forEach((state,index)=>{if(index){const arrow=document.createElement('span');arrow.className='state-arrow';arrow.textContent='→';arrow.setAttribute('aria-hidden','true');states.push(arrow);}const el=document.createElement('span');el.className='state';el.textContent=state;states.push(el);});get('states').replaceChildren(...states);
+    selectNode(0);
+  }
+  const tabs = Array.from(root.querySelectorAll('[role=tab]'));
+  tabs.forEach((tab,index)=>{
+    tab.addEventListener('click',()=>selectStage(tab.dataset.stage));
+    tab.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight')next=(index+1)%tabs.length;else if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;event.preventDefault();selectStage(tabs[next].dataset.stage);tabs[next].focus();});
+  });
+  selectStage(activeStage);
+})();
+</script>
+</body>
+</html>

@@ -15,6 +15,8 @@ from aifootball.service.auth.routes import router as auth_router
 def create_app(settings=None, *, web_dist=None):
     settings = settings or Settings()
     app = FastAPI(title='Кабинет турниров', version='0.1.0')
+    from aifootball.service.analysis.body_limit import AnalysisBodyLimit
+    app.add_middleware(AnalysisBodyLimit, settings=settings)
     app.state.settings = settings
     app.state.engine = make_engine(settings.database_url)
     expected_schema = ScriptDirectory(str(Path(__file__).resolve().parents[3] / 'migrations')).get_current_head()
@@ -24,11 +26,19 @@ def create_app(settings=None, *, web_dist=None):
     from aifootball.service.catalog.routes import router as catalog_router
     from aifootball.service.matches.routes import router as match_router
     app.include_router(catalog_router, prefix='/api/v1')
+    from aifootball.service.catalog.images import router as catalog_images_router
+    app.include_router(catalog_images_router, prefix='/api/v1')
+    from aifootball.service.halls.routes import router as halls_router
+    app.include_router(halls_router, prefix='/api/v1')
+    from aifootball.service.analysis.routes import router as analysis_router
+    app.include_router(analysis_router, prefix='/api/v1')
     app.include_router(match_router, prefix='/api/v1')
     from aifootball.service.protocol.routes import router as protocol_router
     from aifootball.service.storage.routes import router as storage_router
     app.include_router(protocol_router, prefix='/api/v1')
     app.include_router(storage_router, prefix='/api/v1')
+    from aifootball.service.public import router as public_router
+    app.include_router(public_router, prefix='/api/v1')
 
     @app.exception_handler(DomainError)
     async def domain_error(request, error):

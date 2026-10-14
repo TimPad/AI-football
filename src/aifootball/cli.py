@@ -7,6 +7,7 @@
     python -m aifootball.cli metrics --venue DIR --match DIR
     python -m aifootball.cli check   --venue DIR --match DIR
     python -m aifootball.cli render  --video V --venue DIR --match DIR [--seconds 60]
+    python -m aifootball.cli report --venue DIR --match DIR [--video V] [--halves 0:40-21:50,27:10-46:00]
     python -m aifootball.cli eval-ball --venue DIR --match DIR --labels data/gt/<матч>/ball.parquet
     python -m aifootball.cli eval-passes --venue DIR --match DIR --touches data/gt/<матч>/touches.parquet
 """
@@ -50,6 +51,9 @@ def cmd_detect(args, venue) -> None:
         {
             "video": str(args.video),
             "venue_id": venue.venue_id,
+            "camera_profile_id": venue.camera_profile_id,
+            "frame_width": venue.frame_width,
+            "frame_height": venue.frame_height,
             "src_fps": video_fps(args.video),
             "target_fps": venue.target_fps,
             "model": venue.model,
@@ -210,6 +214,77 @@ def cmd_eval_passes(args, venue) -> None:
           f"точность паса совпала у {ps['completed_agree']}")
 
 
+def cmd_report(args, venue) -> None:
+    from aifootball.analytics.periods import find_halves, parse_halves
+    from aifootball.analytics.report_data import build_report
+    from aifootball.report.render import image_requests, render_html
+
+    state = schemas.read(args.match / "state.parquet", "state")
+    tracks = schemas.read(args.match / "tracks.parquet", "tracks")
+    if tracks.is_empty() or state.is_empty():
+        raise ValueError("нет обработанных позиций для отчёта")
+    import numpy as np
+    times = tracks["ts"].unique().sort().to_numpy()
+    dt = np.diff(times)
+    step = float(np.median(dt[dt > 0])) if np.any(dt > 0) else 1.0 / venue.target_fps
+    processed_end = float(times[-1]) + step
+    video_s, estimated = _report_video_duration(args, processed_end)
+    spans = parse_halves(args.halves, video_s) if args.halves else find_halves(tracks)
+    if not spans:
+        spans = [(float(times[0]), min(processed_end, video_s))]
+    if args.halves and any(end > processed_end + 1e-3 for start, end in spans):
+        raise ValueError("тайм выходит за обработанный участок записи")
+    spans = [(start, min(end, processed_end, video_s)) for start, end in spans]
+    if any(end <= start for start, end in spans):
+        raise ValueError("нет обработанного участка внутри таймов")
+    ball_state = None
+    if args.with_ball:
+        from aifootball.perception.ball import process_ball_trajectory
+
+        ball_state = process_ball_trajectory(schemas.read(args.match / "detections.parquet", "detections"), venue)
+    names = {"A": args.team_a or "Команда A", "B": args.team_b or "Команда B"}
+    data = build_report(state, tracks, venue, spans, names, video_s, ball_state)
+    data["match"]["video_duration_estimated"] = estimated
+    schemas.write_json(data, args.match / "report.json")
+
+    images = {}
+    if args.video:
+        from aifootball.report.frames import grab_images
+
+        images = grab_images(args.video, image_requests(data))
+    out = args.match / "report.html"
+    out.write_text(render_html(data, images), encoding="utf-8")
+    halves = " / ".join(f"{s / 60:.1f}–{e / 60:.1f} мин" for s, e in spans)
+    print(f"report: таймы {halves}, игроков {len(data['periods'][0]['players'])}, "
+          f"картинок {len(images)}, {out.stat().st_size / 1e6:.1f} МБ -> {out}")
+
+
+def _report_video_duration(args, processed_end: float) -> tuple[float, bool]:
+    """Длительность исходника; без источника явно помечаем оценку по артефактам."""
+    import math
+    import cv2
+
+    meta_path = args.match / "meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+    if not args.video:
+        duration = meta.get("video_s")
+        if isinstance(duration, (int, float)) and math.isfinite(duration) and duration > 0:
+            return float(duration), False
+    source = args.video or (Path(meta["video"]) if meta.get("video") else None)
+    if source is not None and (args.video or source.exists()):
+        cap = cv2.VideoCapture(str(source))
+        try:
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+            if cap.isOpened() and fps > 0 and frames > 0:
+                return frames / fps, False
+        finally:
+            cap.release()
+        if args.video:
+            raise ValueError(f"не открывается видео: {source}")
+    return processed_end, True
+
+
 def _fmt(x) -> str:
     return "  —  " if x is None else f"{x:.3f}"
 
@@ -217,6 +292,14 @@ def _fmt(x) -> str:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
+    job = sub.add_parser('process-job', help='Обработать локальное видео по заданию сайта и упаковать результат')
+    job.add_argument('--job', type=Path, required=True)
+    job.add_argument('--video', type=Path, required=True)
+    job.add_argument('--output', type=Path, required=True)
+    job.add_argument('--models', type=Path, default=Path('models'))
+    job.add_argument('--artifacts', type=Path, help='Повторно упаковать артефакты этого же задания/источника')
+    job.add_argument('--partial-recording', action='store_true', help='Исходный файл содержит только фрагмент матча')
+    job.add_argument('--halves', help='Интервалы относительно исходного видео: 0:40-21:50,27:10-46:00')
 
     def add(name, video=False, models=False, seconds=False):
         p = sub.add_parser(name)
@@ -245,6 +328,12 @@ def build_parser() -> argparse.ArgumentParser:
     evb.add_argument("--conf", type=float, nargs="+", default=[0.05, 0.10, 0.25], help="пороги уверенности")
     evp = add("eval-passes")
     evp.add_argument("--touches", type=Path, required=True, help="ручной журнал владения (tools.label_touches)")
+    rep = add("report")
+    rep.add_argument("--video", type=Path, default=None, help="для миниатюр и стоп-кадров")
+    rep.add_argument("--halves", default=None, help="таймы вручную: 0:40-21:50,27:10-46:00")
+    rep.add_argument("--team-a", default=None)
+    rep.add_argument("--team-b", default=None)
+    rep.add_argument("--with-ball", action="store_true", help="владение и передачи (приблизительно)")
     run = add("run", video=True, models=True, seconds=True)
     run.add_argument("--redetect", action="store_true")
     return parser
@@ -253,12 +342,20 @@ def build_parser() -> argparse.ArgumentParser:
 COMMANDS = {
     "detect": cmd_detect, "track": cmd_track, "project": cmd_project, "metrics": cmd_metrics,
     "check": cmd_check, "eval": cmd_eval, "eval-ball": cmd_eval_ball, "eval-passes": cmd_eval_passes,
-    "render": cmd_render, "run": cmd_run,
+    "render": cmd_render, "run": cmd_run, "report": cmd_report,
 }
 
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == 'process-job':
+        from aifootball.processor.job import process_job
+        try:
+            process_job(args.job, args.video, args.output, models=args.models, artifacts=args.artifacts, halves=args.halves, partial_recording=args.partial_recording)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        return 0
     venue = load_venue(args.venue)
     result = COMMANDS[args.command](args, venue)
     return 1 if result is False else 0

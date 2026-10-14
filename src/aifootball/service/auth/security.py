@@ -43,3 +43,10 @@ def require_csrf(request: Request):
     if not compare_digest(request.headers.get('x-csrf-token', ''), auth.csrf_token):
         raise DomainError('csrf', 'Обновите сессию и повторите сохранение', status=403)
     return admin
+
+
+def require_analytics_admin(request: Request):
+    admin = require_csrf(request)
+    if not admin.can_manage_analytics:
+        raise DomainError('analytics_permission', 'Для изменения аналитики нужны права Админ+', status=403)
+    return admin

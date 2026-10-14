@@ -2,12 +2,38 @@ from datetime import datetime
 from uuid import UUID
 from typing import Literal
 from pydantic import Field,field_validator
+from urllib.parse import urlsplit,parse_qs
+import re
 from aifootball.service.tournaments.schemas import Input,Regulation
 
 MatchStatus=Literal['scheduled','live','ended','postponed','cancelled']
 
 
-class MatchCreate(Input):
+class BroadcastFields(Input):
+    broadcast_url:str|None=Field(default=None,max_length=2048)
+    broadcast_embed_url:str|None=Field(default=None,max_length=2048)
+
+    @field_validator('broadcast_url','broadcast_embed_url')
+    @classmethod
+    def vk_url(cls,value,info):
+        if value is None or not value.strip(): return None
+        value=value.strip()
+        try:
+            url=urlsplit(value)
+            valid=url.scheme=='https' and url.hostname in {'vk.com','www.vk.com','vkvideo.ru','www.vkvideo.ru'} and not url.username and not url.password and url.port in {None,443}
+        except ValueError:
+            valid=False
+        if not valid: raise ValueError('Используйте HTTPS-ссылку на VK или VK Видео')
+        if info.field_name=='broadcast_embed_url':
+            params=parse_qs(url.query)
+            if url.path!='/video_ext.php' or not re.fullmatch(r'-?\d+',params.get('oid',[''])[0]) or not re.fullmatch(r'\d+',params.get('id',[''])[0]):
+                raise ValueError('Укажите src из iframe ВК: video_ext.php с oid и id')
+        return value
+
+
+class MatchCreate(BroadcastFields):
+    hall_id:UUID
+    camera_profile_id:UUID|None=None
     home_entry_id:UUID
     away_entry_id:UUID
     regulation_id:UUID
@@ -24,7 +50,9 @@ class MatchCreate(Input):
         return value
 
 
-class MatchUpdate(Input):
+class MatchUpdate(BroadcastFields):
+    hall_id:UUID|None=None
+    camera_profile_id:UUID|None=None
     scheduled_at:datetime|None=None
     venue_label:str|None=Field(default=None,max_length=200)
     referees:list[str]|None=Field(default=None,max_length=10)

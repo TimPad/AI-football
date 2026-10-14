@@ -44,6 +44,9 @@ class Venue:
     ball_model: str | None = None
     ball_tile: int = 1280
     ball_margin_px: int = 0
+    frame_width: int | None = None
+    frame_height: int | None = None
+    camera_profile_id: str | None = None
 
     def require_polygon(self) -> np.ndarray:
         if self.pitch_polygon_px is None:
@@ -86,6 +89,9 @@ def load_venue(root: Path) -> Venue:
         ball_model=proc.get("ball_model"),
         ball_tile=int(proc.get("ball_tile", 1280)),
         ball_margin_px=int(proc.get("ball_margin_px", 0)),
+        frame_width=int(proc['frame_width']) if proc.get('frame_width') else None,
+        frame_height=int(proc['frame_height']) if proc.get('frame_height') else None,
+        camera_profile_id=proc.get('camera_profile_id'),
     )
 
 

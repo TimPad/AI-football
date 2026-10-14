@@ -87,7 +87,12 @@ def _count_sprints(speed: np.ndarray, ts: np.ndarray) -> int:
     sprints = 0
     in_sprint = False
     sprint_start_ts = 0.0
+    previous_ts = ts[0]
     for s, t in zip(speed, ts):
+        if t - previous_ts > MAX_GAP_S:
+            if in_sprint and previous_ts - sprint_start_ts >= SPRINT_MIN_DURATION_S:
+                sprints += 1
+            in_sprint = False
         if s >= SPRINT_THRESHOLD_MS:
             if not in_sprint:
                 in_sprint = True
@@ -97,6 +102,7 @@ def _count_sprints(speed: np.ndarray, ts: np.ndarray) -> int:
                 if (t - sprint_start_ts) >= SPRINT_MIN_DURATION_S:
                     sprints += 1
                 in_sprint = False
+        previous_ts = t
     if in_sprint and (ts[-1] - sprint_start_ts) >= SPRINT_MIN_DURATION_S:
         sprints += 1
     return sprints

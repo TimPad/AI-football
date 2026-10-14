@@ -7,6 +7,7 @@ class Admin(Entity, Base):
     login = Column(String(100), nullable=False, unique=True)
     password_hash = Column(String, nullable=False)
     active = Column(Boolean, nullable=False, default=True)
+    can_manage_analytics = Column(Boolean, nullable=False, default=False)
 
 
 class LoginAttempt(Base):
