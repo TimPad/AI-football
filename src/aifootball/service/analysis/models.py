@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Uuid, String, Integer, ForeignKey, UniqueConstraint, Index, text
+from sqlalchemy import Column, Uuid, String, Integer, ForeignKey, UniqueConstraint, Index, Boolean, text
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import deferred
 from aifootball.service.db import Base, Entity
 
 
@@ -24,6 +25,9 @@ class AnalysisRun(Entity, Base):
     report = Column(JSONB, nullable=False)
     tracks = Column(JSONB, nullable=False)
     checks = Column(JSONB, nullable=False)
+    understanding = deferred(Column(JSONB, nullable=True))
+    understanding_reviews = Column(JSONB, nullable=False, default=dict)
+    side_map_verified = Column(Boolean, nullable=False, default=False)
     status = Column(String(20), nullable=False, default='review')
     revision = Column(Integer, nullable=False, default=0)
     side_map = Column(JSONB, nullable=False, default=lambda: {'A': 'home', 'B': 'away'})
@@ -60,3 +64,15 @@ class AnalysisCommand(Entity, Base):
     request_hash = Column(String(64), nullable=False)
     response = Column(JSONB, nullable=False)
     __table_args__ = (UniqueConstraint('match_id', 'request_id', name='uq_analysis_command_request'),)
+
+
+class AnalysisUnderstandingDecision(Entity, Base):
+    __tablename__ = 'analysis_understanding_decisions'
+    run_id = Column(Uuid, ForeignKey('analysis_runs.id'), nullable=False)
+    event_id = Column(String(100), nullable=False)
+    actor_id = Column(Uuid, ForeignKey('admins.id'), nullable=False)
+    revision = Column(Integer, nullable=False)
+    before = Column(JSONB)
+    after = Column(JSONB, nullable=False)
+    __table_args__ = (UniqueConstraint('run_id','revision',name='uq_understanding_run_revision'),
+                     Index('ix_understanding_run_event','run_id','event_id'))

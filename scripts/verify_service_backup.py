@@ -39,7 +39,7 @@ restored=root/'restored-files';restored.mkdir(mode=0o700)
 with tarfile.open(archive) as tar:tar.extractall(restored,filter='data')
 clone=create_engine(url.set(database=name));tables=['tournaments','matches','protocol_versions','attachments',
     'teams','players','team_members','team_profile_commands','catalog_images','halls','hall_commands','camera_profiles',
-    'analysis_jobs','analysis_runs','analysis_assignments','analysis_commands','player_match_metrics']
+    'analysis_jobs','analysis_runs','analysis_assignments','analysis_commands','player_match_metrics','analysis_understanding_decisions']
 with engine.connect() as original,clone.connect() as copy:
     for table in tables:
         query=text(f'SELECT count(*) FROM {table}')
@@ -55,7 +55,7 @@ with engine.connect() as original,clone.connect() as copy:
     for table in ['teams','players','team_members','team_profile_commands','catalog_images','halls','hall_commands','camera_profiles']:
         query=text(f'SELECT * FROM {table} ORDER BY id')
         assert original.execute(query).all()==copy.execute(query).all(),table
-    for table,order in [('analysis_jobs','id'),('analysis_runs','id'),('analysis_assignments','run_id,track_id'),('analysis_commands','id'),('player_match_metrics','run_id,player_id')]:
+    for table,order in [('analysis_jobs','id'),('analysis_runs','id'),('analysis_assignments','run_id,track_id'),('analysis_commands','id'),('player_match_metrics','run_id,player_id'),('analysis_understanding_decisions','run_id,revision')]:
         query=text(f'SELECT * FROM {table} ORDER BY {order}')
         assert original.execute(query).all()==copy.execute(query).all(),table
     for storage_key, in copy.execute(text('SELECT DISTINCT storage_key FROM analysis_runs')):

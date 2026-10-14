@@ -1,10 +1,11 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
-    database_url: str
+    database_url: str = Field(repr=False)
     allowed_origin: str = 'http://127.0.0.1:8000'
     secure_cookies: bool = False
     session_hours: int = 12
