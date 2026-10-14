@@ -165,3 +165,13 @@ def test_match_api_includes_gated_overall_score_from_frozen_role_segments(admin_
     assert response.status_code==200,response.text
     assert len(response.json()['overall'])==4
     assert all(r['score'] is None and r['role']=='overall' and r['eligible_play_minutes']==10 for r in response.json()['overall'])
+
+
+def test_same_fingerprint_produces_identical_frozen_leaderboard(admin_client,analytics_match,send_command):
+    match,protocol,part,actions=prepare(admin_client,analytics_match,send_command)
+    one=calculate(admin_client,match).json();two=calculate(admin_client,match).json()
+    assert one['source_fingerprint']==two['source_fingerprint'] and one['snapshot_id']!=two['snapshot_id']
+    path=base(match)+'/ratings'
+    a=admin_client.get(path,params={'snapshot_id':one['snapshot_id']}).json()
+    b=admin_client.get(path,params={'snapshot_id':two['snapshot_id']}).json()
+    assert a['items']==b['items'] and a['edition']==b['edition']
