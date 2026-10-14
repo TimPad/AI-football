@@ -1,0 +1,111 @@
+{
+  "model_version": "role-profile-v1",
+  "label": "Пилотная методика",
+  "registry_version": "futsal-metrics-v1",
+  "profiles": [
+    "per10",
+    "per10-possession"
+  ],
+  "reference_min_players": 5,
+  "reference_min_player_matches": 20,
+  "ratio_prior_strength": 10,
+  "match_min_minutes": 3,
+  "coverage_min": 0.8,
+  "tournament_min_matches": 3,
+  "tournament_min_minutes": 20,
+  "tournament_prior_score": 50,
+  "tournament_prior_weight": 3,
+  "components": {
+    "Finishing": {
+      "npg_rate10": 0.6,
+      "shots_on_target_pct": 0.4
+    },
+    "Creation": {
+      "key_pass_rate10": 0.6,
+      "assists_rate10": 0.4
+    },
+    "Defence": {
+      "recoveries_rate10": 0.5,
+      "duel_win_pct": 0.3,
+      "blocks_rate10": 0.2
+    },
+    "Security": {
+      "dangerous_turnover_rate10": 0.6,
+      "pass_completion_pct": 0.4
+    },
+    "Discipline": {
+      "discipline_cost_rate10": 1
+    },
+    "GK stopping": {
+      "save_pct": 1
+    },
+    "GK distribution": {
+      "distribution_pct": 0.6,
+      "progression_rate10": 0.4
+    }
+  },
+  "roles": {
+    "fixo": {
+      "Finishing": 0.1,
+      "Creation": 0.2,
+      "Defence": 0.4,
+      "Security": 0.2,
+      "Discipline": 0.1,
+      "GK stopping": 0,
+      "GK distribution": 0
+    },
+    "ala": {
+      "Finishing": 0.25,
+      "Creation": 0.3,
+      "Defence": 0.2,
+      "Security": 0.15,
+      "Discipline": 0.1,
+      "GK stopping": 0,
+      "GK distribution": 0
+    },
+    "pivot": {
+      "Finishing": 0.4,
+      "Creation": 0.25,
+      "Defence": 0.1,
+      "Security": 0.15,
+      "Discipline": 0.1,
+      "GK stopping": 0,
+      "GK distribution": 0
+    },
+    "universal": {
+      "Finishing": 0.25,
+      "Creation": 0.25,
+      "Defence": 0.25,
+      "Security": 0.15,
+      "Discipline": 0.1,
+      "GK stopping": 0,
+      "GK distribution": 0
+    },
+    "goalkeeper": {
+      "Finishing": 0,
+      "Creation": 0,
+      "Defence": 0,
+      "Security": 0.1,
+      "Discipline": 0.1,
+      "GK stopping": 0.6,
+      "GK distribution": 0.2
+    }
+  },
+  "directions": {
+    "npg_rate10": "good",
+    "shots_on_target_pct": "good",
+    "key_pass_rate10": "good",
+    "assists_rate10": "good",
+    "recoveries_rate10": "good",
+    "duel_win_pct": "good",
+    "blocks_rate10": "good",
+    "dangerous_turnover_rate10": "bad",
+    "pass_completion_pct": "good",
+    "discipline_cost_rate10": "bad",
+    "save_pct": "good",
+    "distribution_pct": "good",
+    "progression_rate10": "good"
+  },
+  "physical_weight": 0,
+  "missing_reweighting": false
+}
