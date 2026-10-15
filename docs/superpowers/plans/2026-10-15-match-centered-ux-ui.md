@@ -84,17 +84,17 @@
 
 ### Task 1: Принять визуальную систему четырёх основных экранов
 
-Состояние подготовки: четыре изображения показаны; матч и календарь исправлены, проверка и публикация остаются черновиками с явными корректировками в [визуальной системе](../../design/2026-10-15-ui-system.md). Повторная генерация этих двух экранов завершилась сетевой ошибкой. Ревью 15 октября нашло дополнительные ошибки и в «исправленных» экранах (непропорциональная шкала календаря, легенда карты другого цвета, нейтральный факт как положительная причина оценки) — список в разделе «Правки по ревью» визуальной системы. Задача не помечена выполненной; утверждённого design lock нет.
+Состояние подготовки: четыре изображения показаны; матч и календарь исправлены, проверка и публикация остаются черновиками с явными корректировками в [визуальной системе](../../design/2026-10-15-ui-system.md). Повторная генерация этих двух экранов завершилась сетевой ошибкой. Ревью 15 октября нашло дополнительные ошибки и в «исправленных» экранах (непропорциональная шкала календаря, легенда карты другого цвета, нейтральный факт как положительная причина оценки) — список в разделе «Правки по ревью» визуальной системы. Вместо повторной генерации `review` и `publication` собраны HTML-прототипами (см. визуальную систему). **Design lock принят пользователем 15 октября 2026.**
 
 **Files:** Create `docs/design/2026-10-15-ui-system.md`; concept PNG хранятся локально вне Git, документ содержит brief/стабильную копию принятого референса в локальном workspace. Никакие кадры настоящих участников в концепции не используются.
 
 **Interfaces:** Consumes: spec §§4–14. Produces: четыре согласованных референса `public-match`, `calendar`, `review`, `publication`; таблицы copy/tokens/component variants и адаптивные правила для Tasks 5–10.
 
-- [ ] **Step 1: Сгенерировать и показать концепции.** Codex: `frontend-app-builder` и `imagegen`. Если генерация недоступна или исполнитель не Codex — статический HTML-прототип на токенах визуальной системы (без продуктовой логики, демонстрационные данные; место хранения согласовать с пользователем). Растровый и HTML-референс равноправны для приёмки. По одному читаемому desktop-экрану: статистика матча с панелью игрока, календарь «время × зал», проверка личности, независимая публикация. Вся примерная информация подписана как демонстрационная; не рисовать неизвестные командные удары/передачи. Состояния загрузки/пустого блока/409/dirty описать рядом с соответствующим экраном, без дополнительных неработающих функций.
-- [ ] **Step 2: Проверить каждую картинку через `view_image` (или открыть HTML-прототип в браузере).** Сверить пункты «Правок по ревью» визуальной системы, навигацию, реальную ширину панелей, читаемость таблиц, легенду секунд и отсутствие «опубликовать всё». Исправить конкретные расхождения отдельным проходом генерации. Записать точный текст и намеренные отличия от картинки: визуальный mockup не изменяет контракт данных.
-- [ ] **Step 3: Получить пользовательскую оценку показанного набора и зафиксировать принятую версию.** Это приёмка дизайна, не разрешение выкладывать сайт/GitHub. Не писать продуктовые CSS/компоненты по непринятому изображению.
-- [ ] **Step 4: Записать извлечённую систему.** Документ обязан содержать таблицу `token | value | usage`, type scale, spacing, 8px radii/контейнеры по принятому изображению, кнопки default/hover/focus/disabled/pending, иконки lucide с размерами/толщиной, точные nav/CTA, 1440/1280/1024/390 поведение. Базовые значения до приёмки: white `#fff`, фон `#f4f6f8`, текст `#19221f`, акцент `#b8ec64`, поле `#172620`, home `#488ee6`, away `#e9aa49`; окончательные значения извлечь из принятого концепта, не менять по вкусу при кодировании.
-- [ ] **Step 5: Commit документа системы.** `git add docs/design/2026-10-15-ui-system.md` → `git commit -m "docs: lock accepted match workspace design system"`. Для растрового референса не писать unit-тест; проверка — визуальная и пользовательская.
+- [x] **Step 1: Сгенерировать и показать концепции.** Codex: `frontend-app-builder` и `imagegen`. Если генерация недоступна или исполнитель не Codex — статический HTML-прототип на токенах визуальной системы (без продуктовой логики, демонстрационные данные; место хранения согласовать с пользователем). Растровый и HTML-референс равноправны для приёмки. По одному читаемому desktop-экрану: статистика матча с панелью игрока, календарь «время × зал», проверка личности, независимая публикация. Вся примерная информация подписана как демонстрационная; не рисовать неизвестные командные удары/передачи. Состояния загрузки/пустого блока/409/dirty описать рядом с соответствующим экраном, без дополнительных неработающих функций.
+- [x] **Step 2: Проверить каждую картинку через `view_image` (или открыть HTML-прототип в браузере).** Сверить пункты «Правок по ревью» визуальной системы, навигацию, реальную ширину панелей, читаемость таблиц, легенду секунд и отсутствие «опубликовать всё». Исправить конкретные расхождения отдельным проходом генерации. Записать точный текст и намеренные отличия от картинки: визуальный mockup не изменяет контракт данных.
+- [x] **Step 3: Получить пользовательскую оценку показанного набора и зафиксировать принятую версию.** Это приёмка дизайна, не разрешение выкладывать сайт/GitHub. Не писать продуктовые CSS/компоненты по непринятому изображению.
+- [x] **Step 4: Записать извлечённую систему.** Документ обязан содержать таблицу `token | value | usage`, type scale, spacing, 8px radii/контейнеры по принятому изображению, кнопки default/hover/focus/disabled/pending, иконки lucide с размерами/толщиной, точные nav/CTA, 1440/1280/1024/390 поведение. Базовые значения до приёмки: white `#fff`, фон `#f4f6f8`, текст `#19221f`, акцент `#b8ec64`, поле `#172620`, home `#488ee6`, away `#e9aa49`; окончательные значения извлечь из принятого концепта, не менять по вкусу при кодировании.
+- [x] **Step 5: Commit документа системы.** `git add docs/design/2026-10-15-ui-system.md` → `git commit -m "docs: lock accepted match workspace design system"`. Для растрового референса не писать unit-тест; проверка — визуальная и пользовательская.
 
 ### Task 2: Публичная шапка команд и ограниченная выдача логотипов
 
@@ -102,7 +102,7 @@
 
 **Interfaces:** Produces: `PublicMatch.home_team_id: UUID`, `away_team_id: UUID`, `home_logo_id: UUID | None`, `away_logo_id: UUID | None`; `GET /api/v1/public/catalog/team-logos/{image_id}` → normalized PNG or 404. Existing private image route stays guarded. No new public player/photo API.
 
-- [ ] **Step 1: Добавить RED тест шапки.** Использовать `match_factory` и гостевой `TestClient`:
+- [x] **Step 1: Добавить RED тест шапки.** Использовать `match_factory` и гостевой `TestClient`:
 
 ```python
 def test_public_match_has_team_identity_without_private_roster(admin_client, match_factory):
@@ -115,9 +115,9 @@ def test_public_match_has_team_identity_without_private_roster(admin_client, mat
     assert value['score'] == {'home': None, 'away': None}
 ```
 
-- [ ] **Step 2: Добавить тесты логотипов с настоящей синтетической PNG.** В новом test-файле helper `upload_png(client)` создаёт `BytesIO`, `Image.new('RGB',(12,12),'blue')`, сохраняет PNG, POST `/catalog/images` с `X-Request-ID: str(uuid4())`, возвращает `response.json()['id']`. Связать через существующий `create/update` из `test_team_profiles`; добавить команду в `tournament_factory`. Гостевой GET: 200 только для логотипа команды неархивного турнира; 404 для непривязанного image, photo-only, image одновременно logo+photo, связи только с архивным турниром/командой, удалённого файла; 401 для приватного `/catalog/images/{id}`. У `Entry` нет поля archived: не добавлять искусственную проверку или миграцию. Общий logo с одной видимой и одной архивной связью доступен; архивирование последней видимой связи закрывает его при следующем запросе. Проверить `image/png`, `nosniff`, `no-store` для повторной проверки доступа при следующем запросе.
-- [ ] **Step 3: RED запуск.** `.venv/bin/python -m pytest tests/service/test_public_calendar.py tests/service/test_public_team_logos.py -q` → падают новые поля/404 существующего URL. Не запускать другую DB-suite параллельно.
-- [ ] **Step 4: Реализовать узкий запрос и DTO.** `match_query()` выбирает aliased `Team.id/logo_id` вместе с именами; обновить распаковку `match_view`. Logo route требует `CatalogImage`, существующую связь `Team.logo_id` → `Entry.team_id` → `Tournament` с `Tournament.archived=False` и `Team.archived=False`. Дополнительно исключить любой `Player.photo_id == image_id`. Возвращать только файл `attachment_root/catalog/{UUID}.png`; не вызывать приватный route с обходом guard. Использовать `exists()`/один SQL, не загрузку участников по одному.
+- [x] **Step 2: Добавить тесты логотипов с настоящей синтетической PNG.** В новом test-файле helper `upload_png(client)` создаёт `BytesIO`, `Image.new('RGB',(12,12),'blue')`, сохраняет PNG, POST `/catalog/images` с `X-Request-ID: str(uuid4())`, возвращает `response.json()['id']`. Связать через существующий `create/update` из `test_team_profiles`; добавить команду в `tournament_factory`. Гостевой GET: 200 только для логотипа команды неархивного турнира; 404 для непривязанного image, photo-only, image одновременно logo+photo, связи только с архивным турниром/командой, удалённого файла; 401 для приватного `/catalog/images/{id}`. У `Entry` нет поля archived: не добавлять искусственную проверку или миграцию. Общий logo с одной видимой и одной архивной связью доступен; архивирование последней видимой связи закрывает его при следующем запросе. Проверить `image/png`, `nosniff`, `no-store` для повторной проверки доступа при следующем запросе.
+- [x] **Step 3: RED запуск.** `.venv/bin/python -m pytest tests/service/test_public_calendar.py tests/service/test_public_team_logos.py -q` → падают новые поля/404 существующего URL. Не запускать другую DB-suite параллельно.
+- [x] **Step 4: Реализовать узкий запрос и DTO.** `match_query()` выбирает aliased `Team.id/logo_id` вместе с именами; обновить распаковку `match_view`. Logo route требует `CatalogImage`, существующую связь `Team.logo_id` → `Entry.team_id` → `Tournament` с `Tournament.archived=False` и `Team.archived=False`. Дополнительно исключить любой `Player.photo_id == image_id`. Возвращать только файл `attachment_root/catalog/{UUID}.png`; не вызывать приватный route с обходом guard. Использовать `exists()`/один SQL, не загрузку участников по одному.
 
 ```python
 # Смысл предиката: existence видимой связи AND NOT existence photo-связи.
@@ -126,7 +126,7 @@ return FileResponse(path, media_type='image/png', headers={
     'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store'})
 ```
 
-- [ ] **Step 5: GREEN, schema и commit.** Повторить тесты; `.venv/bin/python scripts/export_service_openapi.py --output data/service/openapi.json`; `npm --prefix web run types:api`; `npm --prefix web run build`. OpenAPI в `data/service/` локальный генерируемый файл — не форсировать ignored в Git. Commit точных source/test/types файлов: `feat: expose safe public match branding`.
+- [x] **Step 5: GREEN, schema и commit.** Повторить тесты; `.venv/bin/python scripts/export_service_openapi.py --output data/service/openapi.json`; `npm --prefix web run types:api`; `npm --prefix web run build`. OpenAPI в `data/service/` локальный генерируемый файл — не форсировать ignored в Git. Commit точных source/test/types файлов: `feat: expose safe public match branding`.
 
 ### Task 3: Read-only публикационное состояние и контракт job/run
 
@@ -134,7 +134,7 @@ return FileResponse(path, media_type='image/png', headers={
 
 **Interfaces:** Consumes: existing `PerformancePublicationView`, `rating_state(db, tid, create=False)`, `require_analytics_reader`. Produces: `performance_publication(db: Session, mid: UUID) -> dict` and GET `/matches/{mid}/performance-publication`; revision exactly `TournamentRatingState.revision`, absent state→0. `policy_approved` = `public_policy_id is not None`. `RunSummary.job_id` already implemented; no production change to that contract.
 
-- [ ] **Step 1: RED read-only test.** Импортировать `grant` из `test_analysis_jobs`, existing models from `ratings.models`:
+- [x] **Step 1: RED read-only test.** Импортировать `grant` из `test_analysis_jobs`, existing models from `ratings.models`:
 
 ```python
 def test_read_absent_publication_creates_nothing(admin_client, match_factory):
@@ -154,9 +154,9 @@ def test_read_absent_publication_creates_nothing(admin_client, match_factory):
             assert db.scalar(select(func.count()).select_from(model)) == 0
 ```
 
-- [ ] **Step 2: RED boundaries.** Дополнить тестом state.revision=7 и publication.revision=2 (создать согласованные источники через `prepare/publish_sources` из `test_ratings_snapshots`, затем изменить только ревизии в Session). GET revision=7 и выбранные ID совпадают с PUT. С SQLAlchemy `before_cursor_execute` в `try/finally` записать SQL только вокруг GET и исключить INSERT/UPDATE/DELETE; проверить счётчики policy/command не выросли. Обычный admin→403, guest→401, absent match→404 для Admin+, malformed UUID→422. В существующем import→review fork тесте проверить, что оба run summary имеют исходный `job_id`, не включают `understanding`/evidence.
-- [ ] **Step 3: RED запуск.** `.venv/bin/python -m pytest tests/service/test_performance_publication_read.py tests/service/test_analysis_versions.py -q` → новый GET отсутствует; существующий job контракт уже проходит.
-- [ ] **Step 4: Реализовать GET без mutation helpers.** В query получить Match через `get_entity`, state с `create=False`, publication по match_id; вернуть пять полей существующего view. Route:
+- [x] **Step 2: RED boundaries.** Дополнить тестом state.revision=7 и publication.revision=2 (создать согласованные источники через `prepare/publish_sources` из `test_ratings_snapshots`, затем изменить только ревизии в Session). GET revision=7 и выбранные ID совпадают с PUT. С SQLAlchemy `before_cursor_execute` в `try/finally` записать SQL только вокруг GET и исключить INSERT/UPDATE/DELETE; проверить счётчики policy/command не выросли. Обычный admin→403, guest→401, absent match→404 для Admin+, malformed UUID→422. В существующем import→review fork тесте проверить, что оба run summary имеют исходный `job_id`, не включают `understanding`/evidence.
+- [x] **Step 3: RED запуск.** `.venv/bin/python -m pytest tests/service/test_performance_publication_read.py tests/service/test_analysis_versions.py -q` → новый GET отсутствует; существующий job контракт уже проходит.
+- [x] **Step 4: Реализовать GET без mutation helpers.** В query получить Match через `get_entity`, state с `create=False`, publication по match_id; вернуть пять полей существующего view. Route:
 
 ```python
 @router.get('/matches/{mid}/performance-publication', response_model=PerformancePublicationView)
@@ -166,7 +166,7 @@ def read_performance_publication(mid: UUID, actor=Depends(require_analytics_read
 ```
 
 Использовать стиль импорта данного модуля (если `queries` не импортирован — добавить импорт модуля). Не вызывать `_policy_version`, `_command`, `publish_sources`, commit/flush или `rating_state(create=True)` из GET.
-- [ ] **Step 5: GREEN, schema и commit.** Повторить targeted suite, экспортировать OpenAPI/types командами Task 2, build. Commit: `feat: read performance publication without mutations`.
+- [x] **Step 5: GREEN, schema и commit.** Повторить targeted suite, экспортировать OpenAPI/types командами Task 2, build. Commit: `feat: read performance publication without mutations`.
 
 ### Task 4: Контекст отчёта, источник игрока и честные карты
 
@@ -191,7 +191,7 @@ export function heatCellOpacity(seconds: number, max: number): number;
 
 `ReportModel` in `model.ts`: `{context: ReportContext; protocol: Resource<PublicProtocol>; cv: Resource<PublicAnalysis>; ratings: Resource<MatchRatingsView>}`; add domain aliases `PublicProtocol` and `MatchRatingsView` from generated schemas. A private adapter extracts only presentation-safe subset from `AnalysisRun` to the same `PublicAnalysis` shape; private evidence remains outside this model. `PitchMap` props: `{cells:number[][]|null;lengthM:number;widthM:number;orientation:string;maxSeconds:number;scaleLabel:string}`. `canAttachCurrentCv` conservative: returns false for ANY `origin==='rating'`; rating source manifest does not currently expose enough public information to prove map compatibility. Map can be opened separately with explicit CV context.
 
-- [ ] **Step 1: RED pure tests.**
+- [x] **Step 1: RED pure tests.**
 
 ```ts
 it('does not relabel current CV as the source of a rating',()=>{
@@ -209,9 +209,9 @@ it('compares both teams on one scale and leaves zero neutral',()=>{
 });
 ```
 
-- [ ] **Step 2: RED render coverage.** `PitchMap` tests: 41×15.5 pitch has that aspect ratio; all-zero/null/malformed/ragged/negative/nonfinite cells produce «Нет наблюдений»/«Карта недоступна» and no colored cells; unknown orientation is labeled «Ориентация не задана» without mirroring. No calls to image/private endpoints. Adapter matches by player UUID, not name/number; two identical names stay separate. Distances unknown stay null; zero remains zero; no shots/pass aggregation is added.
-- [ ] **Step 3: RED запуск.** `npm --prefix web run test -- src/features/match-report/adapters.test.ts src/components/pitch/heatmap.test.ts` → missing module/functions until implemented.
-- [ ] **Step 4: Реализовать helpers и SVG.**
+- [x] **Step 2: RED render coverage.** `PitchMap` tests: 41×15.5 pitch has that aspect ratio; all-zero/null/malformed/ragged/negative/nonfinite cells produce «Нет наблюдений»/«Карта недоступна» and no colored cells; unknown orientation is labeled «Ориентация не задана» without mirroring. No calls to image/private endpoints. Adapter matches by player UUID, not name/number; two identical names stay separate. Distances unknown stay null; zero remains zero; no shots/pass aggregation is added.
+- [x] **Step 3: RED запуск.** `npm --prefix web run test -- src/features/match-report/adapters.test.ts src/components/pitch/heatmap.test.ts` → missing module/functions until implemented.
+- [x] **Step 4: Реализовать helpers и SVG.**
 
 ```ts
 export function heatCellOpacity(seconds:number,max:number):number {
@@ -224,7 +224,7 @@ export function periodLabel(key:string,name:string,partial:boolean):string {
 ```
 
 `sharedHeatmapMax` scans only validated rectangular nonnegative finite matrices; reject invalid matrix as a whole. `PitchMap` SVG `viewBox="0 0 lengthM widthM"`, white futsal lines, time-cell rects and external textual legend `0 — maxSeconds с`; do not smooth/add per-cell confidence. Team max computed once from both matrices per selected period; player map gets explicit individual scale. Expose observed/video/processed durations separately; individual role not derived from coordinates. Add team width/depth/compactness only from existing numeric whitelist fields with their supplied units, no new formulas.
-- [ ] **Step 5: GREEN and commit.** Run targeted tests and build; commit all Task 4 files plus aliases: `feat: model report sources and comparable time heatmaps`.
+- [x] **Step 5: GREEN and commit.** Run targeted tests and build; commit all Task 4 files plus aliases: `feat: model report sources and comparable time heatmaps`.
 
 ### Task 5: Общие компоненты, оболочки и URL-навигация
 
