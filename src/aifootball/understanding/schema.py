@@ -129,6 +129,31 @@ def validate_items(document,*,duration,track_ids,evidence_ids,media=None):
             else:require(type(ref['track_id']) is int and ref['track_id'] in track_ids,'metric track')
 
 
+def restrict_to_tracks(document,track_ids):
+    """Keep only references to packaged tracks; windows may see short tracks the package drops."""
+    out=deepcopy(document);dropped=0
+    def keep(tid):
+        nonlocal dropped
+        if tid in track_ids:return True
+        dropped+=1;return False
+    out['observations']=[o for o in out['observations'] if keep(o['track_id'])]
+    out['identity_suggestions']=[s for s in out['identity_suggestions'] if keep(s['track_id'])]
+    for item in out['events']:item['track_ids']=[tid for tid in item['track_ids'] if keep(tid)]
+    summary=[]
+    for item in out['summary']:
+        item['metric_refs']=[r for r in item['metric_refs'] if 'track_id' not in r or keep(r['track_id'])]
+        if item['event_ids'] or item['metric_refs']:summary.append(item)
+    out['summary']=summary
+    if dropped:
+        used={eid for kind in ('observations','identity_suggestions','states','phases','events') for item in out[kind] for eid in item['evidence_ids']}
+        out['evidence']=[item for item in out['evidence'] if item['id'] in used]
+    if dropped and 'processing' in out:
+        processing=out['processing']
+        processing['issues']=[*processing['issues'],f'Ссылки на короткие треки без интервалов в пакете не сохранены: {dropped}']
+        processing['status']='partial' if processing['tasks_completed'] else 'unavailable'
+    return out
+
+
 def validate_understanding(document,*,manifest,tracks,files=None,rosters=None):
     fields(document,'schema_version source context provider budget coverage evidence observations identity_suggestions states phases events summary','processing')
     finite(document)
@@ -220,8 +245,28 @@ def validate_understanding(document,*,manifest,tracks,files=None,rosters=None):
     out=deepcopy(document);out['source'].setdefault('analysis_scope','unknown');return out
 
 
+def to_window_time(document,window):
+    """Convert times that are impossible as window-relative but exact as source-absolute."""
+    out=deepcopy(document);start,end=window.start_ms,window.end_ms;duration=end-start
+    def absolute(value,limit):return type(value) is int and value>limit and start<=value<=end
+    for item in out.get('observations') or []:
+        if isinstance(item,dict) and absolute(item.get('video_ms'),duration-1)and item['video_ms']<end:item['video_ms']-=start
+    def interval(item):
+        if isinstance(item,dict) and absolute(item.get('start_ms'),-1) and absolute(item.get('end_ms'),duration) and start>0:
+            item['start_ms']-=start;item['end_ms']-=start
+    for kind in ('events','states','phases'):
+        for item in out.get(kind) or []:
+            interval(item)
+            for audio in (item.get('audio_observations') or []) if isinstance(item,dict) else []:interval(audio)
+    # Текст сводки без ссылок на события или метрики не подтверждён — отбрасывается, наблюдения окна остаются.
+    if isinstance(out.get('summary'),list):
+        out['summary']=[item for item in out['summary'] if not isinstance(item,dict) or item.get('event_ids') or item.get('metric_refs')]
+    return out
+
+
 def validate_window_response(document,window):
     fields(document,'time_basis observations states phases events summary');finite(document)
+    document=to_window_time(document,window)
     require(document['time_basis']=='window','time basis')
     require(type(window.start_ms) is int and type(window.end_ms) is int and 0<=window.start_ms<window.end_ms,'window bounds')
     duration=window.end_ms-window.start_ms

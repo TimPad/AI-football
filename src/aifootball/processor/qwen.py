@@ -65,8 +65,9 @@ class QwenClient:
         for frame in window.frames:
             if not window.start_ms<=frame.video_ms<window.end_ms:raise QwenError('frame_bounds')
             data=self._media(frame.path,frame.sha256,maximum=6*1024*1024)
+            # Только время окна: абсолютное время рядом с полем ответа video_ms модель копировала в ответ.
             content.append({'type':'text','text':json.dumps({'evidence_id':frame.id,'frame_id':frame.frame_id,
-                'video_ms':frame.video_ms,'window_ms':frame.video_ms-window.start_ms,'crop':frame.crop})})
+                'window_ms':frame.video_ms-window.start_ms,'crop':frame.crop})})
             content.append({'type':'image_url','image_url':{'url':'data:image/jpeg;base64,'+data}})
         if window.media is not None:
             media=window.media

@@ -223,3 +223,34 @@ def test_invalid_budget_is_rejected_before_source_or_api(tmp_path):
     from aifootball.processor.job import process_job
     with pytest.raises(ValueError,match='budget|бюджет'):
         process_job(tmp_path/'j.zip',tmp_path/'v.mp4',tmp_path/'r.zip',understand=True,vlm_max_requests=-1)
+
+
+def test_exhausted_budget_still_assembles_already_paid_later_windows(case):
+    import json
+    from aifootball.processor.understand import run_understanding
+    from aifootball.processor.budget import Budget
+    from aifootball.processor.workspace import Workspace
+    job,video,artifacts,ws,_=case
+    probe=Workspace(ws.root/'probe',{'source':'test'});counter=Client()
+    run_understanding(job,video,artifacts,probe,client=counter,budget=Budget(probe,max_requests=500),mode='frames')
+    total=sum(counter.calls.values());assert total>2
+    paid=Workspace(ws.root/'paid',{'source':'test'});budget=Budget(paid,max_requests=total)
+    first=Client();run_understanding(job,video,artifacts,paid,client=first,budget=budget,mode='frames')
+    lost=next(iter(first.calls))
+    for path in (paid.root/'cache').glob('*.json'):
+        value=json.loads(path.read_text()).get('value')
+        if isinstance(value,dict) and lost in (value.get('window_id'),(value.get('document') or {}).get('window_id')):path.unlink()
+    resumed=Client()
+    doc,_=run_understanding(job,video,artifacts,paid,client=resumed,budget=budget,mode='frames')
+    assert sum(resumed.calls.values())==0
+    assert doc['processing']['tasks_completed']==total-1
+    assert 'Бюджет обработки исчерпан' in doc['processing']['issues'] and doc['processing']['status']=='partial'
+
+
+def test_identity_answer_keeps_number_observations_and_ignores_scene_claims():
+    from aifootball.processor.understand import identity_only
+    answer={'time_basis':'window','observations':[{'track_id':3}],'events':[{'id':'e'}],'states':[{}],'phases':[{}],
+            'summary':[{'text':'Игрок в атаке','event_ids':[],'metric_refs':[]}]}
+    out=identity_only(answer)
+    assert out['observations']==[{'track_id':3}] and not any(out[k] for k in ('events','states','phases','summary'))
+    assert answer['summary'] and identity_only(None) is None

@@ -127,3 +127,13 @@ def test_bounded_scene_metadata_can_exceed_short_text_limit(frame_window):
     result=client(lambda req:httpx.Response(200,content=sse(completed()))).infer(
         frame_window,'Return JSON '+('x'*12000),max_output_tokens=512)
     assert result.document=={'events':[]}
+
+
+def test_frame_labels_give_only_window_time_to_avoid_absolute_answers(frame_window):
+    labels=[]
+    def respond(request):
+        body=json.loads(request.content)
+        labels.extend(json.loads(part['text']) for part in body['messages'][0]['content'][1:] if part['type']=='text')
+        return httpx.Response(200,content=sse(completed('{"events":[]}')))
+    client(respond).infer(frame_window,'Return JSON',max_output_tokens=512)
+    assert labels and all('video_ms' not in label and 'window_ms' in label for label in labels)

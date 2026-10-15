@@ -38,6 +38,11 @@ def _context(window,tracks,source,scope):
     return {'analysis_scope':scope,'track_boxes':boxes,'track_teams':teams}
 
 
+def identity_only(document):
+    """A player crop does not support scene claims: keep only observations of a number answer."""
+    return {**document,'events':[],'states':[],'phases':[],'summary':[]} if isinstance(document,dict) else document
+
+
 def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mode='native',analysis_scope='unknown',sleep=time.sleep):
     if mode not in ('native','frames') or analysis_scope not in SCOPES:raise ValueError('Invalid understanding settings')
     source=source_for_job(job,video);duration=round(source['duration_s']*1000)
@@ -69,7 +74,7 @@ def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mo
         if index%2==1 and pending:tasks.append(('identity',pending.pop(0)))
     tasks.extend(('identity',window) for window in pending)
     successful=[];identity_results=[];evidence={};image_files={};issues=[];response_models=set()
-    completed={'match':0,'identity':0}
+    completed={'match':0,'identity':0};exhausted=False
     for kind,spec in tasks:
         try:
             window=spec if kind=='identity' else make_window(video,start_ms=spec['start_ms'],end_ms=spec['end_ms'],
@@ -86,10 +91,7 @@ def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mo
             'media':window.media.sha256 if window.media else None})).hexdigest()
         cached=workspace.get_json(key);stop=False
         def validated_response(document):
-            result=validate_window_response(document,window)
-            if kind=='identity' and any(result['document'][field] for field in ('events','states','phases','summary')):
-                raise ValueError('Identity response has scene claims')
-            return result
+            return validate_window_response(identity_only(document) if kind=='identity' else document,window)
         if cached is None:
             for rid in budget.reservations_for(key):
                 receipt=workspace.get_json('raw:'+rid)
@@ -99,13 +101,15 @@ def run_understanding(job,video:Path,artifacts:Path,workspace,*,client,budget,mo
                 except ValueError:continue
                 cached={'document':validated,'usage':receipt['usage'],'request_id':receipt['request_id'],'model':receipt['model']}
                 workspace.put_json(key,cached);break
+        # После исчерпания бюджета новых платных попыток нет, но уже оплаченные окна дальше по порядку собираются.
+        if cached is None and exhausted:continue
         if cached is None:
             repaired=False;validated=None
             estimate=len(prompt.encode())//2+1600*len(window.frames)+(round((window.end_ms-window.start_ms)*1.2) if window.media else 0)
             for attempt in range(3):
                 try:reservation=budget.reserve_call(key,estimate,4096)
                 except ValueError:
-                    issues.append('Бюджет обработки исчерпан');stop=True;break
+                    issues.append('Бюджет обработки исчерпан');exhausted=True;break
                 try:
                     response=client.infer(window,prompt,max_output_tokens=4096)
                 except QwenError as exc:

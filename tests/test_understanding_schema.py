@@ -169,3 +169,55 @@ def test_supported_futsal_event_is_preserved_as_observation(case,kind):
 def test_supported_game_state_remains_bounded(case,kind):
     case[0]['states']=[{'kind':kind,'start_ms':1000,'end_ms':2000,'evidence_ids':[],'limitations':[]}]
     assert validate(case)['states'][0]['kind']==kind
+
+
+def test_understanding_is_restricted_to_packaged_tracks_with_an_explicit_issue(case):
+    from aifootball.understanding.schema import restrict_to_tracks
+    doc,manifest,tracks=case
+    kept=tracks['tracks'][0]['track_id'];dropped=max(t['track_id'] for t in tracks['tracks'])+100
+    obs=lambda tid:{'track_id':tid,'video_ms':1000,'role':'player','number':None,'team':'A','evidence_ids':[],'visible_features':[],'limitations':[]}
+    doc['observations']=[obs(kept),{**obs(dropped),'evidence_ids':['f1']}]
+    doc['evidence']=[{'id':'f1','frame_id':1,'video_ms':1000,'path':'evidence/f1.jpg','sha256':'a'*64,'crop':None,'kind':'overview'}]
+    doc['identity_suggestions']=[{'track_id':dropped,'player_id':None,'status':'unknown','number':None,'team':None,'evidence_ids':[],'reasons':[]}]
+    doc['events']=[event(track_ids=[kept,dropped])]
+    doc['summary']=[{'text':'Дистанция','event_ids':[],'metric_refs':[{'period_key':'all','track_id':dropped,'metric_name':'distance_m'}]}]
+    doc['processing']={'status':'complete','tasks_planned':1,'tasks_completed':1,'scene_tasks_planned':1,'scene_tasks_completed':1,
+        'identity_tasks_planned':0,'identity_tasks_completed':0,'issues':[]}
+    with pytest.raises(ValueError,match='unknown track'):validate(case)
+    out=restrict_to_tracks(doc,{t['track_id'] for t in tracks['tracks']})
+    assert [o['track_id'] for o in out['observations']]==[kept]
+    assert out['identity_suggestions']==[] and out['summary']==[] and out['evidence']==[]
+    assert all(dropped not in e['track_ids'] for e in out['events'])
+    assert out['processing']['status']=='partial' and 'не сохранены' in out['processing']['issues'][0]
+    assert doc['observations'][1]['track_id']==dropped
+    validate((out,manifest,tracks))
+    clean=restrict_to_tracks(out,{t['track_id'] for t in tracks['tracks']})
+    assert clean['processing']==out['processing']
+
+
+def test_unambiguous_absolute_window_times_are_converted_before_validation(tmp_path):
+    from aifootball.understanding.schema import validate_window_response
+    from aifootball.understanding.types import Window
+    frame=make_frame(tmp_path,frame_id=800,video_ms=33023)
+    window=Window('w',30000,42000,(frame,),None,(5,),'frames')
+    doc={'time_basis':'window','states':[],'phases':[],'summary':[],
+         'observations':[{'track_id':5,'video_ms':33023,'role':'player','number':None,'team':'A','evidence_ids':[frame.id],'visible_features':[],'limitations':[]}],
+         'events':[event(start_ms=31000,end_ms=32000)]}
+    out=validate_window_response(doc,window)['document']
+    assert out['observations'][0]['video_ms']==33023 and (out['events'][0]['start_ms'],out['events'][0]['end_ms'])==(31000,32000)
+    relative={**doc,'observations':[{**doc['observations'][0],'video_ms':3023}],'events':[event(start_ms=1000,end_ms=2000)]}
+    assert validate_window_response(relative,window)['document']['observations'][0]['video_ms']==33023
+    outside={**doc,'observations':[{**doc['observations'][0],'video_ms':99999}]}
+    with pytest.raises(ValueError,match='video_ms'):validate_window_response(outside,window)
+
+
+def test_unreferenced_summary_text_is_dropped_but_window_observations_stay(tmp_path):
+    from aifootball.understanding.schema import validate_window_response
+    from aifootball.understanding.types import Window
+    frame=make_frame(tmp_path,frame_id=1,video_ms=1000)
+    window=Window('w',0,5000,(frame,),None,(5,),'frames')
+    doc={'time_basis':'window','states':[],'phases':[],'events':[],
+         'observations':[{'track_id':5,'video_ms':1000,'role':'player','number':None,'team':'A','evidence_ids':[frame.id],'visible_features':[],'limitations':[]}],
+         'summary':[{'text':'Команда A атакует','event_ids':[],'metric_refs':[]}]}
+    out=validate_window_response(doc,window)['document']
+    assert out['summary']==[] and len(out['observations'])==1

@@ -7,6 +7,7 @@ from uuid import uuid4
 from zipfile import ZipFile, ZIP_DEFLATED
 import math
 import yaml
+from aifootball.understanding.schema import restrict_to_tracks
 from aifootball.analytics.exchange import (canonical, read_archive, load_json, ensure, uuid,
                                            hash_value, validate_result, ExchangeError, UNITS)
 
@@ -156,6 +157,9 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
         ensure(isinstance(evidence_files, dict) and len(evidence_files) <= 500, 'Неверный реестр доказательств')
         ensure(all(isinstance(raw, bytes) and len(raw) <= 512 * 1024 for raw in evidence_files.values()), 'Размер доказательства')
         ensure(not (set(files) & set(evidence_files)), 'Конфликт имён доказательств')
+        # Окна видят и короткие треки, которые пакет отбрасывает; ссылки сужаются до индекса пакета.
+        understanding = restrict_to_tracks(understanding, {track['track_id'] for track in indexed})
+        evidence_files = {path: raw for path, raw in evidence_files.items() if path in {e['path'] for e in understanding['evidence']}}
         files.update(evidence_files); files['understanding.json'] = canonical(understanding)
         ensure(len(files['understanding.json']) <= 8 * 1024 * 1024, 'Размер understanding.json')
     else:

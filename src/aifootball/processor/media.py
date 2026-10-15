@@ -75,7 +75,10 @@ def make_window(video:Path,*,start_ms:int,end_ms:int,out:Path,mode:str,fps=1,tra
         if has_audio:args+=['-map','0:a:0','-c:a','aac','-b:a','64k','-af','asetpts=PTS-STARTPTS']
         else:args+=['-an']
         args+=['-vf','scale=w=min(960\\,iw):h=-2,setpts=PTS-STARTPTS','-r','12','-c:v','libx264',
-               '-preset','veryfast','-crf','28','-maxrate','1M','-bufsize','2M','-pix_fmt','yuv420p','-movflags','+faststart',str(path)]
+               '-preset','veryfast','-crf','28','-maxrate','1M','-bufsize','2M','-pix_fmt','yuv420p',
+               # Один поток и bitexact: повторная сборка окна даёт тот же файл, и --resume находит оплаченные ответы.
+               '-threads','1','-fflags','+bitexact','-flags:v','+bitexact','-flags:a','+bitexact','-map_metadata','-1',
+               '-movflags','+faststart',str(path)]
         _run(args)
         if not path.exists() or path.stat().st_size>=6*1024*1024:raise ValueError('Клип превышает лимит 8 MiB base64')
         exported=_probe(path)

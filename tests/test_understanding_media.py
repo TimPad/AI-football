@@ -115,3 +115,15 @@ def test_native_clip_size_is_checked_before_probe_or_api(tmp_path,monkeypatch):
         return real(args,**kwargs)
     monkeypatch.setattr(media,'_run',oversized)
     with pytest.raises(ValueError,match='8 MiB'):media.make_window(video,start_ms=0,end_ms=2000,out=tmp_path/'w',mode='native')
+
+
+@pytest.mark.skipif(not shutil.which('ffmpeg'),reason='ffmpeg required')
+def test_native_clip_is_byte_identical_on_rebuild_so_resume_finds_paid_answers(tmp_path):
+    from aifootball.processor.media import make_window
+    rng=np.random.default_rng(7);path=tmp_path/'noise.mp4'
+    writer=cv2.VideoWriter(str(path),cv2.VideoWriter.fourcc(*'mp4v'),25,(640,360))
+    for _ in range(150):writer.write(rng.integers(0,255,(360,640,3),dtype=np.uint8))
+    writer.release()
+    first=make_window(path,start_ms=0,end_ms=5000,out=tmp_path/'a',mode='native',fps=1)
+    second=make_window(path,start_ms=0,end_ms=5000,out=tmp_path/'b',mode='native',fps=1)
+    assert first.media.sha256==second.media.sha256 and first.id==second.id
