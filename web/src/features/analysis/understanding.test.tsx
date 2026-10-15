@@ -50,3 +50,11 @@ it('ordinary admin never requests closed understanding even for a v2 report',asy
  vi.mocked(api).mockImplementation(async path=>String(path).endsWith('/runs/run')?preview:{analysis_revision:0,jobs:[],runs:[{...run,has_understanding:true}]});
  render(<MemoryRouter><VideoAnalysisTab matchId="match" actorId="actor" canManage={false}/></MemoryRouter>);await screen.findByText('На проверке');expect(vi.mocked(api).mock.calls.some(([p])=>String(p).endsWith('/understanding'))).toBe(false);
 });
+it('filters episodes by the current decision without inventing readiness',()=>{
+ show({...value,reviews:{e1:{decision:'rejected',reason:'Недостаточно кадров'}}} as unknown as UnderstandingView);
+ fireEvent.change(screen.getByLabelText('Фильтр эпизодов'),{target:{value:'accepted'}});
+ expect(screen.queryByRole('button',{name:'Принять эпизод e1'})).toBeNull();
+ fireEvent.change(screen.getByLabelText('Фильтр эпизодов'),{target:{value:'rejected'}});
+ expect(screen.getByRole('button',{name:'Принять эпизод e1'})).toBeInTheDocument();
+ expect(screen.queryByText(/%/)).toBeNull();
+});
