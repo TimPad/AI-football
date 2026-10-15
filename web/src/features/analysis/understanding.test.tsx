@@ -3,7 +3,7 @@ import {render,screen,fireEvent,waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {MatchUnderstanding} from './MatchUnderstanding';
 import {IdentityReview} from './IdentityReview';
-import {AnalysisTab} from './AnalysisTab';
+import {VideoAnalysisTab} from './AnalysisTab';
 import type {AnalysisRun} from '../../api/domain';
 import type {UnderstandingView} from './understandingTypes';
 vi.mock('../../api/client',async()=>({...await vi.importActual<typeof import('../../api/client')>('../../api/client'),api:vi.fn()}));
@@ -48,5 +48,5 @@ it('keeps phases visible separately and makes the entire timeline inspectable',(
 it('ordinary admin never requests closed understanding even for a v2 report',async()=>{
  const preview={...run,manifest:{source_video:{duration_s:240}},report:{match:{processed_s:120},periods:[]},checks:{critical_errors:[],warnings:[]},passed:true};
  vi.mocked(api).mockImplementation(async path=>String(path).endsWith('/runs/run')?preview:{analysis_revision:0,jobs:[],runs:[{...run,has_understanding:true}]});
- render(<MemoryRouter><AnalysisTab matchId="match" actorId="actor" canManage={false}/></MemoryRouter>);await screen.findByText('На проверке');expect(vi.mocked(api).mock.calls.some(([p])=>String(p).endsWith('/understanding'))).toBe(false);
+ render(<MemoryRouter><VideoAnalysisTab matchId="match" actorId="actor" canManage={false}/></MemoryRouter>);await screen.findByText('На проверке');expect(vi.mocked(api).mock.calls.some(([p])=>String(p).endsWith('/understanding'))).toBe(false);
 });

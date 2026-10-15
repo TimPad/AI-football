@@ -1,6 +1,5 @@
 import {TRACK_FILTERS} from './reviewQueue';
 import {JobStatus} from './JobStatus';
-import {RatingWorkbench} from '../ratings/RatingWorkbench';
 import {useState} from 'react';
 import {api} from '../../api/client';
 import type {AnalysisOverview,AnalysisRun,AnalysisJob,PublicAnalysis} from '../../api/domain';
@@ -11,10 +10,6 @@ import type {UnderstandingView} from './understandingTypes';
 import {IdentityReview} from './IdentityReview';
 import {AnalysisReport,measure,Heatmap} from './AnalysisReport';
 
-export function AnalysisTab({matchId,actorId,canManage}:{matchId:string,actorId:string,canManage:boolean}){
- const [mode,setMode]=useState('video');
- return <>{canManage&&<div className="tabs"><button className={mode==='video'?'active':''} onClick={()=>setMode('video')}>Видео и CV</button><button className={mode==='ratings'?'active':''} onClick={()=>setMode('ratings')}>Участие, действия и оценки</button></div>}{mode==='ratings'&&canManage?<RatingWorkbench matchId={matchId} actorId={actorId}/>:<VideoAnalysisTab matchId={matchId} actorId={actorId} canManage={canManage}/>}</>;
-}
 export type ReviewNav={params:URLSearchParams;update:(patch:Record<string,string|null>,options?:{replace?:boolean})=>void};
 export function VideoAnalysisTab({matchId,actorId,canManage,nav}:{matchId:string,actorId:string,canManage:boolean,nav?:ReviewNav}){
  const state=useLoad(()=>api<AnalysisOverview>(`/matches/${matchId}/analysis`),matchId);const [localSelected,setLocal]=useState<string>();
@@ -59,11 +54,6 @@ function RunContent({id,matchId,actorId,canManage,overview,busy,mutate,refresh,n
 {task==='identity'&&<IdentityReview run={run} actorId={actorId} editable={canManage&&run.status==='review'&&!busy&&!episodeDirty} onDirty={setDirty} onSave={async values=>{const result=await change('assignments',values,'PUT');understanding.reload();return result}} suggestions={understanding.data?.identity_suggestions} onEvidence={ids=>{setFocusedEvidence(ids);if(privateEnabled)setTask('episode')}}
  view={nav?{filter:(TRACK_FILTERS.find(f=>f.id===nav.params.get('filter'))?.id),page:Math.max(1,Number(nav.params.get('page'))||1),item:Number.isInteger(Number(nav.params.get('item_id')))&&nav.params.get('item_id')?Number(nav.params.get('item_id')):null}:undefined}
  onView={nav?patch=>nav.update({...(patch.filter!==undefined?{filter:patch.filter}:{}),...(patch.page!==undefined?{page:String(patch.page)}:{}),...(patch.item!==undefined?{item_id:patch.item==null?null:String(patch.item)}:{})},{replace:patch.item===undefined}):undefined}/>}{privateEnabled&&task==='episode'&&<><ErrorBox error={understanding.error}/>{understanding.data?<MatchUnderstanding value={understanding.data} run={run} actorId={actorId} editable={run.status==='review'&&!busy&&!dirty} focusedEvidence={focusedEvidence} onDirty={setEpisodeDirty} onChanged={value=>{understanding.setData(value);state.setData({...run,revision:value.revision});refresh()}}/>:<Loading error={understanding.error} retry={understanding.reload}/>}</>}<ImportedPeriods run={run}/><AnalysisReport players={run.players} partial={run.partial} videoSeconds={source.duration_s} processedSeconds={match.processed_s}/></>;
-}
-export function PublicAnalysisReport({matchId}:{matchId:string}){
- const state=useLoad(async()=>{try{return await api<PublicAnalysis>(`/public/matches/${matchId}/analysis`)}catch(e){if(e&&typeof e==='object'&&'status' in e&&e.status===404)return null;throw e}},matchId);
- if(state.error)return <Loading error={state.error} retry={state.reload}/>;if(!state.data)return <p className="muted">Аналитика по видео ещё не опубликована.</p>;
- const report=state.data;return <><AnalysisReport players={report.players} partial={report.partial} linkPlayers={false} videoSeconds={report.video_s} processedSeconds={report.processed_s}/><TeamPeriods report={report}/></>;
 }
 type PeriodsReport=Pick<PublicAnalysis,'periods'|'primary_period_key'|'teams'|'side_map'>;
 function TeamPeriods({report}:{report:PeriodsReport}){

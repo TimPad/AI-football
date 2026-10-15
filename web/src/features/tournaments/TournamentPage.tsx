@@ -1,7 +1,5 @@
-import {TournamentRatings} from '../ratings/TournamentRatings';
-import {useAuth} from '../auth/Auth';
-import {useState,type FormEvent} from 'react';import {Link,useParams,useSearchParams} from 'react-router-dom';import {Plus,Settings,ArrowUpRight} from 'lucide-react';
-import {all,api,post} from '../../api/client';import type {Tournament,Entry,RegVersion,Regulation,Named,Match} from '../../api/domain';import {statuses} from '../../api/domain';import {Field,Modal,ErrorBox,Loading,Empty,useLoad,Check} from '../../components/ui';import {RegulationForm} from './RegulationForm';import {TournamentSettings} from './TournamentList';import {MatchCreateForm} from '../matches/MatchForms';import {dateTime} from '../matches/timezone';
+import {useState,type FormEvent} from 'react';import {Link} from 'react-router-dom';import {Plus} from 'lucide-react';
+import {all,api,post} from '../../api/client';import type {Tournament,Entry,RegVersion,Regulation,Named,Match} from '../../api/domain';import {Field,Modal,ErrorBox,Loading,Empty,useLoad,Check} from '../../components/ui';import {RegulationForm} from './RegulationForm';
 export type Data={t:Tournament,entries:Entry[],rules:RegVersion[],matches:Match[]};
 export function Entries({tid,data,onSaved}:{tid:string,data:Data,onSaved:()=>void}){
  const [adding,setAdding]=useState(false);const teams=useLoad(()=>all<Named>('/teams'),'teams');const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);

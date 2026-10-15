@@ -3,7 +3,7 @@ import {render,screen,fireEvent,waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {AnalysisReport} from './AnalysisReport';
 import {IdentityReview} from './IdentityReview';
-import {AnalysisTab} from './AnalysisTab';
+import {VideoAnalysisTab} from './AnalysisTab';
 import {sendJson,readPending} from './commands';
 import {ApiError} from '../../api/client';
 import type {AnalysisRun} from '../../api/domain';
@@ -25,7 +25,7 @@ it('retains identity input and short fragments after failed saving and remount',
 });
 it('ordinary administrator cannot start import or job',async()=>{
  vi.mocked(api).mockResolvedValue({match_id:'match',analysis_revision:0,active_run_id:null,published_run_id:null,jobs:[],runs:[]});
- render(<MemoryRouter><AnalysisTab matchId="match" actorId="actor" canManage={false}/></MemoryRouter>);
+ render(<MemoryRouter><VideoAnalysisTab matchId="match" actorId="actor" canManage={false}/></MemoryRouter>);
  await screen.findByText('Отчётов пока нет');expect(screen.queryByRole('button',{name:'Создать задание'})).toBeNull();expect(screen.queryByLabelText('Пакет результата ZIP')).toBeNull();
 });
 it('retries the exact command after a successful response body is lost',async()=>{
@@ -46,6 +46,6 @@ it('shows track and team period measurements before identity confirmation',async
  const preview={...run,checks:{...run.checks,critical_errors:[]},report:{...run.report,periods:[{key:'all',name:'Весь матч',teams:{A:{distance_m:120,low_data:false},B:{distance_m:null,low_data:true,metric_notes:{distance_m:'Нет наблюдений команды'}}},players:[{track_id:1,label:'Фрагмент 1',team:'A',role:'player',distance_m:120,observed_s:60,m_per_min:120,hsr_m:0,sprints:0,vmax_ms:2,heatmap_s:null}]}]},manifest:{...run.manifest,primary_period_key:'all'}};
  const overview={match_id:'match',analysis_revision:0,active_run_id:null,published_run_id:null,jobs:[],runs:[run]};
  vi.mocked(api).mockImplementation(async path=>String(path).endsWith('/runs/run')?preview:overview);
- render(<MemoryRouter><AnalysisTab matchId="match" actorId="actor" canManage/></MemoryRouter>);
+ render(<MemoryRouter><VideoAnalysisTab matchId="match" actorId="actor" canManage/></MemoryRouter>);
  expect(await screen.findByRole('heading',{name:'Командные показатели по периодам'})).toBeVisible();expect(screen.getByRole('heading',{name:'Показатели фрагментов до сопоставления'})).toBeVisible();expect(screen.getByText('Нет наблюдений команды')).toBeVisible();
 });
