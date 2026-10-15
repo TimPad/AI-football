@@ -16,7 +16,7 @@ import {HistoryPanel} from '../protocol/ProtocolPanels';
 import {ReviewWorkspace} from '../analysis/ReviewWorkspace';
 import {ParticipationEditor} from '../ratings/ParticipationEditor';
 import {ActionReview} from '../ratings/ActionReview';
-import {PerformancePublicationForm} from '../ratings/RatingWorkbench';
+import {MatchPublication} from '../publication/MatchPublication';
 import {Lineups,MatchInfo} from './MatchPage';
 import {MatchOverview} from './MatchOverview';
 import {MatchReportTab} from './MatchReportTab';
@@ -68,7 +68,7 @@ export function MatchWorkspace({matchId}:{matchId:string}){
    {tab==='participation'&&analytics&&<ParticipationEditor matchId={matchId} actorId={session!.id} onSaved={()=>setTick(n=>n+1)}/>}
    {tab==='actions'&&analytics&&<ActionReview matchId={matchId} actorId={session!.id} onSaved={()=>setTick(n=>n+1)}/>}
    {tab==='report'&&<MatchReportTab match={m} tournament={tournament.data??null} analytics={analytics}/>}
-   {tab==='publication'&&<Interim analytics={analytics} matchId={matchId} actorId={session!.id}/>}
+   {tab==='publication'&&<MatchPublication matchId={matchId} tournamentId={m.tournament_id} actorId={session!.id} canManage={analytics}/>}
   </div>
  </div>;
 }
@@ -82,10 +82,4 @@ function SessionTask({tab}:{tab:string}){
  const {queue}=useProtocolSession();const {dispatch}=useSessionDispatch();const m=queue!.view;
  const content:Record<string,ReactNode>={lineup:<Lineups match={m} dispatch={dispatch}/>,info:<MatchInfo match={m} dispatch={dispatch}/>,history:<HistoryPanel match={m}/>};
  return <SessionChrome>{()=>content[tab]}</SessionChrome>;
-}
-
-// До экрана независимой публикации (Task 10): существующие действия без новой очереди протокола.
-function Interim({analytics,matchId,actorId}:{analytics:boolean;matchId:string;actorId:string}){
- return <><section className="surface"><h2>Протокол</h2><p>Подтверждение и публикация версии протокола — во вкладке <Link to="?tab=protocol">Протокол</Link>.</p></section>
-  {analytics&&<PerformancePublicationForm matchId={matchId} actorId={actorId}/>}</>;
 }

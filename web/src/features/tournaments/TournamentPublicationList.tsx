@@ -14,5 +14,5 @@ export function TournamentPublicationList({data:d,analytics}:{data:Data;analytic
     <td><span className={`chip status-chip ${m.status}`}>{statuses[m.status]}</span></td>
     <td>{m.published_version_id?<span className="chip ok">Опубликован</span>:<span className="chip">Не опубликован</span>}</td>
     <td className="muted">Откройте матч для проверки</td>
-    <td><Link to={`/matches/${m.id}`} aria-label={`Публикация ${m.home.team.name} — ${m.away.team.name}`}>Открыть →</Link></td></tr>)}</tbody></table></div></section>;
+    <td><Link to={`/matches/${m.id}?tab=publication`} aria-label={`Публикация ${m.home.team.name} — ${m.away.team.name}`}>Открыть →</Link></td></tr>)}</tbody></table></div></section>;
 }

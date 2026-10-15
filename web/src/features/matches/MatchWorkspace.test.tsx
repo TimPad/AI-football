@@ -13,7 +13,7 @@ vi.mock('../protocol/useProtocolCommands',()=>({useProtocolCommands:()=>{
 }}));
 vi.mock('./MatchPage',()=>({Lineups:()=><p>форма состава</p>,MatchInfo:()=><p>форма сведений</p>}));
 vi.mock('./MatchReportTab',()=>({MatchReportTab:()=><p>отчёт без очереди</p>}));
-vi.mock('../ratings/RatingWorkbench',()=>({PerformancePublicationForm:()=><p>разрешение статистики</p>}));
+vi.mock('../publication/MatchPublication',()=>({MatchPublication:()=><p>разрешение статистики</p>}));
 vi.mock('../ratings/ParticipationEditor',()=>({ParticipationEditor:()=><p>участие</p>}));
 vi.mock('../ratings/ActionReview',()=>({ActionReview:()=><p>действия</p>}));
 vi.mock('../analysis/AnalysisTab',()=>({VideoAnalysisTab:({canManage}:{canManage:boolean})=><p>проверка записи {canManage?'Админ+':'обычная'}</p>}));
