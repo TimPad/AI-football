@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {login,createTournament} from './helpers';
+import {login,createTournament,task} from './helpers';
 
 test('hall geometry, camera version, match binding and CV download',async({page})=>{
  await login(page);const data=await createTournament(page);
@@ -24,7 +24,7 @@ test('hall geometry, camera version, match binding and CV download',async({page}
  await page.locator('summary').filter({hasText:'Основная камера · версия 1'}).click();
  for(const width of [1440,768,375]){await page.setViewportSize({width,height:1000});await page.evaluate(()=>window.scrollTo(0,0));expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`../data/service/screenshots/hall-${width}.png`,fullPage:true,animations:'disabled'})}
  await page.setViewportSize({width:1440,height:1000});
- await page.goto(data.path);await page.getByRole('button',{name:'Информация',exact:true}).click();
+ await page.goto(data.path);await task(page,'Сведения').click();
  await expect(page.getByLabel('Зал',{exact:true})).toHaveValue(data.hallId);
  await page.getByLabel('Профиль камеры',{exact:true}).selectOption({label:'Основная камера · версия 1 · 1000 × 500 px'});
  await page.getByRole('button',{name:'Сохранить информацию',exact:true}).click();
@@ -37,7 +37,7 @@ test('hall geometry, camera version, match binding and CV download',async({page}
  // A catalog correction cannot silently change the saved match geometry.
  await page.goto(`/halls/${data.hallId}`);await page.getByLabel('Длина поля, м',{exact:true}).fill('42');await page.getByRole('button',{name:'Сохранить зал',exact:true}).click();
  await expect(page.getByText(/прежние размеры поля/)).toBeVisible();
- await page.goto(data.path);await page.getByRole('button',{name:'Информация',exact:true}).click();
+ await page.goto(data.path);await task(page,'Сведения').click();
  await expect(page.getByText(/Поле: 41 × 15.5 м/)).toBeVisible();await expect(page.getByLabel('Профиль камеры',{exact:true})).toHaveValue(match.camera_profile_id);
  const guest=await page.context().browser()!.newContext();const viewer=await guest.newPage();await viewer.goto(`/watch/matches/${matchId}`);
  await expect(viewer.getByText(/Ярославль, Спортивная.*поле 41 × 15.5 м/)).toBeVisible();await expect(viewer.getByRole('link',{name:'Открыть в Яндекс Картах',exact:true})).toHaveAttribute('href',`https://yandex.ru/maps/?text=${encodeURIComponent(hallAddress)}`);await guest.close();
