@@ -1,15 +1,17 @@
 """Guest schedule: explicit fields, results only from published snapshots."""
 from datetime import date, datetime, time, timedelta
+from pathlib import Path
 from uuid import UUID
 from zoneinfo import ZoneInfo
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import FileResponse
+from sqlalchemy import select, func, exists
 from sqlalchemy.orm import Session, aliased
 from aifootball.service.db import get_session
 from aifootball.service.common import get_entity, as_dict, list_entities
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match
-from aifootball.service.catalog.models import Entry, Team
+from aifootball.service.catalog.models import CatalogImage, Entry, Player, Team
 from aifootball.service.tournaments.models import Tournament, RegulationVersion
 from aifootball.service.tournaments.rules import resolve_rules
 from aifootball.service.protocol.models import ProtocolVersion
@@ -28,7 +30,8 @@ def visible_tournament(db, tid):
 def match_query():
     home_entry, away_entry = aliased(Entry), aliased(Entry)
     home, away = aliased(Team), aliased(Team)
-    return (select(Match, Tournament, home.name, away.name, RegulationVersion, ProtocolVersion)
+    return (select(Match, Tournament, home.name, away.name, RegulationVersion, ProtocolVersion,
+                   home.id, away.id, home.logo_id, away.logo_id)
             .join(Tournament, Match.tournament_id == Tournament.id)
             .join(home_entry, Match.home_entry_id == home_entry.id).join(home, home_entry.team_id == home.id)
             .join(away_entry, Match.away_entry_id == away_entry.id).join(away, away_entry.team_id == away.id)
@@ -38,8 +41,9 @@ def match_query():
 
 
 def match_view(row):
-    match, tournament, home, away, regulation, published = row
+    match, tournament, home, away, regulation, published, home_id, away_id, home_logo, away_logo = row
     return {'id': match.id, 'tournament': as_dict(tournament), 'home_name': home, 'away_name': away,
+            'home_team_id': home_id, 'away_team_id': away_id, 'home_logo_id': home_logo, 'away_logo_id': away_logo,
             'scheduled_at': match.scheduled_at, 'venue_label': match.venue_label, 'hall': match.hall_snapshot, 'status': match.status,
             'schedule_slot_s': resolve_rules(match, regulation).schedule_slot_s,
             'broadcast_url': match.broadcast_url, 'broadcast_embed_url': match.broadcast_embed_url,
@@ -78,3 +82,17 @@ def match(mid: UUID, db: Session = Depends(get_session)):
     if row is None:
         raise DomainError('not_found', 'Матч не найден', status=404)
     return match_view(row)
+
+
+@router.get('/catalog/team-logos/{image_id}')
+def team_logo(image_id: UUID, request: Request, db: Session = Depends(get_session)):
+    # Только логотип команды неархивного турнира; общий файл с фото игрока остаётся закрытым.
+    linked = (select(Team.id).join(Entry, Entry.team_id == Team.id).join(Tournament, Entry.tournament_id == Tournament.id)
+              .where(Team.logo_id == image_id, Team.archived.is_(False), Tournament.archived.is_(False)))
+    visible = db.scalar(select(exists().where(CatalogImage.id == image_id)
+                               .where(exists(linked)).where(~exists().where(Player.photo_id == image_id))))
+    path = Path(request.app.state.settings.attachment_root) / 'catalog' / (str(image_id) + '.png')
+    if not visible or not path.is_file():
+        raise DomainError('not_found', 'Изображение недоступно', status=404)
+    return FileResponse(path, media_type='image/png', headers={
+        'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store'})

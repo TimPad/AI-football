@@ -7,3 +7,11 @@ export function zonedToUtc(value:string,zone:string){
  return new Date(guess).toISOString();
 }
 export const dateTime=(utc:string,zone:string)=>new Intl.DateTimeFormat('ru-RU',{timeZone:zone,dateStyle:'medium',timeStyle:'short'}).format(new Date(utc));
+export function localDay(value:string,timezone:string){
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value));
+ return ['year','month','day'].map(key=>parts.find(p=>p.type===key)!.value).join('-');
+}
+export const matchTime=(value:string,timezone:string)=>new Intl.DateTimeFormat('ru-RU',{timeZone:timezone,hour:'2-digit',minute:'2-digit'}).format(new Date(value));
+// Минуты от полуночи местного дня турнира.
+export function localMinutes(value:string,timezone:string){const [h,m]=localInput(value,timezone).slice(11).split(':').map(Number);return h*60+m}
+export function shiftDay(day:string,delta:number){const d=new Date(`${day}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+delta);return d.toISOString().slice(0,10)}

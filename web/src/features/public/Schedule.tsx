@@ -1,38 +1,97 @@
-import {useState} from 'react';
 import {Link} from 'react-router-dom';
-import {Radio,ArrowUpRight} from 'lucide-react';
+import {Radio,ChevronLeft,ChevronRight,ArrowRight} from 'lucide-react';
 import type {PublicMatch} from '../../api/domain';
 import {statuses} from '../../api/domain';
-import {Field,Empty} from '../../components/ui';
+import {Empty} from '../../components/ui';
+import {TeamCrest} from '../../components/match/MatchHeader';
+import {useQueryPatch} from '../navigation/useQueryPatch';
+import {localDay,localMinutes,matchTime,shiftDay} from '../matches/timezone';
+import './schedule.css';
 
-export function localDay(value:string,timezone:string){
- const parts=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value));
- return ['year','month','day'].map(key=>parts.find(p=>p.type===key)!.value).join('-');
+export {localDay,matchTime};
+export type ScheduleItem=Pick<PublicMatch,'id'|'scheduled_at'|'schedule_slot_s'|'venue_label'|'hall'|'home_name'|'away_name'|'status'|'score'|'broadcast_url'|'broadcast_embed_url'>
+ &{home_logo_id?:string|null;away_logo_id?:string|null};
+const PX_PER_MIN=1.6;
+
+export function Score({match}:{match:Pick<ScheduleItem,'score'>}){
+ const known=match.score.home!=null&&match.score.away!=null;
+ return <span className="spectator-score" aria-label={known?`Счёт ${match.score.home} : ${match.score.away}`:'Результат не опубликован'}>{known?`${match.score.home} : ${match.score.away}`:'— : —'}</span>;
 }
-export const matchTime=(value:string,timezone:string)=>new Intl.DateTimeFormat('ru-RU',{timeZone:timezone,hour:'2-digit',minute:'2-digit'}).format(new Date(value));
-export function Score({match}:{match:PublicMatch}){return <span className="spectator-score">{match.score.home??'—'} : {match.score.away??'—'}</span>}
-function Slot({match,timezone}:{match:PublicMatch,timezone:string}){
- const end=new Date(new Date(match.scheduled_at).getTime()+match.schedule_slot_s*1000).toISOString();
- return <Link className={`schedule-slot ${match.status}`} to={`/watch/matches/${match.id}`}>
-  <span className="slot-time">{matchTime(match.scheduled_at,timezone)} — {matchTime(end,timezone)}</span>
-  <strong>{match.home_name} — {match.away_name}</strong><Score match={match}/>
-  <span className="slot-foot">{statuses[match.status]}{(match.broadcast_url||match.broadcast_embed_url)&&<Radio aria-label="Трансляция ВК"/>}</span>
- </Link>;
+// Зал различается по UUID; для старых записей без зала — по подписи.
+const venueKey=(m:ScheduleItem)=>m.hall?.id||m.venue_label||'Площадка не указана';
+const venueName=(m:ScheduleItem)=>m.hall?`${m.hall.name} · ${m.hall.address}`:m.venue_label||'Площадка не указана';
+const endIso=(m:ScheduleItem)=>new Date(new Date(m.scheduled_at).getTime()+m.schedule_slot_s*1000).toISOString();
+const hasVideo=(m:ScheduleItem)=>Boolean(m.broadcast_url||m.broadcast_embed_url);
+
+function Teams({match:m}:{match:ScheduleItem}){
+ return <div className="slot-teams"><span className="slot-team"><TeamCrest name={m.home_name} logoId={m.home_logo_id} side="home" size="sm"/><b>{m.home_name}</b></span>
+  <Score match={m}/><span className="slot-team away"><b>{m.away_name}</b><TeamCrest name={m.away_name} logoId={m.away_logo_id} side="away" size="sm"/></span></div>;
 }
-const venueKey=(m:PublicMatch)=>m.hall?.id||m.venue_label||'Площадка не указана';
-const venueName=(m:PublicMatch)=>m.hall?`${m.hall.name} · ${m.hall.address}`:m.venue_label||'Площадка не указана';
-export function Schedule({matches,timezone}:{matches:PublicMatch[],timezone:string}){
- const [day,setDay]=useState('');const [venue,setVenue]=useState('');const [status,setStatus]=useState('');const [mode,setMode]=useState('list');
+function Open({match:m,href}:{match:ScheduleItem;href:string}){
+ return <Link className="slot-open" to={href} aria-label={`Открыть матч ${m.home_name} — ${m.away_name}`}>Открыть матч<ArrowRight/></Link>;
+}
+const Status=({match:m}:{match:ScheduleItem})=><span className={`chip status-chip ${m.status}`}>{statuses[m.status]}</span>;
+
+// Пересекающиеся матчи одного зала — соседние дорожки, без наложения.
+function lanes(items:{start:number;end:number}[]){
+ const ends:number[]=[];const lane=items.map(item=>{let i=ends.findIndex(e=>e<=item.start);if(i<0){i=ends.length;ends.push(item.end)}else ends[i]=item.end;return i});
+ return {lane,count:Math.max(1,ends.length)};
+}
+
+export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`}:{matches:ScheduleItem[];timezone:string;matchHref?:(id:string)=>string}){
+ const [params,update]=useQueryPatch();
+ const set=(patch:Record<string,string|null>)=>update(patch,{replace:true});
+ const view=params.get('view')==='grid'?'grid':'list';
+ const day=params.get('day')??'';const hall=params.get('hall_id')??'';const status=params.get('status')??'';
  const venues=[...new Set(matches.map(venueKey))];const names=new Map(matches.map(m=>[venueKey(m),venueName(m)]));
- const dates=[...new Set(matches.map(m=>localDay(m.scheduled_at,timezone)))];
+ const dates=[...new Set(matches.map(m=>localDay(m.scheduled_at,timezone)))].sort();
  const today=localDay(new Date().toISOString(),timezone);
- const gridDay=day||dates.find(d=>d>=today)||dates[0]||today;
- const filtered=matches.filter(m=>(!day||localDay(m.scheduled_at,timezone)===day)&&(!venue||venueKey(m)===venue)&&(!status||m.status===status));
- const grid=filtered.filter(m=>localDay(m.scheduled_at,timezone)===gridDay);
- const columns=venues.filter(v=>!venue||venue===v);
- const times=[...new Set(grid.map(m=>m.scheduled_at))].sort();
- return <section className="spectator-schedule"><div className="schedule-toolbar"><div className="segmented" aria-label="Вид расписания"><button aria-pressed={mode==='list'} className={mode==='list'?'active':''} onClick={()=>setMode('list')}>Список матчей</button><button aria-pressed={mode==='grid'} className={mode==='grid'?'active':''} onClick={()=>setMode('grid')}>Сетка расписания</button></div><span className="muted">Время: {timezone}</span></div>
- <div className="filters"><Field label="Дата"><input type="date" value={mode==='grid'?gridDay:day} onChange={e=>setDay(e.target.value)}/></Field><Field label="Площадка"><select value={venue} onChange={e=>setVenue(e.target.value)}><option value="">Все площадки</option>{venues.map(v=><option key={v} value={v}>{names.get(v)}</option>)}</select></Field><Field label="Статус"><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Все матчи</option>{Object.entries(statuses).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></Field><button onClick={()=>{setDay('');setVenue('');setStatus('')}}>Сбросить</button></div>
- {mode==='list'?(!filtered.length?<Empty>На эту дату матчей нет.</Empty>:<div className="public-match-list">{filtered.map(m=><Link key={m.id} className="public-match-row" to={`/watch/matches/${m.id}`}><div className="match-date"><b>{matchTime(m.scheduled_at,timezone)}</b><small>{new Intl.DateTimeFormat('ru-RU',{timeZone:timezone,day:'numeric',month:'short'}).format(new Date(m.scheduled_at))}</small></div><div className="match-pair"><strong>{m.home_name} — {m.away_name}</strong><small>{venueName(m)}</small></div><Score match={m}/><span className={`status ${m.status}`}>{statuses[m.status]}</span><span className="match-broadcast">{(m.broadcast_url||m.broadcast_embed_url)?<><Radio/>ВК</>:<ArrowUpRight/>}</span></Link>)}</div>):(!grid.length?<Empty>На эту дату матчей нет.</Empty>:<><p className="muted">Интервалы включают время, отведённое на матч по регламенту.</p><div className="schedule-scroll" tabIndex={0} aria-label="Прокрутка сетки"><table className="schedule-grid" style={{minWidth:90+columns.length*230}} aria-label="Сетка расписания"><thead><tr><th>Начало</th>{columns.map(v=><th key={v}>{names.get(v)}</th>)}</tr></thead><tbody>{times.map(time=><tr key={time}><th scope="row">{matchTime(time,timezone)}</th>{columns.map(v=><td key={v}>{grid.filter(m=>m.scheduled_at===time&&venueKey(m)===v).map(m=><Slot key={m.id} match={m} timezone={timezone}/>)}</td>)}</tr>)}</tbody></table></div></>)}
+ const shownDay=view==='grid'?day||dates.find(d=>d>=today)||dates[dates.length-1]||today:day;
+ const shown=matches.filter(m=>(!shownDay||localDay(m.scheduled_at,timezone)===shownDay)&&(!hall||venueKey(m)===hall)&&(!status||m.status===status));
+ const columns=venues.filter(v=>(!hall||hall===v)&&(view==='list'||shown.some(m=>venueKey(m)===v)));
+ const baseDay=shownDay||today;
+ return <section className="schedule">
+  <div className="schedule-toolbar">
+   <div className="day-stepper"><button className="icon-button" aria-label="Предыдущий день" onClick={()=>set({day:shiftDay(baseDay,-1)})}><ChevronLeft/></button>
+    <input type="date" aria-label="Дата" value={shownDay} onChange={e=>set({day:e.target.value||null})}/>
+    <button className="icon-button" aria-label="Следующий день" onClick={()=>set({day:shiftDay(baseDay,1)})}><ChevronRight/></button></div>
+   <select aria-label="Фильтр по залу" value={hall} onChange={e=>set({hall_id:e.target.value||null})}><option value="">Все залы</option>{venues.map(v=><option key={v} value={v}>{names.get(v)}</option>)}</select>
+   <select aria-label="Фильтр по статусу" value={status} onChange={e=>set({status:e.target.value||null})}><option value="">Все статусы</option>{Object.entries(statuses).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select>
+   {(day||hall||status)&&<button onClick={()=>set({day:null,hall_id:null,status:null})}>Сбросить</button>}
+   <div className="segmented view-switch" role="group" aria-label="Вид расписания">
+    <button aria-pressed={view==='list'} onClick={()=>set({view:null})}>Список</button>
+    <button aria-pressed={view==='grid'} onClick={()=>set({view:'grid'})}>Сетка</button></div>
+  </div>
+  {!shown.length?<Empty>{matches.length?'Матчей с такими условиями нет.':'Матчей пока нет.'}</Empty>
+  :view==='list'?<div className="schedule-list">{shown.map(m=><article key={m.id} className="schedule-row">
+    <div className="row-time num"><b>{matchTime(m.scheduled_at,timezone)}</b><small>{new Intl.DateTimeFormat('ru-RU',{timeZone:timezone,day:'numeric',month:'short'}).format(new Date(m.scheduled_at))}</small></div>
+    <Teams match={m}/><span className="row-hall">{venueName(m)}</span><Status match={m}/>
+    <span className="row-video">{hasVideo(m)&&<><Radio aria-hidden="true"/>ВК</>}</span><Open match={m} href={matchHref(m.id)}/></article>)}</div>
+  :<TimeGrid matches={shown} columns={columns} names={names} timezone={timezone} matchHref={matchHref}/>}
+  <footer className="schedule-foot"><span>{shown.length} матчей · {columns.length} залов</span><span>Время указано для {timezone}</span></footer>
  </section>;
+}
+
+function TimeGrid({matches,columns,names,timezone,matchHref}:{matches:ScheduleItem[];columns:string[];names:Map<string,string>;timezone:string;matchHref:(id:string)=>string}){
+ const spans=matches.map(m=>{const start=localMinutes(m.scheduled_at,timezone);return {m,start,end:start+m.schedule_slot_s/60}});
+ const from=Math.floor(Math.min(...spans.map(s=>s.start))/30)*30,to=Math.ceil(Math.max(...spans.map(s=>s.end))/30)*30;
+ const marks=Array.from({length:(to-from)/30+1},(_,i)=>from+i*30);
+ const label=(min:number)=>`${String(Math.floor(min/60)%24).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
+ const height=(to-from)*PX_PER_MIN;
+ return <div className="time-grid-scroll" tabIndex={0} aria-label="Прокрутка сетки">
+  <div className="time-grid" role="table" aria-label="Сетка расписания" style={{gridTemplateColumns:`72px repeat(${columns.length},minmax(240px,1fr))`}}>
+   <div role="rowgroup" className="time-grid-head"><div role="row"><span role="columnheader">Время</span>{columns.map(v=><span role="columnheader" key={v}>{names.get(v)}</span>)}</div></div>
+   <div role="rowgroup" className="time-grid-body"><div role="row">
+    <div role="cell" className="time-axis" style={{height}}>{marks.map(min=><span key={min} className={min%60?'half':''} style={{top:(min-from)*PX_PER_MIN}}>{label(min)}</span>)}</div>
+    {columns.map(v=>{const own=spans.filter(s=>venueKey(s.m)===v).sort((a,b)=>a.start-b.start);const {lane,count}=lanes(own);
+     return <div role="cell" key={v} className="time-column" style={{height}}>{marks.map(min=><i key={min} className="grid-line" style={{top:(min-from)*PX_PER_MIN}}/>)}
+      {own.map((s,i)=><article key={s.m.id} className={`time-slot ${s.m.status}`} style={{top:(s.start-from)*PX_PER_MIN,height:(s.end-s.start)*PX_PER_MIN,
+        left:`calc(${100*lane[i]/count}% + 4px)`,width:`calc(${100/count}% - 8px)`}}>
+       <div className="slot-head"><span className="num">{matchTime(s.m.scheduled_at,timezone)} – {matchTime(endIso(s.m),timezone)}</span><Status match={s.m}/></div>
+       <Teams match={s.m}/>
+       <div className="slot-foot">{hasVideo(s.m)?<span className="row-video"><Radio aria-hidden="true"/>ВК</span>:<span/>}<Open match={s.m} href={matchHref(s.m.id)}/></div>
+      </article>)}</div>;})}
+   </div></div>
+  </div>
+ </div>;
 }

@@ -29,6 +29,10 @@ dependencies = [
 dev = [
     { name = "pytest" },
 ]
+vlm = [
+    { name = "httpx" },
+    { name = "python-dotenv" },
+]
 web = [
     { name = "alembic" },
     { name = "argon2-cffi" },
@@ -50,6 +54,7 @@ requires-dist = [
     { name = "alembic", marker = "extra == 'web'", specifier = ">=1.14,<2" },
     { name = "argon2-cffi", marker = "extra == 'web'", specifier = ">=23" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.115,<1" },
+    { name = "httpx", marker = "extra == 'vlm'", specifier = ">=0.28,<1" },
     { name = "httpx", marker = "extra == 'web-dev'", specifier = ">=0.28,<1" },
     { name = "httpx2", marker = "extra == 'web-dev'", specifier = ">=2,<3" },
     { name = "numpy", specifier = ">=2.0" },
@@ -60,6 +65,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=20" },
     { name = "pydantic-settings", marker = "extra == 'web'", specifier = ">=2,<3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "python-dotenv", marker = "extra == 'vlm'", specifier = ">=1,<2" },
     { name = "python-multipart", marker = "extra == 'web'", specifier = ">=0.0.20" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "sqlalchemy", marker = "extra == 'web'", specifier = ">=2,<3" },
@@ -68,7 +74,7 @@ requires-dist = [
     { name = "ultralytics", specifier = ">=8.4" },
     { name = "uvicorn", marker = "extra == 'web'", specifier = ">=0.34,<1" },
 ]
-provides-extras = ["dev", "web", "web-dev"]
+provides-extras = ["vlm", "dev", "web", "web-dev"]
 
 [[package]]
 name = "alembic"

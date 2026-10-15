@@ -10,6 +10,7 @@ MatchStatus=Literal['scheduled','live','ended','postponed','cancelled']
 
 
 class BroadcastFields(Input):
+    stage_label:str|None=Field(default=None,max_length=100)
     broadcast_url:str|None=Field(default=None,max_length=2048)
     broadcast_embed_url:str|None=Field(default=None,max_length=2048)
 

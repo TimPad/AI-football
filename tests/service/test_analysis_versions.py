@@ -45,6 +45,10 @@ def test_stale_pointer_command_and_manual_review_clone(admin_client, analytics_m
     assert review['status'] == 'review' and len(review['assignments']) == 3
     assert review['players'] == []
     assert admin_client.get(f"/api/v1/matches/{analytics_match['id']}/analysis/runs/{old['id']}").json()['status'] == 'confirmed'
+    runs = admin_client.get(f"/api/v1/matches/{analytics_match['id']}/analysis").json()['runs']
+    forked = {row['id']: row for row in runs}
+    assert forked[review['id']]['job_id'] == forked[old['id']]['job_id'] == old['job_id']
+    assert all('understanding' not in row and 'evidence' not in row for row in runs)
     assert command(admin_client, analytics_match, newer, 'activate').status_code == 200
 
 

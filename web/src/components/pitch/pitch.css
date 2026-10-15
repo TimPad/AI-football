@@ -1,0 +1,15 @@
+.pitch-map{margin:0;display:grid;gap:8px;--pitch-tone:var(--accent,#b8ec64)}
+.pitch-tone-home{--pitch-tone:var(--home,#488ee6)}
+.pitch-tone-away{--pitch-tone:var(--away,#e9aa49)}
+.pitch-map svg{display:block;width:100%;height:auto;border-radius:8px;background:var(--pitch,#172620)}
+.pitch-surface{fill:var(--pitch,#172620)}
+.heat-cell{fill:var(--pitch-tone);shape-rendering:crispEdges}
+.pitch-lines{fill:none;stroke:rgba(255,255,255,.7);stroke-width:1}
+/* vector-effect не наследуется: без него ширина считается в метрах viewBox */
+.pitch-lines>*{vector-effect:non-scaling-stroke}
+.pitch-lines .pitch-goal{stroke-width:3}
+.pitch-map figcaption{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;font-size:13px;color:var(--text-muted,#697487);font-variant-numeric:tabular-nums}
+.pitch-legend{display:inline-flex;align-items:center;gap:8px}
+.pitch-legend-ramp{width:72px;height:10px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--pitch-tone));outline:1px solid var(--border,#e2e7ec)}
+.pitch-empty{min-height:120px;place-items:center;border:1px dashed var(--border,#e2e7ec);border-radius:8px;color:var(--text-muted,#697487)}
+.pitch-empty p{margin:0}

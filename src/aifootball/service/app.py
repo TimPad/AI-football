@@ -32,6 +32,8 @@ def create_app(settings=None, *, web_dist=None):
     app.include_router(halls_router, prefix='/api/v1')
     from aifootball.service.analysis.routes import router as analysis_router
     app.include_router(analysis_router, prefix='/api/v1')
+    from aifootball.service.ratings.routes import router as ratings_router
+    app.include_router(ratings_router, prefix='/api/v1')
     app.include_router(match_router, prefix='/api/v1')
     from aifootball.service.protocol.routes import router as protocol_router
     from aifootball.service.storage.routes import router as storage_router

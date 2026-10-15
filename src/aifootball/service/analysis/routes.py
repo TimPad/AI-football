@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request, UploadFile, File, Header
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from aifootball.service.db import get_session
-from aifootball.service.auth.security import require_admin, require_analytics_admin
+from aifootball.service.auth.security import require_admin, require_analytics_admin, require_analytics_reader
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
 from aifootball.service.analysis.models import AnalysisJob, AnalysisRun
@@ -96,3 +96,26 @@ def history(pid: UUID, db: Session=Depends(get_session)):
 @router.get('/public/matches/{mid}/analysis', response_model=PublicAnalysis)
 def public(mid: UUID, db: Session=Depends(get_session)):
     return get_public_analysis(db, mid)
+
+
+from aifootball.service.analysis.schemas import UnderstandingView,UnderstandingReviewUpdate
+from aifootball.service.analysis.understanding import get_understanding,review_understanding
+
+
+@router.get('/matches/{mid}/analysis/runs/{rid}/understanding',response_model=UnderstandingView)
+def understanding_detail(mid:UUID,rid:UUID,admin=Depends(require_analytics_reader),db:Session=Depends(get_session)):
+    return get_understanding(db,scoped_run(db,mid,rid))
+
+
+@router.get('/matches/{mid}/analysis/runs/{rid}/understanding/evidence/{eid}')
+def understanding_evidence(mid:UUID,rid:UUID,eid:str,request:Request,admin=Depends(require_analytics_reader),db:Session=Depends(get_session)):
+    run=scoped_run(db,mid,rid)
+    evidence=next((item for item in (run.understanding or {}).get('evidence',[]) if item['id']==eid),None)
+    if evidence is None:raise DomainError('not_found','Доказательство не найдено',status=404)
+    return Response(read_file(request.app.state.settings.attachment_root,run.storage_key,evidence['path']),
+        media_type='image/jpeg',headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'})
+
+
+@router.put('/matches/{mid}/analysis/runs/{rid}/understanding/reviews',response_model=UnderstandingView)
+def understanding_review(mid:UUID,rid:UUID,data:UnderstandingReviewUpdate,admin=Depends(require_analytics_admin),db:Session=Depends(get_session)):
+    with db.begin():return review_understanding(db,mid,rid,admin.id,data)

@@ -64,6 +64,7 @@ class AnalysisContext(BaseModel):
     units: dict[str, str]
 
 class RunSummary(BaseModel):
+    has_understanding: bool = False
     id: UUID
     job_id: UUID
     created_at: datetime
@@ -164,3 +165,25 @@ class PublicAnalysis(BaseModel):
     partial: bool
     periods: list[dict[str, Any]]
     players: list[PublicPlayer]
+
+
+class UnderstandingReviewUpdate(Mutation):
+    event_id: str = Field(min_length=1,max_length=100,pattern=r'^[A-Za-z0-9_-]+$')
+    decision: Literal['accepted','corrected','rejected']
+    correction: dict[str, Any] | None = None
+    reason: str = Field(default='',max_length=500)
+
+
+class UnderstandingView(BaseModel):
+    run_id: UUID
+    match_id: UUID
+    source_run_id: UUID | None
+    status: Literal['review','confirmed']
+    revision: int
+    understanding: dict[str, Any] | None
+    reviews: dict[str, Any]
+    side_map_verified: bool
+    identity_suggestions: list[dict[str, Any]]
+    effective_events: list[dict[str, Any]]
+    verified_summary: list[dict[str, Any]]
+    history: list[dict[str, Any]]

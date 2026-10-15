@@ -3,11 +3,11 @@ import json
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from types import SimpleNamespace
 from uuid import uuid4
 from zipfile import ZipFile, ZIP_DEFLATED
 import math
 import yaml
+from aifootball.understanding.schema import restrict_to_tracks
 from aifootball.analytics.exchange import (canonical, read_archive, load_json, ensure, uuid,
                                            hash_value, validate_result, ExchangeError, UNITS)
 
@@ -87,7 +87,7 @@ def track_intervals(times, duration, max_gap=1.0):
     return [pair for pair in out if pair[0] < pair[1]]
 
 
-def package_result(job_path, video_path, artifacts, output_path, *, halves=None, partial_recording=False):
+def package_result(job_path, video_path, artifacts, output_path, *, halves=None, partial_recording=False, understanding=None, evidence_files=None):
     import polars as pl
     from aifootball import schemas
     from aifootball.venue import load_venue
@@ -153,7 +153,18 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
               'partial': partial, 'warnings': ['Частичная запись или неполное покрытие обработки'] if partial else []}
     for name, value in [('report.json', report), ('track-index.json', {'tracks': indexed}), ('checks.json', checks)]:
         files[name] = canonical(value)
-    manifest = {'contract_version': '1', 'run_id': str(uuid4()), 'job_id': job.contract['job_id'],
+    if understanding is not None:
+        ensure(isinstance(evidence_files, dict) and len(evidence_files) <= 500, 'Неверный реестр доказательств')
+        ensure(all(isinstance(raw, bytes) and len(raw) <= 512 * 1024 for raw in evidence_files.values()), 'Размер доказательства')
+        ensure(not (set(files) & set(evidence_files)), 'Конфликт имён доказательств')
+        # Окна видят и короткие треки, которые пакет отбрасывает; ссылки сужаются до индекса пакета.
+        understanding = restrict_to_tracks(understanding, {track['track_id'] for track in indexed})
+        evidence_files = {path: raw for path, raw in evidence_files.items() if path in {e['path'] for e in understanding['evidence']}}
+        files.update(evidence_files); files['understanding.json'] = canonical(understanding)
+        ensure(len(files['understanding.json']) <= 8 * 1024 * 1024, 'Размер understanding.json')
+    else:
+        ensure(not evidence_files, 'Доказательства требуют understanding')
+    manifest = {'contract_version': '2' if understanding is not None else '1', 'run_id': str(uuid4()), 'job_id': job.contract['job_id'],
                 'match_id': job.contract['match_id'], 'context_hash': job.contract['context_hash'],
                 'camera_profile_id': context['camera']['id'], 'primary_period_key': primary['key'],
                 'source_video': source, 'processor': {'name': 'aifootball', 'version': '0.1.0', 'model': venue.model},
@@ -172,28 +183,46 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
     return output_path
 
 
-def process_job(job_path, video_path, output_path, *, models=Path('models'), artifacts=None, halves=None, partial_recording=False):
-    from aifootball.venue import load_venue
-    from aifootball import cli
+def process_job(job_path, video_path, output_path, *, models=Path('models'), artifacts=None, halves=None,
+                partial_recording=False, understand=False, work_dir=None, resume=False, vlm_mode='native',
+                vlm_max_requests=200, vlm_max_input_tokens=300_000, vlm_max_output_tokens=100_000,
+                analysis_scope='unknown'):
+    from aifootball.processor.cv import run_cv
+    from aifootball.processor.workspace import Workspace
+    ensure(not resume or (work_dir is not None and (Path(work_dir)/'workspace.json').exists()),
+           'resume requires an existing --work-dir workspace')
+    ensure(vlm_mode in ('native','frames') and analysis_scope in ('full_match','continuous_excerpt','highlights','unknown'), 'Неверные параметры понимания')
+    ensure(all(type(value) is int and value >= 0 for value in (vlm_max_requests, vlm_max_input_tokens, vlm_max_output_tokens)), 'Неверный бюджет обработки')
+    client = None
+    if understand:
+        import shutil
+        from aifootball.processor.qwen import QwenClient, QwenConfig
+        client = QwenClient(QwenConfig.from_env())
+        ensure(bool(shutil.which('ffmpeg') and shutil.which('ffprobe')), 'Требуется FFmpeg/ffprobe')
     job = read_job(job_path); source = source_for_job(job, video_path)
     if artifacts is not None:
         meta = load_json((Path(artifacts) / 'meta.json').read_bytes(), 'meta.json')
         ensure(meta.get('camera_profile_id') == job.contract['context']['camera']['id'] and
                meta.get('source_sha256') == source['sha256'] and meta.get('context_hash') == job.contract['context_hash'],
                'Артефакты не подтверждают происхождение камеры/видео/контекста задания')
-        return package_result(job_path, video_path, artifacts, output_path, halves=halves, partial_recording=partial_recording)
-    work = Path(output_path).parent / ('processor-' + uuid4().hex)
-    venue_root = work / 'venue'; venue_root.mkdir(parents=True)
-    for name, raw in job.files.items(): (venue_root / name).write_bytes(raw)
-    venue = load_venue(venue_root)
-    args = SimpleNamespace(video=Path(video_path), match=work, models=Path(models))
-    for name, command in [('Детекция', cli.cmd_detect), ('Трекинг', cli.cmd_track),
-                          ('Координаты', cli.cmd_project), ('Метрики', cli.cmd_metrics), ('Проверки', cli.cmd_check)]:
-        print(name, flush=True); command(args, venue)
-    meta_path = work / 'meta.json'; meta = json.loads(meta_path.read_text())
-    meta.update(source_sha256=source['sha256'], context_hash=job.contract['context_hash'])
-    meta_path.write_bytes(canonical(meta))
-    return package_result(job_path, video_path, work, output_path, halves=halves, partial_recording=partial_recording)
+        if not understand:
+            return package_result(job_path, video_path, artifacts, output_path, halves=halves, partial_recording=partial_recording)
+    work = Path(work_dir) if work_dir is not None else Path(output_path).parent / ('processor-' + uuid4().hex)
+    ensure(not (work_dir is not None and (work/'workspace.json').exists() and not resume), 'Existing work-dir requires --resume')
+    workspace = Workspace(work, {'source': source['sha256'], 'context_hash': job.contract['context_hash']})
+    with workspace.exclusive():
+        root = Path(artifacts) if artifacts is not None else run_cv(Path(job_path), Path(video_path), workspace, models=Path(models))
+        understanding = None; evidence = None
+        if understand:
+            from aifootball.processor.understand import run_understanding
+            from aifootball.processor.budget import Budget
+            budget = Budget(workspace, max_requests=vlm_max_requests, max_input_tokens=vlm_max_input_tokens,
+                            max_output_tokens=vlm_max_output_tokens)
+            understanding, evidence = run_understanding(job, Path(video_path), root, workspace, client=client,
+                budget=budget, mode=vlm_mode, analysis_scope=analysis_scope)
+        return package_result(job_path, video_path, root, output_path, halves=halves,
+            partial_recording=partial_recording, understanding=understanding, evidence_files=evidence)
+
 
 
 def normalize_report(report):

@@ -108,6 +108,7 @@ class LineupView(EntityView):
     shirt_number: str | None
     display_name: str
 class MatchView(EntityView):
+    stage_label: str | None = None
     match_id: UUID
     tournament_id: UUID
     home_entry_id: UUID
@@ -210,6 +211,10 @@ class PublicMatch(BaseModel):
     tournament: PublicTournament
     home_name: str
     away_name: str
+    home_team_id: UUID
+    away_team_id: UUID
+    home_logo_id: UUID | None
+    away_logo_id: UUID | None
     scheduled_at: datetime
     venue_label: str
     hall: PublicHall | None = None

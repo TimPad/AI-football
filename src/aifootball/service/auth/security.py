@@ -50,3 +50,10 @@ def require_analytics_admin(request: Request):
     if not admin.can_manage_analytics:
         raise DomainError('analytics_permission', 'Для изменения аналитики нужны права Админ+', status=403)
     return admin
+
+
+def require_analytics_reader(request: Request):
+    admin = require_admin(request)
+    if not admin.can_manage_analytics:
+        raise DomainError('analytics_permission', 'Для просмотра кадров и эпизодов нужны права Админ+', status=403)
+    return admin

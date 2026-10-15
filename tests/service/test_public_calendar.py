@@ -65,3 +65,13 @@ def test_broadcast_urls_validate_persist_clear_and_retry(admin_client, match_fac
     assert cleared.json()['broadcast_url'] is None
     created = match_factory(broadcast_url=url, broadcast_embed_url=embed)
     assert created['broadcast_embed_url'] == embed
+
+
+def test_public_match_has_team_identity_without_private_roster(admin_client, match_factory):
+    m = match_factory()
+    with TestClient(admin_client.app) as guest:
+        value = guest.get('/api/v1/public/matches/' + m['id']).json()
+    assert value['home_team_id'] != value['away_team_id']
+    assert value['home_logo_id'] is None and value['away_logo_id'] is None
+    assert not {'lineup', 'notes', 'revision', 'photo_id'} & value.keys()
+    assert value['score'] == {'home': None, 'away': None}

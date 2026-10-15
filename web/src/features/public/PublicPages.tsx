@@ -1,19 +1,24 @@
-import {PublicAnalysisReport} from '../analysis/AnalysisTab';
-import {YandexMapsLink} from '../../components/YandexMapsLink';
-import {useState} from 'react';
-import {Link,Outlet,useParams} from 'react-router-dom';
-import {Trophy,ArrowUpRight,Radio,ExternalLink} from 'lucide-react';
+import {TournamentRatings} from '../ratings/TournamentRatings';
+import {Link,useParams} from 'react-router-dom';
+import {useQueryPatch} from '../navigation/useQueryPatch';
+import {SectionNavigation} from '../../components/match/SectionNavigation';
+import {isUuid,patchQuery} from '../navigation/query';
+import {Trophy,ArrowUpRight} from 'lucide-react';
 import {all,api} from '../../api/client';
 import type {PublicTournament,PublicMatch} from '../../api/domain';
-import {statuses} from '../../api/domain';
 import {useLoad,Loading,ErrorBox,Empty} from '../../components/ui';
-import {Schedule,Score} from './Schedule';
-import {dateTime} from '../matches/timezone';
+import {Schedule} from './Schedule';
 
-export function PublicShell(){return <div className="spectator"><header className="spectator-header"><Link className="spectator-brand" to="/">AI <b>Football</b></Link><nav aria-label="Навигация зрителя"><Link to="/">Турниры и матчи</Link><Link className="organizer-link" to="/tournaments">Кабинет организатора<ArrowUpRight/></Link></nav></header><main className="spectator-main"><Outlet/></main><footer className="spectator-footer">AI Football · Матчи, расписание и трансляции</footer></div>}
 export function PublicHome(){const state=useLoad(()=>all<PublicTournament>('/public/tournaments'),'public-tournaments');return <><div className="spectator-intro"><Trophy/><h1>Футбол, который нас объединяет</h1><p>Выберите турнир, чтобы посмотреть расписание, результаты и трансляции матчей.</p></div>{!state.data?<Loading error={state.error} retry={state.reload}/>:<><ErrorBox error={state.error}/>{state.data.length?<div className="public-tournaments">{state.data.map(t=><Link className="public-tournament" key={t.id} to={`/watch/tournaments/${t.id}`}><span className="muted">Сезон {t.season}</span><h2>{t.name}</h2><p>{t.starts_on} — {t.ends_on}</p><span>Матчи и расписание<ArrowUpRight/></span></Link>)}</div>:<Empty>Турниров пока нет. Расписание появится здесь, когда организатор добавит матчи.</Empty>}</>}</>}
 export function PublicTournamentPage(){const {id}=useParams();return <TournamentContent key={id} id={id!}/>}
-function TournamentContent({id}:{id:string}){const state=useLoad(async()=>{const [tournament,matches]=await Promise.all([api<PublicTournament>(`/public/tournaments/${id}`),all<PublicMatch>(`/public/tournaments/${id}/matches`)]);return {tournament,matches}},id);if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const {tournament:t,matches}=state.data;return <><Link className="breadcrumb" to="/">Все турниры</Link><div className="page-head"><div><p className="muted">Сезон {t.season}</p><h1>{t.name}</h1></div><button onClick={state.reload}>Обновить расписание</button></div><ErrorBox error={state.error}/><Schedule matches={matches} timezone={t.timezone}/></>}
-export function PublicMatchPage(){const {id}=useParams();return <MatchContent key={id} id={id!}/>}
-function MatchContent({id}:{id:string}){const state=useLoad(()=>api<PublicMatch>(`/public/matches/${id}`),id);if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const m=state.data;return <><Link className="breadcrumb" to={`/watch/tournaments/${m.tournament.id}`}>{m.tournament.name} / Расписание</Link><ErrorBox error={state.error}/><section className="spectator-match"><span className={`status ${m.status}`}>{statuses[m.status]}</span><h1>{m.home_name} — {m.away_name}</h1><Score match={m}/><p>{dateTime(m.scheduled_at,m.tournament.timezone)} · {m.venue_label||'Площадка не указана'}</p>{m.hall&&<><p className="muted">{m.hall.address} · поле {m.hall.pitch_length_m} × {m.hall.pitch_width_m} м</p><YandexMapsLink address={m.hall.address}/></>}<p className="muted">Время: {m.tournament.timezone}</p>{m.public_protocol_id?<Link className="public-action" to={`/protocols/${m.public_protocol_id}`}>Посмотреть опубликованный протокол<ArrowUpRight/></Link>:<p className="muted">Протокол ещё не опубликован.</p>}</section><Broadcast match={m}/><PublicAnalysisReport matchId={id}/></>}
-function Broadcast({match:m}:{match:PublicMatch}){const [playing,setPlaying]=useState(false);const watchUrl=m.broadcast_url||m.broadcast_embed_url;return <section className="broadcast-section"><div className="panel-head"><h2><Radio/>Трансляция матча</h2>{watchUrl&&<a className="public-action" href={watchUrl} target="_blank" rel="noopener noreferrer">Смотреть в ВК<ExternalLink/></a>}</div>{m.broadcast_embed_url?<><div className="broadcast-player">{playing?<iframe src={m.broadcast_embed_url} title={`Трансляция: ${m.home_name} — ${m.away_name}`} allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/>:<div className="broadcast-cover"><Radio/><h3>Матч в прямом эфире ВК</h3><p>Трансляция с комментариями</p><button className="primary" onClick={()=>setPlaying(true)}>Смотреть на сайте</button></div>}</div><p className="muted">Если плеер недоступен, откройте трансляцию в ВК.</p></>:<Empty>{m.broadcast_url?'Трансляция доступна по ссылке в ВК.':'Ссылка на трансляцию появится здесь, когда её добавит организатор.'}</Empty>}</section>}
+function TournamentContent({id}:{id:string}){
+ const [params,update]=useQueryPatch();const tab=params.get('tab')==='ratings'?'ratings':'matches';
+ const snapshot=isUuid(params.get('snapshot_id'))?params.get('snapshot_id')!:'';
+ const state=useLoad(async()=>{const [tournament,matches]=await Promise.all([api<PublicTournament>(`/public/tournaments/${id}`),all<PublicMatch>(`/public/tournaments/${id}/matches`)]);return {tournament,matches}},id);
+ if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const {tournament:t,matches}=state.data;
+ return <><Link className="breadcrumb" to="/">Все турниры</Link><div className="page-head"><div><p className="muted">Сезон {t.season} · {t.starts_on} — {t.ends_on}</p><h1>{t.name}</h1></div><button onClick={state.reload}>Обновить</button></div>
+  <SectionNavigation label="Разделы турнира" items={[{id:'matches',label:'Матчи'},{id:'ratings',label:'Рейтинги'}]} selected={tab}
+   onSelect={value=>update({tab:value==='matches'?null:value})} href={value=>`?${patchQuery(params,{tab:value==='matches'?null:value})}`}/>
+  <ErrorBox error={state.error}/>
+  <div className="tournament-section">{tab==='matches'?<Schedule matches={matches} timezone={t.timezone}/>:<TournamentRatings tournamentId={id} publicView initialSnapshot={snapshot}/>}</div></>;
+}
