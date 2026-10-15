@@ -211,6 +211,10 @@ class PublicMatch(BaseModel):
     tournament: PublicTournament
     home_name: str
     away_name: str
+    home_team_id: UUID
+    away_team_id: UUID
+    home_logo_id: UUID | None
+    away_logo_id: UUID | None
     scheduled_at: datetime
     venue_label: str
     hall: PublicHall | None = None
