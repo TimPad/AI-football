@@ -18,7 +18,7 @@ test('guest calendar, timetable and VK broadcasts from organizer input',async({p
  await viewer.goto('/');await expect(viewer.getByRole('heading',{name:'Футбол, который нас объединяет'})).toBeVisible();
  await viewer.goto(`/watch/tournaments/${data.tid}`);
  await expect(viewer.getByRole('link',{name:new RegExp(`${data.home}.*${data.away}`)})).toBeVisible();
- await viewer.getByRole('button',{name:'Сетка расписания',exact:true}).click();
+ await viewer.getByRole('button',{name:'Сетка',exact:true}).click();
  await viewer.getByLabel('Дата',{exact:true}).fill('2026-10-20');
  await expect(viewer.getByRole('table',{name:'Сетка расписания'})).toContainText('19:00');
  await expect(viewer.getByRole('table',{name:'Сетка расписания'})).toContainText('Тестовый зал');

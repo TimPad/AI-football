@@ -6,8 +6,8 @@ import type {Entry} from '../../api/domain';
 import {CommandStatus,useRatingCommand} from './commands';
 import {roles,num,pct,timeBases,type Analytics,type RatingSnapshot,type RatingPage,type RatingSummary} from './types';
 import {MetricTable} from './MatchRating';
-export function TournamentRatings({tournamentId,actorId,publicView=false}:{tournamentId:string,actorId?:string,publicView?:boolean}){
- const [snapshot,setSnapshot]=useState('');const [tick,setTick]=useState(0);
+export function TournamentRatings({tournamentId,actorId,publicView=false,initialSnapshot=''}:{tournamentId:string,actorId?:string,publicView?:boolean,initialSnapshot?:string}){
+ const [snapshot,setSnapshot]=useState(initialSnapshot);const [tick,setTick]=useState(0);
  return <div className="ratings"><section className="surface"><h2>Рейтинг турнира</h2><p>Пилотная методика: оценка подтверждённой статистической эффективности. Сравнение выполняется внутри роли.</p><p className="muted">Основной список: от 3 оценённых матчей, 20 минут и 80% покрытия. До этого игрок находится в предварительном списке.</p></section>{!publicView&&actorId&&<AnalyticsControls tournamentId={tournamentId} actorId={actorId} onSnapshot={id=>{setSnapshot(id);setTick(n=>n+1)}}/>}<Rankings key={`${snapshot}:${tick}`} tournamentId={tournamentId} snapshotId={snapshot} publicView={publicView}/></div>
 }
 function AnalyticsControls({tournamentId,actorId,onSnapshot}:{tournamentId:string,actorId:string,onSnapshot:(id:string)=>void}){

@@ -1,12 +1,13 @@
 import {useEffect,useState,type ReactNode} from 'react';
+import {RailContext} from './rail';
 import {NavLink,Outlet,useLocation} from 'react-router-dom';
 import {Trophy,Users,UserRound,MapPin,LogOut,Menu,X,ExternalLink} from 'lucide-react';
 import {useAuth} from '../auth/Auth';
 import './shell.css';
 
 // Рейл 224px вне ширины рабочей области; ниже 1024px — выдвижная панель.
-export function CabinetShell({rail}:{rail?:ReactNode}){
- const auth=useAuth();const location=useLocation();const [open,setOpen]=useState(false);
+export function CabinetShell(){
+ const auth=useAuth();const location=useLocation();const [open,setOpen]=useState(false);const [rail,setRail]=useState<ReactNode>(null);
  useEffect(()=>setOpen(false),[location.pathname]);
  return <div className="cabinet">
   <header className="cabinet-top">
@@ -21,12 +22,12 @@ export function CabinetShell({rail}:{rail?:ReactNode}){
   {open&&<div className="cabinet-shade" onClick={()=>setOpen(false)}/>}
   <nav className={`cabinet-rail${open?' open':''}`} aria-label="Кабинет">
    {rail}
-   <h4>Справочники</h4>
-   <NavLink to="/tournaments" end><Trophy/>Турниры</NavLink>
-   <NavLink to="/teams"><Users/>Команды</NavLink>
-   <NavLink to="/players"><UserRound/>Игроки</NavLink>
-   <NavLink to="/halls"><MapPin/>Залы</NavLink>
+   <h4>{rail?'Справочники':'Кабинет'}</h4>
+   <NavLink to="/tournaments" end><Trophy/>{rail?'Все турниры':'Турниры'}</NavLink>
+   <NavLink to="/teams"><Users/>{rail?'Все команды':'Команды'}</NavLink>
+   <NavLink to="/players"><UserRound/>{rail?'Все игроки':'Игроки'}</NavLink>
+   <NavLink to="/halls"><MapPin/>{rail?'Все залы':'Залы'}</NavLink>
   </nav>
-  <main className="cabinet-main"><Outlet/></main>
+  <main className="cabinet-main"><RailContext.Provider value={setRail}><Outlet/></RailContext.Provider></main>
  </div>;
 }

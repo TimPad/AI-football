@@ -1,0 +1,6 @@
+.tournament-workspace .page-head{margin-bottom:20px}
+.tournament-workspace .page-head .row{gap:16px}
+.roster-block{margin-top:16px}
+.roster-block .row{justify-content:space-between}
+.roster-block h3{margin:8px 0}
+td small{display:block}

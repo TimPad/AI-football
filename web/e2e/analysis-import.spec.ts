@@ -35,8 +35,8 @@ test('external report → identities → one-match history → separate publicat
  const guest=await browser.newContext();const spectator=await guest.newPage();let r=await spectator.request.get(`/api/v1/public${path}/analysis`);expect(r.status()).toBe(404);
  await page.getByRole('button',{name:'Опубликовать аналитику'}).click();await expect(page.getByLabel('Версия отчёта').locator('option:checked')).toContainText('опубликован');
  r=await spectator.request.get(`/api/v1/public${path}/analysis`);expect(r.ok()).toBeTruthy();const published=await r.json();expect(JSON.stringify(published)).not.toContain('track_id');expect(JSON.stringify(published)).not.toContain('context_hash');
- await spectator.goto(`/watch${path}`);await expect(spectator.getByRole('heading',{name:'Статистика по видео'})).toBeVisible();
- const mapSize=await spectator.getByRole('img',{name:'Тепловая карта в координатах площадки'}).first().boundingBox();expect(mapSize!.height).toBeGreaterThan(100);
+ await spectator.goto(`/watch${path}?tab=stats&group=movement`);await expect(spectator.getByRole('heading',{name:'Статистика',exact:true})).toBeVisible();await spectator.getByRole('table',{name:'Показатели игроков'}).getByRole('button',{name:people[0].name,exact:true}).click();
+ const mapSize=await spectator.getByRole('dialog',{name:people[0].name}).getByRole('img',{name:/время наблюдения по ячейкам/}).boundingBox();expect(mapSize!.height).toBeGreaterThan(100);
  await page.getByRole('link',{name:`7 · ${people[0].name}`,exact:true}).click();await expect(page.getByText(/1 матчей с активным отчётом/)).toBeVisible();await expect(page.getByRole('cell',{name:'210',exact:true})).toBeVisible();
  await page.goto(path);await page.getByRole('button',{name:'Видео и аналитика',exact:true}).click();
  // A second import does not change publication; confirming it replaces history.

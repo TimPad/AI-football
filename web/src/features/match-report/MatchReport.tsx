@@ -2,6 +2,7 @@ import type {ReactNode} from 'react';
 import {Link} from 'react-router-dom';
 import type {MatchRatingsView,PublicAnalysis,PublicMatch} from '../../api/domain';
 import {PitchMap} from '../../components/pitch/PitchMap';
+import {YandexMapsLink} from '../../components/YandexMapsLink';
 import {sharedHeatmapMax} from '../../components/pitch/heatmap';
 import {PlayerInspector} from '../../components/match/PlayerInspector';
 import {SourceStatus} from '../../components/match/SourceStatus';
@@ -116,6 +117,7 @@ export function MatchReport({match,model,section,group,selection,onSelect,onClos
  else if(section==='video')body=video;
  else body=<>
   <section className="report-block"><h2>Готовность данных</h2><Readiness model={model}/></section>
+  {match.hall&&<section className="report-block venue"><h2>Площадка</h2><p className="muted">{match.hall.address} · поле {match.hall.pitch_length_m} × {match.hall.pitch_width_m} м</p><YandexMapsLink address={match.hall.address}/></section>}
   <section className="report-block"><h2>Ключевые события</h2><Block resource={model.protocol} absent="Протокол ещё не опубликован." onRetry={onRetry}>{p=>
    <PublicProtocolContent value={p} kinds={['goal','card']}/>}</Block></section>
   {cvValue&&<section className="report-block"><h2>Командные показатели · {periodLabel(period(cvValue),
@@ -125,6 +127,7 @@ export function MatchReport({match,model,section,group,selection,onSelect,onClos
   {model.ratings.status==='ready'&&<section className="report-block"><h2>Лучшие оценки</h2><ol className="leaders">{[...(model.ratings.value.overall??model.ratings.value.items)]
    .filter(r=>r.display_rating!=null).sort((a,b)=>b.display_rating!-a.display_rating!).slice(0,3).map(r=><li key={`${r.player_id}:${r.role}`}>
     <button className="link-button" onClick={()=>onSelect({playerId:r.player_id,origin:'rating'})}>{r.display_name}</button><span className="muted">{teamName(r)}</span><b className="num">{r.display_rating!.toFixed(1)}</b></li>)}</ol></section>}
+  {(match.broadcast_url||match.broadcast_embed_url)&&video}
  </>;
  return <div className={`match-report${selection?' with-inspector':''}`}>
   <div className="report-main">{body}</div>

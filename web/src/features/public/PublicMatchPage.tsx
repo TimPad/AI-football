@@ -1,5 +1,6 @@
-import {useCallback,useEffect,useRef,useState} from 'react';
-import {useParams,useSearchParams} from 'react-router-dom';
+import {useEffect,useRef,useState} from 'react';
+import {useParams} from 'react-router-dom';
+import {useQueryPatch} from '../navigation/useQueryPatch';
 import {api} from '../../api/client';
 import type {PublicMatch} from '../../api/domain';
 import {Loading} from '../../components/ui';
@@ -25,7 +26,7 @@ export function PublicMatchPage(){
 }
 
 function MatchContent({id}:{id:string}){
- const [params,setParams]=useSearchParams();
+ const [params,update]=useQueryPatch();
  const [match,setMatch]=useState<PublicMatch>();const [error,setError]=useState<unknown>();const [tick,setTick]=useState(0);
  const tab=readMatchTab(params,'public');
  const snapshotParam=isUuid(params.get('snapshot_id'))?params.get('snapshot_id'):null;
@@ -55,7 +56,7 @@ function MatchContent({id}:{id:string}){
   return()=>controller.abort();
  },[match,tab,snapshotParam,tick]);
 
- const navigate=useCallback((patch:Record<string,string|null>,replace=false)=>setParams(current=>patchQuery(current,patch),{replace}),[setParams]);
+ const navigate=(patch:Record<string,string|null>,replace=false)=>update(patch,{replace});
  if(!match)return <Loading error={error} retry={()=>setTick(v=>v+1)}/>;
  const ratingsSnapshot=sources.ratings.status==='ready'?sources.ratings.value.snapshot_id:null;
  const model:ReportModel={...sources,context:{matchId:match.id,protocolPublicId:match.public_protocol_id,
