@@ -6,9 +6,9 @@
 .cabinet-score{font-size:28px;line-height:36px;font-weight:700}
 .match-workspace>.section-nav{margin-bottom:16px}
 .match-task{display:grid;gap:16px;min-width:0}
-.match-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.match-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start}
 .readiness-list{display:grid;margin:12px 0 0}
-.readiness-list>div{display:grid;grid-template-columns:160px minmax(0,1fr) auto;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);align-items:center}
+.readiness-list>div{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label action" "value action";column-gap:16px;row-gap:2px;padding:10px 0;border-bottom:1px solid var(--border);align-items:center}.readiness-list dt{grid-area:label}.readiness-list dd:nth-of-type(1){grid-area:value;overflow-wrap:anywhere}.readiness-list dd:nth-of-type(2){grid-area:action;justify-self:end;white-space:nowrap}
 .readiness-list dt{color:var(--text-muted);font-size:13px}.readiness-list dd{margin:0;display:flex;align-items:center;gap:6px}
 .readiness-list .attention dd:nth-of-type(1){color:var(--warn)}
 .readiness-list svg{width:16px;height:16px}
@@ -18,5 +18,9 @@
 .report-sections{display:flex;gap:8px;flex-wrap:wrap}
 .report-sections button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent-line)}
 .result-mode{grid-template-columns:repeat(2,minmax(0,1fr))}
-@media(max-width:760px){.readiness-list>div{grid-template-columns:1fr}.result-mode{grid-template-columns:1fr}}
+@media(max-width:760px){.readiness-list>div{grid-template-columns:1fr;grid-template-areas:"label" "value" "action"}.readiness-list dd:nth-of-type(2){justify-self:start}.result-mode{grid-template-columns:1fr}}
 .match-task>*{min-width:0}
+.cabinet-head-side{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.cabinet-head-side .history-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted)}
+.cabinet-head-side .history-link svg{width:14px;height:14px}
+.cabinet-head-side .history-link[aria-current]{color:var(--text);font-weight:600}

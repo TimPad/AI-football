@@ -70,7 +70,8 @@ describe('tournament workspace',()=>{
  it('summarises publication readiness without per-match version requests',async()=>{
   const paths=stub();render(<Harness tab="publication"/>);
   expect(await screen.findByText('Не опубликован')).toBeInTheDocument();
-  expect(screen.getByText('Откройте матч для проверки')).toBeInTheDocument();
+  // Статус видеоанализа берётся из сводки матча, без отдельных запросов версий.
+  expect(screen.getByText('Видеоанализ не опубликован')).toBeInTheDocument();
   expect(paths.some(p=>/\/matches\/m1\/(versions|analysis|ratings)/.test(p))).toBe(false);
  });
 });

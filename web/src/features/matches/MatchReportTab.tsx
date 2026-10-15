@@ -51,7 +51,7 @@ export function MatchReportTab({match:m,tournament,analytics}:{match:Match;tourn
  return <div className="report-tab">
   <SourceStatus label="Отчёт в кабинете" detail="Протокол — опубликованная версия; видеоанализ — активная версия кабинета; оценки — последний частный срез. Гости видят только опубликованное."/>
   <div className="report-sections" role="group" aria-label="Раздел отчёта">{SECTIONS.map(s=><button key={s.id} aria-pressed={section===s.id} onClick={()=>setSection(s.id)}>{s.label}</button>)}</div>
-  <MatchReport match={publicShapeOf(m,tournament,publicId)} model={model} section={section} group={group} selection={selection}
+  <MatchReport audience="cabinet" match={publicShapeOf(m,tournament,publicId)} model={model} section={section} group={group} selection={selection}
    onSelect={setSelection} onClose={()=>setSelection(null)} onPeriod={setPeriod} onGroup={setGroup} onRetry={()=>setTick(n=>n+1)}
    onCurrentEdition={()=>undefined} historyHref={pid=>`/players/${pid}/analysis?tournament_id=${m.tournament_id}`}/>
   {analytics&&<MatchRatings matchId={m.id} refresh={tick}/>}

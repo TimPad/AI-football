@@ -129,6 +129,7 @@ class MatchView(EntityView):
     protocol: ProtocolDocument
     clock: ClockState
     published_version_id: UUID | None
+    published_analysis_run_id: UUID | None = None
     lineup: list[LineupView]
     projection: Projection
     regulation: RegulationView

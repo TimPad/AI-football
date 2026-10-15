@@ -18,7 +18,7 @@ import './report.css';
 type RatingRow=MatchRatingsView['items'][number];
 type Props={match:PublicMatch;model:ReportModel;section:string;group:StatGroup;selection:PlayerSelection|null;
  onSelect:(s:PlayerSelection)=>void;onClose:()=>void;onPeriod:(key:string)=>void;onGroup:(g:StatGroup)=>void;
- onRetry:()=>void;onCurrentEdition:()=>void;historyHref:(playerId:string)=>string;video?:ReactNode};
+ onRetry:()=>void;onCurrentEdition:()=>void;historyHref:(playerId:string)=>string;video?:ReactNode;audience?:'public'|'cabinet'};
 
 const ready=<T,>(r:Resource<T>)=>r.status==='ready'?r.value:null;
 const SOURCE_LABEL={protocol:'Протокол',cv:'CV',rating:'Оценка'} as const;
@@ -39,6 +39,14 @@ function Readiness({model}:{model:ReportModel}){
   <SourceStatus label="Видеоанализ" detail={text(c,c.status==='ready'?`${c.value.partial?'обработанный фрагмент':'весь матч'} · ${num(c.value.processed_s,0)} с`:'','ещё не опубликован')}/>
   <SourceStatus label="Оценки" detail={text(r,r.status==='ready'?`издание ${r.value.snapshot_id?.slice(0,8)}${model.context.historicalRating?' · закреплено ссылкой':''}`:'','ещё не опубликованы')}/>
  </div>;
+}
+
+// Гостю — одна строка происхождения данных без внутренних номеров изданий.
+function SourceLine({model}:{model:ReportModel}){
+ const parts=[model.protocol.status==='ready'?'официальный протокол':null,
+  model.cv.status==='ready'?(model.cv.value.partial?'видеоанализ обработанного фрагмента':'видеоанализ записи'):null,
+  model.ratings.status==='ready'?'опубликованные оценки':null].filter(Boolean);
+ return parts.length?<p className="muted small source-line">Источники: {parts.join(' · ')}.</p>:null;
 }
 
 function PeriodSelect({cv,value,onChange}:{cv:PublicAnalysis;value:string;onChange:(k:string)=>void}){
@@ -80,7 +88,7 @@ function Inspector({row,origin,model,match,onSelect,onClose,onCurrentEdition,his
  </PlayerInspector>;
 }
 
-export function MatchReport({match,model,section,group,selection,onSelect,onClose,onPeriod,onGroup,onRetry,onCurrentEdition,historyHref,video}:Props){
+export function MatchReport({match,model,section,group,selection,onSelect,onClose,onPeriod,onGroup,onRetry,onCurrentEdition,historyHref,video,audience='public'}:Props){
  const roster=mergeRoster({protocol:ready(model.protocol),cv:ready(model.cv),ratings:ready(model.ratings),
   teams:{home:match.home_team_id,away:match.away_team_id}});
  const teamName=(r:{team_id?:string;side?:string|null})=>r.team_id===match.home_team_id||r.side==='home'?match.home_name
@@ -116,8 +124,7 @@ export function MatchReport({match,model,section,group,selection,onSelect,onClos
   </section></>;
  else if(section==='video')body=video;
  else body=<>
-  <section className="report-block"><h2>Готовность данных</h2><Readiness model={model}/></section>
-  {match.hall&&<section className="report-block venue"><h2>Площадка</h2><p className="muted">{match.hall.address} · поле {match.hall.pitch_length_m} × {match.hall.pitch_width_m} м</p><YandexMapsLink address={match.hall.address}/></section>}
+  {audience==='cabinet'&&<section className="report-block"><h2>Готовность данных</h2><Readiness model={model}/></section>}
   <section className="report-block"><h2>Ключевые события</h2><Block resource={model.protocol} absent="Протокол ещё не опубликован." onRetry={onRetry}>{p=>
    <PublicProtocolContent value={p} kinds={['goal','card']}/>}</Block></section>
   {cvValue&&<section className="report-block"><h2>Командные показатели · {periodLabel(period(cvValue),
@@ -128,6 +135,8 @@ export function MatchReport({match,model,section,group,selection,onSelect,onClos
    .filter(r=>r.display_rating!=null).sort((a,b)=>b.display_rating!-a.display_rating!).slice(0,3).map(r=><li key={`${r.player_id}:${r.role}`}>
     <button className="link-button" onClick={()=>onSelect({playerId:r.player_id,origin:'rating'})}>{r.display_name}</button><span className="muted">{teamName(r)}</span><b className="num">{r.display_rating!.toFixed(1)}</b></li>)}</ol></section>}
   {(match.broadcast_url||match.broadcast_embed_url)&&video}
+  {match.hall&&<section className="report-block venue"><h2>Площадка</h2><p className="muted">{match.hall.address} · поле {match.hall.pitch_length_m} × {match.hall.pitch_width_m} м</p><YandexMapsLink address={match.hall.address}/></section>}
+  {audience==='public'&&<SourceLine model={model}/>}
  </>;
  return <div className={`match-report${selection?' with-inspector':''}`}>
   <div className="report-main">{body}</div>

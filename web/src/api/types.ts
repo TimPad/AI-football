@@ -2838,6 +2838,8 @@ export interface components {
             clock: components["schemas"]["ClockState"];
             /** Published Version Id */
             published_version_id: string | null;
+            /** Published Analysis Run Id */
+            published_analysis_run_id?: string | null;
             /** Lineup */
             lineup: components["schemas"]["LineupView"][];
             projection: components["schemas"]["Projection"];
