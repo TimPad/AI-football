@@ -48,7 +48,8 @@ describe('public section loader',()=>{
   await loadPublicSection(match,'players','edition-A',new AbortController().signal);
   expect(paths).toContain('/api/v1/public/matches/m1/ratings?snapshot_id=edition-A');
   expect(paths.some(p=>/understanding|evidence|\/players\//.test(p))).toBe(false);
-  expect(SECTION_SOURCES.video).toEqual([]);
+  // Видео берёт только протокол для авторов голов в шапке.
+  expect(SECTION_SOURCES.video).toEqual(['protocol']);
  });
  it('rejects when the context is aborted',async()=>{
   stub({});const controller=new AbortController();controller.abort();

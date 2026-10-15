@@ -13,11 +13,13 @@ import {STAT_GROUPS,type StatGroup} from '../match-report/facts';
 import {resultNote} from '../protocol/PublicProtocolContent';
 import {loadPublicSection,SECTION_SOURCES} from './matchLoader';
 import {Broadcast} from './Broadcast';
+import {MatchAside} from './MatchAside';
+import {goalScorers} from '../match-report/MatchTimeline';
 
-const SECTIONS=[{id:'overview',label:'Обзор'},{id:'events',label:'События'},{id:'players',label:'Игроки'},{id:'stats',label:'Статистика'},{id:'video',label:'Видео'}];
+const SECTIONS=[{id:'overview',label:'Обзор'},{id:'events',label:'События'},{id:'players',label:'Составы'},{id:'stats',label:'Статистика'},{id:'video',label:'Видео'}];
 const ORIGINS:PlayerOrigin[]=['protocol','cv','rating'];
-type Sources=Pick<ReportModel,'protocol'|'cv'|'ratings'>;
-const EMPTY:Sources={protocol:{status:'loading'},cv:{status:'loading'},ratings:{status:'loading'}};
+type Sources=Pick<ReportModel,'protocol'|'cv'|'ratings'|'actions'>;
+const EMPTY:Sources={protocol:{status:'loading'},cv:{status:'loading'},ratings:{status:'loading'},actions:{status:'loading'}};
 
 export function PublicMatchPage(){
  const {id=''}=useParams();
@@ -33,6 +35,9 @@ function MatchContent({id}:{id:string}){
  const playerId=isUuid(params.get('player_id'))?params.get('player_id'):null;
  const origin=(ORIGINS as string[]).includes(params.get('origin')??'')?params.get('origin') as PlayerOrigin:'protocol';
  const group=(STAT_GROUPS.find(g=>g.id===params.get('group'))?.id??'shots') as StatGroup;
+ const period=/^(all|[1-9][0-9]?)$/.test(params.get('period')??'')?params.get('period')!:'all';
+ // Командная сводка действий зависит от периода только во вкладке «Статистика»; обзор — всегда весь матч.
+ const actionsPeriod=tab==='stats'?period:'all';
  const [sources,setSources]=useState<Sources>(EMPTY);
  const loadedKey=useRef('');
 
@@ -45,26 +50,26 @@ function MatchContent({id}:{id:string}){
  // Ответ прежнего раздела/издания не подставляется: отмена + сверка ключа контекста.
  useEffect(()=>{
   if(!match)return;
-  const key=`${match.id}|${snapshotParam??''}|${tick}`;
+  const key=`${match.id}|${snapshotParam??''}|${tick}|${actionsPeriod}`;
   if(loadedKey.current!==key){loadedKey.current=key;setSources(EMPTY)}
   const needed=SECTION_SOURCES[tab]??[];if(!needed.length)return;
   const controller=new AbortController();
-  loadPublicSection(match,tab,snapshotParam,controller.signal).then(value=>{
+  loadPublicSection(match,tab,snapshotParam,controller.signal,actionsPeriod).then(value=>{
    if(controller.signal.aborted||loadedKey.current!==key)return;
    setSources(current=>({...current,...value}));
   }).catch(()=>{});
   return()=>controller.abort();
- },[match,tab,snapshotParam,tick]);
+ },[match,tab,snapshotParam,tick,actionsPeriod]);
 
  const navigate=(patch:Record<string,string|null>,replace=false)=>update(patch,{replace});
  if(!match)return <Loading error={error} retry={()=>setTick(v=>v+1)}/>;
  const ratingsSnapshot=sources.ratings.status==='ready'?sources.ratings.value.snapshot_id:null;
  const model:ReportModel={...sources,context:{matchId:match.id,protocolPublicId:match.public_protocol_id,
   cvRunId:sources.cv.status==='ready'?sources.cv.value.run_id:null,ratingSnapshotId:snapshotParam??ratingsSnapshot,
-  historicalRating:snapshotParam!==null,periodKey:params.get('period')??''}};
+  historicalRating:snapshotParam!==null,periodKey:period}};
  const note=sources.protocol.status==='ready'?resultNote(sources.protocol.value):null;
  return <>
-  <MatchHeader match={match} resultNote={note}>
+  <MatchHeader match={match} resultNote={note} scorers={sources.protocol.status==='ready'?goalScorers(sources.protocol.value):null}>
    <SectionNavigation label="Разделы матча" items={SECTIONS} selected={tab} onSelect={value=>navigate({tab:value})}
     href={value=>`?${patchQuery(params,{tab:value})}`}/>
   </MatchHeader>
@@ -76,6 +81,6 @@ function MatchContent({id}:{id:string}){
    onRetry={()=>setTick(v=>v+1)} onCurrentEdition={()=>navigate({snapshot_id:null})}
    historyHref={pid=>`/watch/players/${pid}?${new URLSearchParams({tournament_id:match.tournament.id,
     ...(model.context.ratingSnapshotId?{snapshot_id:model.context.ratingSnapshotId}:{})})}`}
-   video={<Broadcast match={match}/>}/>
+   video={<Broadcast match={match}/>} aside={<MatchAside match={match}/>}/>
  </>;
 }

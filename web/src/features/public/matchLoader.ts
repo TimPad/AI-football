@@ -1,11 +1,12 @@
 import {api,ApiError,errorText} from '../../api/client';
-import type {MatchRatingsView,PublicAnalysis,PublicMatch,PublicProtocol} from '../../api/domain';
+import type {MatchRatingsView,PublicAnalysis,PublicMatch,PublicProtocol,TeamActionStats} from '../../api/domain';
 import type {ReportModel,Resource} from '../match-report/model';
 
-type Source='protocol'|'cv'|'ratings';
+type Source='protocol'|'cv'|'ratings'|'actions';
 // Каждому разделу — только его публичные зависимости.
-export const SECTION_SOURCES:Record<string,Source[]>={overview:['protocol','cv','ratings'],events:['protocol'],
- players:['protocol','cv','ratings'],stats:['cv','ratings'],video:[]};
+// Протокол нужен везде: из него шапка берёт авторов голов.
+export const SECTION_SOURCES:Record<string,Source[]>={overview:['protocol','cv','ratings','actions'],events:['protocol'],
+ players:['protocol','cv','ratings'],stats:['protocol','cv','ratings','actions'],video:['protocol']};
 
 async function resource<T>(load:()=>Promise<T|null>):Promise<Resource<T>>{
  try{const value=await load();return value==null?{status:'absent'}:{status:'ready',value}}
@@ -16,13 +17,14 @@ async function resource<T>(load:()=>Promise<T|null>):Promise<Resource<T>>{
 }
 
 export async function loadPublicSection(match:PublicMatch,tab:string,snapshotId:string|null,
- signal:AbortSignal):Promise<Partial<ReportModel>>{
+ signal:AbortSignal,period='all'):Promise<Partial<ReportModel>>{
  signal.throwIfAborted();
  const wanted=SECTION_SOURCES[tab]??[];const options={signal};
  const loaders:Record<Source,()=>Promise<Resource<unknown>>>={
   protocol:()=>match.public_protocol_id?resource(()=>api<PublicProtocol>(`/public/protocols/${match.public_protocol_id}`,options))
    :Promise.resolve({status:'absent'}),
   cv:()=>resource(()=>api<PublicAnalysis>(`/public/matches/${match.id}/analysis`,options)),
+  actions:()=>resource(()=>api<TeamActionStats>(`/public/matches/${match.id}/action-stats?period=${encodeURIComponent(period)}`,options)),
   ratings:()=>resource(async()=>{
    const query=snapshotId?`?snapshot_id=${encodeURIComponent(snapshotId)}`:'';
    const value=await api<MatchRatingsView>(`/public/matches/${match.id}/ratings${query}`,options);
