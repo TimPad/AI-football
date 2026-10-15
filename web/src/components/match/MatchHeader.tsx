@@ -1,0 +1,30 @@
+import './match.css';
+import {useState,type ReactNode} from 'react';
+import {Link} from 'react-router-dom';
+import type {PublicMatch} from '../../api/domain';
+import {statuses} from '../../api/domain';
+import {dateTime} from '../../features/matches/timezone';
+
+// Только публичный логотип; при ошибке или отсутствии — инициал, а не приватный URL.
+export function TeamCrest({name,logoId,side,size='md'}:{name:string;logoId?:string|null;side:'home'|'away';size?:'sm'|'md'}){
+ const [failed,setFailed]=useState(false);
+ return <span className={`crest crest-${side} crest-${size}`} aria-hidden="true">{logoId&&!failed
+  ?<img src={`/api/v1/public/catalog/team-logos/${logoId}`} alt="" onError={()=>setFailed(true)}/>
+  :name.trim().charAt(0).toUpperCase()||'?'}</span>;
+}
+
+export function MatchHeader({match:m,resultNote,tournamentHref,children}:{match:PublicMatch;resultNote?:string|null;
+ tournamentHref?:string;children?:ReactNode}){
+ const score=m.score.home==null||m.score.away==null?null:`${m.score.home} : ${m.score.away}`;
+ return <header className="match-header">
+  <nav className="match-crumbs" aria-label="Путь"><Link to={tournamentHref??`/watch/tournaments/${m.tournament.id}`}>{m.tournament.name}</Link><span aria-hidden="true">/</span><span>Матчи</span></nav>
+  <div className="match-scoreline">
+   <span className="match-team home"><TeamCrest name={m.home_name} logoId={m.home_logo_id} side="home"/><b>{m.home_name}</b></span>
+   <span className="match-score" aria-label={score?`Счёт ${score}`:'Результат не опубликован'}>{score??'— : —'}</span>
+   <span className="match-team away"><b>{m.away_name}</b><TeamCrest name={m.away_name} logoId={m.away_logo_id} side="away"/></span>
+  </div>
+  <p className="match-meta"><span className={`match-status ${m.status}`}>{statuses[m.status]}</span>{resultNote&&<span className="match-note">{resultNote}</span>}</p>
+  <p className="match-meta muted">{dateTime(m.scheduled_at,m.tournament.timezone)} · {m.hall?.name||m.venue_label||'Площадка не указана'}</p>
+  {children}
+ </header>;
+}
