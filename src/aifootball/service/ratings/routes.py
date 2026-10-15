@@ -49,7 +49,7 @@ from fastapi import Query
 from typing import Literal
 from aifootball.service.ratings.schemas import RatingCalculate,RatingPublish,PerformancePublication,RatingPage,RatingPlayerHistory,RatingSnapshotResult,AnalyticsOverview,PerformancePublicationView,MatchRatingsView
 from aifootball.service.ratings.calculation import calculate_snapshot,publish_snapshot,publish_sources
-from aifootball.service.ratings.queries import overview,get_rankings,player_history,match_ratings
+from aifootball.service.ratings.queries import overview,get_rankings,player_history,match_ratings,performance_publication
 
 
 @router.get('/tournaments/{tid}/analytics',response_model=AnalyticsOverview,dependencies=[Depends(require_analytics_reader)])
@@ -65,6 +65,10 @@ def calculate(tid:UUID,data:RatingCalculate,actor=Depends(require_analytics_admi
 @router.post('/tournaments/{tid}/analytics/publish',response_model=RatingSnapshotResult)
 def publish(tid:UUID,data:RatingPublish,actor=Depends(require_analytics_admin),db:Session=Depends(get_session)):
     with db.begin():return publish_snapshot(db,tid,actor.id,data)
+
+
+@router.get('/matches/{mid}/performance-publication',response_model=PerformancePublicationView,dependencies=[Depends(require_analytics_reader)])
+def read_performance_publication(mid:UUID,db:Session=Depends(get_session)):return performance_publication(db,mid)
 
 
 @router.put('/matches/{mid}/performance-publication',response_model=PerformancePublicationView)

@@ -737,7 +737,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Read Performance Publication */
+        get: operations["read_performance_publication_api_v1_matches__mid__performance_publication_get"];
         /** Publish Performance */
         put: operations["publish_performance_api_v1_matches__mid__performance_publication_put"];
         post?: never;
@@ -7625,6 +7626,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RatingSnapshotResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_performance_publication_api_v1_matches__mid__performance_publication_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerformancePublicationView"];
                 };
             };
             /** @description Validation Error */

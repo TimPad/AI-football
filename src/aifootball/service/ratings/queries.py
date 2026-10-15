@@ -7,7 +7,7 @@ from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
 from aifootball.service.tournaments.models import Tournament
 from aifootball.service.catalog.models import Player
-from aifootball.service.ratings.models import TournamentRatingSnapshot,PlayerRatingRow,RatingPolicyVersion,RatingReferenceVersion
+from aifootball.service.ratings.models import TournamentRatingSnapshot,PlayerRatingRow,RatingPolicyVersion,RatingReferenceVersion,RatingMatchPublication
 from aifootball.service.ratings.calculation import rating_state,current_policy,snapshot_view,make_summaries,summary_facts
 from aifootball.service.ratings.inputs import selected_inputs,digest
 
@@ -95,3 +95,14 @@ def match_ratings(db,mid,snapshot_id=None,*,scope='private'):
         value['explanation']=explain_rating({**value,'scope':scope},value['facts'],[])
         overall.append(value)
     return {'snapshot_id':snapshot.id,'items':rows,'overall':overall}
+
+
+def performance_publication(db,mid):
+    # Только чтение: ревизия турнирного state (её ждёт PUT), без создания state/policy/command.
+    from aifootball.service.matches.models import Match
+    match=get_entity(db,Match,mid);state=rating_state(db,match.tournament_id,create=False)
+    pub=db.scalar(select(RatingMatchPublication).where(RatingMatchPublication.match_id==mid))
+    return {'revision':state.revision if state else 0,'match_id':mid,
+        'participation_version_id':pub.participation_version_id if pub else None,
+        'action_version_id':pub.action_version_id if pub else None,
+        'policy_approved':bool(state and state.public_policy_id is not None)}
