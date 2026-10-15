@@ -81,10 +81,10 @@ function TimeGrid({matches,columns,names,timezone,matchHref}:{matches:ScheduleIt
  return <div className="time-grid-scroll" tabIndex={0} aria-label="Прокрутка сетки">
   <div className="time-grid" role="table" aria-label="Сетка расписания" style={{gridTemplateColumns:`72px repeat(${columns.length},minmax(240px,1fr))`}}>
    <div role="rowgroup" className="time-grid-head"><div role="row"><span role="columnheader">Время</span>{columns.map(v=><span role="columnheader" key={v}>{names.get(v)}</span>)}</div></div>
-   <div role="rowgroup" className="time-grid-body"><div role="row" style={{height}}>
-    <div role="cell" className="time-axis">{marks.map(min=><span key={min} className={min%60?'half':''} style={{top:(min-from)*PX_PER_MIN}}>{label(min)}</span>)}</div>
+   <div role="rowgroup" className="time-grid-body"><div role="row">
+    <div role="cell" className="time-axis" style={{height}}>{marks.map(min=><span key={min} className={min%60?'half':''} style={{top:(min-from)*PX_PER_MIN}}>{label(min)}</span>)}</div>
     {columns.map(v=>{const own=spans.filter(s=>venueKey(s.m)===v).sort((a,b)=>a.start-b.start);const {lane,count}=lanes(own);
-     return <div role="cell" key={v} className="time-column">{marks.map(min=><i key={min} className="grid-line" style={{top:(min-from)*PX_PER_MIN}}/>)}
+     return <div role="cell" key={v} className="time-column" style={{height}}>{marks.map(min=><i key={min} className="grid-line" style={{top:(min-from)*PX_PER_MIN}}/>)}
       {own.map((s,i)=><article key={s.m.id} className={`time-slot ${s.m.status}`} style={{top:(s.start-from)*PX_PER_MIN,height:(s.end-s.start)*PX_PER_MIN,
         left:`calc(${100*lane[i]/count}% + 4px)`,width:`calc(${100/count}% - 8px)`}}>
        <div className="slot-head"><span className="num">{matchTime(s.m.scheduled_at,timezone)} – {matchTime(endIso(s.m),timezone)}</span><Status match={s.m}/></div>

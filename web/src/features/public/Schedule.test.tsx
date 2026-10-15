@@ -70,4 +70,6 @@ it('draws slot heights proportional to time and keeps overlaps side by side',()=
  expect(slots[0].style.left).not.toBe(slots[1].style.left);
  expect(within(screen.getByRole('table',{name:'Сетка расписания'})).getByText('Отменён')).toBeVisible();
  expect(container.querySelector('.time-axis')).toHaveTextContent('18:0018:3019:0019:3020:0020:3021:00');
+ // Высота задаётся ячейкам: строка с display:contents её не передаёт.
+ expect(parseFloat(container.querySelector<HTMLElement>('.time-column')!.style.height)).toBe(180*1.6);
 });
