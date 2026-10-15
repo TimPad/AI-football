@@ -13,7 +13,7 @@ import {useQueryPatch} from '../navigation/useQueryPatch';
 import {ProtocolSession,SessionChrome,useProtocolSession,useSessionDispatch} from '../protocol/ProtocolSession';
 import {ProtocolEditor} from '../protocol/ProtocolEditor';
 import {HistoryPanel} from '../protocol/ProtocolPanels';
-import {VideoAnalysisTab} from '../analysis/AnalysisTab';
+import {ReviewWorkspace} from '../analysis/ReviewWorkspace';
 import {ParticipationEditor} from '../ratings/ParticipationEditor';
 import {ActionReview} from '../ratings/ActionReview';
 import {PerformancePublicationForm} from '../ratings/RatingWorkbench';
@@ -64,7 +64,7 @@ export function MatchWorkspace({matchId}:{matchId:string}){
   <div className="match-task">
    {tab==='overview'&&<MatchOverview match={m} timezone={tz} analytics={analytics}/>}
    {EDITING.has(tab)&&<ProtocolSession matchId={matchId}><EditingTask tab={tab}/></ProtocolSession>}
-   {tab==='review'&&<VideoAnalysisTab matchId={matchId} actorId={session!.id} canManage={analytics}/>}
+   {tab==='review'&&<ReviewWorkspace matchId={matchId} actorId={session!.id} canManage={analytics}/>}
    {tab==='participation'&&analytics&&<ParticipationEditor matchId={matchId} actorId={session!.id} onSaved={()=>setTick(n=>n+1)}/>}
    {tab==='actions'&&analytics&&<ActionReview matchId={matchId} actorId={session!.id} onSaved={()=>setTick(n=>n+1)}/>}
    {tab==='report'&&<MatchReportTab match={m} tournament={tournament.data??null} analytics={analytics}/>}

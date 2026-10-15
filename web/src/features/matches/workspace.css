@@ -19,3 +19,4 @@
 .report-sections button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent-line)}
 .result-mode{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:760px){.readiness-list>div{grid-template-columns:1fr}.result-mode{grid-template-columns:1fr}}
+.match-task>*{min-width:0}

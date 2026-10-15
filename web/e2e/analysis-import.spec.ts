@@ -1,4 +1,4 @@
-import {task} from './helpers';
+import {task,assignTrack} from './helpers';
 import {test,expect} from '@playwright/test';
 import {spawnSync} from 'node:child_process';
 
@@ -30,7 +30,7 @@ test('external report → identities → one-match history → separate publicat
  await page.route(`**/api/v1${path}/analysis/imports`,async route=>{ids.push(route.request().headers()['x-request-id']);if(lose){lose=false;await route.fetch();await route.abort('failed')}else await route.continue()});
  await page.getByLabel('Пакет результата ZIP').setInputFiles({name:'result.zip',mimeType:'application/zip',buffer:raw});await page.getByRole('button',{name:'Загрузить результат',exact:true}).click();await expect(page.getByRole('button',{name:'Повторить отправку',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Повторить отправку',exact:true}).click();await expect(page.getByLabel('Игрок фрагмента 1')).toBeVisible();expect(ids[0]).toBe(ids[1]);
- for(const id of [1,2])await page.getByLabel(`Игрок фрагмента ${id}`,{exact:true}).selectOption(people[0].id);await page.getByLabel('Игрок фрагмента 3',{exact:true}).selectOption(people[1].id);
+ for(const id of [1,2])await assignTrack(page,id,people[0].id);await assignTrack(page,3,people[1].id);
  await page.getByRole('button',{name:'Сохранить сопоставление',exact:true}).click();await expect(page.getByRole('button',{name:'Подтвердить аналитику'})).toBeEnabled();
  await page.getByRole('button',{name:'Подтвердить аналитику'}).click();await expect(page.getByRole('heading',{name:'Подтверждённый отчёт'})).toBeVisible();await expect(page.getByRole('cell',{name:'210',exact:true})).toBeVisible();
  const guest=await browser.newContext();const spectator=await guest.newPage();let r=await spectator.request.get(`/api/v1/public${path}/analysis`);expect(r.status()).toBe(404);
@@ -42,7 +42,7 @@ test('external report → identities → one-match history → separate publicat
  await page.goto(path);await task(page,'Проверка').click();
  // A second import does not change publication; confirming it replaces history.
  const second=packageFor(job);await page.getByLabel('Пакет результата ZIP').setInputFiles({name:'second.zip',mimeType:'application/zip',buffer:second});await page.getByRole('button',{name:'Загрузить результат'}).click();await expect(page.getByRole('heading',{name:'На проверке',exact:true})).toBeVisible();
- for(const id of [1,2])await page.getByLabel(`Игрок фрагмента ${id}`,{exact:true}).selectOption(people[0].id);await page.getByLabel('Игрок фрагмента 3',{exact:true}).selectOption(people[1].id);
+ for(const id of [1,2])await assignTrack(page,id,people[0].id);await assignTrack(page,3,people[1].id);
  await page.getByRole('button',{name:'Сохранить сопоставление'}).click();await expect(page.getByRole('button',{name:'Подтвердить аналитику'})).toBeEnabled();await page.getByRole('button',{name:'Подтвердить аналитику'}).click();await expect(page.getByRole('heading',{name:'Подтверждённый отчёт'})).toBeVisible();
  const history=await (await page.request.get(`/api/v1/players/${people[0].id}/analysis`)).json();expect(history.match_count).toBe(1);expect(history.totals.distance_m).toBe(210);
  expect((await (await spectator.request.get(`/api/v1/public${path}/analysis`)).json()).run_id).toBe(published.run_id);

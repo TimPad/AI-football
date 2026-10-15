@@ -12,3 +12,9 @@ export async function createTournament(page:Page){
 }
 export async function goal(page:Page){await page.getByRole('button',{name:'Гол',exact:true}).click();await page.getByRole('button',{name:'Добавить событие',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.getByText(/Все изменения сохранены/)).toBeVisible()}
 export async function totals(page:Page,home:number,away:number){await page.getByLabel('Счёт хозяев',{exact:true}).fill(String(home));await page.getByLabel('Счёт гостей',{exact:true}).fill(String(away));await page.getByRole('button',{name:'Сохранить итоги',exact:true}).click();await expect(page.getByText(/Все изменения сохранены/)).toBeVisible();await expect(page.locator('.big-score')).toContainText(`${home} : ${away}`)}
+
+// Проверка записи: трек выбирается в очереди, игрок назначается в инспекторе.
+export async function assignTrack(page:Page,id:number,player:string){
+ await page.getByRole('navigation',{name:'Очередь треков'}).getByRole('button',{name:new RegExp(`Трек ${id}(?!\\d)`)}).click();
+ await page.getByLabel(`Игрок фрагмента ${id}`,{exact:true}).selectOption(player);
+}
