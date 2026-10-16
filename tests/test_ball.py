@@ -159,6 +159,13 @@ def test_ball_trajectory_takes_most_confident_detection_per_frame(venue):
     assert state.filter(pl.col("frame_id") == 1)["x_m"].to_list() == pytest.approx([10.0])
 
 
+def test_ball_trajectory_uses_the_floor_point_of_the_ball(venue):
+    # мяч касается пола нижней точкой: бокс 95..105 px по вертикали -> 105 px -> 10.5 м
+    state = process_ball_trajectory(_ball_dets([(1, 100, 100, 0.9)]), venue)
+
+    assert state["y_m"].to_list() == pytest.approx([10.5])
+
+
 def test_ball_trajectory_drops_spike_but_keeps_next_good_point(venue):
     # кадр 3 — ложный мяч за 20 м; кадр 4 снова рядом с кадром 2 и должен остаться
     dets = _ball_dets([(1, 100, 100, 0.9), (2, 105, 100, 0.9), (3, 300, 100, 0.9), (4, 110, 100, 0.9)])

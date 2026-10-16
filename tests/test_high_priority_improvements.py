@@ -26,6 +26,19 @@ def test_robust_foot_points_restores_clipped_boxes():
     assert foot_y[4] == pytest.approx(200.0)
 
 
+def test_robust_foot_points_keep_feet_of_player_walking_away():
+    # Игрок уходит от камеры: бокс плавно уменьшается со 150 до 60 px — это не обрезка,
+    # ноги остаются на нижней грани (медиана по всему треку опускала их на десятки пикселей)
+    n = 40
+    h = np.linspace(150.0, 60.0, n)
+    df = pl.DataFrame({"frame_id": list(range(n)), "track_id": [1] * n, "x1": [10.0] * n, "y1": [100.0] * n,
+                       "x2": [30.0] * n, "y2": (100.0 + h).tolist()})
+
+    _, foot_y = _compute_robust_foot_points(df)
+
+    assert foot_y == pytest.approx((100.0 + h).astype(np.float32))
+
+
 def test_kinematic_outlier_filtering_removes_impossible_jumps():
     ts = np.arange(10) / 10.0
     x = 3.0 * ts

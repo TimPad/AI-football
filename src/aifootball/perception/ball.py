@@ -37,13 +37,12 @@ def process_ball_trajectory(
     if balls.is_empty():
         return _empty_ball_df()
 
-    # Центр бокса мяча
-    center_x = ((balls["x1"] + balls["x2"]) / 2).to_numpy()
-    center_y = ((balls["y1"] + balls["y2"]) / 2).to_numpy()
-    center_px = np.column_stack([center_x, center_y])
+    # Точка мяча на полу — низ бокса, как у игроков. Центр мяча на 10 см выше пола, и в дальней
+    # половине его проекция уезжала от камеры на 1–3 м: мяч у ног игрока оказывался «ничьим».
+    floor_px = np.column_stack([((balls["x1"] + balls["x2"]) / 2).to_numpy(), balls["y2"].to_numpy()])
 
     # Мяч на поле или не дальше запаса за линией: ауты и игра у борта — тоже мяч
-    near = points_near_polygon(center_px, venue.require_polygon(), venue.ball_margin_px)
+    near = points_near_polygon(floor_px, venue.require_polygon(), venue.ball_margin_px)
     balls = balls.filter(pl.Series(near))
     # Один мяч на кадр — самый уверенный кандидат
     balls = balls.sort("conf", descending=True).unique("frame_id", keep="first").sort("frame_id")
@@ -51,10 +50,7 @@ def process_ball_trajectory(
     if balls.is_empty():
         return _empty_ball_df()
 
-    px = np.column_stack([
-        ((balls["x1"] + balls["x2"]) / 2).to_numpy(),
-        ((balls["y1"] + balls["y2"]) / 2).to_numpy(),
-    ])
+    px = np.column_stack([((balls["x1"] + balls["x2"]) / 2).to_numpy(), balls["y2"].to_numpy()])
     meters = apply_homography(venue.H, undistort_points(px, venue.calib))
 
     ts = balls["ts"].to_numpy()

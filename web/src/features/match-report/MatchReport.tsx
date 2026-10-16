@@ -18,7 +18,7 @@ import {sections} from '../../api/domain';
 import './report.css';
 
 type RatingRow=MatchRatingsView['items'][number];
-type Props={match:PublicMatch;model:ReportModel;section:string;group:StatGroup;selection:PlayerSelection|null;
+type Props={match:PublicMatch;model:ReportModel;section:string;group:StatGroup|null;selection:PlayerSelection|null;
  onSelect:(s:PlayerSelection)=>void;onClose:()=>void;onPeriod:(key:string)=>void;onGroup:(g:StatGroup)=>void;
  onRetry:()=>void;onCurrentEdition:()=>void;historyHref:(playerId:string)=>string;video?:ReactNode;audience?:'public'|'cabinet';aside?:ReactNode};
 
@@ -106,13 +106,15 @@ function Marks({m}:{m?:PlayerMarks}){
   {m.yellow>0&&<i className="ev-card yellow" title="Жёлтая карточка"/>}{m.red>0&&<i className="ev-card red" title="Удаление"/>}</span>;
 }
 
-export function MatchReport({match,model,section,group,selection,onSelect,onClose,onPeriod,onGroup,onRetry,onCurrentEdition,historyHref,video,audience='public',aside}:Props){
+export function MatchReport({match,model,section,group:requestedGroup,selection,onSelect,onClose,onPeriod,onGroup,onRetry,onCurrentEdition,historyHref,video,audience='public',aside}:Props){
  const roster=mergeRoster({protocol:ready(model.protocol),cv:ready(model.cv),ratings:ready(model.ratings),
   teams:{home:match.home_team_id,away:match.away_team_id}});
  const teamName=(r:{team_id?:string;side?:string|null})=>r.team_id===match.home_team_id||r.side==='home'?match.home_name
   :r.team_id===match.away_team_id||r.side==='away'?match.away_name:'—';
  const selectedRow=selection?roster.find(r=>r.playerId===selection.playerId)??null:null;
  const period=model.context.periodKey||'all';
+ // Без явного выбора — группа с данными: оценки есть → «Удары», иначе при видеоанализе → «Перемещения».
+ const group:StatGroup=requestedGroup??(model.ratings.status!=='ready'&&model.cv.status==='ready'?'movement':'shots');
  const protocol=ready(model.protocol);const marks=playerMarks(protocol);
  const ratings=ready(model.ratings);
  const leaders=ratings?[...(ratings.overall??ratings.items)].filter(r=>r.display_rating!=null).sort((a,b)=>b.display_rating!-a.display_rating!).slice(0,3):[];
