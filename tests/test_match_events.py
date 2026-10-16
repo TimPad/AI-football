@@ -1,6 +1,6 @@
 import numpy as np
 import polars as pl
-from aifootball.analytics.events import extract_events
+from aifootball.analytics.events import extract_events, stoppages
 
 L, W, DT = 40.0, 20.0, 0.1
 
@@ -59,3 +59,22 @@ def test_flicker_shorter_than_minimum_run_is_not_a_turnover():
     path = still(0, 1.0, 10.2, 10) + still(1.1, 1.3, 12.3, 10) + still(1.4, 3.0, 10.2, 10)
     found = extract_events(ball(path), pl.concat([a1, b1]), L, W, {'A': L, 'B': 0.0})
     assert all(e['kind'] not in ('turnover', 'recovery') for e in found)
+
+
+def moving(track_id, team, t0, t1, x0, y, speed, role='player'):
+    """Игрок ходит туда-обратно со скоростью speed; колонка speed как в state."""
+    ts = frames(round((t1 - t0) / DT) + 1, t0)
+    xs = [x0 + (speed * (t - t0)) % 4.0 for t in ts]
+    return pl.DataFrame({'frame_id': [round(t / DT) for t in ts], 'ts': ts, 'track_id': [track_id] * len(ts), 'role': [role] * len(ts),
+                         'team': [team] * len(ts), 'x_m': xs, 'y_m': [float(y)] * len(ts), 'speed': [float(speed)] * len(ts)})
+
+
+def test_stoppage_is_found_by_team_tempo():
+    # 0–20 с игра (2.5 м/с), 20–35 с все стоят (0.3 м/с), 35–50 с снова игра
+    def team(track, side, y):
+        return pl.concat([moving(track, side, 0, 19.9, 10, y, 2.5), moving(track, side, 20, 34.9, 10, y, 0.3),
+                          moving(track, side, 35, 50, 10, y, 2.5)])
+    players = pl.concat([team(t, 'A' if t < 4 else 'B', 2 + 2 * t) for t in range(1, 7)])
+    spans = stoppages(players, L, W)
+    assert len(spans) == 1 and 19 <= spans[0][0] <= 21 and 34 <= spans[0][1] <= 36
+    assert not stoppages(players.drop('speed'), L, W)

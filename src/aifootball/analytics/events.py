@@ -3,6 +3,7 @@
 Основа — владелец мяча по кадрам (perception.ball.ball_owners). Между двумя отрезками владения
 мяч летит: своему — передача, сопернику — потеря и возврат, к воротам с большой скоростью — удар.
 События ссылаются на трек и время видео; личность игрока здесь неизвестна.
+В остановках игры (аут, фол, гол) игроки перекатывают мяч — такие «передачи» отбрасываются (stoppages).
 """
 import numpy as np
 import polars as pl
@@ -19,6 +20,16 @@ CARRY_MIN_M = 3.0
 DUEL_RADIUS_M = 1.5
 BLOCK_MAX_S = 1.0
 MIN_RUN_S = 0.3             # владение короче — мигание ближайшего игрока (по разметке касаний: точность передач 0.70 → 0.78)
+# Остановки: полевые ходят медленнее обычного для этого матча, кто-то стоит у линии (ввод мяча).
+# Пороги — доли медианной скорости матча, чтобы не зависеть от уровня игры. По двум журналам
+# Ярославля: найдено ~половина времени остановок при точности ~0.88, точность передач 0.69 → 0.78;
+# пороги 0.5–0.65 / 0.85–1.0 дают то же.
+STOP_SLOW = 0.6
+STOP_FAST = 0.9
+STOP_LINE_WEIGHT = 1.5
+STOP_SWITCH = 15.0          # цена смены «игра/остановка»: секундные колебания темпа не переключают
+STOP_SMOOTH_S = 1.0
+STOP_MIN_SPEED_MS = 0.3     # медиана ниже — скоростей нет (синтетика, статичная запись), остановки не ищем
 
 
 def owner_runs(owners: pl.DataFrame, players: pl.DataFrame) -> list[dict]:
@@ -37,6 +48,49 @@ def owner_runs(owners: pl.DataFrame, players: pl.DataFrame) -> list[dict]:
         r["xy_end"] = pos.get((r["frame_end"], r["track_id"]), (None, None, None))[:2]
         r["role"] = pos.get((r["frame_end"], r["track_id"]), (None, None, None))[2]
     return runs
+
+
+def stoppages(players: pl.DataFrame, length_m: float, width_m: float) -> list[tuple[float, float]]:
+    """Отрезки остановок игры [начало, конец] по темпу полевых и игрокам у линии; Витерби на два состояния."""
+    from aifootball.processor.candidates import restart_candidates
+
+    if "speed" not in players.columns:
+        return []
+    field = players.filter((pl.col("role") == "player") & pl.col("team").is_in(TEAMS))
+    if field.is_empty():
+        return []
+    tempo = field.group_by("frame_id").agg(pl.col("ts").first(), v=pl.col("speed").mean()).sort("frame_id")
+    ts = tempo["ts"].to_numpy()
+    step = float(np.median(np.diff(ts))) if len(ts) > 1 else 0.1
+    v = tempo["v"].rolling_mean(max(1, round(STOP_SMOOTH_S / step)), center=True, min_samples=1).to_numpy()
+    usual = float(np.median(v))
+    if usual < STOP_MIN_SPEED_MS:
+        return []
+    at_line = np.zeros(len(ts), dtype=bool)
+    for c in restart_candidates(players, length_m, width_m):
+        at_line |= (ts >= c["start_s"]) & (ts <= c["end_s"])
+    slow, fast = STOP_SLOW * usual, STOP_FAST * usual
+    z = np.clip((v - slow) / (fast - slow), 0.0, 1.0)  # 0 — «стоят», 1 — «играют»
+    cost = np.column_stack([1 - z + STOP_LINE_WEIGHT * at_line, z - STOP_LINE_WEIGHT * at_line])  # [игра, остановка]
+    total, back = cost[0].copy(), np.zeros((len(ts), 2), dtype=int)
+    for i in range(1, len(ts)):
+        switched = total[::-1] + STOP_SWITCH
+        back[i] = np.where(total <= switched, [0, 1], [1, 0])
+        total = np.minimum(total, switched) + cost[i]
+    state, path = int(np.argmin(total)), np.zeros(len(ts), dtype=int)
+    for i in range(len(ts) - 1, -1, -1):
+        path[i] = state
+        state = back[i][state]
+    spans, start = [], None
+    for t, stopped in zip(ts, path):
+        if stopped and start is None:
+            start = t
+        elif not stopped and start is not None:
+            spans.append((float(start), float(t)))
+            start = None
+    if start is not None:
+        spans.append((float(start), float(ts[-1])))
+    return spans
 
 
 def _flight(ball: pl.DataFrame, t0: float, t1: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -81,8 +135,11 @@ def _shot(ball, run, next_run, length_m, width_m, attack_x):
 
 
 def extract_events(ball: pl.DataFrame, players: pl.DataFrame, length_m: float, width_m: float,
-                   attack_x: dict[str, float] | None = None) -> list[dict]:
-    """Список событий по времени. attack_x — x атакуемых ворот для команд A/B, если известен."""
+                   attack_x: dict[str, float] | None = None, skip_stoppages: bool = True) -> list[dict]:
+    """Список событий по времени. attack_x — x атакуемых ворот для команд A/B, если известен.
+
+    Вратарям в players уже должна быть назначена команда по воротам (report_data.assign_goalkeeper_teams).
+    """
     owners = ball_owners(ball, players)
     runs = owner_runs(owners, players)
     events: list[dict] = []
@@ -131,4 +188,8 @@ def extract_events(ball: pl.DataFrame, players: pl.DataFrame, length_m: float, w
         events.append({"kind": "turnover", **base, "confidence": 0.6})
         events.append({"kind": "recovery", "track_id": nxt["track_id"], "team": nxt["team"], "start_s": nxt["ts_start"],
                        "start_xy": nxt["xy_start"], "confidence": 0.6})
+    if skip_stoppages:
+        spans = stoppages(players, length_m, width_m)
+        stopped = lambda t: t is not None and any(a <= t <= b for a, b in spans)
+        events = [e for e in events if not stopped(e["start_s"]) and not stopped(e.get("end_s"))]
     return sorted(events, key=lambda e: (e["start_s"], e["kind"]))

@@ -82,44 +82,40 @@ def track_people(detections: pl.DataFrame, venue: Venue) -> pl.DataFrame:
     ).sort("frame_id", "track_id")
 
 
+FOOT_WINDOW = 15  # кадров (~1 с при 15 fps) для медианы высоты бокса
+
+
 def _compute_robust_foot_points(df: pl.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     """Вычисляет робастную точку касания пола (foot_x, foot_y).
 
     Защищает от дёргания нижней грани бокса (y2), когда ноги уходят за край
-    или перекрываются: для каждого трека используется медианная высота бокса
-    относительно верхней грани (y1).
+    или перекрываются: если бокс заметно ниже обычного для этого трека, ноги
+    восстанавливаются по верхней грани (y1) и обычной высоте. Обычная высота —
+    медиана по соседним кадрам трека, а не по всему треку: вдали от камеры бокс
+    вдвое ниже, и медиана за весь трек опускала ноги дальнего игрока на 40–80 px,
+    то есть на несколько метров к камере (Ярославль, 12% строк).
     """
     x1 = df["x1"].to_numpy().astype(np.float64)
     y1 = df["y1"].to_numpy().astype(np.float64)
     x2 = df["x2"].to_numpy().astype(np.float64)
     y2 = df["y2"].to_numpy().astype(np.float64)
     track_ids = df["track_id"].to_numpy()
+    frames = df["frame_id"].to_numpy() if "frame_id" in df.columns else np.arange(len(df))
 
     foot_x = (x1 + x2) / 2.0
     foot_y = y2.copy()
 
-    unique_tracks = np.unique(track_ids)
-    for tid in unique_tracks:
-        mask = track_ids == tid
-        if not np.any(mask):
+    half = FOOT_WINDOW // 2
+    for tid in np.unique(track_ids):
+        idx = np.flatnonzero(track_ids == tid)
+        if len(idx) < 3:
             continue
-        y1_tr = y1[mask]
-        y2_tr = y2[mask]
-        h_tr = y2_tr - y1_tr
-
-        if len(h_tr) < 3:
-            continue
-
-        h_med = float(np.median(h_tr))
-        if h_med <= 0:
-            continue
-
-        # Если нижняя грань бокса укорочена из-за смаза/перекрытия (h < 0.75 * h_med),
-        # восстанавливаем foot_y по верху головы и медианной высоте
-        clipped = h_tr < 0.75 * h_med
-        if np.any(clipped):
-            foot_y_tr = y2_tr.copy()
-            foot_y_tr[clipped] = y1_tr[clipped] + h_med
-            foot_y[mask] = foot_y_tr
+        idx = idx[np.argsort(frames[idx], kind="stable")]
+        h = y2[idx] - y1[idx]
+        padded = np.pad(h, half, constant_values=np.nan)
+        h_local = np.nanmedian(np.lib.stride_tricks.sliding_window_view(padded, FOOT_WINDOW), axis=1)
+        # Бокс обрезан из-за смаза/перекрытия (h < 0.75 обычной) — ноги по верху головы и обычной высоте
+        clipped = (h_local > 0) & (h < 0.75 * h_local)
+        foot_y[idx[clipped]] = y1[idx[clipped]] + h_local[clipped]
 
     return foot_x.astype(np.float32), foot_y.astype(np.float32)
