@@ -40,7 +40,7 @@ test('external report → identities → one-match history → separate publicat
  r=await spectator.request.get(`/api/v1/public${path}/analysis`);expect(r.ok()).toBeTruthy();const published=await r.json();expect(JSON.stringify(published)).not.toContain('track_id');expect(JSON.stringify(published)).not.toContain('context_hash');
  await spectator.goto(`/watch${path}?tab=stats&group=movement`);await expect(spectator.getByRole('heading',{name:'Статистика',exact:true})).toBeVisible();
  // Передачи по мячу публикуются вместе с видеоанализом и помечены «авто»
- const passes=spectator.locator('.stat-row',{hasText:'Точные передачи'}).first();await expect(passes).toContainText('1/2 (50 %)');await expect(passes.getByText('авто',{exact:true})).toBeVisible();await spectator.getByRole('table',{name:'Показатели игроков'}).getByRole('button',{name:people[0].name,exact:true}).click();
+ const passes=spectator.locator('.stat-row',{hasText:'Точные передачи'}).first();await expect(passes).toContainText('1/2 (50 %)');await expect(passes.getByText('авто',{exact:true})).toBeVisible();await expect(spectator.getByRole('heading',{name:'Карта ударов'})).toHaveCount(0);await spectator.getByRole('table',{name:'Показатели игроков'}).getByRole('button',{name:people[0].name,exact:true}).click();
  const mapSize=await spectator.getByRole('dialog',{name:people[0].name}).getByRole('img',{name:/время наблюдения по ячейкам/}).boundingBox();expect(mapSize!.height).toBeGreaterThan(100);
  await page.getByRole('link',{name:`7 · ${people[0].name}`,exact:true}).click();await expect(page.getByText(/1 матчей с активным отчётом/)).toBeVisible();await expect(page.getByRole('cell',{name:'210',exact:true})).toBeVisible();
  await page.goto(path);await task(page,'Проверка').click();

@@ -42,6 +42,7 @@ function Zones({thirds,homeName,awayName}:{thirds:Record<'home'|'away',number[]|
   <div className="zone-axis"><span>своя треть</span><span>средняя</span><span>чужая треть</span></div></div>;
 }
 
+// Карта ударов — только когда удары размечены: без строк ударов «ударов нет» читалось бы как ноль.
 export function MatchStats({match,model,period,onPeriod,players}:{match:PublicMatch;model:ReportModel;period:string;onPeriod:(k:string)=>void;players:React.ReactNode}){
  const protocol=ready(model.protocol),actions=ready(model.actions),cv=ready(model.cv);
  const cvKey=cv?cvPeriodKey(cv,period):null;
@@ -58,7 +59,7 @@ export function MatchStats({match,model,period,onPeriod,players}:{match:PublicMa
   <section className="report-block stats-block">
    <div className="block-head"><h2>Статистика</h2><PeriodChips options={periodOptions(model)} value={period} onChange={onPeriod}/></div>
    {!anything?<p className="muted">Статистика появится после публикации протокола, проверенных действий или видеоанализа.</p>:<div className="stat-grid">
-    {actions&&actions.pitch&&<StatCard title="Карта ударов"><ShotMap shots={shots} lengthM={actions.pitch.length_m} widthM={actions.pitch.width_m}
+    {actions&&actions.pitch&&actions.rows.some(r=>r.category==='shots')&&<StatCard title="Карта ударов"><ShotMap shots={shots} lengthM={actions.pitch.length_m} widthM={actions.pitch.width_m}
      homeName={match.home_name} awayName={match.away_name}/></StatCard>}
     <StatCard title="Главное" lines={top}/>
     {groups&&<><StatCard title="Удары" lines={groups.shots}/><StatCard title="Передачи и ведение" lines={groups.passes}/>

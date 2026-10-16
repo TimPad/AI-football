@@ -1,7 +1,7 @@
 import type {ReactNode} from 'react';
 import {leader,type StatLine} from './stats';
 
-export const AUTO_HINT='Автоматически по видео: распознаётся не каждая передача, значения — нижняя оценка';
+export const AUTO_HINT='Автоматически по видео: распознаётся не каждая передача, поэтому их число занижено';
 
 // Строка сравнения в духе FotMob: значение лидера на плашке цвета своей команды.
 export function StatRow({line}:{line:StatLine}){
