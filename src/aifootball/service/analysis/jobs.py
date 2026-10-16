@@ -48,13 +48,22 @@ def create_job(db, match_id, actor_id, request_id):
     return remember(db, match_id, actor_id, request_id, hashed, view.model_dump(mode='json'))
 
 
-def export_job(job):
+def export_job(job, attachment_root):
+    from hashlib import sha256
+    from aifootball.service.halls.frames import reference_path
     contract = {'contract_version': '1', 'job_id': str(job.id), 'match_id': str(job.match_id),
                 'context_hash': job.context_hash, 'context': job.context}
-    files = {**job.cv_files, 'job.json': canonical_json(contract).decode()}
+    files = {name: value.encode() for name, value in {**job.cv_files, 'job.json': canonical_json(contract).decode()}.items()}
+    camera = job.context['camera']
+    if camera.get('reference_sha256'):
+        path = reference_path(attachment_root, camera['id'])
+        raw = path.read_bytes() if path.is_file() else b''
+        if sha256(raw).hexdigest() != camera['reference_sha256']:
+            raise DomainError('reference_missing', 'Эталонный кадр камеры недоступен в хранилище', status=409)
+        files['reference.jpg'] = raw
     buffer = BytesIO()
     with ZipFile(buffer, 'w') as archive:
         for name, value in sorted(files.items()):
             info = ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0)); info.compress_type = ZIP_DEFLATED
-            archive.writestr(info, value.encode())
+            archive.writestr(info, value)
     return buffer.getvalue()

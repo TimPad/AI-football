@@ -46,4 +46,5 @@ class CameraProfile(Entity,Base):
     calibration=Column(JSONB)
     reprojection_error_m=Column(Float,nullable=False)
     leave_one_out_error_m=Column(Float)
+    reference_sha256=Column(String(64))  # эталонный кадр этой версии (camera-frames/<id>.jpg), задаётся один раз
     __table_args__=(UniqueConstraint('hall_id','name','version',name='uq_camera_version'),)

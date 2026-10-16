@@ -26,11 +26,11 @@ def job(mid: UUID, data: JobCreate, admin=Depends(require_analytics_admin), db: 
 
 
 @router.get('/matches/{mid}/analysis/jobs/{jid}/package', dependencies=[Depends(require_admin)])
-def package(mid: UUID, jid: UUID, db: Session=Depends(get_session)):
+def package(mid: UUID, jid: UUID, request: Request, db: Session=Depends(get_session)):
     job = get_entity(db, AnalysisJob, jid)
     if job.match_id != mid:
         raise DomainError('not_found', 'Задание не найдено', status=404)
-    return Response(export_job(job), media_type='application/zip', headers={
+    return Response(export_job(job, request.app.state.settings.attachment_root), media_type='application/zip', headers={
         'Content-Disposition': f'attachment; filename="job-{jid}.zip"', 'Cache-Control': 'private, no-store'})
 
 

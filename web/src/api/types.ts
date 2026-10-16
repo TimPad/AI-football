@@ -388,6 +388,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/halls/{hid}/camera-profiles/{pid}/reference-frame": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reference Frame */
+        get: operations["reference_frame_api_v1_halls__hid__camera_profiles__pid__reference_frame_get"];
+        /** Upload Reference */
+        put: operations["upload_reference_api_v1_halls__hid__camera_profiles__pid__reference_frame_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{mid}/analysis/jobs": {
         parameters: {
             query?: never;
@@ -1666,6 +1684,11 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_upload_reference_api_v1_halls__hid__camera_profiles__pid__reference_frame_put */
+        Body_upload_reference_api_v1_halls__hid__camera_profiles__pid__reference_frame_put: {
+            /** File */
+            file: string;
+        };
         /** CameraCreate */
         CameraCreate: {
             /**
@@ -1737,6 +1760,8 @@ export interface components {
             reprojection_error_m: number;
             /** Leave One Out Error M */
             leave_one_out_error_m?: number | null;
+            /** Reference Sha256 */
+            reference_sha256?: string | null;
             /** Matches Current Dimensions */
             matches_current_dimensions: boolean;
         };
@@ -7073,6 +7098,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reference_frame_api_v1_halls__hid__camera_profiles__pid__reference_frame_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hid: string;
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_reference_api_v1_halls__hid__camera_profiles__pid__reference_frame_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hid: string;
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_reference_api_v1_halls__hid__camera_profiles__pid__reference_frame_put"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CameraProfileView"];
                 };
             };
             /** @description Validation Error */

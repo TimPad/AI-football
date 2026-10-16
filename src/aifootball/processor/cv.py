@@ -44,6 +44,23 @@ def run_cv(job_path:Path,video:Path,workspace:Workspace,*,models:Path,ball_model
         venue=load_venue(venue_root);weights=Path(models)/venue.model
         # Детекция, трекер и проверки идут на фактической частоте, а не на пределе из задания.
         venue=replace(venue,target_fps=processing_fps(video_fps(video),venue.target_fps))
+        alignment=None
+        if 'reference.jpg' in job.files:
+            alignment=workspace.get_json('cv:alignment')
+            if alignment is None:
+                import cv2,numpy as np
+                from aifootball.geometry.camera_drift import check_camera
+                reference=cv2.imdecode(np.frombuffer(job.files['reference.jpg'],np.uint8),cv2.IMREAD_COLOR)
+                if reference is None or reference.shape[1]!=source['width'] or reference.shape[0]!=source['height']:
+                    raise ValueError('Эталонный кадр камеры не читается или другого размера')
+                alignment=check_camera(Path(video),reference,venue,source['duration_s'])
+                workspace.put_json('cv:alignment',alignment)
+            if alignment['status']=='too_large':
+                # Геометрия профиля к этой записи не подходит: часы детекции не нужны.
+                from aifootball.geometry.camera_drift import alignment_messages
+                raise ValueError(alignment_messages(alignment)[1][0])
+            from aifootball.geometry.camera_drift import apply_alignment
+            venue=apply_alignment(venue,alignment)
         ball_weights=ball_model_path(models,ball_model) if ball_model else None
         if ball_weights and venue.target_fps<EVENTS_MIN_FPS:
             raise ValueError(f'Для передач нужна запись не реже 15 кадров/с, у этой {venue.target_fps:.1f}')
@@ -103,7 +120,7 @@ def run_cv(job_path:Path,video:Path,workspace:Workspace,*,models:Path,ball_model
               'src_fps':video_fps(video),'target_fps':venue.target_fps,'model':venue.model,'imgsz':venue.imgsz,
               'ball_model':ball_model,'ball_model_sha256':fingerprint['ball_model']['sha256'] if ball_weights else None,
               'schema_version':schemas.SCHEMA_VERSION,
-              'source_sha256':source['sha256'],'context_hash':job.contract['context_hash'],
+              'source_sha256':source['sha256'],'context_hash':job.contract['context_hash'],'camera_alignment':alignment,
               'created_at':datetime.now(timezone.utc).isoformat(timespec='seconds')}
         Workspace._atomic(root/'meta.json',canonical(meta))
         args=SimpleNamespace(video=Path(video),match=root,models=Path(models))

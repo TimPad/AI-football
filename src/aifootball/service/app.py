@@ -30,6 +30,8 @@ def create_app(settings=None, *, web_dist=None):
     app.include_router(catalog_images_router, prefix='/api/v1')
     from aifootball.service.halls.routes import router as halls_router
     app.include_router(halls_router, prefix='/api/v1')
+    from aifootball.service.halls.frames import router as camera_frames_router
+    app.include_router(camera_frames_router, prefix='/api/v1')
     from aifootball.service.analysis.routes import router as analysis_router
     app.include_router(analysis_router, prefix='/api/v1')
     from aifootball.service.ratings.routes import router as ratings_router

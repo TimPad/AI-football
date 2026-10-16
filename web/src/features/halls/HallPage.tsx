@@ -37,7 +37,31 @@ function cameraDraft(h:Hall):CameraDraft{return {request_id:crypto.randomUUID(),
 function validCamera(v:unknown):v is CameraDraft{const d=v as CameraDraft;return !!d&&typeof d.request_id==='string'&&typeof d.expected_hall_revision==='number'&&typeof d.attempted==='boolean'&&['name','frame_width','frame_height','polygon','calibration'].every(k=>typeof d[k as keyof CameraDraft]==='string')&&Array.isArray(d.points)&&d.points.length>=4&&d.points.every(p=>p&&Array.isArray(p.px)&&Array.isArray(p.m)&&p.px.length===2&&p.m.length===2&&[...p.px,...p.m].every(x=>typeof x==='string'))}
 function CameraProfiles({hall}:{hall:Hall}){
  const state=useLoad(()=>all<CameraProfile>(`/halls/${hall.id}/camera-profiles`),`${hall.id}:${hall.revision}`);const [open,setOpen]=useState(false);
- return <section className="surface hall-profiles"><div className="panel-head"><div><h2>Камеры и координаты поля</h2><p className="muted">Для неподвижной камеры: точки на кадре → метры на поле.</p></div><button disabled={hall.archived} onClick={()=>setOpen(!open)}>{open?'Закрыть форму':'Добавить профиль камеры'}</button></div>{open&&<CameraEditor key={hall.revision} hall={hall} onSaved={()=>{state.reload();setOpen(false)}}/>}{!state.data?<Loading error={state.error} retry={state.reload}/>:!state.data.length?<p className="muted">Профиль ещё не добавлен. Для назначения зала в расписании он не требуется.</p>:<div className="camera-versions">{state.data.map(p=><details key={p.id}><summary>{p.name} · версия {p.version} · {p.frame_width} × {p.frame_height} px · {p.pitch_length_m} × {p.pitch_width_m} м{!p.matches_current_dimensions?' · прежние размеры поля':''}</summary><p className="muted">Погрешность по опорным точкам: {p.reprojection_error_m.toFixed(3)} м{p.leave_one_out_error_m!=null?` · проверка с исключением точки: ${p.leave_one_out_error_m.toFixed(3)} м`:''}. Это оценка калибровки, а не гарантия точности траекторий.</p><pre className="calibration-preview">{JSON.stringify({points:p.points,H:p.homography},null,2)}</pre></details>)}</div>}</section>;
+ return <section className="surface hall-profiles"><div className="panel-head"><div><h2>Камеры и координаты поля</h2><p className="muted">Для неподвижной камеры: точки на кадре → метры на поле.</p></div><button disabled={hall.archived} onClick={()=>setOpen(!open)}>{open?'Закрыть форму':'Добавить профиль камеры'}</button></div>{open&&<CameraEditor key={hall.revision} hall={hall} onSaved={()=>{state.reload();setOpen(false)}}/>}{!state.data?<Loading error={state.error} retry={state.reload}/>:!state.data.length?<p className="muted">Профиль ещё не добавлен. Для назначения зала в расписании он не требуется.</p>:<div className="camera-versions">{state.data.map(p=><details key={p.id}><summary>{p.name} · версия {p.version} · {p.frame_width} × {p.frame_height} px · {p.pitch_length_m} × {p.pitch_width_m} м{!p.matches_current_dimensions?' · прежние размеры поля':''}</summary><p className="muted">Погрешность по опорным точкам: {p.reprojection_error_m.toFixed(3)} м{p.leave_one_out_error_m!=null?` · проверка с исключением точки: ${p.leave_one_out_error_m.toFixed(3)} м`:''}. Это оценка калибровки, а не гарантия точности траекторий.</p><ReferenceFrame hall={hall} profile={p} onSaved={state.reload}/><pre className="calibration-preview">{JSON.stringify({points:p.points,H:p.homography},null,2)}</pre></details>)}</div>}</section>;
+}
+// Эталонный кадр версии профиля: обработчик сверяет с ним положение камеры в каждой записи
+// и сам поправляет небольшой сдвиг. Точки и контур рисуются поверх — видно, легли ли они на разметку.
+function ReferenceFrame({hall,profile,onSaved}:{hall:Hall;profile:CameraProfile;onSaved:()=>void}){
+ const [busy,setBusy]=useState(false);const [error,setError]=useState<unknown>();
+ const path=`/halls/${hall.id}/camera-profiles/${profile.id}/reference-frame`;
+ async function upload(file:File){setBusy(true);setError(undefined);try{const body=new FormData();body.set('file',file);await api<CameraProfile>(path,{method:'PUT',body,signal:AbortSignal.timeout(120000)});onSaved()}catch(e){setError(e)}finally{setBusy(false)}}
+ const w=profile.frame_width,h=profile.frame_height;
+ if(profile.reference_sha256)return <figure className="reference-frame">
+  <div className="reference-stage" style={{aspectRatio:`${w} / ${h}`}}>
+   <img src={`/api/v1${path}`} alt={`Эталонный кадр камеры «${profile.name}», версия ${profile.version}`}/>
+   <svg viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
+    <polygon points={profile.pitch_polygon_px.map(p=>p.join(',')).join(' ')} strokeWidth={w/250}/>
+    {(profile.points as {px:[number,number]}[]).map((p,i)=><g key={i}><circle cx={p.px[0]} cy={p.px[1]} r={w/180}/><text x={p.px[0]+w/120} y={p.px[1]-w/150} fontSize={w/45}>{i+1}</text></g>)}
+   </svg>
+  </div>
+  <figcaption className="muted">Эталонный кадр. В каждой записи обработчик сверяет с ним положение камеры и сам поправляет небольшой сдвиг; при большом — попросит новую версию профиля. Точки и контур нанесены по профилю и должны лежать на разметке поля.</figcaption>
+ </figure>;
+ return <div className="reference-upload">
+  <p>Эталонный кадр не загружен. Загрузите кадр этой камеры в том же положении и разрешении ({w} × {h} px), по которому отмечены точки: обработчик будет сам замечать сдвиг камеры между днями и поправлять геометрию.</p>
+  <label className={`button${busy?' disabled':''}`}>{busy?'Загружаем…':'Загрузить эталонный кадр'}<input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={busy||hall.archived} onChange={e=>{const f=e.target.files?.[0];if(f)upload(f);e.target.value=''}}/></label>
+  <ErrorBox error={error}/>
+  <p className="muted small">Кадр задаётся один раз для версии профиля. Задания, выданные до загрузки, создайте заново.</p>
+ </div>;
 }
 function CameraEditor({hall,onSaved}:{hall:Hall,onSaved:()=>void}){
  const auth=useAuth();const [initial]=useState(()=>cameraDraft(hall));const draft=useDraft(`aifootball:camera:${auth.session!.id}:${hall.id}:${hall.revision}`,initial,validCamera);const d=draft.value;const [busy,setBusy]=useState(false);const [error,setError]=useState<unknown>();const locked=busy||d.attempted||draft.corrupt;

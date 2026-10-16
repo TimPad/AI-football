@@ -38,3 +38,27 @@ it('drops GPS from an unsent legacy draft and retries exactly the same new paylo
  expect(JSON.parse(sent[0])).not.toHaveProperty('latitude');
  expect(JSON.parse(sent[0])).not.toHaveProperty('longitude');
 });
+
+it('uploads a reference frame once and then shows it with the profile points and outline',async()=>{
+ const {Routes,Route}=await import('react-router-dom');
+ const hall={id:'h1',revision:1,name:'Арена',address:'Ярославль',pitch_length_m:40,pitch_width_m:20,ceiling_height_m:null,surface:'',description:'',archived:false};
+ let profile={id:'c1',hall_id:'h1',name:'Основная камера',version:1,hall_revision:1,pitch_length_m:40,pitch_width_m:20,frame_width:1000,frame_height:500,
+  points:[{px:[0,0],m:[0,0]},{px:[999,0],m:[40,0]},{px:[999,499],m:[40,20]},{px:[0,499],m:[0,20]}],pitch_polygon_px:[[0,0],[999,0],[999,499],[0,499]],
+  homography:[[1,0,0],[0,1,0],[0,0,1]],calibration:null,reprojection_error_m:0.01,leave_one_out_error_m:null,reference_sha256:null as string|null,matches_current_dimensions:true};
+ const puts:FormData[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(url:unknown,options:RequestInit={})=>{
+  const json=(v:unknown)=>new Response(JSON.stringify(v),{headers:{'Content-Type':'application/json'}});
+  if(options.method==='PUT'){puts.push(options.body as FormData);profile={...profile,reference_sha256:'a'.repeat(64)};return json(profile)}
+  if(String(url).includes('/camera-profiles'))return json({items:[profile],total:1});
+  return json(hall);
+ }));
+ render(<MemoryRouter initialEntries={['/halls/h1']}><Routes><Route path="/halls/:id" element={<HallPage/>}/></Routes></MemoryRouter>);
+ fireEvent.click(await screen.findByText(/Основная камера · версия 1/));
+ expect(screen.getByText(/Эталонный кадр не загружен/)).toBeInTheDocument();
+ const input=screen.getByText('Загрузить эталонный кадр').querySelector('input')!;
+ fireEvent.change(input,{target:{files:[new File(['jpeg'],'frame.jpg',{type:'image/jpeg'})]}});
+ const image=await screen.findByRole('img',{name:'Эталонный кадр камеры «Основная камера», версия 1'});
+ expect(image).toHaveAttribute('src','/api/v1/halls/h1/camera-profiles/c1/reference-frame');
+ expect(puts).toHaveLength(1);expect((puts[0].get('file') as File).name).toBe('frame.jpg');
+ expect(document.querySelectorAll('.reference-stage circle')).toHaveLength(4);
+});
