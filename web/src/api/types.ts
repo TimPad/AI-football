@@ -4930,6 +4930,11 @@ export interface components {
              */
             has_understanding?: boolean;
             /**
+             * Has Events
+             * @default false
+             */
+            has_events?: boolean;
+            /**
              * Id
              * Format: uuid
              */
@@ -4965,6 +4970,11 @@ export interface components {
              * @default false
              */
             has_understanding?: boolean;
+            /**
+             * Has Events
+             * @default false
+             */
+            has_events?: boolean;
             /**
              * Id
              * Format: uuid
@@ -5300,10 +5310,16 @@ export interface components {
         /** StatsSource */
         StatsSource: {
             /**
-             * Action Version Id
-             * Format: uuid
+             * Kind
+             * @enum {string}
              */
-            action_version_id: string;
+            kind: "manual" | "cv_auto" | "mixed";
+            /** Action Version Id */
+            action_version_id: string | null;
+            /** Run Id */
+            run_id: string | null;
+            /** Run Published */
+            run_published: boolean;
             /** Revision */
             revision: number;
             /**
@@ -5624,6 +5640,12 @@ export interface components {
              * @enum {string}
              */
             coverage: "complete" | "partial" | "unknown";
+            /**
+             * Source
+             * @default manual
+             * @enum {string}
+             */
+            source?: "manual" | "cv_auto";
             home: components["schemas"]["StatValue"];
             away: components["schemas"]["StatValue"];
         };

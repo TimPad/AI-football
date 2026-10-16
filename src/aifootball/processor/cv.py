@@ -24,9 +24,10 @@ def _write_detections(data,path):
     finally:os.close(descriptor)
 
 
-def run_cv(job_path:Path,video:Path,workspace:Workspace,*,models:Path)->Path:
-    from aifootball.perception.detect import detect_batches
+def run_cv(job_path:Path,video:Path,workspace:Workspace,*,models:Path,ball_model:str|None=None)->Path:
+    from aifootball.perception.detect import detect_batches,pick_device
     from aifootball.perception.frames import video_fps
+    from aifootball.processor.job import EVENTS_MIN_FPS,ball_model_path
     from aifootball import cli
     job=read_job(job_path);source=source_for_job(job,video)
     with workspace.exclusive():
@@ -34,9 +35,13 @@ def run_cv(job_path:Path,video:Path,workspace:Workspace,*,models:Path)->Path:
         for directory in (root,venue_root,chunks):directory.mkdir(exist_ok=True)
         for name,raw in job.files.items():Workspace._atomic(venue_root/name,raw)
         venue=load_venue(venue_root);weights=Path(models)/venue.model
+        ball_weights=ball_model_path(models,ball_model) if ball_model else None
+        if ball_weights and venue.target_fps<EVENTS_MIN_FPS:
+            raise ValueError(f'Для передач нужна обработка не реже {EVENTS_MIN_FPS} кадров/с: создайте новое задание')
         fingerprint={'source':source,'context_hash':job.contract['context_hash'],'weights_sha256':file_hash(weights),
                      'venue_files':{name:sha256(raw).hexdigest() for name,raw in job.files.items()},
                      'pipeline':'cv-chunks-v1','chunk_ms':CHUNK_MS}
+        if ball_weights:fingerprint['ball_model']={'name':ball_model,'sha256':file_hash(ball_weights)}
         previous=workspace.get_json('cv:fingerprint')
         if previous is not None and previous!=fingerprint:raise ValueError('CV fingerprint mismatch')
         workspace.put_json('cv:fingerprint',fingerprint)
@@ -63,7 +68,12 @@ def run_cv(job_path:Path,video:Path,workspace:Workspace,*,models:Path)->Path:
             return item
 
         if start<count:
-            for batch in detect_batches(Path(video),venue,weights,start_ms=start*CHUNK_MS):
+            ball_detector=None
+            if ball_weights:
+                from aifootball.perception.ball_detect import BallDetector
+                ball_detector=BallDetector(ball_weights,venue.require_polygon(),(source['height'],source['width']),
+                                           venue.ball_tile,venue.ball_margin_px,venue.conf_ball,pick_device())
+            for batch in detect_batches(Path(video),venue,weights,start_ms=start*CHUNK_MS,ball_detector=ball_detector):
                 for frame_id,ts in zip(batch.frame_ids,batch.timestamps):
                     index=min(count-1,int(ts*1000//CHUNK_MS))
                     if index!=current:
@@ -81,7 +91,8 @@ def run_cv(job_path:Path,video:Path,workspace:Workspace,*,models:Path)->Path:
         meta={'video':str(video),'venue_id':venue.venue_id,'camera_profile_id':venue.camera_profile_id,
               'frame_width':source['width'],'frame_height':source['height'],'video_s':source['duration_s'],
               'src_fps':video_fps(video),'target_fps':venue.target_fps,'model':venue.model,'imgsz':venue.imgsz,
-              'ball_model':None,'schema_version':schemas.SCHEMA_VERSION,
+              'ball_model':ball_model,'ball_model_sha256':fingerprint['ball_model']['sha256'] if ball_weights else None,
+              'schema_version':schemas.SCHEMA_VERSION,
               'source_sha256':source['sha256'],'context_hash':job.contract['context_hash'],
               'created_at':datetime.now(timezone.utc).isoformat(timespec='seconds')}
         Workspace._atomic(root/'meta.json',canonical(meta))

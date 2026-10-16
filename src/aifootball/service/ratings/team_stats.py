@@ -1,7 +1,9 @@
-"""Командная сводка действий матча по одной версии: только сохранённые канонические факты.
+"""Командная сводка действий матча: ручная версия действий и события по мячу из видеоанализа.
 
 Полнота категории берётся из объявления версии и не выводится из числа записей.
 Неизвестный исход остаётся отдельным числом и не входит в знаменатель процента.
+Ручная версия главнее: автоматические строки добавляются только в категории, которых в ней нет.
+Автоматическая категория всегда неполная — распознаётся не каждая передача.
 """
 from sqlalchemy import select
 from aifootball.service.errors import DomainError
@@ -86,6 +88,59 @@ def _values(records,blocked_ids):
     }
 
 
+# Вид события по мячу -> категория полноты строк сводки.
+AUTO_CATEGORY={'pass':'passes'}
+
+
+def _cv_periods(run):
+    """'all' — основной период прогона, 'N' — тайм hN отчёта."""
+    periods={p['key']:p for p in run.report['periods']}
+    out=[{'key':'all','label':'Весь матч','spans':periods[run.manifest['primary_period_key']]['spans']}]
+    for key in sorted(k for k in periods if k[:1]=='h' and k[1:].isdigit()):
+        out.append({'key':key[1:],'label':f'{key[1:]}-й тайм','spans':periods[key]['spans']})
+    return out
+
+
+def _auto_rows(run,period):
+    """Строки из событий прогона CV: стороны по side_map. None — для периода нет данных видеоанализа."""
+    bounds=next((p for p in _cv_periods(run) if p['key']==period),None)
+    if bounds is None:return None
+    doc=run.events or {};categories={AUTO_CATEGORY[k] for k in doc.get('kinds',[]) if k in AUTO_CATEGORY}
+    inside=lambda e:any(a<=e['start_s']<=b for a,b in bounds['spans'])
+    records=[{'kind':e['kind'],'success':e['success'],'side':run.side_map.get(e['team'])} for e in doc.get('events',[]) if inside(e)]
+    values={side:_values([r for r in records if r['side']==side],set()) for side in SIDES}
+    return [{'key':key,'label':label,'group':group,'category':category,'unit':unit,'coverage':'partial','source':'cv_auto',
+             'home':values['home'][key],'away':values['away'][key]} for key,label,group,category,unit in ROWS if category in categories]
+
+
+def _with_events(stats,run,published):
+    """Добавляет автоматические строки в категории, которых нет в ручной версии."""
+    rows=_auto_rows(run,stats['period'])
+    if not rows:return stats
+    have={r['category'] for r in stats['rows']}
+    extra=[r for r in rows if r['category'] not in have]
+    if not extra:return stats
+    stats['rows']=stats['rows']+extra
+    stats['coverage']={**stats['coverage'],**{r['category']:'partial' for r in extra}}
+    stats['source']={**stats['source'],'kind':'mixed','run_id':run.id,'run_published':published}
+    return stats
+
+
+def auto_action_stats(run,*,published,period='all'):
+    """Сводка только из событий видеоанализа: ручной версии действий нет.
+    Тайм, которого нет в видеоанализе (запись не разделена на таймы), — пустая сводка, а не ошибка:
+    периоды странице задаёт протокол."""
+    periods=_cv_periods(run)
+    rows=_auto_rows(run,period) or []
+    pitch=run.report['pitch']
+    return {'source':{'kind':'cv_auto','action_version_id':None,'run_id':run.id,'revision':run.revision,'status':run.status,
+            'published':published,'run_published':published,'clock_basis':'video',
+            'analysis_scope':'continuous_excerpt' if run.checks.get('partial') else 'full_match'},
+        'periods':[{'key':p['key'],'label':p['label']} for p in periods],'period':period,'untimed':0,
+        'coverage':{r['category']:'partial' for r in rows},'rows':rows,'shots':[],
+        'pitch':{'length_m':pitch['length_m'],'width_m':pitch['width_m']}}
+
+
 def team_action_stats(version,*,published,period='all'):
     doc=version.document;records=version.canonical_actions or [];bounds=_periods(version)
     keys={'all',*(b['key'] for b in bounds)}
@@ -104,30 +159,51 @@ def team_action_stats(version,*,published,period='all'):
         # Строка без записей и без объявленной полноты — это отсутствие источника, а не ноль.
         if not present and coverage[category]=='unknown':continue
         rows.append({'key':key,'label':label,'group':group,'category':category,'unit':unit,'coverage':coverage[category],
-            'home':values['home'][key],'away':values['away'][key]})
+            'source':'manual','home':values['home'][key],'away':values['away'][key]})
     shots=[{'id':r['id'],'side':r.get('side'),'player_id':r.get('player_id'),'x':r['start_xy'][0],'y':r['start_xy'][1],
             'goal':bool(r.get('counts_as_player_goal')),'on_target':_on_target(r),'blocked':r['id'] in blocked_ids,
             'outcome':r.get('outcome') or 'unknown','period':_period_of(r,bounds),'start_ms':r.get('start_ms')}
         for r in selected if r.get('counts_as_shot') and r.get('start_xy') and r.get('side') in SIDES]
     pitch=(version.provenance or {}).get('pitch')
-    return {'source':{'action_version_id':version.id,'revision':version.revision,'status':version.status,'published':published,
+    return {'source':{'kind':'manual','action_version_id':version.id,'run_id':None,'revision':version.revision,'status':version.status,
+            'published':published,'run_published':False,
             'clock_basis':doc.get('clock_basis'),'analysis_scope':doc.get('analysis_scope','unknown')},
         'periods':[{'key':'all','label':'Весь матч'},*({'key':b['key'],'label':b['label']} for b in bounds)],
         'period':period,'untimed':untimed,'coverage':coverage,'rows':rows,'shots':shots,
         'pitch':{'length_m':pitch['length_m'],'width_m':pitch['width_m']} if pitch else None}
 
 
+def _run_with_events(db,run_id):
+    from aifootball.service.analysis.models import AnalysisRun
+    run=db.get(AnalysisRun,run_id) if run_id else None
+    return run if run is not None and run.events is not None else None
+
+
 def public_action_stats(db,match_id,period='all'):
+    from aifootball.service.matches.models import Match
     pub=db.scalar(select(RatingMatchPublication).where(RatingMatchPublication.match_id==match_id))
     version=db.get(ActionVersion,pub.action_version_id) if pub and pub.action_version_id else None
-    if version is None:raise DomainError('not_found','Действия матча не опубликованы',status=404)
-    return team_action_stats(version,published=True,period=period)
+    # Передачи по мячу видны гостю вместе с опубликованным видеоанализом.
+    run=_run_with_events(db,db.get(Match,match_id).published_analysis_run_id)
+    if version is None and run is None:raise DomainError('not_found','Действия матча не опубликованы',status=404)
+    if version is None:return auto_action_stats(run,published=True,period=period)
+    stats=team_action_stats(version,published=True,period=period)
+    return _with_events(stats,run,True) if run else stats
 
 
 def private_action_stats(db,match_id,period='all'):
-    """Кабинет: последняя подтверждённая версия, иначе последняя на проверке."""
+    """Кабинет: последняя подтверждённая версия действий, иначе последняя на проверке;
+    передачи по мячу — из активного прогона, иначе из последнего прогона с событиями."""
+    from aifootball.service.analysis.models import AnalysisRun
+    from aifootball.service.matches.models import Match
+    match=db.get(Match,match_id)
     versions=list(db.scalars(select(ActionVersion).where(ActionVersion.match_id==match_id).order_by(ActionVersion.revision.desc())))
     version=next((v for v in versions if v.status=='confirmed'),versions[0] if versions else None)
-    if version is None:raise DomainError('not_found','Версий действий пока нет',status=404)
+    run=_run_with_events(db,match.active_analysis_run_id) or db.scalar(select(AnalysisRun).where(
+        AnalysisRun.match_id==match_id,AnalysisRun.events.is_not(None)).order_by(AnalysisRun.created_at.desc(),AnalysisRun.id).limit(1))
+    if version is None and run is None:raise DomainError('not_found','Версий действий пока нет',status=404)
+    run_published=bool(run and run.id==match.published_analysis_run_id)
+    if version is None:return auto_action_stats(run,published=run_published,period=period)
     pub=db.scalar(select(RatingMatchPublication).where(RatingMatchPublication.match_id==match_id))
-    return team_action_stats(version,published=bool(pub and pub.action_version_id==version.id),period=period)
+    stats=team_action_stats(version,published=bool(pub and pub.action_version_id==version.id),period=period)
+    return _with_events(stats,run,run_published) if run else stats

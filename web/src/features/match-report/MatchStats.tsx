@@ -1,16 +1,17 @@
 import type {PublicAnalysis,PublicMatch,PublicProtocol,TeamActionStats} from '../../api/domain';
 import {ShotMap,type Shot} from '../../components/pitch/ShotMap';
 import type {ReportModel,Resource} from './model';
-import {StatCard} from './StatBlocks';
+import {AUTO_HINT,StatCard} from './StatBlocks';
 import {TeamComparison} from './TeamComparison';
 import {actionLines,cvLines,cvPeriodKey,cvThirds,protocolLines,type StatLine} from './stats';
 
 const ready=<T,>(r:Resource<T>)=>r.status==='ready'?r.value:null;
 export type PeriodOption={key:string;label:string};
 
-// Периоды: из версии действий, иначе из регламента протокола, иначе из таймов CV.
+// Периоды: из ручной версии действий, иначе из регламента протокола, иначе из таймов CV
+// (у автоматических передач таймы видеоанализа, которые запись может и не различать).
 export function periodOptions(model:ReportModel):PeriodOption[]{
- const actions=ready(model.actions);if(actions)return actions.periods;
+ const actions=ready(model.actions);if(actions&&actions.source.kind!=='cv_auto')return actions.periods;
  const protocol=ready(model.protocol);
  if(protocol)return [{key:'all',label:'Весь матч'},...protocol.regulation.rules.periods_s.map((_,i)=>({key:String(i+1),label:`${i+1}-й тайм`}))];
  const cv=ready(model.cv);
@@ -51,7 +52,8 @@ export function MatchStats({match,model,period,onPeriod,players}:{match:PublicMa
  const discipline=protocol?protocolLines(protocol,period).filter(l=>l.key!=='goals'):[];
  const top=topLines(protocol,actions,cv,period);
  const anything=protocol||actions||cv;
- const partial=[...top,...discipline,...(groups?Object.values(groups).flat():[])].some(l=>l.partial);
+ const lines=[...top,...discipline,...(groups?Object.values(groups).flat():[])];
+ const partial=lines.some(l=>l.partial),auto=lines.some(l=>l.auto);
  return <>
   <section className="report-block stats-block">
    <div className="block-head"><h2>Статистика</h2><PeriodChips options={periodOptions(model)} value={period} onChange={onPeriod}/></div>
@@ -68,6 +70,7 @@ export function MatchStats({match,model,period,onPeriod,players}:{match:PublicMa
     {cv&&!cvKey&&<StatCard title="Видеоанализ" wide><p className="muted">Для этого тайма видеоанализа нет: запись не разделена на таймы.</p></StatCard>}
    </div>}
    <p className="muted small stats-note">{[partial?'* — разметка категории неполная, показаны известные значения':null,
+    auto?`авто — ${AUTO_HINT.charAt(0).toLowerCase()}${AUTO_HINT.slice(1)}`:null,
     actions&&actions.untimed?`Без времени и не вошли в тайм: ${actions.untimed}`:null,
     'Неизвестный исход не входит в процент'].filter(Boolean).join(' · ')}</p>
   </section>

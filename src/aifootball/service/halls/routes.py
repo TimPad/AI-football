@@ -59,8 +59,9 @@ def export_cv(mid:UUID,db:Session=Depends(get_session)):
     if profile.hall_id!=match.hall_id or not same_dimensions(profile,match.hall_snapshot):
         raise DomainError('camera_geometry','Профиль камеры не соответствует размерам матча')
     import yaml
+    # 15 кадров/с: на них замерены передачи по мячу; на 10 точность передач ниже (processor.job.EVENTS_MIN_FPS).
     settings={'venue_id':str(match.hall_id),'pitch':{'length_m':profile.pitch_length_m,'width_m':profile.pitch_width_m},
-        'processing':{'model':'yolo11m.pt','imgsz':1280,'target_fps':10,'conf_person':0.3,'conf_ball':0.1,
+        'processing':{'model':'yolo11m.pt','imgsz':1280,'target_fps':15,'conf_person':0.3,'conf_ball':0.1,
             'frame_width':profile.frame_width,'frame_height':profile.frame_height,'camera_profile_id':str(profile.id)}}
     files={'venue.yaml':yaml.safe_dump(settings,allow_unicode=True),
         'homography.json':json.dumps({'H':profile.homography,'points':profile.points,

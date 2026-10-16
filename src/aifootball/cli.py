@@ -308,6 +308,7 @@ def build_parser() -> argparse.ArgumentParser:
     job.add_argument('--vlm-max-requests', type=int, default=200)
     job.add_argument('--vlm-max-input-tokens', type=int, default=300000)
     job.add_argument('--vlm-max-output-tokens', type=int, default=100000)
+    job.add_argument('--ball-model', help='Модель мяча из --models (например ball_hall/best.pt): включает передачи в пакете')
 
 
     def add(name, video=False, models=False, seconds=False):
@@ -363,7 +364,8 @@ def main(argv=None) -> int:
             process_job(args.job, args.video, args.output, models=args.models, artifacts=args.artifacts, halves=args.halves,
                 partial_recording=args.partial_recording, understand=args.understand, work_dir=args.work_dir, resume=args.resume,
                 vlm_mode=args.vlm_mode, analysis_scope=args.analysis_scope, vlm_max_requests=args.vlm_max_requests,
-                vlm_max_input_tokens=args.vlm_max_input_tokens, vlm_max_output_tokens=args.vlm_max_output_tokens)
+                vlm_max_input_tokens=args.vlm_max_input_tokens, vlm_max_output_tokens=args.vlm_max_output_tokens,
+                ball_model=args.ball_model)
         except ValueError as exc:
             print(str(exc), file=sys.stderr)
             return 1

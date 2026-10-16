@@ -5,7 +5,7 @@ import {teamsBySide} from './TeamComparison';
 export type Side='home'|'away';
 export type Cell={value:number|null;text:string;note?:string};
 export type StatSource='protocol'|'actions'|'cv';
-export type StatLine={key:string;label:string;home:Cell;away:Cell;better:'higher'|'lower'|'none';source:StatSource;partial?:boolean};
+export type StatLine={key:string;label:string;home:Cell;away:Cell;better:'higher'|'lower'|'none';source:StatSource;partial?:boolean;auto?:boolean};
 export type ActionGroup='shots'|'passes'|'defense'|'goalkeeping';
 
 const SIDES:Side[]=['home','away'];
@@ -79,7 +79,9 @@ function actionCell(row:Row,side:Side):Cell{
 export function actionLines(stats:TeamActionStats):Record<ActionGroup,StatLine[]>{
  const out:Record<ActionGroup,StatLine[]>={shots:[],passes:[],defense:[],goalkeeping:[]};
  for(const row of stats.rows)out[row.group].push({key:row.key,label:row.label,home:actionCell(row,'home'),away:actionCell(row,'away'),
-  better:LOWER.has(row.key)?'lower':row.key==='shots_off_target'||row.key==='shots_blocked'?'none':'higher',source:'actions',partial:row.coverage!=='complete'});
+  better:LOWER.has(row.key)?'lower':row.key==='shots_off_target'||row.key==='shots_blocked'?'none':'higher',source:'actions',
+  // Автоматическая строка помечается «авто»: она всегда неполная, звёздочка ручной разметки к ней не относится.
+  partial:row.source!=='cv_auto'&&row.coverage!=='complete',auto:row.source==='cv_auto'});
  return out;
 }
 

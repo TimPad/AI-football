@@ -65,6 +65,7 @@ class AnalysisContext(BaseModel):
 
 class RunSummary(BaseModel):
     has_understanding: bool = False
+    has_events: bool = False
     id: UUID
     job_id: UUID
     created_at: datetime

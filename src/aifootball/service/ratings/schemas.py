@@ -342,6 +342,7 @@ class TeamStatRow(BaseModel):
     category:str
     unit:Literal['count','percent']
     coverage:Literal['complete','partial','unknown']
+    source:Literal['manual','cv_auto']='manual'
     home:StatValue
     away:StatValue
 
@@ -361,7 +362,10 @@ class ShotPoint(BaseModel):
 
 
 class StatsSource(BaseModel):
-    action_version_id:UUID
+    kind:Literal['manual','cv_auto','mixed']
+    action_version_id:UUID|None
+    run_id:UUID|None
+    run_published:bool
     revision:int
     status:Literal['review','confirmed']
     published:bool
