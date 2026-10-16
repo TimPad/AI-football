@@ -3,16 +3,18 @@ import {useLocation,Navigate} from 'react-router-dom';
 import {api,post,setCsrf} from '../../api/client';
 import type {Session} from '../../api/domain';
 import {ErrorBox,Field} from '../../components/ui';
-type AuthState={session:Session|null,loading:boolean,login:(name:string,password:string)=>Promise<void>,logout:()=>Promise<void>};
+type AuthState={session:Session|null,loading:boolean,loggedOut:boolean,login:(name:string,password:string)=>Promise<void>,logout:()=>Promise<void>};
 const Context=createContext<AuthState|null>(null);
 export const useAuth=()=>useContext(Context)!;
 export function AuthProvider({children}:{children:ReactNode}){
  const [session,setSession]=useState<Session|null>(null);const [loading,setLoading]=useState(true);
+ // Явный выход не запоминает страницу: следующий вход (возможно, другого человека) начинается со списка турниров.
+ const [loggedOut,setLoggedOut]=useState(false);
  const assign=(s:Session|null)=>{setSession(s);setCsrf(s?.csrf_token??'')};
  useEffect(()=>{api<Session>('/auth/me').then(assign).catch(()=>assign(null)).finally(()=>setLoading(false));const expired=()=>assign(null);window.addEventListener('session-expired',expired);return()=>window.removeEventListener('session-expired',expired)},[]);
- return <Context.Provider value={{session,loading,login:async(name,password)=>assign(await post<Session>('/auth/login',{login:name,password})),logout:async()=>{await post('/auth/logout',{});assign(null)}}}>{children}</Context.Provider>
+ return <Context.Provider value={{session,loading,loggedOut,login:async(name,password)=>{assign(await post<Session>('/auth/login',{login:name,password}));setLoggedOut(false)},logout:async()=>{await post('/auth/logout',{});setLoggedOut(true);assign(null)}}}>{children}</Context.Provider>
 }
-export function Private({children}:{children:ReactNode}){const {session,loading}=useAuth();const location=useLocation();return loading?<p className="empty">Проверяем сессию…</p>:session?children:<Navigate to="/login" state={{from:location.pathname}} replace/>}
+export function Private({children}:{children:ReactNode}){const {session,loading,loggedOut}=useAuth();const location=useLocation();return loading?<p className="empty">Проверяем сессию…</p>:session?children:<Navigate to="/login" state={loggedOut?null:{from:location.pathname}} replace/>}
 export function Login(){
  const {session,login}=useAuth();const location=useLocation();const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);
  if(session)return <Navigate replace to={location.state?.from??'/tournaments'}/>;
