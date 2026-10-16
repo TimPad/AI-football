@@ -22,7 +22,8 @@ def seed():
     base=Settings();url=make_url(base.database_url).set(database='aifootball_e2e')
     assert url.database=='aifootball_e2e' and url.host in ('127.0.0.1','localhost')
     app=create_app(Settings(database_url=url.render_as_string(hide_password=False),attachment_root=Path('data/service/e2e-attachments')))
-    suffix=uuid4().hex[:6];rng=random.Random(suffix)
+    # Имена уникальны, а числа детерминированы: сценарий E2E проверяет конкретные значения.
+    suffix=uuid4().hex[:6];rng=random.Random(20261016)
     with TestClient(app) as client:
         client.headers['Origin']=base.allowed_origin
         auth=client.post('/api/v1/auth/login',json={'login':'e2e-analyst','password':'e2e-only-password'});assert auth.status_code==200
@@ -75,9 +76,10 @@ def seed():
             ms=((g['period']-1)*1200+g['elapsed_ms']//1000)*1000
             shot=act('shot',g['side'],ms,player_id=g['player_id'],on_target=True,outcome='goal',start_xy=[round(goal_x[g['side']](),1),round(rng.uniform(7,13),1)])
             links.append({'canonical_event_id':g['id'],'source_event_id':shot['id']})
+        outcomes=['saved','off_target','failure','off_target','saved']
         for side,count in (('home',9),('away',6)):
             for i in range(count):
-                outcome=rng.choice(['saved','off_target','off_target','saved','failure'])
+                outcome=outcomes[i%len(outcomes)]
                 act('shot',side,rng.randrange(0,2400)*1000,player_id=rng.choice(players[side][1:]),on_target=outcome=='saved',
                     outcome=outcome,start_xy=[round(goal_x[side](),1),round(rng.uniform(3,17),1)])
         blocked=next(a for a in actions if a['kind']=='shot' and a['side']=='home' and a['outcome']=='failure')
