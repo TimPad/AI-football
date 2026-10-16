@@ -57,6 +57,10 @@ def read_job(path):
                'CV-геометрия не совпадает со снимком задания')
         calibration = load_json(files['calib.json'], 'calib.json') if 'calib.json' in files else None
         ensure(calibration == camera['calibration'], 'CV-геометрия объектива не совпадает')
+        # Эталонный кадр профиля: по нему обработчик сверяет, не сдвинута ли камера.
+        reference = camera.get('reference_sha256')
+        ensure(('reference.jpg' in files) == (reference is not None) and
+               (reference is None or sha256(files['reference.jpg']).hexdigest() == reference), 'Эталонный кадр камеры не совпадает с заданием')
         # Models are selected from the operator's trusted model directory, never arbitrary paths in a job.
         ensure(isinstance(proc['model'], str) and Path(proc['model']).name == proc['model'] and proc['model'].endswith('.pt'), 'Неверное имя модели')
         ensure(not proc.get('ball_model'), 'В этой версии задания используется только детектор игроков')
@@ -172,6 +176,7 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
     from aifootball.analytics.checks import phase1_checks
     from aifootball.report.frames import grab_images
     from tempfile import TemporaryDirectory
+    from aifootball.geometry.camera_drift import alignment_messages, apply_alignment
     job = read_job(job_path); source = source_for_job(job, video_path)
     artifacts, output_path = Path(artifacts), Path(output_path)
     state = schemas.read(artifacts / 'state.parquet', 'state'); tracks = schemas.read(artifacts / 'tracks.parquet', 'tracks')
@@ -180,6 +185,9 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
         root = Path(temporary)
         for name, raw in job.files.items(): (root / name).write_bytes(raw)
         venue = load_venue(root)
+    meta_path = artifacts / 'meta.json'
+    alignment = load_json(meta_path.read_bytes(), 'meta.json').get('camera_alignment') if meta_path.exists() else None
+    venue = apply_alignment(venue, alignment)
     times = tracks['ts'].unique().sort().to_list()
     steps = [b - a for a, b in zip(times, times[1:]) if 0 < b - a <= 1]
     step = sorted(steps)[len(steps) // 2] if steps else 1 / venue.target_fps
@@ -226,9 +234,13 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
     checked = phase1_checks(state, venue.length_m, venue.width_m)
     partial = partial_recording or report['match']['processed_s'] < source['duration_s'] - max(1, step * 2)
     events, events_warning = ball_events(artifacts, venue, normalized, spans, {t['track_id'] for t in indexed}, models)
-    warnings = (['Частичная запись или неполное покрытие обработки'] if partial else []) + ([events_warning] if events_warning else [])
-    checks = {**checked, 'critical_errors': [] if checked['passed'] else ['Проверки координат/скоростей не пройдены'],
+    camera_warnings, camera_errors = alignment_messages(alignment)
+    warnings = (['Частичная запись или неполное покрытие обработки'] if partial else []) + ([events_warning] if events_warning else []) + camera_warnings
+    errors = ([] if checked['passed'] else ['Проверки координат/скоростей не пройдены']) + camera_errors
+    checks = {**checked, 'passed': checked['passed'] and not camera_errors, 'critical_errors': errors,
               'partial': partial, 'warnings': warnings}
+    if alignment:
+        checks['camera_alignment'] = {k: alignment[k] for k in ('status', 'shift_px', 'error_if_uncorrected_m', 'moved_at_s') if k in alignment}
     for name, value in [('report.json', report), ('track-index.json', {'tracks': indexed}), ('checks.json', checks)]:
         files[name] = canonical(value)
     if events is not None:

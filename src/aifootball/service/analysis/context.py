@@ -38,5 +38,7 @@ def build_context(db, match_id):
             'pitch': {'length_m': camera.pitch_length_m, 'width_m': camera.pitch_width_m},
             'camera': {'id': str(camera.id), 'version': camera.version, 'frame_width': camera.frame_width,
                        'frame_height': camera.frame_height, 'homography': camera.homography,
-                       'polygon_px': camera.pitch_polygon_px, 'calibration': camera.calibration},
+                       'polygon_px': camera.pitch_polygon_px, 'calibration': camera.calibration,
+                       # Только если кадр задан: контекст профилей без кадра и их задания не меняются.
+                       **({'reference_sha256': camera.reference_sha256} if camera.reference_sha256 else {})},
             'units': {'distance': 'm', 'speed': 'm/s', 'time': 's', 'heatmap': 's'}}

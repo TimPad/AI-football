@@ -42,6 +42,7 @@ class CameraProfileView(EntityView):
     calibration: dict | None = None
     reprojection_error_m: float
     leave_one_out_error_m: float | None = None
+    reference_sha256: str | None = None
     matches_current_dimensions: bool
 class PublicHall(BaseModel):
     id: UUID

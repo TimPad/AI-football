@@ -18,7 +18,7 @@ RESULT_VERSIONS = ('1', '2', '3')
 EVENT_KINDS = ('pass',)
 PASS_FIELDS = {'kind', 'track_id', 'team', 'start_s', 'end_s', 'start_xy', 'end_xy', 'recipient_track_id', 'success', 'confidence'}
 EVENT_PITCH_MARGIN_M = 3.0
-JOB_FILES = {'job.json', 'venue.yaml', 'homography.json', 'pitch_polygon.json', 'calib.json', 'source.json'}
+JOB_FILES = {'job.json', 'venue.yaml', 'homography.json', 'pitch_polygon.json', 'calib.json', 'source.json', 'reference.jpg'}
 
 
 class ExchangeError(ValueError):
