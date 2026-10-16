@@ -3,6 +3,7 @@ from datetime import datetime,timezone
 from hashlib import sha256
 import os
 from pathlib import Path
+from dataclasses import replace
 from types import SimpleNamespace
 import math
 import polars as pl
@@ -13,6 +14,12 @@ from aifootball.processor.workspace import Workspace
 from aifootball.venue import load_venue
 
 CHUNK_MS=60000
+
+
+def processing_fps(src_fps:float,limit:float)->float:
+    """Частота обработки — частота видео: 25 → 25, 30 → 30, 14.9 → 14.9.
+    Видео чаще предела задания идёт каждым k-м кадром с равным шагом: 50 → 25, 60 → 30."""
+    return src_fps/max(1,math.ceil(src_fps/limit-1e-9))
 
 
 def _write_detections(data,path):
@@ -35,9 +42,11 @@ def run_cv(job_path:Path,video:Path,workspace:Workspace,*,models:Path,ball_model
         for directory in (root,venue_root,chunks):directory.mkdir(exist_ok=True)
         for name,raw in job.files.items():Workspace._atomic(venue_root/name,raw)
         venue=load_venue(venue_root);weights=Path(models)/venue.model
+        # Детекция, трекер и проверки идут на фактической частоте, а не на пределе из задания.
+        venue=replace(venue,target_fps=processing_fps(video_fps(video),venue.target_fps))
         ball_weights=ball_model_path(models,ball_model) if ball_model else None
         if ball_weights and venue.target_fps<EVENTS_MIN_FPS:
-            raise ValueError(f'Для передач нужна обработка не реже {EVENTS_MIN_FPS} кадров/с: создайте новое задание')
+            raise ValueError(f'Для передач нужна запись не реже 15 кадров/с, у этой {venue.target_fps:.1f}')
         fingerprint={'source':source,'context_hash':job.contract['context_hash'],'weights_sha256':file_hash(weights),
                      'venue_files':{name:sha256(raw).hexdigest() for name,raw in job.files.items()},
                      'pipeline':'cv-chunks-v1','chunk_ms':CHUNK_MS}

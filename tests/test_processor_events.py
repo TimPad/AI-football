@@ -114,3 +114,21 @@ def test_ball_model_uses_measured_confidence_and_margin(venue):
     assert tuned.conf_ball == 0.25 and tuned.ball_margin_px == 80
     # Заданные в установке значения не перекрываются
     assert ball_settings(replace(venue, conf_ball=0.4, ball_margin_px=30), 2592).ball_margin_px == 30
+
+
+@pytest.mark.parametrize('src,expected', [(25, 25), (30, 30), (14.9, 14.9), (50, 25), (60, 30), (59.94, 29.97), (120, 30)])
+def test_processing_follows_the_video_frame_rate(src, expected):
+    from aifootball.processor.cv import processing_fps
+    assert processing_fps(src, 30) == pytest.approx(expected)
+
+
+def test_real_video_frame_rate_decides_not_the_job_limit(venue, tmp_path):
+    # Задание разрешает 30 кадров/с, но в видео их 10: передачи не выпускаются
+    from aifootball.processor.job import ball_events
+    work = _artifacts(tmp_path, _pass, fps=30)
+    meta = json.loads((work / 'meta.json').read_text()); meta['src_fps'] = 10.0
+    (work / 'meta.json').write_text(json.dumps(meta))
+    events, warning = ball_events(work, venue, _state(6), [(0.0, 6.0)], {1, 2, 3, 4})
+    assert events is None and 'обработано 10.0' in warning
+    meta['src_fps'] = 14.9; (work / 'meta.json').write_text(json.dumps(meta))
+    assert ball_events(work, venue, _state(6), [(0.0, 6.0)], {1, 2, 3, 4})[0] is not None

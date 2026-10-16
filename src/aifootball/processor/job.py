@@ -12,7 +12,8 @@ from aifootball.analytics.exchange import (canonical, read_archive, load_json, e
                                            hash_value, validate_result, ExchangeError, UNITS, EVENT_KINDS)
 
 # Передачи замерены на 15 кадрах/с; на 10 кадрах/с точность падает 0.78 → 0.70 (scripts/eval_events.py, Ярославль).
-EVENTS_MIN_FPS = 15
+# Порог чуть ниже 15: «15 кадров/с» у камер бывает 14.9.
+EVENTS_MIN_FPS = 14.5
 # Мяч найден реже — модель мяча не подходит этому залу или записи, события не выпускаются.
 EVENTS_MIN_BALL_SHARE = 0.3
 # Своя модель мяча откалибрована на пороге 0.25 (эталон Ярославля: 87% мячей, 93% детекций верные);
@@ -130,8 +131,9 @@ def ball_events(artifacts, venue, state, spans, track_ids, models=None):
     sha = meta.get('ball_model_sha256') or (file_hash(ball_model_path(models, meta['ball_model'])) if models else None)
     if not sha:
         return None, 'Передачи не рассчитаны: неизвестна версия модели мяча'
-    if (meta.get('target_fps') or 0) < EVENTS_MIN_FPS:
-        return None, f'Передачи не рассчитаны: нужна обработка не реже {EVENTS_MIN_FPS} кадров/с'
+    fps = min(meta.get('target_fps') or 0, meta.get('src_fps') or float('inf'))
+    if fps < EVENTS_MIN_FPS:
+        return None, f'Передачи не рассчитаны: нужна запись не реже 15 кадров/с, обработано {fps:.1f}'
     detections = schemas.read(det_path, 'detections')
     venue = ball_settings(venue, venue.frame_width or int(meta.get('frame_width') or 0))
     detections = detections.filter((pl.col('cls') != 'ball') | (pl.col('conf') >= venue.conf_ball))
