@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from hashlib import sha256
@@ -75,6 +76,8 @@ def test_empty_detection_chunks_are_completed_not_predicted_again(cv_case):
     assert schemas.read(root/'detections.parquet','detections').is_empty()
     assert ws('empty').get_json('cv:chunk:1')['sample_count']==60
     assert ws('empty').get_json('cv:chunk:2')['sample_count']==5
+    # Задание разрешает 10 кадров/с, видео — 1 кадр/с: обработка и проверки идут на частоте видео
+    assert json.loads((root/'meta.json').read_text())['target_fps']==1.0
     before=Predictor.calls;run_cv(job,video,ws('empty'),models=models)
     assert Predictor.calls==before
 
