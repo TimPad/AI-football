@@ -34,7 +34,8 @@ function MatchContent({id}:{id:string}){
  const snapshotParam=isUuid(params.get('snapshot_id'))?params.get('snapshot_id'):null;
  const playerId=isUuid(params.get('player_id'))?params.get('player_id'):null;
  const origin=(ORIGINS as string[]).includes(params.get('origin')??'')?params.get('origin') as PlayerOrigin:'protocol';
- const group=(STAT_GROUPS.find(g=>g.id===params.get('group'))?.id??'shots') as StatGroup;
+ // Без выбора в URL группа определяется доступными источниками внутри отчёта.
+ const group=(STAT_GROUPS.find(g=>g.id===params.get('group'))?.id??null) as StatGroup|null;
  const period=/^(all|[1-9][0-9]?)$/.test(params.get('period')??'')?params.get('period')!:'all';
  // Командная сводка действий зависит от периода только во вкладке «Статистика»; обзор — всегда весь матч.
  const actionsPeriod=tab==='stats'?period:'all';

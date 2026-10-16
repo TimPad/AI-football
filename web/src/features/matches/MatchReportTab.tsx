@@ -29,7 +29,7 @@ async function load<T>(read:()=>Promise<T|null>):Promise<Resource<T>>{
 export function MatchReportTab({match:m,tournament,analytics}:{match:Match;tournament:Tournament|null;analytics:boolean}){
  const [sources,setSources]=useState<Sources>({protocol:{status:'loading'},cv:{status:'loading'},ratings:{status:'loading'},actions:{status:'loading'}});
  const [publicId,setPublicId]=useState<string|null>(null);const [tick,setTick]=useState(0);
- const [section,setSection]=useState('overview');const [group,setGroup]=useState<StatGroup>('shots');
+ const [section,setSection]=useState('overview');const [group,setGroup]=useState<StatGroup|null>(null);
  const [selection,setSelection]=useState<PlayerSelection|null>(null);const [period,setPeriod]=useState('all');
  const actionsPeriod=section==='stats'?period:'all';
  useEffect(()=>{

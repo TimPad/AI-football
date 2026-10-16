@@ -118,6 +118,13 @@ describe('public match page',()=>{
   await waitFor(()=>expect(paths.length).toBeGreaterThan(before));
   expect(paths.some(p=>p.includes('understanding'))).toBe(false);
  });
+ it('opens player movement by default when there are CV metrics but no published ratings',async()=>{
+  stub(path=>path.includes('/ratings')?{status:404,body:{error:{code:'not_found',message:'Нет'}}}:standard(path));
+  show(`/watch/matches/${A}?tab=stats`);
+  const table=await screen.findByRole('table',{name:'Показатели игроков'});
+  expect(within(table).getByText('Дистанция, м')).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Перемещения'})).toHaveAttribute('aria-pressed','true');
+ });
  it('does not render a late response of the previous match',async()=>{
   let release!:()=>void;const late=new Promise<void>(r=>{release=r});
   stub(path=>{
