@@ -105,3 +105,12 @@ def test_package_with_ball_is_contract_3(venue, tmp_path):
     assert result.manifest['contract_version'] == '3' and result.manifest['processor']['ball_model'] == 'ball/best.pt'
     assert result.events['kinds'] == ['pass'] and result.events['events'] == []
     assert result.understanding is None
+
+
+def test_ball_model_uses_measured_confidence_and_margin(venue):
+    from dataclasses import replace
+    from aifootball.processor.job import ball_settings
+    tuned = ball_settings(replace(venue, conf_ball=0.1, ball_margin_px=0), 2592)
+    assert tuned.conf_ball == 0.25 and tuned.ball_margin_px == 80
+    # Заданные в установке значения не перекрываются
+    assert ball_settings(replace(venue, conf_ball=0.4, ball_margin_px=30), 2592).ball_margin_px == 30

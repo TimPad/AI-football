@@ -27,7 +27,7 @@ def _write_detections(data,path):
 def run_cv(job_path:Path,video:Path,workspace:Workspace,*,models:Path,ball_model:str|None=None)->Path:
     from aifootball.perception.detect import detect_batches,pick_device
     from aifootball.perception.frames import video_fps
-    from aifootball.processor.job import EVENTS_MIN_FPS,ball_model_path
+    from aifootball.processor.job import EVENTS_MIN_FPS,ball_model_path,ball_settings
     from aifootball import cli
     job=read_job(job_path);source=source_for_job(job,video)
     with workspace.exclusive():
@@ -71,8 +71,9 @@ def run_cv(job_path:Path,video:Path,workspace:Workspace,*,models:Path,ball_model
             ball_detector=None
             if ball_weights:
                 from aifootball.perception.ball_detect import BallDetector
-                ball_detector=BallDetector(ball_weights,venue.require_polygon(),(source['height'],source['width']),
-                                           venue.ball_tile,venue.ball_margin_px,venue.conf_ball,pick_device())
+                ball=ball_settings(venue,source['width'])
+                ball_detector=BallDetector(ball_weights,ball.require_polygon(),(source['height'],source['width']),
+                                           ball.ball_tile,ball.ball_margin_px,ball.conf_ball,pick_device())
             for batch in detect_batches(Path(video),venue,weights,start_ms=start*CHUNK_MS,ball_detector=ball_detector):
                 for frame_id,ts in zip(batch.frame_ids,batch.timestamps):
                     index=min(count-1,int(ts*1000//CHUNK_MS))

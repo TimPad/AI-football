@@ -15,6 +15,19 @@ from aifootball.analytics.exchange import (canonical, read_archive, load_json, e
 EVENTS_MIN_FPS = 15
 # Мяч найден реже — модель мяча не подходит этому залу или записи, события не выпускаются.
 EVENTS_MIN_BALL_SHARE = 0.3
+# Своя модель мяча откалибрована на пороге 0.25 (эталон Ярославля: 87% мячей, 93% детекций верные);
+# порог задания 0.1 рассчитан на общую модель COCO.
+BALL_MODEL_CONF = 0.25
+# Запас за контуром поля, доля ширины кадра: ауты и игра у борта остаются, запасные мячи у скамейки — нет
+# (Ярославль: 80 px при ширине 2592, запасные мячи в 190–215 px).
+BALL_MARGIN_FRAC = 80 / 2592
+
+
+def ball_settings(venue, frame_width):
+    """Установка для своей модели мяча: замеренные порог и запас, если задание их не задаёт."""
+    from dataclasses import replace
+    return replace(venue, conf_ball=max(venue.conf_ball, BALL_MODEL_CONF),
+                   ball_margin_px=venue.ball_margin_px or round(BALL_MARGIN_FRAC * frame_width))
 
 
 @dataclass(frozen=True)
@@ -120,6 +133,8 @@ def ball_events(artifacts, venue, state, spans, track_ids, models=None):
     if (meta.get('target_fps') or 0) < EVENTS_MIN_FPS:
         return None, f'Передачи не рассчитаны: нужна обработка не реже {EVENTS_MIN_FPS} кадров/с'
     detections = schemas.read(det_path, 'detections')
+    venue = ball_settings(venue, venue.frame_width or int(meta.get('frame_width') or 0))
+    detections = detections.filter((pl.col('cls') != 'ball') | (pl.col('conf') >= venue.conf_ball))
     ball = in_period(process_ball_trajectory(detections, venue), spans)
     frames = in_period(detections.select('frame_id', 'ts').unique('frame_id'), spans).height
     share = ball.filter(~pl.col('interpolated')).height / frames if frames else 0.0
