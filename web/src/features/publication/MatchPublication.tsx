@@ -104,7 +104,7 @@ function PerformanceRow({match,actorId,tick,onChanged}:{match:Match;actorId:stri
  const actionId=pendingBody?.action_version_id??edit.action??saved.action_version_id??'';
  const approve=pendingBody?.approve_policy??edit.approve??saved.policy_approved;
  const block=performanceBlock(match,part,actions,saved);
- return <Row icon={<Users/>} title="Источники оценок игроков" description="Какие подтверждённые версии участия и действий может использовать публичный рейтинг." block={block}>
+ return <Row icon={<Users/>} title="Источники оценок и статистики" description="Подтверждённые версии участия и действий для публичного рейтинга и командной статистики матча на сайте (удары, передачи, единоборства)." block={block}>
   <label className="field"><span>Участие</span><select aria-label="Публикуемая версия участия" disabled={command.locked} value={partId} onChange={e=>setEdit({...edit,part:e.target.value})}><option value="">Не выбрано</option>{part.versions.filter(v=>v.status==='confirmed').map(v=><option key={v.id} value={v.id}>Участие №{v.revision}</option>)}</select></label>
   <label className="field"><span>Действия</span><select aria-label="Публикуемая версия действий" disabled={command.locked} value={actionId} onChange={e=>setEdit({...edit,action:e.target.value})}><option value="">Не выбрано</option>{actions.versions.filter(v=>v.status==='confirmed').map(v=><option key={v.id} value={v.id}>Действия №{v.revision}</option>)}</select></label>
   <label className="check"><input type="checkbox" disabled={command.locked} checked={approve} onChange={e=>setEdit({...edit,approve:e.target.checked})}/>Разрешить методику для публичного рейтинга</label>

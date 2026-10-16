@@ -1,11 +1,11 @@
 import {useEffect,useState,type ReactNode} from 'react';
 import {Link,useParams} from 'react-router-dom';
-import {ArrowLeft} from 'lucide-react';
+import {ArrowLeft,History} from 'lucide-react';
 import {api} from '../../api/client';
 import type {Match,Tournament} from '../../api/domain';
 import {statuses} from '../../api/domain';
 import {Loading,useLoad} from '../../components/ui';
-import {SectionNavigation} from '../../components/match/SectionNavigation';
+import {SectionNavigation,type SectionItem} from '../../components/match/SectionNavigation';
 import {useAuth} from '../auth/Auth';
 import {isUuid,readMatchTab} from '../navigation/query';
 import {TournamentRail,useCabinetRail} from '../navigation/rail';
@@ -23,9 +23,11 @@ import {MatchReportTab} from './MatchReportTab';
 import {dateTime} from './timezone';
 import './workspace.css';
 
-const TASKS=[{id:'overview',label:'Обзор'},{id:'lineup',label:'Состав'},{id:'protocol',label:'Протокол'},{id:'review',label:'Проверка'},
- {id:'participation',label:'Участие'},{id:'actions',label:'Действия'},{id:'report',label:'Отчёт'},{id:'publication',label:'Публикация'},
- {id:'info',label:'Сведения'},{id:'history',label:'История'}];
+// Порядок групп повторяет ход работы: подготовка → протокол → видеоанализ → итог.
+const TASKS:SectionItem[]=[{id:'overview',label:'Обзор'},{id:'info',label:'Сведения',group:'Подготовка'},{id:'lineup',label:'Состав',group:'Подготовка'},
+ {id:'protocol',label:'Протокол',group:'Матч'},{id:'review',label:'Проверка',group:'Видеоанализ'},
+ {id:'participation',label:'Участие',group:'Видеоанализ'},{id:'actions',label:'Действия',group:'Видеоанализ'},
+ {id:'report',label:'Отчёт',group:'Итог'},{id:'publication',label:'Публикация',group:'Итог'}];
 const ANALYTICS_ONLY=new Set(['participation','actions']);
 // Редактирующие задачи делят один экземпляр очереди протокола.
 const EDITING=new Set(['protocol','lineup','info','history']);
@@ -51,13 +53,18 @@ export function MatchWorkspace({matchId}:{matchId:string}){
  const m=match.data;
  if(!m)return <Loading error={match.error} retry={match.reload}/>;
  const tz=tournament.data?.timezone??'Europe/Moscow';
- const items=TASKS.filter(t=>analytics||!ANALYTICS_ONLY.has(t.id));
+ const state:Record<string,SectionItem['state']>={info:m.hall_id?undefined:'attention',lineup:m.lineup.length?undefined:'attention',
+  protocol:m.protocol.draft?(m.status==='ended'?'attention':undefined):'done',publication:m.published_version_id?'done':undefined};
+ const items=TASKS.filter(t=>analytics||!ANALYTICS_ONLY.has(t.id)).map(t=>({...t,state:state[t.id]}));
  return <div className="match-workspace">
   <header className="cabinet-match-head">
    <Link className="icon-button back" to={`/tournaments/${m.tournament_id}?tab=matches`} aria-label="К матчам турнира"><ArrowLeft/></Link>
    <div className="title"><h1>{m.home.team.name} — {m.away.team.name} <span className={`chip status-chip ${m.status}`}>{statuses[m.status]}</span> <span className="chip private">Кабинет</span></h1>
     <p className="muted num">{dateTime(m.scheduled_at,tz)} · {m.hall_snapshot?.name||m.venue_label||'Место не указано'}</p></div>
-   <div className="cabinet-score num" aria-label="Текущий счёт протокола в кабинете">{m.projection.effective_score.home??'—'} : {m.projection.effective_score.away??'—'}</div>
+   <div className="cabinet-head-side">
+    <div className="cabinet-score num" aria-label="Текущий счёт протокола в кабинете">{m.projection.effective_score.home??'—'} : {m.projection.effective_score.away??'—'}</div>
+    <a className="history-link" href="?tab=history" aria-current={tab==='history'?'page':undefined} onClick={e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0)return;e.preventDefault();update({tab:'history'})}}><History aria-hidden="true"/>История изменений</a>
+   </div>
   </header>
   <SectionNavigation label="Задачи матча" items={items} selected={tab} onSelect={value=>update({tab:value})}
    href={value=>`?${new URLSearchParams({tab:value})}`}/>

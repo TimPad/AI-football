@@ -3,6 +3,7 @@ import {useState,type ReactNode} from 'react';
 import {Link} from 'react-router-dom';
 import type {PublicMatch} from '../../api/domain';
 import {statuses} from '../../api/domain';
+import {CircleDot} from 'lucide-react';
 import {dateTime} from '../../features/matches/timezone';
 
 // Только публичный логотип; при ошибке или отсутствии — инициал, а не приватный URL.
@@ -13,8 +14,10 @@ export function TeamCrest({name,logoId,side,size='md'}:{name:string;logoId?:stri
   :name.trim().charAt(0).toUpperCase()||'?'}</span>;
 }
 
-export function MatchHeader({match:m,resultNote,tournamentHref,children}:{match:PublicMatch;resultNote?:string|null;
- tournamentHref?:string;children?:ReactNode}){
+export type HeaderScorer={key:string;name:string;minute:string;note:string|null};
+
+export function MatchHeader({match:m,resultNote,tournamentHref,scorers,children}:{match:PublicMatch;resultNote?:string|null;
+ tournamentHref?:string;scorers?:{home:HeaderScorer[];away:HeaderScorer[]}|null;children?:ReactNode}){
  const score=m.score.home==null||m.score.away==null?null:`${m.score.home} : ${m.score.away}`;
  return <header className="match-header">
   <nav className="match-crumbs" aria-label="Путь"><Link to={tournamentHref??`/watch/tournaments/${m.tournament.id}`}>{m.tournament.name}</Link><span aria-hidden="true">/</span><span>Матчи</span></nav>
@@ -25,6 +28,11 @@ export function MatchHeader({match:m,resultNote,tournamentHref,children}:{match:
   </div>
   <p className="match-meta"><span className={`match-status ${m.status}`}>{statuses[m.status]}</span>{resultNote&&<span className="match-note">{resultNote}</span>}</p>
   <p className="match-meta muted">{dateTime(m.scheduled_at,m.tournament.timezone)} · {m.hall?.name||m.venue_label||'Площадка не указана'}</p>
+  {scorers&&(scorers.home.length>0||scorers.away.length>0)&&<div className="match-scorers" aria-label="Авторы голов">
+   <ul className="home">{scorers.home.map(s=><li key={s.key}>{s.name}{s.note&&<small> ({s.note})</small>} <span className="num">{s.minute}</span></li>)}</ul>
+   <CircleDot aria-hidden="true"/>
+   <ul className="away">{scorers.away.map(s=><li key={s.key}>{s.name}{s.note&&<small> ({s.note})</small>} <span className="num">{s.minute}</span></li>)}</ul>
+  </div>}
   {children}
  </header>;
 }

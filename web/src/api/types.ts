@@ -850,6 +850,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{mid}/action-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Match Action Stats */
+        get: operations["match_action_stats_api_v1_matches__mid__action_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/matches/{mid}/action-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Match Action Stats */
+        get: operations["public_match_action_stats_api_v1_public_matches__mid__action_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tid}/matches": {
         parameters: {
             query?: never;
@@ -2838,6 +2872,8 @@ export interface components {
             clock: components["schemas"]["ClockState"];
             /** Published Version Id */
             published_version_id: string | null;
+            /** Published Analysis Run Id */
+            published_analysis_run_id?: string | null;
             /** Lineup */
             lineup: components["schemas"]["LineupView"][];
             projection: components["schemas"]["Projection"];
@@ -3431,6 +3467,13 @@ export interface components {
              * @enum {string}
              */
             kind: "period_end" | "period_start";
+        };
+        /** PitchSize */
+        PitchSize: {
+            /** Length M */
+            length_m: number;
+            /** Width M */
+            width_m: number;
         };
         /** PlayerCreate */
         PlayerCreate: {
@@ -5205,6 +5248,76 @@ export interface components {
             /** Away */
             away: number | null;
         };
+        /** ShotPoint */
+        ShotPoint: {
+            /** Id */
+            id: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Player Id */
+            player_id: string | null;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** Goal */
+            goal: boolean;
+            /** On Target */
+            on_target: boolean;
+            /** Blocked */
+            blocked: boolean;
+            /** Outcome */
+            outcome: string;
+            /** Period */
+            period: string | null;
+            /** Start Ms */
+            start_ms: number | null;
+        };
+        /** StatValue */
+        StatValue: {
+            /** Value */
+            value: number | null;
+            /** Numerator */
+            numerator?: number | null;
+            /** Denominator */
+            denominator?: number | null;
+            /**
+             * Unknown
+             * @default 0
+             */
+            unknown?: number;
+        };
+        /** StatsPeriod */
+        StatsPeriod: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /** StatsSource */
+        StatsSource: {
+            /**
+             * Action Version Id
+             * Format: uuid
+             */
+            action_version_id: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "review" | "confirmed";
+            /** Published */
+            published: boolean;
+            /** Clock Basis */
+            clock_basis: ("game" | "video") | null;
+            /** Analysis Scope */
+            analysis_scope: string;
+        };
         /** StatusUpdate */
         StatusUpdate: {
             /**
@@ -5349,6 +5462,25 @@ export interface components {
             /** Player In Id */
             player_in_id: string | null;
         };
+        /** TeamActionStats */
+        TeamActionStats: {
+            source: components["schemas"]["StatsSource"];
+            /** Periods */
+            periods: components["schemas"]["StatsPeriod"][];
+            /** Period */
+            period: string;
+            /** Untimed */
+            untimed: number;
+            /** Coverage */
+            coverage: {
+                [key: string]: "complete" | "partial" | "unknown";
+            };
+            /** Rows */
+            rows: components["schemas"]["TeamStatRow"][];
+            /** Shots */
+            shots: components["schemas"]["ShotPoint"][];
+            pitch: components["schemas"]["PitchSize"] | null;
+        };
         /** TeamCreate */
         TeamCreate: {
             /** Name */
@@ -5468,6 +5600,32 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** TeamStatRow */
+        TeamStatRow: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "shots" | "passes" | "defense" | "goalkeeping";
+            /** Category */
+            category: string;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "count" | "percent";
+            /**
+             * Coverage
+             * @enum {string}
+             */
+            coverage: "complete" | "partial" | "unknown";
+            home: components["schemas"]["StatValue"];
+            away: components["schemas"]["StatValue"];
         };
         /** TeamTotals */
         "TeamTotals-Input": {
@@ -7904,6 +8062,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchRatingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_action_stats_api_v1_matches__mid__action_stats_get: {
+        parameters: {
+            query?: {
+                period?: string;
+            };
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamActionStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_match_action_stats_api_v1_public_matches__mid__action_stats_get: {
+        parameters: {
+            query?: {
+                period?: string;
+            };
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamActionStats"];
                 };
             };
             /** @description Validation Error */

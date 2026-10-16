@@ -47,5 +47,8 @@ it('shows track and team period measurements before identity confirmation',async
  const overview={match_id:'match',analysis_revision:0,active_run_id:null,published_run_id:null,jobs:[],runs:[run]};
  vi.mocked(api).mockImplementation(async path=>String(path).endsWith('/runs/run')?preview:overview);
  render(<MemoryRouter><VideoAnalysisTab matchId="match" actorId="actor" canManage/></MemoryRouter>);
- expect(await screen.findByRole('heading',{name:'Командные показатели по периодам'})).toBeVisible();expect(screen.getByRole('heading',{name:'Показатели фрагментов до сопоставления'})).toBeVisible();expect(screen.getByText('Нет наблюдений команды')).toBeVisible();
+ // Предварительные показатели свёрнуты, чтобы не отодвигать сопоставление треков.
+ const summary=await screen.findByText('Предварительные показатели записи');expect(screen.getByRole('heading',{name:'Командные показатели по периодам'})).not.toBeVisible();
+ fireEvent.click(summary);
+ expect(screen.getByRole('heading',{name:'Командные показатели по периодам'})).toBeVisible();expect(screen.getByRole('heading',{name:'Показатели фрагментов до сопоставления'})).toBeVisible();expect(screen.getByText('Нет наблюдений команды')).toBeVisible();
 });

@@ -326,3 +326,65 @@ class MatchRatingsView(BaseModel):
     overall:list[RatingMatchView]=Field(default_factory=list)
     snapshot_id:UUID|None
     items:list[RatingMatchView]
+
+
+class StatValue(BaseModel):
+    value:float|None
+    numerator:int|None=None
+    denominator:int|None=None
+    unknown:int=0
+
+
+class TeamStatRow(BaseModel):
+    key:str
+    label:str
+    group:Literal['shots','passes','defense','goalkeeping']
+    category:str
+    unit:Literal['count','percent']
+    coverage:Literal['complete','partial','unknown']
+    home:StatValue
+    away:StatValue
+
+
+class ShotPoint(BaseModel):
+    id:str
+    side:Literal['home','away']
+    player_id:UUID|None
+    x:float
+    y:float
+    goal:bool
+    on_target:bool
+    blocked:bool
+    outcome:str
+    period:str|None
+    start_ms:int|None
+
+
+class StatsSource(BaseModel):
+    action_version_id:UUID
+    revision:int
+    status:Literal['review','confirmed']
+    published:bool
+    clock_basis:Literal['game','video']|None
+    analysis_scope:str
+
+
+class StatsPeriod(BaseModel):
+    key:str
+    label:str
+
+
+class PitchSize(BaseModel):
+    length_m:float
+    width_m:float
+
+
+class TeamActionStats(BaseModel):
+    source:StatsSource
+    periods:list[StatsPeriod]
+    period:str
+    untimed:int
+    coverage:dict[str,Literal['complete','partial','unknown']]
+    rows:list[TeamStatRow]
+    shots:list[ShotPoint]
+    pitch:PitchSize|None

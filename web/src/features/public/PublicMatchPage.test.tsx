@@ -12,10 +12,12 @@ const match=(id:string,name='Север',extra={})=>({id,tournament:{id:'t1',nam
  home_team_id:HOME,away_team_id:AWAY,home_logo_id:'logo-h',away_logo_id:null,scheduled_at:'2026-10-20T15:00:00Z',venue_label:'Зал 1',hall:null,
  status:'ended',schedule_slot_s:5400,broadcast_url:null,broadcast_embed_url:null,public_protocol_id:'pp1',score:{home:3,away:2},...extra});
 const protocol={number:2,confirmed_at:'2026-10-20T18:00:00Z',published_at:'2026-10-20T18:10:00Z',home_name:'Север',away_name:'Юг',
- scheduled_at:'2026-10-20T15:00:00Z',venue_label:'Зал 1',regulation:{total_s:2400,rules:{shootout:{enabled:false}}},
+ scheduled_at:'2026-10-20T15:00:00Z',venue_label:'Зал 1',regulation:{total_s:2400,rules:{shootout:{enabled:false},periods_s:[1200,1200]}},
  lineup:[{player_id:P1,display_name:'Игрок 01',shirt_number:'7',side:'home'}],
- protocol:{events:[{id:'e1',kind:'goal',side:'home',period:1,elapsed_ms:60000,player_id:P1}],result_type:'played',technical_reason:null,public_notes:'',shootout_totals:{home:null,away:null}},
- projection:{event_score:{home:1,away:0},shootout_score:{home:0,away:0},incomplete_sections:[],effective_score:{home:3,away:2}}};
+ protocol:{events:[{id:'e1',kind:'goal',side:'home',period:1,elapsed_ms:60000,player_id:P1}],result_type:'played',technical_reason:null,public_notes:'',shootout_totals:{home:null,away:null},
+  completeness:{goals:'complete',assists:'complete',fouls:'complete',cards:'complete',lineup:'complete',time:'complete'}},
+ projection:{event_score:{home:1,away:0},shootout_score:{home:0,away:0},incomplete_sections:[],effective_score:{home:3,away:2},
+  effective_totals:{home:{fouls:2,yellow_cards:0,dismissals:0},away:{fouls:4,yellow_cards:1,dismissals:0}},period_event_scores:{'1':{home:1,away:0}},accumulated_fouls:{home:{},away:{}}}};
 const fact=(value:number|null,n:number|null,d:number|null,unit:string,reason:string|null=null)=>({value,numerator:n,denominator:d,unit,completeness:'complete',reason});
 const rating={player_id:P1,display_name:'Игрок 01',role:'ala',team_id:HOME,team_name:'Север',match_id:A,scheduled_at:'2026-10-20T15:00:00Z',
  display_rating:7.2,score:68,coverage:1,eligible_play_minutes:12,played_minutes:12,appeared:true,components:{},contributions:{},feature_scores:{},
@@ -67,7 +69,8 @@ describe('public match page',()=>{
   show(`/watch/matches/${A}?tab=events`);
   expect(await screen.findByText('Протокол ещё не опубликован.')).toBeInTheDocument();
   expect(screen.getByLabelText('Результат не опубликован')).toHaveTextContent('— : —');
-  expect(paths).toEqual([`/api/v1/public/matches/${A}`]);
+  // Кроме шапки — только соседние матчи турнира для боковой колонки.
+  expect(paths.filter(p=>!p.startsWith('/api/v1/public/tournaments/t1/matches?day='))).toEqual([`/api/v1/public/matches/${A}`]);
  });
  it('keeps the edition with a rating selection and does not attach current CV as its map',async()=>{
   stub(standard);const user=userEvent.setup();
@@ -95,7 +98,7 @@ describe('public match page',()=>{
   const table=await screen.findByRole('table',{name:'Показатели игроков'});
   expect(within(table).getByText('Не было наблюдаемых возможностей')).toBeInTheDocument();
   expect(within(table).queryByText(/0%/)).toBeNull();
-  expect(screen.getByRole('option',{name:'Обработанный фрагмент'})).toBeInTheDocument();
+  expect(screen.getByText('По обработанному фрагменту записи')).toBeInTheDocument();
   // Максимум хозяев 8 с, гостей 12 с: обе карты на одной шкале 0–12.
   expect(screen.getAllByText(/0 — 12 с · общая шкала обеих команд/)).toHaveLength(2);
  });
@@ -108,7 +111,7 @@ describe('public match page',()=>{
   const user=userEvent.setup();
   show(`/watch/matches/${A}`);
   expect(await screen.findByText('Сбой видеоанализа')).toBeInTheDocument();
-  expect(screen.getByText(/Подтверждённый протокол · версия 2/)).toBeInTheDocument();
+  expect(screen.getByRole('list',{name:'Лента матча'})).toHaveTextContent('Игрок 01');
   expect(screen.getByLabelText('Счёт 3 : 2')).toBeInTheDocument();
   const before=paths.length;
   await user.click(screen.getByRole('button',{name:'Повторить'}));

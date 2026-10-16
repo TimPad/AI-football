@@ -56,6 +56,7 @@ def test_public_team_missing_data_retains_quality(admin_client,analytics_match):
     def missing(m,r,t,c):
         r['pitch']['private_path']='Приватная папка обработчика'
         r['periods'][0]['teams']={'B':{'distance_m':None,'observed_s':None,'hsr_m':None,'sprints':None,'heatmap_s':None,'low_data':True,'metric_notes':{'distance_m':'Приватная служебная заметка'}}}
+        r['periods'][0]['thirds']={'A':[30,60,10],'B':['Приватная',1,2],'C':[1,2,3]}
     run=import_run(admin_client,analytics_match,missing)
     run=save_assignments(admin_client,analytics_match,run).json()
     run=command(admin_client,analytics_match,run,'confirm').json()
@@ -65,3 +66,4 @@ def test_public_team_missing_data_retains_quality(admin_client,analytics_match):
     assert team['distance_m'] is None and team['low_data'] is True
     assert team['metric_notes']['distance_m']=='Нет наблюдений команды'
     assert 'Приватная' not in str(public)
+    assert public['periods'][0]['thirds']=={'A':[30,60,10],'B':None}

@@ -1,8 +1,8 @@
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .small{font-size:12px;line-height:18px}
 .match-report{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
-.match-report.with-inspector{grid-template-columns:minmax(0,1fr) minmax(360px,440px)}
-.match-report .player-inspector{position:sticky;top:16px}
+.match-report.with-aside{grid-template-columns:minmax(0,1fr) minmax(300px,360px)}
+.report-aside{position:sticky;top:16px;display:grid;gap:16px;min-width:0}.report-aside .player-inspector{width:100%}
 .report-main{display:grid;gap:16px;min-width:0}
 .report-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;min-width:0}
 .report-block>h2,.block-head{margin-bottom:12px}
@@ -54,3 +54,65 @@
 .lineups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 @media(max-width:1023px){.match-report.with-inspector{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:760px){.team-maps,.roster-columns,.lineups{grid-template-columns:1fr}.report-block{padding:16px}}
+/* FotMob-подобный отчёт: карточки групп в две колонки, лидер на плашке цвета команды. */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{min-height:32px;padding:4px 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-weight:560;font-size:13px;color:var(--text)}
+.chips button[aria-pressed=true]{background:var(--text);border-color:var(--text);color:var(--surface)}
+.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.stat-card{padding:16px 20px;border-bottom:1px solid var(--border);min-width:0}
+.stat-card:nth-child(odd):not(.wide){border-right:1px solid var(--border)}
+.stat-card.wide{grid-column:1/-1}
+.stat-card h3{margin:0 0 8px;text-align:center;font-size:15px;font-weight:620}
+.stat-card-foot{margin-top:8px;font-size:12px;color:var(--text-muted);text-align:center}
+.stat-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) minmax(0,1fr);align-items:center;gap:8px;padding:7px 0;font-size:14px}
+.stat-label{text-align:center;color:var(--text);line-height:18px}
+.stat-value{display:flex;flex-direction:column;gap:1px;font-variant-numeric:tabular-nums;font-weight:600;min-width:0}
+.stat-value.home{align-items:flex-start}.stat-value.away{align-items:flex-end}
+.stat-value small{font-weight:400;font-size:11px;color:var(--text-muted);line-height:14px}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;color:#fff;line-height:20px}
+.pill.home{background:var(--home)}.pill.away{background:var(--away)}
+.partial-mark{color:var(--text-muted)}
+.stat-list .stat-row{border-bottom:1px solid var(--border)}.stat-list .stat-row:last-child{border-bottom:0}
+.stats-note{margin:12px 0 0}
+.zones{display:grid;gap:8px;margin-top:12px}
+.zone-team{display:grid;grid-template-columns:120px minmax(0,1fr);align-items:center;gap:8px}
+.zone-name{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:560;min-width:0;overflow-wrap:anywhere}
+.zone-bars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.zone{display:block;text-align:center;font-size:12px;font-weight:600;color:#fff;border-radius:4px;padding:4px 0}
+.zone.home{background:var(--home)}.zone.away{background:var(--away)}
+.zone-axis{display:grid;grid-template-columns:120px repeat(3,minmax(0,1fr));gap:4px;font-size:11px;color:var(--text-muted);text-align:center}
+.zone-axis span:first-child{grid-column:2}
+/* Лента событий: хозяева слева, гости справа, минута по центру. */
+.timeline{list-style:none;margin:0;padding:0}
+.ev-row{display:grid;grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr);align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.ev-side.home{display:flex;justify-content:flex-end;text-align:right}
+.ev-side.home .ev-body{flex-direction:row-reverse}
+.ev-minute{justify-self:center;font-weight:650;font-variant-numeric:tabular-nums;font-size:13px;background:var(--app-bg);border-radius:999px;padding:2px 10px}
+.ev-body{display:flex;align-items:center;gap:10px;min-width:0}
+.ev-body b{display:block;font-size:14px}.ev-body small{display:block;color:var(--text-muted);font-size:12px;overflow-wrap:anywhere}
+.ev-icon{width:18px;height:18px;flex-shrink:0;color:var(--text-muted)}.ev-icon.goal{color:var(--text)}
+.ev-card{display:inline-block;width:12px;height:16px;border-radius:2px;flex-shrink:0}
+.ev-card.yellow{background:#f2c230}.ev-card.red{background:#d9412e}
+.ev-break{text-align:center;font-size:12px;color:var(--text-muted);padding:10px 0;border-bottom:1px solid var(--border);font-weight:560}
+.public-note{margin:12px 0 0}
+.marks{display:inline-flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px;font-weight:600}
+.mark{display:inline-flex;align-items:center;gap:2px}.mark svg{width:14px;height:14px;color:var(--text)}
+.rating-chip{display:inline-block;min-width:36px;text-align:center;padding:2px 6px;border-radius:6px;font-weight:650;border:0;color:#fff;background:#8a96a3;margin-left:auto}
+.rating-chip.tone-high{background:#1f9d55}.rating-chip.tone-mid{background:#6f7d8a}.rating-chip.tone-low{background:#e07b24}
+.leaders li{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.leaders li:last-child{border-bottom:0}
+/* Боковая колонка гостя. */
+.match-aside{display:grid;gap:16px}
+.aside-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:grid;gap:6px}
+.aside-card h3{display:flex;align-items:center;gap:8px;margin:0 0 4px;font-size:15px}.aside-card h3 svg{width:16px;height:16px}
+.aside-card p{margin:0}
+.day-matches{list-style:none;margin:0;padding:0;display:grid}
+.day-matches li{padding:8px 0;border-bottom:1px solid var(--border)}.day-matches li:last-child{border-bottom:0}
+.day-matches a{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;font-size:13px;color:var(--text)}
+.day-matches a span:first-child{text-align:right}.day-matches small{display:block;text-align:center;font-size:11px}
+@media(max-width:1024px){.match-report.with-aside{grid-template-columns:minmax(0,1fr)}.report-aside{position:static}}
+@media(max-width:760px){.stat-grid{grid-template-columns:minmax(0,1fr)}.stat-card:nth-child(odd):not(.wide){border-right:0}
+ .zone-team,.zone-axis{grid-template-columns:90px minmax(0,1fr)}.zone-axis{grid-template-columns:90px repeat(3,minmax(0,1fr))}}
+.stat-card:last-child:nth-child(odd){grid-column:1/-1;border-right:0}
+.pill{white-space:nowrap}
+@media(max-width:760px){.stat-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);font-size:13px}.pill{padding:2px 7px}}

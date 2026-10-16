@@ -13,3 +13,17 @@
 .pitch-legend-ramp{width:72px;height:10px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--pitch-tone));outline:1px solid var(--border,#e2e7ec)}
 .pitch-empty{min-height:120px;place-items:center;border:1px dashed var(--border,#e2e7ec);border-radius:8px;color:var(--text-muted,#697487)}
 .pitch-empty p{margin:0}
+.shot circle{stroke-width:.12;cursor:pointer}
+.shot.home circle{fill:var(--home);stroke:var(--home)}
+.shot.away circle{fill:var(--away);stroke:var(--away)}
+.shot.off-target circle{fill:transparent;stroke-width:.16}
+.shot.goal circle{stroke:#fff}
+.shot.goal .goal-core{fill:#fff;stroke:none}
+.shot.selected circle:first-child{stroke:#fff;stroke-width:.22}
+.shot:focus-visible{outline:none}.shot:focus-visible circle:first-child{stroke:var(--focus,#3479ce);stroke-width:.3}
+.shot-detail{display:inline-flex;align-items:center;gap:8px;color:var(--text,#19221f);font-weight:560}
+.shot-legend{display:inline-flex;flex-wrap:wrap;gap:12px}
+.shot-legend span{display:inline-flex;align-items:center;gap:6px}
+.shot-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid var(--text-muted,#697487)}
+.shot-legend .dot.filled{background:var(--text-muted,#697487)}
+.shot-legend .dot.goal{background:#fff;box-shadow:0 0 0 2px var(--text-muted,#697487) inset}

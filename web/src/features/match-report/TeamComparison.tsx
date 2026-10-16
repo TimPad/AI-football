@@ -18,7 +18,7 @@ export function teamsBySide(cv:PublicAnalysis,periodKey:string){
  return {period,...out};
 }
 
-export function TeamComparison({cv,periodKey,homeName,awayName,maps=true}:{cv:PublicAnalysis;periodKey:string;homeName:string;awayName:string;maps?:boolean}){
+export function TeamComparison({cv,periodKey,homeName,awayName,maps=true,rows=true}:{cv:PublicAnalysis;periodKey:string;homeName:string;awayName:string;maps?:boolean;rows?:boolean}){
  const {period,home,away}=teamsBySide(cv,periodKey);
  if(!period)return <p className="muted">Период недоступен.</p>;
  const max=sharedHeatmapMax([home?.heatmap_s??null,away?.heatmap_s??null]);
@@ -28,13 +28,13 @@ export function TeamComparison({cv,periodKey,homeName,awayName,maps=true}:{cv:Pu
    <div key={side}><h3 className="team-title"><span className={`side-dot ${side}`}/>{name}</h3>
     <PitchMap cells={values?.heatmap_s??null} lengthM={pitch.length_m} widthM={pitch.width_m} orientation={pitch.orientation??'camera'}
      maxSeconds={max} scaleLabel="общая шкала обеих команд, суммарное время игроков" label={name} tone={side}/></div>)}</div>}
-  <table className="compare-table"><caption className="sr-only">Командные показатели периода</caption><tbody>{ROWS.map(row=>{
+  {rows&&<table className="compare-table"><caption className="sr-only">Командные показатели периода</caption><tbody>{ROWS.map(row=>{
    const h=home?.[row.key] as number|null|undefined,a=away?.[row.key] as number|null|undefined;
    const top=Math.max(h??0,a??0);
    return <tr key={row.key}><td className="num home">{h==null?'—':`${num(h)} ${row.unit}`}</td>
     <td><span className="bar home"><i style={{width:top&&h!=null?`${100*h/top}%`:0}}/></span></td>
     <th scope="row">{row.label}</th>
     <td><span className="bar away"><i style={{width:top&&a!=null?`${100*a/top}%`:0}}/></span></td>
-    <td className="num away">{a==null?'—':`${num(a)} ${row.unit}`}</td></tr>;})}</tbody></table>
+    <td className="num away">{a==null?'—':`${num(a)} ${row.unit}`}</td></tr>;})}</tbody></table>}
  </div>;
 }

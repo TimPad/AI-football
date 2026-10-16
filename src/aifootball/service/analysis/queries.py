@@ -85,7 +85,10 @@ def get_public_analysis(db, match_id):
             source = p['teams'][side]
             values['low_data'] = bool(source.get('low_data', False))
             values['metric_notes'] = {key: ('Нет наблюдений команды' if not source.get('observed_s') else 'Недостаточно данных') for key, value in values.items() if value is None}
-        periods.append({'key': p['key'], 'name': p['name'], 'duration_s': p['duration_s'], 'teams': teams})
+        # Трети — только три целых процента (своя/средняя/чужая) или None, без служебных полей отчёта.
+        thirds = {side: (list(v) if isinstance(v, list) and len(v) == 3 and all(isinstance(x, int) and 0 <= x <= 100 for x in v) else None)
+                  for side, v in (p.get('thirds') or {}).items() if side in ('A', 'B')}
+        periods.append({'key': p['key'], 'name': p['name'], 'duration_s': p['duration_s'], 'teams': teams, 'thirds': thirds})
     pitch = {key: run.report['pitch'][key] for key in ('length_m','width_m','cell_m')}
     pitch['orientation'] = run.report['pitch'].get('orientation', 'camera')
     return {'match_id': match_id, 'run_id': run.id, 'pitch': pitch, 'teams': job.context['teams'],

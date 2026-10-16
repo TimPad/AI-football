@@ -31,6 +31,7 @@ export type AnalysisAssignment=S['AssignmentInput'];
 export type AnalysisHistory=S['PlayerHistoryView'];
 export type PublicAnalysis=S['PublicAnalysis'];
 export type PublicProtocol=S['PublicProtocol'];
+export type TeamActionStats=S['TeamActionStats'];
 export type MatchRatingsView=S['MatchRatingsView'];
 export type PlayerRating=S['RatingMatchView'];
 export type TournamentRating=S['RatingSummaryView'];
