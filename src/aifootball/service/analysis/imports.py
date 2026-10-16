@@ -42,6 +42,7 @@ def import_result(db, match_id, actor_id, request_id, result, root, created_path
         if created: created_paths.append(created)
         run = AnalysisRun(id=UUID(manifest['run_id']), job_id=job.id, match_id=match_id, created_by=actor_id,
                           content_hash=result.content_hash, storage_key=key, manifest=manifest,
-                          report=result.report, tracks=result.tracks, checks=result.checks, understanding=result.understanding)
+                          report=result.report, tracks=result.tracks, checks=result.checks, understanding=result.understanding,
+                          events=result.events)
         db.add(run); db.flush()
     return remember(db, match_id, actor_id, request_id, hashed, run_view(db, run))

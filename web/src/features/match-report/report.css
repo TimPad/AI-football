@@ -72,6 +72,8 @@
 .pill{display:inline-block;padding:2px 9px;border-radius:999px;color:#fff;line-height:20px}
 .pill.home{background:var(--home)}.pill.away{background:var(--away)}
 .partial-mark{color:var(--text-muted)}
+.auto-mark{display:inline-block;margin-left:6px;padding:0 6px;border:1px solid var(--border);border-radius:999px;font-size:11px;
+ line-height:16px;color:var(--text-muted);vertical-align:1px;cursor:help}
 .stat-list .stat-row{border-bottom:1px solid var(--border)}.stat-list .stat-row:last-child{border-bottom:0}
 .stats-note{margin:12px 0 0}
 .zones{display:grid;gap:8px;margin-top:12px}

@@ -125,3 +125,50 @@ def test_required_display_fields_are_validated_before_import(field):
         target=r['periods'][0] if field=='name' else r['periods'][0]['players'][0]
         target.pop(field)
     with pytest.raises(ExchangeError):validate_result(result_zip(mutate=remove))
+
+
+def events_doc(**change):
+    passed = {'kind': 'pass', 'track_id': 1, 'team': 'A', 'start_s': 10.0, 'end_s': 11.2, 'start_xy': [10.0, 5.0],
+              'end_xy': [18.0, 6.0], 'recipient_track_id': 2, 'success': True, 'confidence': 0.7}
+    missed = {**passed, 'start_s': 30.0, 'end_s': 31.0, 'recipient_track_id': None, 'success': False}
+    doc = {'schema_version': '1', 'ball': {'model': 'ball/best.pt', 'sha256': 'c' * 64, 'frames_with_ball': 0.7},
+           'kinds': ['pass'], 'events': [passed, missed]}
+    for path, value in change.items():
+        *keys, last = path.split('__'); target = doc
+        for key in keys: target = target[int(key)] if key.isdigit() else target[key]
+        target[int(last) if last.isdigit() else last] = value
+    return json.dumps(doc).encode()
+
+
+def result_v3(events=None, version='3'):
+    return result_zip(mutate=lambda m, r, t, c: m.update(contract_version=version),
+                      extras={'events.json': events if events is not None else events_doc()})
+
+
+def test_contract_3_carries_validated_passes():
+    from aifootball.analytics.exchange import validate_result
+    result = validate_result(result_v3())
+    assert result.manifest['contract_version'] == '3' and result.understanding is None
+    assert [e['success'] for e in result.events['events']] == [True, False]
+
+
+@pytest.mark.parametrize('raw', [
+    lambda: result_v3(version='1'),
+    lambda: result_zip(mutate=lambda m, r, t, c: m.update(contract_version='3')),
+    lambda: result_v3(events_doc(events__0__track_id=99)),
+    lambda: result_v3(events_doc(events__0__recipient_track_id=1)),
+    lambda: result_v3(events_doc(events__0__recipient_track_id=None)),
+    lambda: result_v3(events_doc(events__1__success=True)),
+    lambda: result_v3(events_doc(events__0__end_s=9.0)),
+    lambda: result_v3(events_doc(events__0__start_s=500.0)),
+    lambda: result_v3(events_doc(events__0__start_xy=[90.0, 5.0])),
+    lambda: result_v3(events_doc(events__0__kind='shot')),
+    lambda: result_v3(events_doc(kinds=['pass', 'shot'])),
+    lambda: result_v3(events_doc(events__0__extra=1)),
+    lambda: result_v3(events_doc(ball__frames_with_ball=1.5)),
+    lambda: result_v3(events_doc(events__0__team='C')),
+])
+def test_contract_3_rejects_bad_events(raw):
+    from aifootball.analytics.exchange import validate_result, ExchangeError
+    with pytest.raises(ExchangeError):
+        validate_result(raw())

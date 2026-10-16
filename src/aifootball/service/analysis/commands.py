@@ -49,6 +49,7 @@ def mutate(db, match_id, run_id, actor_id, data, kind):
                           content_hash=source.content_hash, storage_key=source.storage_key, manifest=source.manifest,
                           report=source.report, tracks=source.tracks, checks=source.checks, side_map=source.side_map,
                           side_map_verified=source.side_map_verified, understanding=deepcopy(source.understanding),
+                          events=deepcopy(source.events),
                           understanding_reviews=deepcopy(source.understanding_reviews))
         db.add(run); db.flush()
         for assignment in db.scalars(select(AnalysisAssignment).where(AnalysisAssignment.run_id == source.id)):

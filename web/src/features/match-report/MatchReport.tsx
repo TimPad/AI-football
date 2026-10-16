@@ -46,7 +46,8 @@ function Readiness({model}:{model:ReportModel}){
 // Гостю — одна строка происхождения данных без внутренних номеров изданий.
 function SourceLine({model}:{model:ReportModel}){
  const parts=[model.protocol.status==='ready'?'официальный протокол':null,
-  model.actions.status==='ready'?'проверенные действия':null,
+  model.actions.status==='ready'&&model.actions.value.source.kind!=='cv_auto'?'проверенные действия':null,
+  model.actions.status==='ready'&&model.actions.value.source.kind!=='manual'?'передачи по видео (автоматически)':null,
   model.cv.status==='ready'?(model.cv.value.partial?'видеоанализ обработанного фрагмента':'видеоанализ записи'):null,
   model.ratings.status==='ready'?'опубликованные оценки':null].filter(Boolean);
  return parts.length?<p className="muted small source-line">Источники: {parts.join(' · ')}.</p>:null;

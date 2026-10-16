@@ -26,6 +26,7 @@ class AnalysisRun(Entity, Base):
     tracks = Column(JSONB, nullable=False)
     checks = Column(JSONB, nullable=False)
     understanding = deferred(Column(JSONB, nullable=True))
+    events = deferred(Column(JSONB, nullable=True))  # events.json пакета версии 3: передачи по мячу
     understanding_reviews = Column(JSONB, nullable=False, default=dict)
     side_map_verified = Column(Boolean, nullable=False, default=False)
     status = Column(String(20), nullable=False, default='review')

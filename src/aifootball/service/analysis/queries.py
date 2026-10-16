@@ -12,7 +12,8 @@ def job_view(job):
 
 
 def run_summary(run):
-    return {'has_understanding': run.manifest.get('contract_version') == '2', 'id': run.id, 'job_id': run.job_id, 'created_at': run.created_at, 'status': run.status,
+    files = run.manifest.get('files', {})
+    return {'has_understanding': 'understanding.json' in files, 'has_events': 'events.json' in files, 'id': run.id, 'job_id': run.job_id, 'created_at': run.created_at, 'status': run.status,
             'revision': run.revision, 'source_run_id': run.source_run_id,
             'partial': run.checks['partial'], 'passed': run.checks['passed']}
 

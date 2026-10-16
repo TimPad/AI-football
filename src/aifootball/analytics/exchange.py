@@ -12,6 +12,12 @@ import stat
 
 UNITS = {'distance': 'm', 'speed': 'm/s', 'time': 's', 'heatmap': 's'}
 RESULT_JSON = {'manifest.json', 'report.json', 'track-index.json', 'checks.json'}
+# Версии пакета: 1 — метрики; 2 — метрики и понимание эпизодов; 3 — метрики и события по мячу (понимание по желанию).
+RESULT_VERSIONS = ('1', '2', '3')
+# Виды событий, которые обработчик выпускает: точность каждого замерена по ручной разметке (scripts/eval_events.py).
+EVENT_KINDS = ('pass',)
+PASS_FIELDS = {'kind', 'track_id', 'team', 'start_s', 'end_s', 'start_xy', 'end_xy', 'recipient_track_id', 'success', 'confidence'}
+EVENT_PITCH_MARGIN_M = 3.0
 JOB_FILES = {'job.json', 'venue.yaml', 'homography.json', 'pitch_polygon.json', 'calib.json', 'source.json'}
 
 
@@ -28,6 +34,8 @@ class Limits:
     thumb: int = 2 * 1024 * 1024
     evidence: int = 512 * 1024
     understanding_json: int = 8 * 1024 * 1024
+    events_json: int = 8 * 1024 * 1024
+    events: int = 50000
 
 
 @dataclass(frozen=True)
@@ -39,6 +47,7 @@ class ValidatedResult:
     files: dict[str, bytes]
     content_hash: str
     understanding: dict | None = None
+    events: dict | None = None
 
 
 def canonical(value):
@@ -106,13 +115,13 @@ def read_archive(source, limits=Limits(), *, job=False):
             ensure(len(archive.infolist()) <= limits.files, 'Превышено число файлов ZIP')
             for info in archive.infolist():
                 name = info.filename
-                allowed = name in JOB_FILES if job else name in RESULT_JSON or name == 'understanding.json' or bool(re.fullmatch(r'(thumbs|evidence)/[A-Za-z0-9_-]{1,100}\.jpg', name))
+                allowed = name in JOB_FILES if job else name in RESULT_JSON or name in ('understanding.json', 'events.json') or bool(re.fullmatch(r'(thumbs|evidence)/[A-Za-z0-9_-]{1,100}\.jpg', name))
                 ensure(allowed and name not in files and not info.is_dir(), f'Недопустимый файл ZIP: {name[:100]}')
                 ensure(not stat.S_ISLNK(info.external_attr >> 16) and not (info.flag_bits & 1), 'Ссылки/зашифрованные файлы запрещены')
                 if name.startswith('evidence/'):
                     evidence_count += 1
                     ensure(evidence_count <= 500, 'Превышено число доказательств')
-                cap = min(limits.evidence, 512 * 1024) if name.startswith('evidence/') else limits.thumb if name.endswith('.jpg') else min(limits.json, limits.understanding_json, 8 * 1024 * 1024) if name == 'understanding.json' else limits.json
+                cap = min(limits.evidence, 512 * 1024) if name.startswith('evidence/') else limits.thumb if name.endswith('.jpg') else min(limits.json, limits.understanding_json, 8 * 1024 * 1024) if name == 'understanding.json' else min(limits.json, limits.events_json) if name == 'events.json' else limits.json
                 ensure(info.file_size <= cap and total + info.file_size <= limits.unpacked, 'Превышен распакованный размер ZIP')
                 with archive.open(info) as stream:
                     raw = stream.read(min(cap, limits.unpacked - total) + 1)
@@ -123,11 +132,15 @@ def read_archive(source, limits=Limits(), *, job=False):
         raise ExchangeError('Не читается ZIP или нарушена его целостность') from exc
     if not job and 'manifest.json' in files:
         version = load_json(files['manifest.json'], 'manifest.json').get('contract_version')
-        ensure(version in ('1', '2'), 'Неподдерживаемая версия контракта')
+        ensure(version in RESULT_VERSIONS, 'Неподдерживаемая версия контракта')
         if version == '1':
             ensure('understanding.json' not in files and not any(name.startswith('evidence/') for name in files), 'Версия контракта 1 не содержит понимание')
-        else:
+        elif version == '2':
             ensure('understanding.json' in files, 'Версия контракта 2 требует understanding.json')
+        else:
+            ensure('events.json' in files, 'Версия контракта 3 требует events.json')
+            ensure('understanding.json' in files or not any(name.startswith('evidence/') for name in files), 'Доказательства требуют понимание')
+        ensure(version == '3' or 'events.json' not in files, 'События по мячу — только в версии контракта 3')
     return files
 
 
@@ -161,7 +174,7 @@ def validate_result(source, limits=Limits()):
     tracks = load_json(files['track-index.json'], 'track-index.json')
     checks = load_json(files['checks.json'], 'checks.json')
     try:
-        ensure(manifest['contract_version'] in ('1', '2') and report['schema_version'] == '1', 'Неподдерживаемая версия контракта')
+        ensure(manifest['contract_version'] in RESULT_VERSIONS and report['schema_version'] == '1', 'Неподдерживаемая версия контракта')
         for key in ['run_id', 'job_id', 'match_id', 'camera_profile_id']: uuid(manifest[key], key)
         hash_value(manifest['context_hash'], 'context_hash')
         ensure(manifest['units'] == UNITS, 'Несовместимые единицы измерения')
@@ -241,8 +254,9 @@ def validate_result(source, limits=Limits()):
     except (KeyError, TypeError, AttributeError, ValueError, OSError, SyntaxError) as exc:
         if isinstance(exc, ExchangeError): raise
         raise ExchangeError('Структура или содержимое пакета не соответствует контракту') from exc
+    events = validate_events(load_json(files['events.json'], 'events.json'), index, pitch, duration, limits) if 'events.json' in files else None
     understanding = None
-    if manifest['contract_version'] == '2':
+    if 'understanding.json' in files:
         from aifootball.understanding.schema import validate_understanding
         try:
             understanding = validate_understanding(load_json(files['understanding.json'], 'understanding.json'),
@@ -258,4 +272,37 @@ def validate_result(source, limits=Limits()):
             if isinstance(exc, ExchangeError): raise
             raise ExchangeError(str(exc)) from None
     content_hash = sha256(canonical({'manifest': manifest, 'files': {name: sha256(raw).hexdigest() for name, raw in sorted(files.items()) if name != 'manifest.json'}})).hexdigest()
-    return ValidatedResult(manifest, report, tracks, checks, files, content_hash, understanding)
+    return ValidatedResult(manifest, report, tracks, checks, files, content_hash, understanding, events)
+
+
+def validate_events(value, index, pitch, duration, limits=Limits()):
+    """events.json: события по мячу, привязанные к трекам пакета, внутри видео и площадки."""
+    try:
+        ensure(set(value) == {'schema_version', 'ball', 'kinds', 'events'} and value['schema_version'] == '1', 'Неверная структура events.json')
+        ball = value['ball']
+        ensure(set(ball) == {'model', 'sha256', 'frames_with_ball'} and isinstance(ball['model'], str) and 0 < len(ball['model']) <= 200,
+               'Нет модели мяча в events.json')
+        hash_value(ball['sha256'], 'модель мяча'); numeric(ball['frames_with_ball'], 'доля кадров с мячом', maximum=1)
+        kinds = value['kinds']
+        ensure(isinstance(kinds, list) and len(set(kinds)) == len(kinds) and set(kinds) <= set(EVENT_KINDS), 'Неизвестный вид событий')
+        events = value['events']
+        ensure(isinstance(events, list) and len(events) <= limits.events, 'Слишком много событий')
+        within = lambda xy: (isinstance(xy, list) and len(xy) == 2 and
+                             -EVENT_PITCH_MARGIN_M <= numeric(xy[0], 'x события', minimum=-1e6) <= pitch['length_m'] + EVENT_PITCH_MARGIN_M and
+                             -EVENT_PITCH_MARGIN_M <= numeric(xy[1], 'y события', minimum=-1e6) <= pitch['width_m'] + EVENT_PITCH_MARGIN_M)
+        previous = 0
+        for event in events:
+            ensure(isinstance(event, dict) and event.get('kind') in kinds, 'Вид события не объявлен')
+            ensure(set(event) == PASS_FIELDS, 'Неверные поля передачи')
+            ensure(event['track_id'] in index and event['team'] in ('A', 'B'), 'Событие ссылается на неизвестный трек')
+            recipient = event['recipient_track_id']
+            ensure(recipient is None or (recipient in index and recipient != event['track_id']), 'Неверный получатель передачи')
+            ensure(type(event['success']) is bool and event['success'] == (recipient is not None), 'Неверный исход передачи')
+            start = numeric(event['start_s'], 'начало события', maximum=duration + .001)
+            ensure(start <= numeric(event['end_s'], 'конец события', maximum=duration + .001) and start >= previous, 'Порядок или время события')
+            previous = start
+            ensure(within(event['start_xy']) and within(event['end_xy']), 'Точка события вне площадки')
+            numeric(event['confidence'], 'уверенность события', maximum=1)
+        return value
+    except (KeyError, TypeError, AttributeError) as exc:
+        raise ExchangeError('Неверная структура events.json') from exc

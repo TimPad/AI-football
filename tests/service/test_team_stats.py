@@ -81,3 +81,69 @@ def test_guest_sees_only_published_action_version(admin_client,analytics_match,s
 def test_ordinary_admin_cannot_read_private_stats(admin_client,analytics_match):
     grant(admin_client,False)
     assert admin_client.get(f"/api/v1/matches/{analytics_match['id']}/action-stats").status_code==403
+
+
+def _cv_run_with_passes(client,match,*,side_map=None,publish=True):
+    """Импорт пакета версии 3 (две передачи команды A: точная и неточная), подтверждение и публикация."""
+    from uuid import uuid4
+    from test_analysis_exchange import result_zip,events_doc
+    from .test_analysis_import import upload
+    from .test_analysis_assignments import command
+    from .test_analysis_jobs import new_job
+    side_map=side_map or {'A':'home','B':'away'}
+    job=new_job(client,match)
+    run=upload(client,match,result_zip(job,mutate=lambda m,r,t,c:m.update(contract_version='3'),extras={'events.json':events_doc()}))
+    assert run.status_code==200,run.text;run=run.json();assert run['has_events'] is True
+    saved=client.put(f"/api/v1/matches/{match['id']}/analysis/runs/{run['id']}/assignments",json={'request_id':str(uuid4()),
+        'expected_revision':run['revision'],'side_map':side_map,'assignments':[{'track_id':t['track_id'],
+            'player_id':next(p['player_id'] for p in run['context']['rosters'] if p['side']==side_map[t['team']])} for t in run['tracks']]})
+    assert saved.status_code==200,saved.text
+    run=command(client,match,saved.json(),'confirm');assert run.status_code==200,run.text;run=run.json()
+    if publish:run=command(client,match,run,'publish');assert run.status_code==200,run.text;run=run.json()
+    return run
+
+
+def test_auto_passes_from_published_video_analysis(admin_client,analytics_match):
+    path=f"/api/v1/public/matches/{analytics_match['id']}/action-stats"
+    run=_cv_run_with_passes(admin_client,analytics_match,publish=False)
+    private=admin_client.get(f"/api/v1/matches/{analytics_match['id']}/action-stats");assert private.status_code==200,private.text
+    stats=private.json();assert stats['source']['kind']=='cv_auto' and stats['source']['run_published'] is False
+    assert [r['key'] for r in stats['rows']]==['passes_total','passes_accurate'] and {r['source'] for r in stats['rows']}=={'cv_auto'}
+    accurate=_row(stats,'passes_accurate')['home'];assert (accurate['numerator'],accurate['denominator'],accurate['value'])==(1,2,50.0)
+    assert _row(stats,'passes_total')['away']['value']==0 and _row(stats,'passes_total')['coverage']=='partial'
+    assert stats['shots']==[] and [p['key'] for p in stats['periods']]==['all']
+    assert admin_client.get(path).status_code==404
+    from .test_analysis_assignments import command
+    assert command(admin_client,analytics_match,run,'publish').status_code==200
+    admin_client.headers.pop('X-CSRF-Token',None);admin_client.cookies.clear()
+    public=admin_client.get(path);assert public.status_code==200,public.text
+    assert public.json()['source']['published'] is True and _row(public.json(),'passes_total')['home']['value']==2
+    # Тайма нет в видеоанализе — пустая сводка: периоды странице задаёт протокол
+    first=admin_client.get(path,params={'period':'1'});assert first.status_code==200 and first.json()['rows']==[]
+
+
+def test_auto_passes_follow_the_side_map(admin_client,analytics_match):
+    _cv_run_with_passes(admin_client,analytics_match,side_map={'A':'away','B':'home'})
+    stats=admin_client.get(f"/api/v1/matches/{analytics_match['id']}/action-stats").json()
+    assert _row(stats,'passes_total')['away']['value']==2 and _row(stats,'passes_total')['home']['value']==0
+
+
+def _shots_only(home,away):
+    return [{'id':str(uuid4()),'kind':'shot','player_id':home[1],'side':'home','start_ms':60000,'on_target':False,'outcome':'off_target','start_xy':[30.0,8.0]}]
+
+
+def test_manual_passes_win_and_auto_fills_only_missing_categories(admin_client,analytics_match,send_command):
+    match,_,_,_=_setup(admin_client,analytics_match,send_command,_shots_only,{'shots':[{'status':'complete'}]})
+    _cv_run_with_passes(admin_client,match)
+    stats=admin_client.get(f"/api/v1/matches/{match['id']}/action-stats").json()
+    assert stats['source']['kind']=='mixed' and stats['source']['action_version_id'] and stats['source']['run_published'] is True
+    assert _row(stats,'shots_total')['source']=='manual' and _row(stats,'passes_total')['source']=='cv_auto'
+    assert stats['coverage']['passes']=='partial'
+
+
+def test_manual_passes_are_not_mixed_with_auto(admin_client,analytics_match,send_command):
+    match,_,_,_=_setup(admin_client,analytics_match,send_command,_actions,{'shots':[{'status':'complete'}],'passes':[{'status':'complete'}]})
+    _cv_run_with_passes(admin_client,match)
+    stats=admin_client.get(f"/api/v1/matches/{match['id']}/action-stats").json()
+    assert stats['source']['kind']=='manual' and {r['source'] for r in stats['rows']}=={'manual'}
+    assert _row(stats,'passes_total')['home']['value']==4

@@ -3,6 +3,8 @@ import {render,screen,fireEvent} from '@testing-library/react';
 import type {PublicProtocol,TeamActionStats} from '../../api/domain';
 import {ShotMap} from '../../components/pitch/ShotMap';
 import {actionLines,leader,protocolLines} from './stats';
+import {periodOptions} from './MatchStats';
+import type {ReportModel} from './model';
 import {StatRow} from './StatBlocks';
 import {MatchTimeline,eventMinute,goalScorers} from './MatchTimeline';
 
@@ -40,6 +42,18 @@ describe('match statistics',()=>{
   expect(line.away.text).toBe('—');expect(line.partial).toBe(true);
   render(<StatRow line={line}/>);
   expect(screen.getByText('2/3 (67 %)').className).toBe('');
+ });
+ it('marks automatic video passes instead of the manual-markup asterisk and keeps protocol periods',()=>{
+  const stats={source:{kind:'cv_auto'},periods:[{key:'all',label:'Весь матч'}],rows:[{key:'passes_total',label:'Передачи',group:'passes',
+   category:'passes',unit:'count',coverage:'partial',source:'cv_auto',home:{value:12,numerator:null,denominator:null,unknown:0},
+   away:{value:9,numerator:null,denominator:null,unknown:0}}]} as unknown as TeamActionStats;
+  const line=actionLines(stats).passes[0];
+  expect(line.auto).toBe(true);expect(line.partial).toBe(false);
+  render(<StatRow line={line}/>);
+  expect(screen.getByText('авто')).toHaveAttribute('title',expect.stringContaining('распознаётся не каждая передача'));
+  expect(screen.queryByText('*')).toBeNull();
+  const model={actions:{status:'ready',value:stats},protocol:{status:'ready',value:protocol},cv:{status:'absent'}} as unknown as ReportModel;
+  expect(periodOptions(model).map(p=>p.key)).toEqual(['all','1','2']);
  });
  it('builds scorers on the scoring side and a two-sided timeline with score after each goal',()=>{
   expect(eventMinute(protocol,protocol.protocol.events[1])).toBe("22'");
