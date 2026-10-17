@@ -19,3 +19,9 @@ class Settings(BaseSettings):
     yandex_suggest_key: str = Field(default='',repr=False)
     yandex_geocoder_key: str = Field(default='',repr=False)
     address_signing_secret: str = Field(default='',repr=False)
+    captain_mail_key: str = Field(default='',repr=False)
+    captain_smtp_host: str = ''
+    captain_smtp_port: int = 587
+    captain_smtp_user: str = Field(default='',repr=False)
+    captain_smtp_password: str = Field(default='',repr=False)
+    captain_mail_from: str = ''

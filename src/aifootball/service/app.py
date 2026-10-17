@@ -21,6 +21,10 @@ def create_app(settings=None, *, web_dist=None):
     app.state.engine = make_engine(settings.database_url)
     expected_schema = ScriptDirectory(str(Path(__file__).resolve().parents[3] / 'migrations')).get_current_head()
     app.include_router(auth_router, prefix='/api/v1')
+    from aifootball.service.captains.auth import router as captain_auth_router
+    from aifootball.service.captains.routes import router as captain_router
+    app.include_router(captain_auth_router,prefix='/api/v1')
+    app.include_router(captain_router,prefix='/api/v1')
     from aifootball.service.tournaments.routes import router as tournament_router
     app.include_router(tournament_router, prefix='/api/v1')
     from aifootball.service.catalog.routes import router as catalog_router
