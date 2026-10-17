@@ -19,6 +19,7 @@ def run_summary(run):
 
 
 def run_view(db, run):
+    from aifootball.service.ratings.auto import auto_sources_view
     job = get_entity(db, AnalysisJob, run.job_id)
     match = get_entity(db, Match, run.match_id)
     assigned = db.scalars(select(AnalysisAssignment).where(AnalysisAssignment.run_id == run.id).order_by(AnalysisAssignment.track_id)).all()
@@ -31,7 +32,8 @@ def run_view(db, run):
                              'context': job.context, 'side_map': run.side_map,
                              'assignments': [{'track_id': a.track_id, 'player_id': a.player_id,
                                               'excluded_reason': a.excluded_reason} for a in assigned],
-                             'players': [metric_view(m) for m in metrics]})
+                             'players': [metric_view(m) for m in metrics],
+                             'auto_sources': auto_sources_view(db, run) if run.status == 'confirmed' else None})
 
 
 def metric_view(metric):

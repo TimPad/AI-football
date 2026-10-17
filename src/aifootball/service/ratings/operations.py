@@ -10,7 +10,7 @@ from aifootball.service.matches.operations import get_match_view
 from aifootball.service.analysis.models import AnalysisRun,AnalysisJob
 from aifootball.service.analysis.jobs import prior_command,remember
 from aifootball.service.protocol.models import ProtocolVersion
-from aifootball.service.ratings.models import ParticipationVersion
+from aifootball.service.ratings.models import ParticipationVersion,is_auto
 from aifootball.ratings.validate import validate_participation,exposure_by_role
 
 
@@ -22,7 +22,7 @@ def participation_view(version):
         exposures[player['player_id']]=exposure_by_role({**player,'time_basis':doc['time_basis'],
             'opponent_possession_intervals':doc['possession_intervals'][opponent]},
             doc['play_intervals'],doc['possession_intervals'][side])
-    return {'id':version.id,'match_id':version.match_id,'revision':version.revision,'status':version.status,
+    return {'id':version.id,'match_id':version.match_id,'revision':version.revision,'status':version.status,'auto':is_auto(version),
         'created_at':version.created_at,'created_by':version.created_by,'context_hash':version.context_hash,
         'document':doc,'lineup':version.lineup,'provenance':version.provenance,'exposures':exposures}
 
@@ -36,11 +36,11 @@ def participation_overview(db,match_id):
         for v in db.scalars(select(ProtocolVersion).where(ProtocolVersion.match_id==match_id).order_by(ProtocolVersion.number.desc()))]
     return {'match_id':match_id,'match_revision':match.revision,'revision':versions[0].revision if versions else 0,
         'current':participation_view(versions[0]) if versions else None,
-        'versions':[{'id':v.id,'revision':v.revision,'status':v.status,'created_at':v.created_at} for v in versions],
+        'versions':[{'id':v.id,'revision':v.revision,'status':v.status,'created_at':v.created_at,'auto':is_auto(v)} for v in versions],
         'lineup':view['lineup'],'rules':view['regulation']['rules'],'protocol_versions':protocols,'analysis_runs':runs}
 
 
-def save_participation(db,match_id,actor_id,data):
+def save_participation(db,match_id,actor_id,data,*,source_kind=None):
     payload=data.model_dump(mode='json',exclude={'request_id'})
     old,hashed=prior_command(db,match_id,actor_id,data.request_id,'participation',payload)
     if old:return old.response
@@ -84,7 +84,7 @@ def save_participation(db,match_id,actor_id,data):
     protocol_doc=protocol.snapshot['protocol'] if protocol else match.protocol
     provenance={'match_revision':match.revision,'protocol_version_id':str(protocol.id) if protocol else None,
         'protocol_sha256':sha256(canonical(protocol_doc)).hexdigest(),'protocol':deepcopy(protocol_doc),
-        'regulation':rules,'analysis_run_id':str(source.id) if source else None,'source_kind':'manual_verified' if data.status=='confirmed' else 'manual_draft'}
+        'regulation':rules,'analysis_run_id':str(source.id) if source else None,'source_kind':source_kind or ('manual_verified' if data.status=='confirmed' else 'manual_draft')}
     fingerprint=sha256(canonical({'lineup':lineup,'provenance':provenance,'clock_basis':doc['clock_basis'],'time_basis':doc['time_basis']})).hexdigest()
     version=ParticipationVersion(match_id=match_id,revision=latest+1,status=data.status,created_by=actor_id,
         source_analysis_run_id=source.id if source else None,source_protocol_version_id=protocol.id if protocol else None,

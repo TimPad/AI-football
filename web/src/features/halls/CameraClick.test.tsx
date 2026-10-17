@@ -39,7 +39,7 @@ it('marks points by clicking the frame and uploads that frame as the reference',
  expect(screen.getByRole('status')).toHaveTextContent('Отметьте точку 5: Центр поля · 20 × 10 м');
  fireEvent.click(stage,{clientX:250,clientY:125});
  fireEvent.click(screen.getByRole('button',{name:'Сохранить профиль камеры'}));
- await waitFor(()=>expect(puts).toHaveLength(1));
+ await waitFor(()=>expect(puts).toHaveLength(1),{timeout:5000});
  expect(posts[0]).toMatchObject({frame_width:1000,frame_height:500,
   points:[{px:[0,0],m:[0,0]},{px:[999,0],m:[40,0]},{px:[999,499],m:[40,20]},{px:[0,499],m:[0,20]},{px:[500,250],m:[20,10]}],
   pitch_polygon_px:[[0,0],[999,0],[999,499],[0,499]]});

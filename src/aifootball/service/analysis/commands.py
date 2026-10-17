@@ -6,6 +6,7 @@ from aifootball.service.analysis.jobs import prior_command, remember
 from aifootball.service.analysis.context import build_context, context_hash
 from aifootball.service.analysis.assignments import set_assignments, create_metrics
 from aifootball.service.analysis.queries import run_view
+from aifootball.service.ratings.auto import confirm_auto_sources, publish_auto_sources
 from aifootball.service.matches.models import Match
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
@@ -25,6 +26,7 @@ def mutate(db, match_id, run_id, actor_id, data, kind):
         raise DomainError('analysis_version_conflict', 'Активная или опубликованная версия изменена. Обновите список версий.',
                           status=409, current_revision=match.analysis_revision)
     job = get_entity(db, AnalysisJob, run.job_id)
+    note = None
     if kind == 'assignments':
         set_assignments(db, run, job, data)
         run.side_map_verified = True
@@ -36,10 +38,14 @@ def mutate(db, match_id, run_id, actor_id, data, kind):
         create_metrics(db, run, job)
         run.status = 'confirmed'; run.confirmed_by = actor_id; run.revision += 1
         match.active_analysis_run_id = run.id; match.analysis_revision += 1
+        # Участие и передачи для оценок — из этого же сопоставления, без ручной разметки.
+        note = confirm_auto_sources(db, match, run, job, actor_id)
     elif kind in ('activate', 'publish'):
         if run.status != 'confirmed': raise DomainError('analysis_unconfirmed', 'Сначала подтвердите аналитику')
         if kind == 'activate': match.active_analysis_run_id = run.id
-        else: match.published_analysis_run_id = run.id
+        else:
+            match.published_analysis_run_id = run.id
+            note = publish_auto_sources(db, match, run, job, actor_id)
         match.analysis_revision += 1; run.revision += 1
     elif kind == 'reviews':
         if run.status != 'confirmed': raise DomainError('analysis_unconfirmed', 'Новая проверка создаётся из подтверждённой версии')
@@ -56,4 +62,7 @@ def mutate(db, match_id, run_id, actor_id, data, kind):
             db.add(AnalysisAssignment(run_id=run.id, track_id=assignment.track_id,
                                       player_id=assignment.player_id, excluded_reason=assignment.excluded_reason))
     db.flush()
-    return remember(db, match_id, actor_id, data.request_id, hashed, run_view(db, run))
+    view = run_view(db, run)
+    if note and view.get('auto_sources') is not None: view['auto_sources']['note'] = note
+    elif note: view['auto_sources'] = {'note': note}
+    return remember(db, match_id, actor_id, data.request_id, hashed, view)

@@ -7,7 +7,7 @@
 """
 from sqlalchemy import select
 from aifootball.service.errors import DomainError
-from aifootball.service.ratings.models import ActionVersion,RatingMatchPublication
+from aifootball.service.ratings.models import ActionVersion,RatingMatchPublication,is_auto
 
 SIDES=('home','away')
 # (ключ, подпись, группа, категория полноты, вид значения)
@@ -183,6 +183,8 @@ def public_action_stats(db,match_id,period='all'):
     from aifootball.service.matches.models import Match
     pub=db.scalar(select(RatingMatchPublication).where(RatingMatchPublication.match_id==match_id))
     version=db.get(ActionVersion,pub.action_version_id) if pub and pub.action_version_id else None
+    # Автоматическая версия действий — те же события прогона: сводка строится из него напрямую.
+    if is_auto(version):version=None
     # Передачи по мячу видны гостю вместе с опубликованным видеоанализом.
     run=_run_with_events(db,db.get(Match,match_id).published_analysis_run_id)
     if version is None and run is None:raise DomainError('not_found','Действия матча не опубликованы',status=404)
@@ -197,7 +199,7 @@ def private_action_stats(db,match_id,period='all'):
     from aifootball.service.analysis.models import AnalysisRun
     from aifootball.service.matches.models import Match
     match=db.get(Match,match_id)
-    versions=list(db.scalars(select(ActionVersion).where(ActionVersion.match_id==match_id).order_by(ActionVersion.revision.desc())))
+    versions=[v for v in db.scalars(select(ActionVersion).where(ActionVersion.match_id==match_id).order_by(ActionVersion.revision.desc())) if not is_auto(v)]
     version=next((v for v in versions if v.status=='confirmed'),versions[0] if versions else None)
     run=_run_with_events(db,match.active_analysis_run_id) or db.scalar(select(AnalysisRun).where(
         AnalysisRun.match_id==match_id,AnalysisRun.events.is_not(None)).order_by(AnalysisRun.created_at.desc(),AnalysisRun.id).limit(1))

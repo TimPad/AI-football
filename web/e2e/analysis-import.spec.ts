@@ -36,9 +36,12 @@ test('external report → identities → one-match history → separate publicat
  await page.getByRole('button',{name:'Повторить отправку',exact:true}).click();await expect(page.getByLabel('Игрок фрагмента 1')).toBeVisible();expect(ids[0]).toBe(ids[1]);
  for(const id of [1,2])await assignTrack(page,id,people[0].id);await assignTrack(page,3,people[1].id);
  await page.getByRole('button',{name:'Сохранить сопоставление',exact:true}).click();await expect(page.getByRole('button',{name:'Подтвердить аналитику'})).toBeEnabled();
- await page.getByRole('button',{name:'Подтвердить аналитику'}).click();await expect(page.getByRole('heading',{name:'Подтверждённый отчёт'})).toBeVisible();await page.getByText('Показатели этой версии').click();await expect(page.getByRole('cell',{name:'210',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Подтвердить аналитику'}).click();await expect(page.getByRole('heading',{name:'Подтверждённый отчёт'})).toBeVisible();await page.getByText('Показатели этой версии').click();
+ // Подтверждённое сопоставление сразу даёт оценкам время на площадке и передачи из видео
+ await expect(page.locator('.auto-sources')).toContainText(/Для оценок создано автоматически: участие №\d+ — время на площадке у \d+ игрок/);await expect(page.locator('.auto-sources')).toContainText('2 передачи');
+await expect(page.getByRole('cell',{name:'210',exact:true})).toBeVisible();
  const guest=await browser.newContext();const spectator=await guest.newPage();let r=await spectator.request.get(`/api/v1/public${path}/analysis`);expect(r.status()).toBe(404);
- await page.getByRole('button',{name:'Опубликовать аналитику'}).click();await expect(page.getByLabel('Версия отчёта').locator('option:checked')).toContainText('опубликован');
+ await page.getByRole('button',{name:'Опубликовать аналитику'}).click();await expect(page.getByLabel('Версия отчёта').locator('option:checked')).toContainText('опубликован');await expect(page.locator('.auto-sources .warning')).toContainText('Протокол матча не опубликован');
  r=await spectator.request.get(`/api/v1/public${path}/analysis`);expect(r.ok()).toBeTruthy();const published=await r.json();expect(JSON.stringify(published)).not.toContain('track_id');expect(JSON.stringify(published)).not.toContain('context_hash');
  await spectator.goto(`/watch${path}?tab=stats&group=movement`);await expect(spectator.getByRole('heading',{name:'Статистика',exact:true})).toBeVisible();
  // Передачи по мячу публикуются вместе с видеоанализом и помечены «авто»

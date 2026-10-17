@@ -3,7 +3,7 @@ import {render,screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {MemoryRouter} from 'react-router-dom';
 import {MatchRating} from './MatchRating';
-import {RankingTable} from './TournamentRatings';
+import {RankingTable,defaultBasis} from './TournamentRatings';
 import type {RatingSummary} from './types';
 
 describe('verified ratings',()=>{
@@ -19,6 +19,15 @@ describe('verified ratings',()=>{
  it('renders explanation as text and does not expose private evidence in public',()=>{
   render(<MatchRating publicView value={{score:50,display_rating:5.5,components:{},reasons:[],explanation:{text:'<img src=x onerror=alert(1)>',positive:[{canonical_action_id:'a1',text:'Гол',evidence:[{run_id:'private',evidence_id:'f1'}]}],errors:[]}}}/>);
   expect(screen.getByText('<img src=x onerror=alert(1)>')).toBeVisible();expect(document.querySelector('img')).toBeNull();
+ });
+ it('marks a rating built on automatic video data',()=>{
+  render(<MatchRating value={{score:null,display_rating:null,components:{},reasons:[],explanation:{text:'Оценка пока недоступна',source_note:'По автоматическим данным видео: время на площадке и передачи распознаны по записи.'}}}/>);
+  expect(screen.getByText(/По автоматическим данным видео/)).toBeVisible();
+ });
+ it('defaults the rating time basis to the one most matches were recorded in',()=>{
+  expect(defaultBasis([])).toBe('reviewed_effective');
+  expect(defaultBasis([{time_basis:'running_clock'},{time_basis:null},{time_basis:'running_clock'},{time_basis:'reviewed_effective'}])).toBe('running_clock');
+  expect(defaultBasis([{time_basis:'running_clock'},{time_basis:'reviewed_effective'}])).toBe('reviewed_effective');
  });
  it('shows tied ranks and missing coverage beside scores',()=>{
   const rows=['p1','p2'].map((id)=>({player_id:id,display_name:id,role:null,rank:1,qualification:'qualified',score:65,display_rating:6.9,match_count:3,rated_match_count:3,eligible_play_minutes:30,played_minutes:30,known_played_minutes:30,rated_minutes:30,weight_sum:3,coverage:.8,baseline_influence:.5,facts:{},teams:[],reasons:[]} as RatingSummary));

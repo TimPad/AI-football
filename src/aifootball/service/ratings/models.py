@@ -108,3 +108,11 @@ class RatingCommand(Entity,Base):
     request_hash=Column(String(64),nullable=False)
     response=Column(JSONB,nullable=False)
     __table_args__=(UniqueConstraint('tournament_id','request_id',name='uq_rating_command_request'),)
+
+
+AUTO_SOURCE='cv_auto'
+
+
+def is_auto(version):
+    """Версия участия или действий создана автоматически из подтверждённого видеоанализа."""
+    return version is not None and (version.provenance or {}).get('source_kind')==AUTO_SOURCE

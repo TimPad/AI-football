@@ -69,6 +69,7 @@ class ParticipationSummary(BaseModel):
     revision:int
     status:Literal['review','confirmed']
     created_at:datetime
+    auto:bool=False  # создана автоматически из подтверждённого видеоанализа
 
 
 class ParticipationView(ParticipationSummary):
@@ -247,6 +248,7 @@ class RatingMatchView(BaseModel):
     moments:list[dict[str,Any]]=Field(default_factory=list)
     physical:dict[str,Any]=Field(default_factory=dict)
     explanation:dict[str,Any]=Field(default_factory=dict)
+    source:Literal['manual','cv_auto']='manual'
 
 
 class RatingSummaryView(BaseModel):

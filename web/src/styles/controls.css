@@ -38,3 +38,5 @@ button.pending{cursor:progress}
 .section-steps a{padding:5px 12px;border-radius:999px;color:var(--text-muted);font-size:13px;font-weight:520;white-space:nowrap}
 .section-steps a:hover{color:var(--text);background:#f1f4f6;text-decoration:none}
 .section-steps a[aria-current]{background:var(--accent-soft);color:var(--text);font-weight:620}
+/* Пометка данных, полученных автоматически по видео */
+.auto-note{margin:8px 0;padding:8px 12px;border-radius:var(--radius);background:var(--info-soft);font-size:14px}

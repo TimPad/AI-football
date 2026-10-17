@@ -13,13 +13,13 @@ from aifootball.service.protocol.models import ProtocolVersion
 from aifootball.service.analysis.models import AnalysisRun,AnalysisAssignment,AnalysisJob
 from aifootball.service.analysis.understanding import _effective
 from aifootball.service.analysis.jobs import prior_command,remember
-from aifootball.service.ratings.models import ActionVersion,ParticipationVersion
+from aifootball.service.ratings.models import ActionVersion,ParticipationVersion,is_auto
 from aifootball.service.ratings.operations import participation_overview
 
 
 def action_view(value):
     return {key:getattr(value,key) for key in ('id','match_id','revision','status','created_at','created_by',
-        'context_hash','document','provenance','lineup','canonical_actions')}
+        'context_hash','document','provenance','lineup','canonical_actions')}|{'auto':is_auto(value)}
 
 
 def action_overview(db,match_id):
@@ -28,7 +28,7 @@ def action_overview(db,match_id):
     hall=match.hall_snapshot
     return {key:context[key] for key in ('match_id','match_revision','lineup','rules','protocol_versions','analysis_runs')}|{
         'revision':versions[0].revision if versions else 0,'current':action_view(versions[0]) if versions else None,
-        'versions':[{'id':v.id,'revision':v.revision,'status':v.status,'created_at':v.created_at} for v in versions],
+        'versions':[{'id':v.id,'revision':v.revision,'status':v.status,'created_at':v.created_at,'auto':is_auto(v)} for v in versions],
         'participation_versions':context['versions'],
         'pitch':{'length_m':hall['pitch_length_m'],'width_m':hall['pitch_width_m']} if hall else None}
 
@@ -47,7 +47,7 @@ def _validate_coverage(doc,lineup):
         for spans in by_player.values():intervals(spans,doc['duration_ms'])
 
 
-def save_actions(db,match_id,actor_id,data):
+def save_actions(db,match_id,actor_id,data,*,source_kind=None):
     old,hashed=prior_command(db,match_id,actor_id,data.request_id,'performance-actions',data.model_dump(mode='json',exclude={'request_id'}))
     if old:return old.response
     match=get_entity(db,Match,match_id,lock=True)
@@ -116,7 +116,9 @@ def save_actions(db,match_id,actor_id,data):
                 person=next((p for p in participation.document['players'] if p['player_id']==action['player_id']),None)
                 if person and person['presence'] is not None and person['completeness']=='complete' and not any(a<=action['start_ms']<b for a,b in person['presence']):
                     raise ValueError('Player was not on pitch at the action time')
-            refs=[{'kind':'manual','id':action['id'],'version_id':str(version_id)}]
+            # Автоматическое действие ссылается на прогон видеоанализа, ручное — на свою версию.
+            refs=[{'kind':'cv_auto','id':action['id'],'run_id':str(source.id),'video_ms':action['start_ms']} if source_kind=='cv_auto' else
+                  {'kind':'manual','id':action['id'],'version_id':str(version_id)}]
             if action['source_episode_id'] is not None:
                 event=reviewed.get(action['source_episode_id'])
                 if event is None:raise ValueError('Episode is not accepted in the selected confirmed version')
@@ -126,7 +128,7 @@ def save_actions(db,match_id,actor_id,data):
                 if action['player_id'] and event['track_ids'] and action['player_id'] not in actors:raise ValueError('Episode actor must match saved player assignment')
                 if action['kind']=='goal_candidate' and event['kind']!='goal_candidate':raise ValueError('Episode was not reviewed as a goal candidate')
                 refs.append({'kind':'understanding','id':event['id'],'run_id':str(source.id),'video_ms':video_ms,'evidence_ids':event['evidence_ids']})
-            prepared.append({**action,'clock_basis':doc['clock_basis'],'source_refs':refs})
+            prepared.append({**action,'clock_basis':doc['clock_basis'],'source_refs':refs,**({'source_kind':'cv_auto'} if source_kind=='cv_auto' else {})})
         protocol_doc=deepcopy(protocol.snapshot['protocol'] if protocol else match.protocol)
         offsets={};cursor=0
         for index,seconds in enumerate(rules['periods_s']+(rules['extra']['periods_s'] if rules['extra']['enabled'] else []),1):
@@ -136,7 +138,7 @@ def save_actions(db,match_id,actor_id,data):
     provenance={'match_revision':match.revision,'protocol_version_id':str(protocol.id) if protocol else None,
         'protocol':protocol_doc,'protocol_sha256':sha256(canonical(protocol_doc)).hexdigest(),
         'regulation':rules,'pitch':pitch,'participation_version_id':str(participation.id) if participation else None,
-        'analysis_run_id':str(source.id) if source else None,'source_kind':'manual_verified' if data.status=='confirmed' else 'manual_draft'}
+        'analysis_run_id':str(source.id) if source else None,'source_kind':source_kind or ('manual_verified' if data.status=='confirmed' else 'manual_draft')}
     version=ActionVersion(id=version_id,match_id=match_id,revision=latest+1,status=data.status,created_by=actor_id,
         source_participation_version_id=participation.id if participation else None,source_analysis_run_id=source.id if source else None,
         source_protocol_version_id=protocol.id if protocol else None,context_hash=sha256(canonical({'lineup':lineup,'provenance':provenance})).hexdigest(),

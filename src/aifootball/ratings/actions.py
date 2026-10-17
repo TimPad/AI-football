@@ -83,7 +83,7 @@ def canonical_actions(protocol:dict,reviewed_actions:list[dict],links:list[dict]
     for action in reviewed_actions:
         if action.get('decision')=='rejected' or action.get('review_status')=='rejected':continue
         if type(action['kind']) is not str or action['kind'] not in MANUAL_KINDS:raise ValueError('Official fact must come from protocol')
-        records[action['id']]=_record(action,'reviewed_video' if action.get('source_episode_id') else 'manual',protocol)
+        records[action['id']]=_record(action,'reviewed_video' if action.get('source_episode_id') else action.get('source_kind','manual'),protocol)
     canonical_links=[link for link in links if link.get('kind','canonical')=='canonical']
     sources=[link['source_event_id'] for link in canonical_links]
     targets={link['canonical_event_id'] for link in canonical_links}
