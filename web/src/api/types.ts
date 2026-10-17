@@ -1262,6 +1262,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Day Matches */
+        get: operations["day_matches_api_v1_public_matches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/matches/upcoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Upcoming */
+        get: operations["upcoming_api_v1_public_matches_upcoming_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/matches/{mid}": {
         parameters: {
             query?: never;
@@ -4433,6 +4467,34 @@ export interface components {
             public_protocol_id: string | null;
             score: components["schemas"]["PublicScore"];
         };
+        /** PublicMatchDayPage */
+        PublicMatchDayPage: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Timezone
+             * @default Europe/Moscow
+             */
+            timezone?: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Items */
+            items: components["schemas"]["PublicMatch"][];
+            /** Total */
+            total: number;
+            /** Next Cursor */
+            next_cursor: string | null;
+            /** Tournament Totals */
+            tournament_totals: {
+                [key: string]: number;
+            };
+        };
         /** PublicMetrics */
         PublicMetrics: {
             /** Distance M */
@@ -4707,6 +4769,21 @@ export interface components {
             ends_on: string;
             /** Timezone */
             timezone: string;
+        };
+        /** PublicUpcomingMatches */
+        PublicUpcomingMatches: {
+            /**
+             * Timezone
+             * @default Europe/Moscow
+             */
+            timezone?: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Items */
+            items: components["schemas"]["PublicMatch"][];
         };
         /** Publish */
         Publish: {
@@ -9382,6 +9459,7 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -9462,6 +9540,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_PublicMatch_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    day_matches_api_v1_public_matches_get: {
+        parameters: {
+            query?: {
+                day?: string | null;
+                status?: "all" | "live" | "upcoming" | "finished";
+                tournament_id?: string | null;
+                team_id?: string | null;
+                q?: string;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicMatchDayPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upcoming_api_v1_public_matches_upcoming_get: {
+        parameters: {
+            query?: {
+                tournament_id?: string | null;
+                team_id?: string | null;
+                q?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicUpcomingMatches"];
                 };
             };
             /** @description Validation Error */
