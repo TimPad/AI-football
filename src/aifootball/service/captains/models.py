@@ -89,3 +89,17 @@ class CaptainCommand(Entity,Base):
     kind=Column(String(50),nullable=False)
     request_hash=Column(String(64),nullable=False)
     response=Column(JSONB,nullable=False)
+
+class CaptainImage(Base):
+    __tablename__='captain_images'
+    image_id=Column(Uuid,ForeignKey('catalog_images.id'),primary_key=True)
+    account_id=Column(Uuid,ForeignKey('captain_accounts.id'),nullable=False)
+
+class PlayerProfileProposal(Entity,Base):
+    __tablename__='player_profile_proposals'
+    account_id=Column(Uuid,ForeignKey('captain_accounts.id'),nullable=False)
+    team_id=Column(Uuid,ForeignKey('teams.id'),nullable=False)
+    player_id=Column(Uuid,ForeignKey('players.id'))
+    expected_player_revision=Column(Integer)
+    payload=Column(JSONB,nullable=False)
+    status=Column(String(30),nullable=False,default='pending')

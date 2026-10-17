@@ -17,6 +17,8 @@ from aifootball.service.captains.schemas import InvitationCreate,InvitationView,
 from aifootball.service.captains.security import require_captain,require_captain_csrf,require_captain_team
 from aifootball.service.captains.commands import command
 from aifootball.service.captains.mail import enqueue,require_transport
+from aifootball.service.captains.team_routes import CaptainTeamView
+from aifootball.service.captains.teams import captain_team_view
 
 router=APIRouter()
 
@@ -31,14 +33,14 @@ def grant_team(db,team_id,account_id,actor,reason,replace=False):
     grant=TeamCaptainGrant(team_id=team_id,account_id=account_id);db.add(grant);db.flush()
     db.add(CaptainGrantAudit(grant_id=grant.id,actor_id=actor,action='grant',reason=reason));return as_dict(grant)
 
-@router.get('/captain/teams',response_model=Page[TeamProfile])
+@router.get('/captain/teams',response_model=Page[CaptainTeamView])
 def own_teams(account=Depends(require_captain),db:Session=Depends(get_session)):
     rows=db.scalars(select(Team).join(TeamCaptainGrant,TeamCaptainGrant.team_id==Team.id).where(TeamCaptainGrant.account_id==account.id,TeamCaptainGrant.active).order_by(Team.name,Team.id)).all()
-    return {'items':[team_profile(db,row) for row in rows],'total':len(rows)}
+    return {'items':[captain_team_view(db,row,account) for row in rows],'total':len(rows)}
 
-@router.get('/captain/teams/{team_id}',response_model=TeamProfile)
+@router.get('/captain/teams/{team_id}',response_model=CaptainTeamView)
 def own_team(team_id:UUID,account=Depends(require_captain),db:Session=Depends(get_session)):
-    require_captain_team(db,account,team_id);return team_profile(db,get_entity(db,Team,team_id))
+    require_captain_team(db,account,team_id);return captain_team_view(db,get_entity(db,Team,team_id),account)
 
 @router.post('/teams/{team_id}/captain-invitations',response_model=InvitationView,status_code=201)
 def invite(team_id:UUID,data:InvitationCreate,request:Request,actor=Depends(require_csrf),db:Session=Depends(get_session)):

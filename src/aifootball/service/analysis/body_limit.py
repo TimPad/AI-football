@@ -9,7 +9,7 @@ class AnalysisBodyLimit:
 
     async def __call__(self, scope, receive, send):
         path=scope.get('path','')
-        roster=path=='/api/v1/roster-imports' or bool(re.fullmatch(r'/api/v1/captain/teams/[^/]+/roster-imports',path))
+        roster=path in {'/api/v1/roster-imports','/api/v1/captain/roster-imports','/api/v1/captain/images'} or bool(re.fullmatch(r'/api/v1/captain/teams/[^/]+/roster-imports',path))
         if scope['type'] != 'http' or scope.get('method') != 'POST' or not (roster or re.fullmatch(r'/api/v1/matches/[^/]+/analysis/imports', path)):
             return await self.app(scope, receive, send)
         # Small allowance for MIME headers/fields in addition to the ZIP bytes.

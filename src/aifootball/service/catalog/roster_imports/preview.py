@@ -46,6 +46,12 @@ def owned_import(db, identifier, actor_id, actor_kind='admin', *, lock=False):
     session = db.scalar(statement)
     if session is None:
         raise DomainError('not_found', 'Предпросмотр не найден', status=404)
+    if actor_kind=='captain':
+        from aifootball.service.captains.models import CaptainAccount
+        from aifootball.service.captains.security import require_captain_team
+        if session.scope!='team':raise DomainError('not_found','Предпросмотр недоступен',status=404)
+        if lock:get_entity(db,Team,session.target_id,lock=True)
+        require_captain_team(db,get_entity(db,CaptainAccount,actor_id),session.target_id)
     if session.status != 'committed' and session.expires_at < utcnow():
         raise DomainError('import_expired', 'Срок предпросмотра истёк. Загрузите Excel ещё раз.', status=410)
     return session
@@ -130,8 +136,13 @@ def build_preview(db, session, data):
                 explicit_teams.append(UUID(value))
             except ValueError:
                 raise DomainError('import_team', 'Выберите существующую команду или новую')
-    people = list(db.scalars(select(Player).where(
-        (func.lower(Player.name).in_(names)) | (Player.id.in_(explicit_players)))))
+    people_query=select(Player).where((func.lower(Player.name).in_(names)) | (Player.id.in_(explicit_players)))
+    foreign_names=set()
+    if session.actor_kind=='captain':
+        allowed=select(TeamMember.player_id).where(TeamMember.team_id==session.target_id,TeamMember.active)
+        foreign_names=set(db.scalars(select(func.lower(Player.name)).where(func.lower(Player.name).in_(names),~Player.id.in_(allowed))))
+        people_query=people_query.where(Player.id.in_(allowed))
+    people = list(db.scalars(people_query))
     teams = list(db.scalars(select(Team).where(
         (func.lower(Team.name).in_(team_names)) | (Team.id.in_(explicit_teams)))))
     by_person = {str(person.id): person for person in people}
@@ -154,6 +165,8 @@ def build_preview(db, session, data):
         candidates = people_names[normalized(name)]
         person = by_person.get(str(decision.player_id)) if decision and decision.player_id else None
         is_new = person is None
+        if session.actor_kind=='captain' and is_new and normalized(name) in foreign_names:
+            issues.append('Добавление этого игрока требует обращения к организатору')
         if decision and decision.player_id and person is None:
             issues.append('Выбранный игрок больше не доступен')
         if decision and decision.player_id and decision.create_new:
@@ -163,9 +176,9 @@ def build_preview(db, session, data):
         if person and person.archived:
             issues.append('Игрок в архиве. Восстановите его отдельно')
         player_id = str(person.id) if person else str(uuid5(session.id, 'player:' + source['id']))
-        if person:
+        if person and not excluded:
             expected['players'][str(person.id)] = person.revision
-        else:
+        elif not excluded:
             expected['new_player_candidates'][normalized(name)] = sorted(str(p.id) for p in candidates)
         team_candidates = [] if session.scope == 'team' else team_names_map[normalized(team_name)]
         team_decision = data.team_decisions.get(team_name)
@@ -177,9 +190,9 @@ def build_preview(db, session, data):
         if team and team.archived:
             issues.append('Команда в архиве. Восстановите её отдельно')
         team_id = str(team.id) if team else str(uuid5(session.id, 'team:' + normalized(team_name)))
-        if team:
+        if team and not excluded:
             expected['teams'][team_id] = team.revision
-        else:
+        elif not team and not excluded:
             expected['new_team_candidates'][normalized(team_name)] = sorted(str(t.id) for t in team_candidates)
         if not team_name or len(team_name) > 200:
             issues.append('Укажите название команды (до 200 символов)')

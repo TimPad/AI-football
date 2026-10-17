@@ -1,12 +1,12 @@
 import {Link,Outlet} from 'react-router-dom';
-import {ArrowUpRight} from 'lucide-react';
+import {ArrowUpRight,UsersRound} from 'lucide-react';
 import './shell.css';
 
 export function PublicShell(){
  return <div className="public-shell">
   <header className="public-header"><div className="public-header-inner">
    <Link className="app-logo" to="/"><b>AI</b> Football</Link>
-   <nav aria-label="Навигация зрителя"><Link to="/">Матчи</Link><Link to="/watch/tournaments">Турниры</Link><Link className="top-link" to="/tournaments">Кабинет организатора<ArrowUpRight/></Link></nav>
+   <nav aria-label="Навигация зрителя"><Link to="/">Матчи</Link><Link to="/watch/tournaments">Турниры</Link><Link className="top-link" to="/captain" aria-label="Кабинет команды">Кабинет команды<UsersRound/></Link><Link className="top-link" to="/tournaments">Кабинет организатора<ArrowUpRight/></Link></nav>
   </div></header>
   <main className="public-main"><Outlet/></main>
   <footer className="public-footer">AI Football · Матчи, расписание и трансляции</footer>

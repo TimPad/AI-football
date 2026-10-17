@@ -27,6 +27,10 @@ settings=Settings(database_url=url.render_as_string(hide_password=False),allowed
 cfg=Config('alembic.ini');cfg.attributes['database_url']=settings.database_url;command.upgrade(cfg,'head')
 # AIF_WEB_DIST — отдельная сборка интерфейса ветки: общая web/dist остаётся у сервиса организатора.
 app=create_app(settings,web_dist=os.environ.get('AIF_WEB_DIST') or None)
+if os.environ.get('AIF_E2E_FAKE_MAIL')=='1':
+    from captain_e2e_mail import MemoryMailSender,E2E_MAIL_KEY
+    settings.captain_mail_key=E2E_MAIL_KEY
+    app.state.mail_sender=MemoryMailSender()
 if os.environ.get('AIF_E2E_FAKE_ADDRESS')=='1':
     settings.address_signing_secret='e2e-only-address-selection-secret-123456'
     class SyntheticAddressProvider:

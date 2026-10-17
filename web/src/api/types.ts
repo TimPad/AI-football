@@ -184,7 +184,8 @@ export interface paths {
         /** Own Teams */
         get: operations["own_teams_api_v1_captain_teams_get"];
         put?: never;
-        post?: never;
+        /** Create */
+        post: operations["create_api_v1_captain_teams_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -200,7 +201,8 @@ export interface paths {
         };
         /** Own Team */
         get: operations["own_team_api_v1_captain_teams__team_id__get"];
-        put?: never;
+        /** Update */
+        put: operations["update_api_v1_captain_teams__team_id__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -338,6 +340,194 @@ export interface paths {
         put?: never;
         /** Approve */
         post: operations["approve_api_v1_teams__team_id__captain_requests__request_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/teams/{team_id}/profile-proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Propose */
+        post: operations["propose_api_v1_captain_teams__team_id__profile_proposals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{team_id}/profile-proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Proposals */
+        get: operations["proposals_api_v1_teams__team_id__profile_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{team_id}/profile-proposals/{proposal_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept */
+        post: operations["accept_api_v1_teams__team_id__profile_proposals__proposal_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Image */
+        post: operations["upload_image_api_v1_captain_images_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/images/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image */
+        get: operations["image_api_v1_captain_images__image_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/roster-imports/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Template */
+        get: operations["download_template_api_v1_captain_roster_imports_template_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/roster-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload */
+        post: operations["upload_api_v1_captain_roster_imports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/roster-imports/{identifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_captain_roster_imports__identifier__get"];
+        put?: never;
+        post?: never;
+        /** Cancel */
+        delete: operations["cancel_api_v1_captain_roster_imports__identifier__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/roster-imports/{identifier}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Preview */
+        put: operations["preview_api_v1_captain_roster_imports__identifier__preview_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/roster-imports/{identifier}/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commit */
+        post: operations["commit_api_v1_captain_roster_imports__identifier__commit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/roster-imports/{identifier}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report */
+        get: operations["report_api_v1_captain_roster_imports__identifier__report_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2240,6 +2430,21 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** Body_upload_api_v1_captain_roster_imports_post */
+        Body_upload_api_v1_captain_roster_imports_post: {
+            /**
+             * Scope
+             * @constant
+             */
+            scope: "team";
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
+            /** File */
+            file: string;
+        };
         /** Body_upload_api_v1_catalog_images_post */
         Body_upload_api_v1_catalog_images_post: {
             /** File */
@@ -2271,6 +2476,11 @@ export interface components {
             file: string;
             /** Entry Id */
             entry_id?: string | null;
+        };
+        /** Body_upload_image_api_v1_captain_images_post */
+        Body_upload_image_api_v1_captain_images_post: {
+            /** File */
+            file: string;
         };
         /** Body_upload_reference_api_v1_halls__hid__camera_profiles__pid__reference_frame_put */
         Body_upload_reference_api_v1_halls__hid__camera_profiles__pid__reference_frame_put: {
@@ -2352,6 +2562,55 @@ export interface components {
             reference_sha256?: string | null;
             /** Matches Current Dimensions */
             matches_current_dimensions: boolean;
+        };
+        /** CaptainSessionView */
+        CaptainSessionView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Email */
+            email: string;
+            /** Display Name */
+            display_name: string;
+            /** Csrf Token */
+            csrf_token: string;
+        };
+        /** CaptainTeamView */
+        CaptainTeamView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Name */
+            name: string;
+            /** Archived */
+            archived: boolean;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision?: number;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /** Logo Id */
+            logo_id?: string | null;
+            /** Players */
+            players: components["schemas"]["TeamMemberView"][];
+            /** Profile Proposals */
+            profile_proposals?: {
+                [key: string]: unknown;
+            }[];
         };
         /** Card */
         "Card-Input": {
@@ -3837,6 +4096,13 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[CaptainTeamView] */
+        Page_CaptainTeamView_: {
+            /** Items */
+            items: components["schemas"]["CaptainTeamView"][];
+            /** Total */
+            total: number;
+        };
         /** Page[EntryView] */
         Page_EntryView_: {
             /** Items */
@@ -3890,13 +4156,6 @@ export interface components {
         Page_RegulationView_: {
             /** Items */
             items: components["schemas"]["RegulationView"][];
-            /** Total */
-            total: number;
-        };
-        /** Page[TeamProfile] */
-        Page_TeamProfile_: {
-            /** Items */
-            items: components["schemas"]["TeamProfile"][];
             /** Total */
             total: number;
         };
@@ -4622,6 +4881,55 @@ export interface components {
             name: string;
             /** Shirt Number */
             shirt_number?: string | null;
+        };
+        /** ProfileProposalCreate */
+        ProfileProposalCreate: {
+            /** Photo Id */
+            photo_id?: string | null;
+            /** Birth Date */
+            birth_date?: string | null;
+            /** Position */
+            position?: ("goalkeeper" | "defender" | "winger" | "forward" | "universal") | null;
+            /** Height Cm */
+            height_cm?: number | null;
+            /** Weight Kg */
+            weight_kg?: number | null;
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision?: number;
+            /** Name */
+            name: string;
+            /** Shirt Number */
+            shirt_number?: string | null;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+        };
+        /** ProfileProposalDecision */
+        ProfileProposalDecision: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Create New
+             * @default false
+             */
+            create_new?: boolean;
+            /** Use Existing Player Id */
+            use_existing_player_id?: string | null;
         };
         /** Projection */
         Projection: {
@@ -6045,6 +6353,23 @@ export interface components {
             players: components["schemas"]["PlayerMetric"][];
             auto_sources?: components["schemas"]["AutoSources"] | null;
         };
+        /** SessionView */
+        SessionView: {
+            /**
+             * Can Manage Analytics
+             * @default false
+             */
+            can_manage_analytics?: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Login */
+            login: string;
+            /** Csrf Token */
+            csrf_token: string;
+        };
         /** SetCompletenessCommand */
         SetCompletenessCommand: {
             /**
@@ -7089,37 +7414,6 @@ export interface components {
             /** Password */
             password: string;
         };
-        /** SessionView */
-        aifootball__service__captains__schemas__SessionView: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Email */
-            email: string;
-            /** Display Name */
-            display_name: string;
-            /** Csrf Token */
-            csrf_token: string;
-        };
-        /** SessionView */
-        aifootball__service__views__SessionView: {
-            /**
-             * Can Manage Analytics
-             * @default false
-             */
-            can_manage_analytics?: boolean;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Login */
-            login: string;
-            /** Csrf Token */
-            csrf_token: string;
-        };
     };
     responses: never;
     parameters: never;
@@ -7148,7 +7442,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["aifootball__service__views__SessionView"];
+                    "application/json": components["schemas"]["SessionView"];
                 };
             };
             /** @description Validation Error */
@@ -7177,7 +7471,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["aifootball__service__views__SessionView"];
+                    "application/json": components["schemas"]["SessionView"];
                 };
             };
         };
@@ -7285,7 +7579,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["aifootball__service__captains__schemas__SessionView"];
+                    "application/json": components["schemas"]["CaptainSessionView"];
                 };
             };
             /** @description Validation Error */
@@ -7314,7 +7608,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["aifootball__service__captains__schemas__SessionView"];
+                    "application/json": components["schemas"]["CaptainSessionView"];
                 };
             };
         };
@@ -7418,7 +7712,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_TeamProfile_"];
+                    "application/json": components["schemas"]["Page_CaptainTeamView_"];
+                };
+            };
+        };
+    };
+    create_api_v1_captain_teams_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptainTeamView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7440,7 +7767,42 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TeamProfile"];
+                    "application/json": components["schemas"]["CaptainTeamView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_api_v1_captain_teams__team_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptainTeamView"];
                 };
             };
             /** @description Validation Error */
@@ -7716,6 +8078,399 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GrantView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_api_v1_captain_teams__team_id__profile_proposals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileProposalCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    proposals_api_v1_teams__team_id__profile_proposals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_api_v1_teams__team_id__profile_proposals__proposal_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                team_id: string;
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileProposalDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_image_api_v1_captain_images_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Request-ID": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_image_api_v1_captain_images_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogImageView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    image_api_v1_captain_images__image_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_template_api_v1_captain_roster_imports_template_get: {
+        parameters: {
+            query?: {
+                scope?: "team";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_api_v1_captain_roster_imports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_api_v1_captain_roster_imports_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_captain_roster_imports__identifier__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_v1_captain_roster_imports__identifier__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_v1_captain_roster_imports__identifier__preview_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPreviewInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    commit_api_v1_captain_roster_imports__identifier__commit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportCommit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_api_v1_captain_roster_imports__identifier__report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

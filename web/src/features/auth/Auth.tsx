@@ -1,4 +1,4 @@
-import {createContext,useContext,useEffect,useState,type ReactNode,type FormEvent} from 'react';
+import {createContext,useContext,useEffect,useState,useRef,type ReactNode,type FormEvent} from 'react';
 import {useLocation,Navigate} from 'react-router-dom';
 import {api,post,setCsrf} from '../../api/client';
 import type {Session} from '../../api/domain';
@@ -8,11 +8,12 @@ const Context=createContext<AuthState|null>(null);
 export const useAuth=()=>useContext(Context)!;
 export function AuthProvider({children}:{children:ReactNode}){
  const [session,setSession]=useState<Session|null>(null);const [loading,setLoading]=useState(true);
+ const generation=useRef(0);
  // Явный выход не запоминает страницу: следующий вход (возможно, другого человека) начинается со списка турниров.
  const [loggedOut,setLoggedOut]=useState(false);
  const assign=(s:Session|null)=>{setSession(s);setCsrf(s?.csrf_token??'')};
- useEffect(()=>{api<Session>('/auth/me').then(assign).catch(()=>assign(null)).finally(()=>setLoading(false));const expired=()=>assign(null);window.addEventListener('session-expired',expired);return()=>window.removeEventListener('session-expired',expired)},[]);
- return <Context.Provider value={{session,loading,loggedOut,login:async(name,password)=>{assign(await post<Session>('/auth/login',{login:name,password}));setLoggedOut(false)},logout:async()=>{await post('/auth/logout',{});setLoggedOut(true);assign(null)}}}>{children}</Context.Provider>
+ useEffect(()=>{const version=generation.current;api<Session>('/auth/me').then(value=>{if(generation.current===version)assign(value)}).catch(()=>{if(generation.current===version)assign(null)}).finally(()=>{if(generation.current===version)setLoading(false)});const expired=(event:Event)=>{if((event as CustomEvent).detail?.audience!=='captain'){generation.current++;assign(null)}};window.addEventListener('session-expired',expired);return()=>{generation.current++;window.removeEventListener('session-expired',expired)}},[]);
+ return <Context.Provider value={{session,loading,loggedOut,login:async(name,password)=>{const version=++generation.current;const result=await post<Session>('/auth/login',{login:name,password});if(version===generation.current){assign(result);setLoading(false);setLoggedOut(false)}},logout:async()=>{generation.current++;await post('/auth/logout',{});setLoggedOut(true);assign(null)}}}>{children}</Context.Provider>
 }
 export function Private({children}:{children:ReactNode}){const {session,loading,loggedOut}=useAuth();const location=useLocation();return loading?<p className="empty">Проверяем сессию…</p>:session?children:<Navigate to="/login" state={loggedOut?null:{from:location.pathname}} replace/>}
 export function Login(){

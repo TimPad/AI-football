@@ -12,7 +12,7 @@ from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
 from aifootball.service.halls.operations import lock_request
 from aifootball.service.captains.models import CaptainAccount,CaptainSession,CaptainToken,CaptainAuthCommand
-from aifootball.service.captains.schemas import Register,Login,TokenInput,ResetComplete,EmailInput,MessageView,SessionView
+from aifootball.service.captains.schemas import Register,Login,TokenInput,ResetComplete,EmailInput,MessageView,CaptainSessionView
 from aifootball.service.captains.security import current_session,require_captain_csrf,throttle
 from aifootball.service.captains.mail import require_transport,enqueue
 
@@ -68,7 +68,7 @@ def verify(data:TokenInput,request:Request):
         if account:account.verified_at=account.verified_at or utcnow()
     return {'message':'Email подтверждён. Войдите в кабинет команды.'}
 
-@router.post('/login',response_model=SessionView)
+@router.post('/login',response_model=CaptainSessionView)
 def login(data:Login,request:Request,response:Response):
     check_origin(request,required=True);throttle(request,'login',data.email)
     with Session(request.app.state.engine) as db,db.begin():
@@ -82,7 +82,7 @@ def login(data:Login,request:Request,response:Response):
     response.set_cookie('af_captain_session',token,httponly=True,samesite='lax',path='/',secure=request.app.state.settings.secure_cookies,max_age=request.app.state.settings.session_hours*3600)
     return result
 
-@router.get('/me',response_model=SessionView)
+@router.get('/me',response_model=CaptainSessionView)
 def me(request:Request):
     account,session=current_session(request)
     return {'id':account.id,'email':account.email,'display_name':account.display_name,'csrf_token':session.csrf_token}

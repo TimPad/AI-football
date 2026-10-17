@@ -23,7 +23,7 @@ class TokenInput(Input):
     token:str=Field(min_length=20,max_length=200)
 class ResetComplete(TokenInput):
     password:str=Field(min_length=12,max_length=200)
-class SessionView(BaseModel):
+class CaptainSessionView(BaseModel):
     id:UUID
     email:str
     display_name:str

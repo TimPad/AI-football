@@ -76,7 +76,7 @@ def apply_import(db, identifier, actor_id, data, actor_kind='admin'):
                 member.active = True
                 member.shirt_number = row['shirt_number'] or member.shirt_number
             team.revision += 1
-            links.append({'team_id': team_id, 'label': team.name, 'path': f'/teams/{team_id}'})
+            links.append({'team_id': team_id, 'label': team.name, 'path': f'{"/captain" if actor_kind=="captain" else ""}/teams/{team_id}'})
         else:
             entry = db.scalar(select(Entry).where(Entry.tournament_id == target.id, Entry.team_id == team.id))
             if entry is not None and str(entry.id) not in expected['entries']:

@@ -1,0 +1,5 @@
+import {Routes,Route,Navigate} from 'react-router-dom';
+import {CaptainAuthProvider,CaptainPrivate,CaptainLogin,CaptainRegister,CaptainTokenPage} from './CaptainAuth';
+import {CaptainShell} from './CaptainShell';
+import {CaptainHome,CaptainTeamPage,CaptainRosterImportPage} from './CaptainTeamPage';
+export function CaptainRoutes(){return <CaptainAuthProvider><Routes><Route path="login" element={<CaptainLogin/>}/><Route path="register" element={<CaptainRegister/>}/><Route path="verify" element={<CaptainTokenPage kind="verify"/>}/><Route path="password-reset" element={<CaptainTokenPage kind="reset"/>}/><Route path="invitation" element={<CaptainTokenPage kind="invitation"/>}/><Route element={<CaptainPrivate><CaptainShell/></CaptainPrivate>}><Route index element={<CaptainHome/>}/><Route path="teams/new" element={<CaptainTeamPage/>}/><Route path="teams/:id" element={<CaptainTeamPage/>}/><Route path="roster-imports/:id" element={<CaptainRosterImportPage/>}/></Route><Route path="*" element={<Navigate to="/captain" replace/>}/></Routes></CaptainAuthProvider>}
