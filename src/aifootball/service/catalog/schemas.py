@@ -1,7 +1,7 @@
-from uuid import UUID,uuid4
+from uuid import UUID,uuid4,uuid5,NAMESPACE_URL
 from datetime import date
 from typing import Literal
-from pydantic import Field,field_validator
+from pydantic import Field,field_validator,model_validator
 from aifootball.service.tournaments.schemas import Input
 
 
@@ -57,6 +57,24 @@ class TeamPatch(NamedPatch):
 
 class EntryCreate(Input):
     team_id:UUID
+
+
+class CreateTournamentTeam(Input):
+    request_id:UUID
+    expected_tournament_revision:int=Field(ge=0)
+    team:TeamCreate
+
+    @model_validator(mode='after')
+    def stable_nested_request(self):
+        if 'request_id' not in self.team.model_fields_set:
+            self.team.request_id=uuid5(NAMESPACE_URL,'aifootball:setup-team:'+str(self.request_id))
+        return self
+
+
+class AddTournamentTeams(Input):
+    request_id:UUID
+    expected_tournament_revision:int=Field(ge=0)
+    team_ids:list[UUID]=Field(min_length=1,max_length=64)
 
 
 class RosterPlayer(Input):

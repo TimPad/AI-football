@@ -248,6 +248,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tid}/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Tournament Team */
+        post: operations["create_tournament_team_api_v1_tournaments__tid__teams_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tid}/entries/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Tournament Teams */
+        post: operations["add_tournament_teams_api_v1_tournaments__tid__entries_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/entries/{eid}/players": {
         parameters: {
             query?: never;
@@ -1569,6 +1603,18 @@ export interface components {
             kind: "add_event";
             payload: components["schemas"]["EventChange"];
         };
+        /** AddTournamentTeams */
+        AddTournamentTeams: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Tournament Revision */
+            expected_tournament_revision: number;
+            /** Team Ids */
+            team_ids: string[];
+        };
         /** AnalysisContext */
         AnalysisContext: {
             /**
@@ -2129,6 +2175,17 @@ export interface components {
                 number,
                 number
             ];
+        };
+        /** CreateTournamentTeam */
+        CreateTournamentTeam: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Tournament Revision */
+            expected_tournament_revision: number;
+            team: components["schemas"]["TeamCreate"];
         };
         /** Empty */
         Empty: Record<string, never>;
@@ -4781,6 +4838,11 @@ export interface components {
         };
         /** RegulationCreate */
         RegulationCreate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
             /** Variant Name */
             variant_name: string;
             rules: components["schemas"]["Regulation-Input"];
@@ -5896,6 +5958,11 @@ export interface components {
         };
         /** TournamentCreate */
         TournamentCreate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
             /** Name */
             name: string;
             /** Season */
@@ -6770,6 +6837,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EntryView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tournament_team_api_v1_tournaments__tid__teams_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTournamentTeam"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_tournament_teams_api_v1_tournaments__tid__entries_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddTournamentTeams"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryView"][];
                 };
             };
             /** @description Validation Error */

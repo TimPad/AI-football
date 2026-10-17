@@ -1,4 +1,5 @@
 from datetime import date
+from uuid import UUID, uuid4
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
@@ -89,6 +90,7 @@ class Regulation(Input):
 
 
 class TournamentCreate(Input):
+    request_id: UUID=Field(default_factory=uuid4)
     name: str=Field(min_length=1,max_length=200)
     season: str=Field(min_length=1,max_length=100)
     starts_on: date
@@ -116,5 +118,6 @@ class TournamentPatch(Input):
 
 
 class RegulationCreate(Input):
+    request_id: UUID=Field(default_factory=uuid4)
     variant_name: str=Field(min_length=1,max_length=100)
     rules: Regulation
