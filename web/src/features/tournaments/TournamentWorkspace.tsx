@@ -1,3 +1,4 @@
+import {ApplicationSettings} from '../captain/TournamentApplications';
 import {useState} from 'react';
 import {Link,useParams} from 'react-router-dom';
 import {Plus,ArrowUpRight} from 'lucide-react';
@@ -61,8 +62,8 @@ export function TournamentWorkspace({tournamentId:id}:{tournamentId:string}){
   {(tab==='rules'||tab==='info')&&<SectionNavigation label="Настройки турнира" items={SETTINGS} selected={tab} onSelect={value=>update({tab:value})}
    href={value=>`?tab=${value}`}/>}
   {tab==='rules'&&<Rules key={d.rules.map(r=>r.id).join()} tid={id} data={d} onSaved={state.reload}/>}
-  {tab==='info'&&<section className="surface"><h2>Сведения о турнире</h2><TournamentSettings value={d.t} onSaved={state.reload}/><hr/>
-   <button className="quiet" onClick={archive}>{d.t.archived?'Вернуть из архива':'Архивировать турнир'}</button></section>}
+  {tab==='info'&&<><section className="surface"><h2>Сведения о турнире</h2><TournamentSettings value={d.t} onSaved={state.reload}/><hr/>
+   <button className="quiet" onClick={archive}>{d.t.archived?'Вернуть из архива':'Архивировать турнир'}</button></section><ApplicationSettings key={d.t.revision} tournament={d.t} onSaved={state.reload}/></>}
   {create&&<Modal title="Новый матч" onClose={()=>setCreate(false)}><MatchCreateForm tournament={d.t} entries={d.entries} rules={d.rules} onSaved={()=>{setCreate(false);state.reload()}}/></Modal>}
  </div>;
 }

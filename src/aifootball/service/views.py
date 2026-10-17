@@ -81,6 +81,8 @@ class TournamentView(NamedView):
     ends_on: date
     timezone: str
     revision: int
+    applications_open: bool = True
+    applications_deadline: datetime | None = None
 class RegulationView(EntityView):
     tournament_id: UUID
     variant_name: str

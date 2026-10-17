@@ -29,6 +29,8 @@ def create_app(settings=None, *, web_dist=None):
     from aifootball.service.captains.import_routes import router as captain_import_router
     app.include_router(captain_team_router,prefix='/api/v1')
     app.include_router(captain_import_router,prefix='/api/v1')
+    from aifootball.service.captains.entry_routes import router as captain_entry_router
+    app.include_router(captain_entry_router,prefix='/api/v1')
     from aifootball.service.tournaments.routes import router as tournament_router
     app.include_router(tournament_router, prefix='/api/v1')
     from aifootball.service.catalog.routes import router as catalog_router

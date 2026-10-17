@@ -1,4 +1,4 @@
-from sqlalchemy import Column,String,Date,Integer,Boolean,Uuid,ForeignKey,UniqueConstraint
+from sqlalchemy import Column,String,Date,DateTime,Integer,Boolean,Uuid,ForeignKey,UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from aifootball.service.db import Base,Entity
 
@@ -13,6 +13,8 @@ class Tournament(Entity,Base):
     revision=Column(Integer,nullable=False,default=0)
     archived=Column(Boolean,nullable=False,default=False)
     visibility=Column(String(10),nullable=False,default='draft',server_default='draft')
+    applications_open=Column(Boolean,nullable=False,default=True,server_default='true')
+    applications_deadline=Column(DateTime(timezone=True))
 
 
 class RegulationVersion(Entity,Base):

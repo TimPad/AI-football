@@ -1,4 +1,4 @@
-from sqlalchemy import Column,String,Boolean,Integer,BigInteger,Uuid,ForeignKey,DateTime,Index,text
+from sqlalchemy import Column,String,Boolean,Integer,BigInteger,Uuid,ForeignKey,DateTime,Index,text,UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from aifootball.service.db import Base,Entity
 
@@ -103,3 +103,32 @@ class PlayerProfileProposal(Entity,Base):
     expected_player_revision=Column(Integer)
     payload=Column(JSONB,nullable=False)
     status=Column(String(30),nullable=False,default='pending')
+
+class EntrySubmission(Entity,Base):
+    __tablename__='entry_submissions'
+    tournament_id=Column(Uuid,ForeignKey('tournaments.id'),nullable=False)
+    team_id=Column(Uuid,ForeignKey('teams.id'),nullable=False)
+    created_by=Column(Uuid,ForeignKey('captain_accounts.id'),nullable=False)
+    revision=Column(Integer,nullable=False,default=0)
+    status=Column(String(30),nullable=False,default='draft')
+    draft=Column(JSONB,nullable=False)
+    submitted_version_id=Column(Uuid)
+    accepted_version_id=Column(Uuid)
+    reason=Column(String(1000),nullable=False,default='')
+    __table_args__=(UniqueConstraint('tournament_id','team_id',name='uq_entry_submission_team'),)
+
+class EntrySubmissionVersion(Entity,Base):
+    __tablename__='entry_submission_versions'
+    submission_id=Column(Uuid,ForeignKey('entry_submissions.id'),nullable=False)
+    actor_id=Column(Uuid,ForeignKey('captain_accounts.id'),nullable=False)
+    number=Column(Integer,nullable=False)
+    payload=Column(JSONB,nullable=False)
+    __table_args__=(UniqueConstraint('submission_id','number',name='uq_entry_submission_version'),)
+
+class EntryInvitation(Entity,Base):
+    __tablename__='entry_invitations'
+    tournament_id=Column(Uuid,ForeignKey('tournaments.id'),nullable=False)
+    team_id=Column(Uuid,ForeignKey('teams.id'),nullable=False)
+    created_by=Column(Uuid,ForeignKey('admins.id'),nullable=False)
+    active=Column(Boolean,nullable=False,default=True)
+    __table_args__=(Index('uq_active_entry_invitation','tournament_id','team_id',unique=True,postgresql_where=text('active')),)
