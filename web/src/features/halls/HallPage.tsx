@@ -103,7 +103,7 @@ function CameraEditor({hall,onSaved}:{hall:Hall,onSaved:()=>void}){
    <label className="button">{frame?'Заменить картинкой':'Загрузить картинку'}<input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={reading} onChange={e=>{const f=e.target.files?.[0];if(f)void openFrame(f);e.target.value=''}}/></label></div>
   {!frame&&<p className="muted small">Картинка — стоп-кадр в полном разрешении записи (например, сохранённый в VLC), а не снимок экрана.</p>}
   {frame&&<>
-   <p className="frame-step" role="status">{active<0?'Все точки отмечены. Чтобы поправить точку, выберите её номер ниже.':<>Отметьте точку {active+1}: <b>{pointLabel(d.points[active],marks,active)}</b> — кликните по этому месту на кадре.</>}</p>
+   <p className="frame-step" role="status" aria-label="Разметка камеры">{active<0?'Все точки отмечены. Чтобы поправить точку, выберите её номер ниже.':<>Отметьте точку {active+1}: <b>{pointLabel(d.points[active],marks,active)}</b> — кликните по этому месту на кадре.</>}</p>
    <FramePicker frame={frame} points={d.points} active={active} disabled={locked||active<0} onPick={pick}/>
    <div className="frame-points">{d.points.map((p,i)=><button type="button" key={i} aria-pressed={i===active} className={empty(p)?'':'done'} onClick={()=>setChosen(i)} title={pointLabel(p,marks,i)}>{i+1}{empty(p)?'':' ✓'}</button>)}
     <select aria-label="Добавить точку разметки" value="" onChange={e=>addLandmark(Number(e.target.value))}><option value="">+ точка разметки…</option>{marks.map((m,i)=><option key={i} value={i}>{m.label}</option>)}</select></div>
