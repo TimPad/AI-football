@@ -17,6 +17,8 @@ import {MatchAside} from './MatchAside';
 import {goalScorers} from '../match-report/MatchTimeline';
 
 const SECTIONS=[{id:'overview',label:'Обзор'},{id:'events',label:'События'},{id:'players',label:'Составы'},{id:'stats',label:'Статистика'},{id:'video',label:'Видео'}];
+// Вкладка без содержимого не показывается: события — из опубликованного протокола, видео — из ссылки на трансляцию.
+const hasSection=(match:PublicMatch,id:string)=>id==='events'?!!match.public_protocol_id:id==='video'?!!(match.broadcast_url||match.broadcast_embed_url):true;
 const ORIGINS:PlayerOrigin[]=['protocol','cv','rating'];
 type Sources=Pick<ReportModel,'protocol'|'cv'|'ratings'|'actions'>;
 const EMPTY:Sources={protocol:{status:'loading'},cv:{status:'loading'},ratings:{status:'loading'},actions:{status:'loading'}};
@@ -30,13 +32,14 @@ export function PublicMatchPage(){
 function MatchContent({id}:{id:string}){
  const [params,update]=useQueryPatch();
  const [match,setMatch]=useState<PublicMatch>();const [error,setError]=useState<unknown>();const [tick,setTick]=useState(0);
- const tab=readMatchTab(params,'public');
+ const requested=readMatchTab(params,'public');
  const snapshotParam=isUuid(params.get('snapshot_id'))?params.get('snapshot_id'):null;
  const playerId=isUuid(params.get('player_id'))?params.get('player_id'):null;
  const origin=(ORIGINS as string[]).includes(params.get('origin')??'')?params.get('origin') as PlayerOrigin:'protocol';
  // Без выбора в URL группа определяется доступными источниками внутри отчёта.
  const group=(STAT_GROUPS.find(g=>g.id===params.get('group'))?.id??null) as StatGroup|null;
  const period=/^(all|[1-9][0-9]?)$/.test(params.get('period')??'')?params.get('period')!:'all';
+ const tab=match&&!hasSection(match,requested)?'overview':requested;
  // Командная сводка действий зависит от периода только во вкладке «Статистика»; обзор — всегда весь матч.
  const actionsPeriod=tab==='stats'?period:'all';
  const [sources,setSources]=useState<Sources>(EMPTY);
@@ -71,7 +74,7 @@ function MatchContent({id}:{id:string}){
  const note=sources.protocol.status==='ready'?resultNote(sources.protocol.value):null;
  return <>
   <MatchHeader match={match} resultNote={note} scorers={sources.protocol.status==='ready'?goalScorers(sources.protocol.value):null}>
-   <SectionNavigation label="Разделы матча" items={SECTIONS} selected={tab} onSelect={value=>navigate({tab:value})}
+   <SectionNavigation label="Разделы матча" items={SECTIONS.filter(s=>hasSection(match,s.id))} selected={tab} onSelect={value=>navigate({tab:value})}
     href={value=>`?${patchQuery(params,{tab:value})}`}/>
   </MatchHeader>
   <MatchReport match={match} model={model} section={tab} group={group}

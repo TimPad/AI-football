@@ -3,6 +3,7 @@ import {Radio,ChevronLeft,ChevronRight,ArrowRight} from 'lucide-react';
 import type {PublicMatch} from '../../api/domain';
 import {statuses} from '../../api/domain';
 import {Empty} from '../../components/ui';
+import {plural} from '../../components/plural';
 import {TeamCrest} from '../../components/match/MatchHeader';
 import {useQueryPatch} from '../navigation/useQueryPatch';
 import {localDay,localMinutes,matchTime,shiftDay} from '../matches/timezone';
@@ -12,6 +13,8 @@ export {localDay,matchTime};
 export type ScheduleItem=Pick<PublicMatch,'id'|'scheduled_at'|'schedule_slot_s'|'venue_label'|'hall'|'home_name'|'away_name'|'status'|'score'|'broadcast_url'|'broadcast_embed_url'>
  &{home_logo_id?:string|null;away_logo_id?:string|null};
 const PX_PER_MIN=1.6;
+// Фильтр статуса нужен длинному расписанию; короткое читается целиком.
+const STATUS_FILTER_FROM=11;
 
 export function Score({match}:{match:Pick<ScheduleItem,'score'>}){
  const known=match.score.home!=null&&match.score.away!=null;
@@ -19,9 +22,11 @@ export function Score({match}:{match:Pick<ScheduleItem,'score'>}){
 }
 // Зал различается по UUID; для старых записей без зала — по подписи.
 const venueKey=(m:ScheduleItem)=>m.hall?.id||m.venue_label||'Площадка не указана';
-const venueName=(m:ScheduleItem)=>m.hall?`${m.hall.name} · ${m.hall.address}`:m.venue_label||'Площадка не указана';
+// В расписании — только название зала; адрес и карта — на странице матча.
+const venueName=(m:ScheduleItem)=>m.hall?.name||m.venue_label||'Площадка не указана';
 const endIso=(m:ScheduleItem)=>new Date(new Date(m.scheduled_at).getTime()+m.schedule_slot_s*1000).toISOString();
 const hasVideo=(m:ScheduleItem)=>Boolean(m.broadcast_url||m.broadcast_embed_url);
+export const timezoneLabel=(tz:string)=>tz==='Europe/Moscow'?'Время московское':`Время местное (${tz.split('/').pop()!.replace(/_/g,' ')})`;
 
 function Teams({match:m}:{match:ScheduleItem}){
  return <div className="slot-teams"><span className="slot-team"><TeamCrest name={m.home_name} logoId={m.home_logo_id} side="home" size="sm"/><b>{m.home_name}</b></span>
@@ -50,25 +55,28 @@ export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`}
  const shown=matches.filter(m=>(!shownDay||localDay(m.scheduled_at,timezone)===shownDay)&&(!hall||venueKey(m)===hall)&&(!status||m.status===status));
  const columns=venues.filter(v=>(!hall||hall===v)&&(view==='list'||shown.some(m=>venueKey(m)===v)));
  const baseDay=shownDay||today;
+ // Элемент управления показывается, только когда он что-то меняет (или уже выбран в ссылке — чтобы его можно было сбросить).
+ const show={day:dates.length>1||!!day,hall:venues.length>1||!!hall,status:matches.length>=STATUS_FILTER_FROM||!!status,view:venues.length>1||view==='grid'};
+ const toolbar=show.day||show.hall||show.status||show.view;
  return <section className="schedule">
-  <div className="schedule-toolbar">
-   <div className="day-stepper"><button className="icon-button" aria-label="Предыдущий день" onClick={()=>set({day:shiftDay(baseDay,-1)})}><ChevronLeft/></button>
+  {toolbar&&<div className="schedule-toolbar">
+   {show.day&&<div className="day-stepper"><button className="icon-button" aria-label="Предыдущий день" onClick={()=>set({day:shiftDay(baseDay,-1)})}><ChevronLeft/></button>
     <input type="date" aria-label="Дата" value={shownDay} onChange={e=>set({day:e.target.value||null})}/>
-    <button className="icon-button" aria-label="Следующий день" onClick={()=>set({day:shiftDay(baseDay,1)})}><ChevronRight/></button></div>
-   <select aria-label="Фильтр по залу" value={hall} onChange={e=>set({hall_id:e.target.value||null})}><option value="">Все залы</option>{venues.map(v=><option key={v} value={v}>{names.get(v)}</option>)}</select>
-   <select aria-label="Фильтр по статусу" value={status} onChange={e=>set({status:e.target.value||null})}><option value="">Все статусы</option>{Object.entries(statuses).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select>
+    <button className="icon-button" aria-label="Следующий день" onClick={()=>set({day:shiftDay(baseDay,1)})}><ChevronRight/></button></div>}
+   {show.hall&&<select aria-label="Фильтр по залу" value={hall} onChange={e=>set({hall_id:e.target.value||null})}><option value="">Все залы</option>{venues.map(v=><option key={v} value={v}>{names.get(v)}</option>)}</select>}
+   {show.status&&<select aria-label="Фильтр по статусу" value={status} onChange={e=>set({status:e.target.value||null})}><option value="">Все статусы</option>{Object.entries(statuses).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select>}
    {(day||hall||status)&&<button onClick={()=>set({day:null,hall_id:null,status:null})}>Сбросить</button>}
-   <div className="segmented view-switch" role="group" aria-label="Вид расписания">
+   {show.view&&<div className="segmented view-switch" role="group" aria-label="Вид расписания">
     <button aria-pressed={view==='list'} onClick={()=>set({view:null})}>Список</button>
-    <button aria-pressed={view==='grid'} onClick={()=>set({view:'grid'})}>Сетка</button></div>
-  </div>
+    <button aria-pressed={view==='grid'} onClick={()=>set({view:'grid'})}>Сетка</button></div>}
+  </div>}
   {!shown.length?<Empty>{matches.length?'Матчей с такими условиями нет.':'Матчей пока нет.'}</Empty>
   :view==='list'?<div className="schedule-list">{shown.map(m=><article key={m.id} className="schedule-row">
     <div className="row-time num"><b>{matchTime(m.scheduled_at,timezone)}</b><small>{new Intl.DateTimeFormat('ru-RU',{timeZone:timezone,day:'numeric',month:'short'}).format(new Date(m.scheduled_at))}</small></div>
-    <Teams match={m}/><span className="row-hall">{venueName(m)}</span><Status match={m}/>
-    <span className="row-video">{hasVideo(m)&&<><Radio aria-hidden="true"/>ВК</>}</span><Open match={m} href={matchHref(m.id)}/></article>)}</div>
+    <Teams match={m}/><span className="row-hall">{venueName(m)}</span>
+    <div className="row-meta"><Status match={m}/><span className="row-video">{hasVideo(m)&&<><Radio aria-hidden="true"/>ВК</>}</span><Open match={m} href={matchHref(m.id)}/></div></article>)}</div>
   :<TimeGrid matches={shown} columns={columns} names={names} timezone={timezone} matchHref={matchHref}/>}
-  <footer className="schedule-foot"><span>{shown.length} матчей · {columns.length} залов</span><span>Время указано для {timezone}</span></footer>
+  <footer className="schedule-foot"><span>{plural(shown.length,['матч','матча','матчей'])}{columns.length>1?` · ${plural(columns.length,['зал','зала','залов'])}`:''}</span><span>{timezoneLabel(timezone)}</span></footer>
  </section>;
 }
 

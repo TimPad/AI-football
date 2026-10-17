@@ -35,9 +35,10 @@ export function SessionChrome({extra,children}:{extra?:unknown;children:(state:{
  const blocked=queue.blocked||!!state.store.error?.startsWith('Повреждена');
  const disabled=pending||blocked;const head=queue.items[0];
  return <>
-  <div className="save-state" role="status"><span>{blocked?'Открыто в другом окне':pending?`Несохранённых правок: ${queue.items.length}`:'Все изменения сохранены'} · ревизия {m.revision}</span>
+  <div className="save-state" role="status"><span>{blocked?'Открыто в другом окне':pending?`Несохранённых правок: ${queue.items.length}`:'Все изменения сохранены'}</span>
    <div className="row">{pending&&<button onClick={()=>queue.retry().catch(setError)} disabled={head.state==='conflict'||head.state==='invalid'}><RotateCcw/>Повторить</button>}
-    <button onClick={()=>downloadJson({commands:queue.items,raw:state.store.raw,extra})}><Download/>Черновик JSON</button>
+    {/* Копия нужна, только пока есть неотправленные правки (например, пропала связь в зале). */}
+    {pending&&<button onClick={()=>downloadJson({commands:queue.items,raw:state.store.raw,extra})}><Download/>Сохранить копию правок</button>}
     <button disabled={pending} onClick={()=>queue.refresh().catch(setError)}>Обновить</button></div></div>
   <ErrorBox error={error||queue.error||state.store.error}/>
   {queue.blocked&&<div className="surface"><p>В другом окне этого браузера уже редактируется матч. Перед продолжением убедитесь, что там нет несохранённого ввода.</p><button onClick={()=>queue.takeOver().catch(setError)}>Взять управление в этом окне</button></div>}

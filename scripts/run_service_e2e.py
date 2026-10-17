@@ -23,7 +23,8 @@ with engine.connect() as db:
 engine.dispose()
 settings=Settings(database_url=url.render_as_string(hide_password=False),allowed_origin='http://127.0.0.1:8181',attachment_root=Path('data/service/e2e-attachments'))
 cfg=Config('alembic.ini');cfg.attributes['database_url']=settings.database_url;command.upgrade(cfg,'head')
-app=create_app(settings)
+# AIF_WEB_DIST — отдельная сборка интерфейса ветки: общая web/dist остаётся у сервиса организатора.
+app=create_app(settings,web_dist=os.environ.get('AIF_WEB_DIST') or None)
 with Session(app.state.engine) as db:
     if not db.scalar(select(Admin).where(Admin.login=='e2e-admin')):
         create_admin(db,'e2e-admin','e2e-only-password')

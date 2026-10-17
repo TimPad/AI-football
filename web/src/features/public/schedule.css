@@ -38,6 +38,14 @@
 .time-slot.cancelled{opacity:.7}
 .slot-head,.slot-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:var(--text-muted)}
 .schedule-foot{display:flex;justify-content:space-between;gap:16px;padding:14px 16px;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border)}
-@media(max-width:900px){.schedule-row{grid-template-columns:56px minmax(0,1fr) auto;row-gap:6px}.row-hall,.row-video{grid-column:2}.schedule-row .status-chip{grid-column:3;grid-row:1}.slot-open{grid-column:3}.view-switch{margin-left:0}}
+.row-meta{display:contents}
+/* Телефон и планшет: команды занимают всю строку, статус и ссылка — строкой ниже. */
+@media(max-width:900px){.schedule-row{grid-template-columns:56px minmax(0,1fr);row-gap:8px}.schedule-row>:not(.row-time){grid-column:2}.row-time{grid-row:1 / span 3;align-self:start}
+ .row-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}.row-meta .slot-open{margin-left:auto}.view-switch{margin-left:0}}
+/* Телефон: команды в две строки (хозяева сверху), счёт справа — названиям хватает ширины. */
+@media(max-width:600px){.schedule-row .slot-teams{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"home score" "away score";row-gap:6px}
+ .schedule-row .slot-team{grid-area:home}.schedule-row .slot-team.away{grid-area:away;justify-content:flex-start;text-align:left}
+ .schedule-row .slot-team.away .crest{order:-1}.schedule-row .spectator-score{grid-area:score;font-size:18px}}
+@media(max-width:600px){.schedule-toolbar{gap:8px;padding:12px}.schedule-toolbar select{min-width:0;flex:1 1 140px}.day-stepper{flex:1 1 100%}.day-stepper input{flex:1;min-width:0}}
 .tournament-section{margin-top:16px}
 .time-axis span:last-child{transform:translateY(-100%)}

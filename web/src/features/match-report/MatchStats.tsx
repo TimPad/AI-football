@@ -50,10 +50,10 @@ export function MatchStats({match,model,period,onPeriod,players}:{match:PublicMa
  const thirds=cv&&cvKey?cvThirds(cv,cvKey):null;
  const lineup=protocol?.lineup??[];const name=(id:string|null)=>id?lineup.find(l=>l.player_id===id)?.display_name??null:null;
  const shots:Shot[]=actions?actions.shots.map(s=>({...s,player:name(s.player_id??null)})):[];
- const discipline=protocol?protocolLines(protocol,period).filter(l=>l.key!=='goals'):[];
- const top=topLines(protocol,actions,cv,period);
+ // «Главное» здесь не повторяется: каждая строка уже есть в своей карточке, голы — вместе с дисциплиной.
+ const discipline=protocol?protocolLines(protocol,period):[];
  const anything=protocol||actions||cv;
- const lines=[...top,...discipline,...(groups?Object.values(groups).flat():[])];
+ const lines=[...discipline,...(groups?Object.values(groups).flat():[])];
  const partial=lines.some(l=>l.partial),auto=lines.some(l=>l.auto);
  return <>
   <section className="report-block stats-block">
@@ -61,10 +61,9 @@ export function MatchStats({match,model,period,onPeriod,players}:{match:PublicMa
    {!anything?<p className="muted">Статистика появится после публикации протокола, проверенных действий или видеоанализа.</p>:<div className="stat-grid">
     {actions&&actions.pitch&&actions.rows.some(r=>r.category==='shots')&&<StatCard title="Карта ударов"><ShotMap shots={shots} lengthM={actions.pitch.length_m} widthM={actions.pitch.width_m}
      homeName={match.home_name} awayName={match.away_name}/></StatCard>}
-    <StatCard title="Главное" lines={top}/>
     {groups&&<><StatCard title="Удары" lines={groups.shots}/><StatCard title="Передачи и ведение" lines={groups.passes}/>
      <StatCard title="Защита и единоборства" lines={groups.defense}/><StatCard title="Вратари" lines={groups.goalkeeping}/></>}
-    <StatCard title="Дисциплина" lines={discipline}/>
+    <StatCard title="Голы и дисциплина" lines={discipline}/>
     {physical&&<StatCard title="Физика · видеоанализ" lines={physical.physical} footer={cv!.partial?'По обработанному фрагменту записи':undefined}/>}
     {physical&&<StatCard title="Построение · видеоанализ" lines={physical.shape}>{thirds&&<Zones thirds={thirds} homeName={match.home_name} awayName={match.away_name}/>}</StatCard>}
     {cv&&cvKey&&<StatCard title="Тепловые карты" wide><TeamComparison cv={cv} periodKey={cvKey} homeName={match.home_name} awayName={match.away_name} rows={false}/></StatCard>}
