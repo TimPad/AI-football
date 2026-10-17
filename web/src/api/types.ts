@@ -1261,6 +1261,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/team-review-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Tasks */
+        get: operations["admin_tasks_api_v1_matches__mid__analysis_runs__rid__team_review_tasks_get"];
+        put?: never;
+        /** Create Task */
+        post: operations["create_task_api_v1_matches__mid__analysis_runs__rid__team_review_tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/identity-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Captain Tasks */
+        get: operations["captain_tasks_api_v1_captain_identity_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/identity-tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Captain Task */
+        get: operations["captain_task_api_v1_captain_identity_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/identity-tasks/{task_id}/tracks/{track_id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Captain Thumbnail */
+        get: operations["captain_thumbnail_api_v1_captain_identity_tasks__task_id__tracks__track_id__thumbnail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{mid}/analysis/jobs": {
         parameters: {
             query?: never;
@@ -6670,6 +6739,12 @@ export interface components {
         /** RunSummary */
         RunSummary: {
             /**
+             * Identity Workflow
+             * @default admin
+             * @enum {string}
+             */
+            identity_workflow?: "admin" | "team";
+            /**
              * Has Understanding
              * @default false
              */
@@ -6711,6 +6786,12 @@ export interface components {
         /** RunView */
         RunView: {
             /**
+             * Identity Workflow
+             * @default admin
+             * @enum {string}
+             */
+            identity_workflow?: "admin" | "team";
+            /**
              * Has Understanding
              * @default false
              */
@@ -6748,6 +6829,11 @@ export interface components {
             partial: boolean;
             /** Passed */
             passed: boolean;
+            /**
+             * Side Map Verified
+             * @default false
+             */
+            side_map_verified?: boolean;
             /**
              * Match Id
              * Format: uuid
@@ -7267,6 +7353,31 @@ export interface components {
             /** Players */
             players?: components["schemas"]["ProfilePlayer"][];
         };
+        /** TeamDecision */
+        TeamDecision: {
+            /** Group Id */
+            group_id: string;
+            /** Player Id */
+            player_id?: string | null;
+            /**
+             * Kind
+             * @default player
+             * @enum {string}
+             */
+            kind?: "player" | "unknown" | "material_issue";
+            /**
+             * Reason
+             * @default
+             */
+            reason?: string;
+        };
+        /** TeamGroup */
+        TeamGroup: {
+            /** Id */
+            id: string;
+            /** Tracks */
+            tracks: components["schemas"]["TeamTrack"][];
+        };
         /** TeamMemberView */
         TeamMemberView: {
             /**
@@ -7305,6 +7416,18 @@ export interface components {
             description?: string | null;
             /** Logo Id */
             logo_id?: string | null;
+        };
+        /** TeamPlayer */
+        TeamPlayer: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Shirt Number */
+            shirt_number?: string | null;
         };
         /** TeamProfile */
         TeamProfile: {
@@ -7400,6 +7523,86 @@ export interface components {
             home: components["schemas"]["StatValue"];
             away: components["schemas"]["StatValue"];
         };
+        /** TeamTaskCreate */
+        TeamTaskCreate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /**
+             * Team Id
+             * Format: uuid
+             */
+            team_id: string;
+            /** Expected Run Revision */
+            expected_run_revision: number;
+        };
+        /** TeamTaskList */
+        TeamTaskList: {
+            /** Items */
+            items: components["schemas"]["TeamTaskView"][];
+            /** Total */
+            total: number;
+        };
+        /** TeamTaskView */
+        TeamTaskView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /**
+             * Team Id
+             * Format: uuid
+             */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Opponent Name */
+            opponent_name: string;
+            /**
+             * Scheduled At
+             * Format: date-time
+             */
+            scheduled_at: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Status */
+            status: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Reason */
+            reason: string;
+            /** Groups */
+            groups: components["schemas"]["TeamGroup"][];
+            /** Players */
+            players: components["schemas"]["TeamPlayer"][];
+            /** Draft */
+            draft: components["schemas"]["TeamDecision"][];
+            /** Confirmed By Kind */
+            confirmed_by_kind?: string | null;
+            /** Confirmation Id */
+            confirmation_id?: string | null;
+        };
         /** TeamTotals */
         "TeamTotals-Input": {
             /** Score */
@@ -7429,6 +7632,15 @@ export interface components {
             period_scores: {
                 [key: string]: number | null;
             };
+        };
+        /** TeamTrack */
+        TeamTrack: {
+            /** Track Id */
+            track_id: number;
+            /** Intervals */
+            intervals: number[][];
+            /** Has Thumbnail */
+            has_thumbnail: boolean;
         };
         /** TeamView */
         TeamView: {
@@ -10741,6 +10953,169 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CameraProfileView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_tasks_api_v1_matches__mid__analysis_runs__rid__team_review_tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamTaskList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_task_api_v1_matches__mid__analysis_runs__rid__team_review_tasks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamTaskCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamTaskView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    captain_tasks_api_v1_captain_identity_tasks_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamTaskList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    captain_task_api_v1_captain_identity_tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamTaskView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    captain_thumbnail_api_v1_captain_identity_tasks__task_id__tracks__track_id__thumbnail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

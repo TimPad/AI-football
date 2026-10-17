@@ -13,7 +13,7 @@ def job_view(job):
 
 def run_summary(run):
     files = run.manifest.get('files', {})
-    return {'has_understanding': 'understanding.json' in files, 'has_events': 'events.json' in files, 'id': run.id, 'job_id': run.job_id, 'created_at': run.created_at, 'status': run.status,
+    return {'identity_workflow':run.identity_workflow,'has_understanding': 'understanding.json' in files, 'has_events': 'events.json' in files, 'id': run.id, 'job_id': run.job_id, 'created_at': run.created_at, 'status': run.status,
             'revision': run.revision, 'source_run_id': run.source_run_id,
             'partial': run.checks['partial'], 'passed': run.checks['passed']}
 
@@ -29,7 +29,7 @@ def run_view(db, run):
                              'published_run_id': match.published_analysis_run_id,
                              'report': run.report, 'tracks': run.tracks['tracks'], 'checks': run.checks,
                              'groups': [g['track_ids'] for g in run.tracks.get('groups', [])],
-                             'context': job.context, 'side_map': run.side_map,
+                             'context': job.context, 'side_map': run.side_map,'side_map_verified':run.side_map_verified,
                              'assignments': [{'track_id': a.track_id, 'player_id': a.player_id,
                                               'excluded_reason': a.excluded_reason} for a in assigned],
                              'players': [metric_view(m) for m in metrics],

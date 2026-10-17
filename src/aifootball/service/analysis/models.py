@@ -30,6 +30,7 @@ class AnalysisRun(Entity, Base):
     understanding_reviews = Column(JSONB, nullable=False, default=dict)
     side_map_verified = Column(Boolean, nullable=False, default=False)
     status = Column(String(20), nullable=False, default='review')
+    identity_workflow = Column(String(10), nullable=False, default='admin', server_default='admin')
     revision = Column(Integer, nullable=False, default=0)
     side_map = Column(JSONB, nullable=False, default=lambda: {'A': 'home', 'B': 'away'})
     confirmed_by = Column(Uuid, ForeignKey('admins.id'))
