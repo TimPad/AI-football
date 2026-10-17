@@ -317,6 +317,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/roster-imports/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Template */
+        get: operations["download_template_api_v1_roster_imports_template_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload */
+        post: operations["upload_api_v1_roster_imports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster-imports/{identifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_roster_imports__identifier__get"];
+        put?: never;
+        post?: never;
+        /** Cancel */
+        delete: operations["cancel_api_v1_roster_imports__identifier__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster-imports/{identifier}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Preview */
+        put: operations["preview_api_v1_roster_imports__identifier__preview_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster-imports/{identifier}/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commit */
+        post: operations["commit_api_v1_roster_imports__identifier__commit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster-imports/{identifier}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Report */
+        get: operations["download_report_api_v1_roster_imports__identifier__report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/catalog/images": {
         parameters: {
             query?: never;
@@ -1761,6 +1864,23 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_upload_api_v1_roster_imports_post */
+        Body_upload_api_v1_roster_imports_post: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "team" | "tournament";
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
+            /** File */
+            file: string;
+            /** Entry Id */
+            entry_id?: string | null;
+        };
         /** Body_upload_reference_api_v1_halls__hid__camera_profiles__pid__reference_frame_put */
         Body_upload_reference_api_v1_halls__hid__camera_profiles__pid__reference_frame_put: {
             /** File */
@@ -2663,6 +2783,162 @@ export interface components {
             };
             /** Partial */
             partial: boolean;
+        };
+        /** ImportCandidate */
+        ImportCandidate: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Archived
+             * @default false
+             */
+            archived?: boolean;
+        };
+        /** ImportCommit */
+        ImportCommit: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+        };
+        /** ImportPreviewInput */
+        ImportPreviewInput: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Sheet */
+            sheet: string;
+            /** Mapping */
+            mapping: {
+                [key: string]: number;
+            };
+            /** Edits */
+            edits?: {
+                [key: string]: {
+                    [key: string]: string | null;
+                };
+            };
+            /** Decisions */
+            decisions?: {
+                [key: string]: components["schemas"]["PlayerDecision"];
+            };
+            /** Team Decisions */
+            team_decisions?: {
+                [key: string]: string;
+            };
+            /** Excluded Rows */
+            excluded_rows?: string[];
+        };
+        /** ImportResult */
+        ImportResult: {
+            /** Teams Created */
+            teams_created: number;
+            /** Players Created */
+            players_created: number;
+            /** Players Reused */
+            players_reused: number;
+            /** Entries Updated */
+            entries_updated: number;
+            /** Skipped Rows */
+            skipped_rows: number;
+            /** Links */
+            links: {
+                [key: string]: string;
+            }[];
+        };
+        /** ImportRow */
+        ImportRow: {
+            /** Id */
+            id: string;
+            /** Source Row */
+            source_row: number;
+            /** Team Name */
+            team_name: string;
+            /** Name */
+            name: string;
+            /** Shirt Number */
+            shirt_number?: string | null;
+            /** Player Id */
+            player_id?: string | null;
+            /** Team Id */
+            team_id?: string | null;
+            /** Player Candidates */
+            player_candidates?: components["schemas"]["ImportCandidate"][];
+            /** Team Candidates */
+            team_candidates?: components["schemas"]["ImportCandidate"][];
+            /** Issues */
+            issues?: string[];
+            /**
+             * Excluded
+             * @default false
+             */
+            excluded?: boolean;
+            /** Action */
+            action: string;
+            /** Values */
+            values?: {
+                [key: string]: string | null;
+            };
+        };
+        /** ImportSheet */
+        ImportSheet: {
+            /** Name */
+            name: string;
+            /** Headers */
+            headers: string[];
+            /** Row Count */
+            row_count: number;
+        };
+        /** ImportView */
+        ImportView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "team" | "tournament";
+            /**
+             * Target Id
+             * Format: uuid
+             */
+            target_id: string;
+            /** Entry Id */
+            entry_id?: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Sheets */
+            sheets: components["schemas"]["ImportSheet"][];
+            /** Rows */
+            rows: components["schemas"]["ImportRow"][];
+            /** Summary */
+            summary: {
+                [key: string]: number;
+            };
+            /** Configuration */
+            configuration: {
+                [key: string]: unknown;
+            };
+            /** Can Commit */
+            can_commit: boolean;
+            result?: components["schemas"]["ImportResult"] | null;
         };
         /** InitialFive */
         "InitialFive-Input": {
@@ -3612,6 +3888,16 @@ export interface components {
             weight_kg?: number | null;
             /** Name */
             name: string;
+        };
+        /** PlayerDecision */
+        PlayerDecision: {
+            /** Player Id */
+            player_id?: string | null;
+            /**
+             * Create New
+             * @default false
+             */
+            create_new?: boolean;
         };
         /** PlayerHistoryView */
         PlayerHistoryView: {
@@ -7004,6 +7290,231 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlayerView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_template_api_v1_roster_imports_template_get: {
+        parameters: {
+            query?: {
+                scope?: "team" | "tournament";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_api_v1_roster_imports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_api_v1_roster_imports_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_roster_imports__identifier__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_v1_roster_imports__identifier__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_v1_roster_imports__identifier__preview_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPreviewInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    commit_api_v1_roster_imports__identifier__commit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportCommit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_report_api_v1_roster_imports__identifier__report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
