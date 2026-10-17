@@ -26,6 +26,7 @@ class HallFields(Input):
 
 class HallCreate(HallFields):
     request_id:UUID=Field(default_factory=uuid4)
+    address_selection_token:str|None=Field(default=None,max_length=12000)
 
 
 class HallUpdate(HallCreate):

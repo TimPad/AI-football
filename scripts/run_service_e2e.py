@@ -27,6 +27,12 @@ settings=Settings(database_url=url.render_as_string(hide_password=False),allowed
 cfg=Config('alembic.ini');cfg.attributes['database_url']=settings.database_url;command.upgrade(cfg,'head')
 # AIF_WEB_DIST — отдельная сборка интерфейса ветки: общая web/dist остаётся у сервиса организатора.
 app=create_app(settings,web_dist=os.environ.get('AIF_WEB_DIST') or None)
+if os.environ.get('AIF_E2E_FAKE_ADDRESS')=='1':
+    settings.address_signing_secret='e2e-only-address-selection-secret-123456'
+    class SyntheticAddressProvider:
+        def suggest(self,query):return [{'uri':'ymapsbm1://geo?data=e2e','title':'Тестовая арена','subtitle':'Тестовый город','address':'Тестовый город, Спортивная, 1'}]
+        def resolve(self,uri):return {'address':'Тестовый город, Спортивная, 1','latitude':57.62,'longitude':39.88}
+    app.state.address_provider=SyntheticAddressProvider()
 with Session(app.state.engine) as db:
     if not db.scalar(select(Admin).where(Admin.login=='e2e-admin')):
         create_admin(db,'e2e-admin','e2e-only-password')

@@ -28,6 +28,7 @@ web = [
     "python-multipart>=0.0.20",
     "pillow>=12,<13",
     "openpyxl>=3.1.5,<4",
+    "httpx>=0.28,<1",
 ]
 web-dev = ["httpx>=0.28,<1", "httpx2>=2,<3"]
 

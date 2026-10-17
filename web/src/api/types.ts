@@ -454,6 +454,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/halls/address-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Suggest */
+        get: operations["suggest_api_v1_halls_address_suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/halls/address-resolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve */
+        post: operations["resolve_api_v1_halls_address_resolution_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/halls": {
         parameters: {
             query?: never;
@@ -1752,6 +1786,40 @@ export interface components {
             /** Team Ids */
             team_ids: string[];
         };
+        /** AddressResolution */
+        AddressResolution: {
+            /** Suggestion Id */
+            suggestion_id: string;
+        };
+        /** AddressSelection */
+        AddressSelection: {
+            /** Address */
+            address: string;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /** Address Selection Token */
+            address_selection_token: string;
+        };
+        /** AddressSuggestion */
+        AddressSuggestion: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle: string;
+            /** Address */
+            address: string;
+        };
+        /** AddressSuggestions */
+        AddressSuggestions: {
+            /** Available */
+            available: boolean;
+            /** Items */
+            items: components["schemas"]["AddressSuggestion"][];
+        };
         /** AnalysisContext */
         AnalysisContext: {
             /**
@@ -2698,6 +2766,8 @@ export interface components {
              * Format: uuid
              */
             request_id?: string;
+            /** Address Selection Token */
+            address_selection_token?: string | null;
         };
         /** HallUpdate */
         HallUpdate: {
@@ -2730,6 +2800,8 @@ export interface components {
              * Format: uuid
              */
             request_id?: string;
+            /** Address Selection Token */
+            address_selection_token?: string | null;
             /** Expected Revision */
             expected_revision: number;
             /**
@@ -2758,6 +2830,11 @@ export interface components {
             revision: number;
             /** Address */
             address: string;
+            /**
+             * Address Source
+             * @default manual
+             */
+            address_source?: string;
             /** Pitch Length M */
             pitch_length_m: number;
             /** Pitch Width M */
@@ -7658,6 +7735,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_api_v1_halls_address_suggestions_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressSuggestions"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_api_v1_halls_address_resolution_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddressResolution"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressSelection"];
                 };
             };
             /** @description Validation Error */

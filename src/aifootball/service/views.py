@@ -20,6 +20,7 @@ class NamedView(EntityView):
 class HallView(NamedView):
     revision: int
     address: str
+    address_source: str = 'manual'
     pitch_length_m: float
     pitch_width_m: float
     ceiling_height_m: float | None = None
