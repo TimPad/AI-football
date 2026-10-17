@@ -12,7 +12,8 @@ it('uses a manually entered address for Yandex Maps without asking for GPS coord
  expect(screen.queryByLabelText('Долгота')).toBeNull();
  expect(screen.queryByRole('link',{name:'Открыть в Яндекс Картах'})).toBeNull();
  fireEvent.change(address,{target:{value:'Ярославль, Спортивная 1 & корпус 2'}});
- const link=screen.getByRole('link',{name:'Открыть в Яндекс Картах'});
+ // Под нагрузкой форма успевает перерисоваться после ввода — ссылку дожидаемся.
+ const link=await screen.findByRole('link',{name:'Открыть в Яндекс Картах'});
  expect(new URL(link.getAttribute('href')!).searchParams.get('text')).toBe('Ярославль, Спортивная 1 & корпус 2');
  expect(link).toHaveAttribute('target','_blank');
  expect(link).toHaveAttribute('rel','noopener noreferrer');

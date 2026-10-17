@@ -8,6 +8,8 @@ function packageFor(job:unknown,mode:'valid'|'foreign'|'events'='valid'){
  const result=spawnSync('../.venv/bin/python',['-c',code,mode],{input:JSON.stringify(job),env:{...process.env,PYTHONPATH:'../tests'}});
  if(result.status!==0)throw Error(result.stderr.toString());return result.stdout;
 }
+// Когда результат уже загружен, загрузка нового свёрнута в «Новая обработка записи».
+async function openUpload(page:import('@playwright/test').Page){const box=page.locator('details.analysis-upload');if(await box.getAttribute('open')===null)await box.locator(':scope > summary').click()}
 test('external report → identities → one-match history → separate publication and safe retries',async({page,browser})=>{
  await page.goto('/login');await page.getByLabel('Логин',{exact:true}).fill('e2e-analyst');await page.getByLabel('Пароль',{exact:true}).fill('e2e-only-password');await page.getByRole('button',{name:'Войти',exact:true}).click();await expect(page.getByRole('heading',{name:'Турниры',exact:true})).toBeVisible();
  const session=await (await page.request.get('/api/v1/auth/me')).json();const headers={'X-CSRF-Token':session.csrf_token,Origin:'http://127.0.0.1:8181'};
@@ -45,12 +47,12 @@ test('external report → identities → one-match history → separate publicat
  await page.getByRole('link',{name:`7 · ${people[0].name}`,exact:true}).click();await expect(page.getByText(/1 матчей с активным отчётом/)).toBeVisible();await expect(page.getByRole('cell',{name:'210',exact:true})).toBeVisible();
  await page.goto(path);await task(page,'Проверка').click();
  // A second import does not change publication; confirming it replaces history.
- const second=packageFor(job);await page.getByLabel('Пакет результата ZIP').setInputFiles({name:'second.zip',mimeType:'application/zip',buffer:second});await page.getByRole('button',{name:'Загрузить результат'}).click();await expect(page.getByRole('heading',{name:'На проверке',exact:true})).toBeVisible();
+ const second=packageFor(job);await openUpload(page);await page.getByLabel('Пакет результата ZIP').setInputFiles({name:'second.zip',mimeType:'application/zip',buffer:second});await page.getByRole('button',{name:'Загрузить результат'}).click();await expect(page.getByRole('heading',{name:'На проверке',exact:true})).toBeVisible();
  for(const id of [1,2])await assignTrack(page,id,people[0].id);await assignTrack(page,3,people[1].id);
  await page.getByRole('button',{name:'Сохранить сопоставление'}).click();await expect(page.getByRole('button',{name:'Подтвердить аналитику'})).toBeEnabled();await page.getByRole('button',{name:'Подтвердить аналитику'}).click();await expect(page.getByRole('heading',{name:'Подтверждённый отчёт'})).toBeVisible();
  const history=await (await page.request.get(`/api/v1/players/${people[0].id}/analysis`)).json();expect(history.match_count).toBe(1);expect(history.totals.distance_m).toBe(210);
  expect((await (await spectator.request.get(`/api/v1/public${path}/analysis`)).json()).run_id).toBe(published.run_id);
- await page.getByLabel('Пакет результата ZIP').setInputFiles({name:'foreign.zip',mimeType:'application/zip',buffer:packageFor(job,'foreign')});await page.getByRole('button',{name:'Загрузить результат'}).click();await expect(page.getByRole('alert')).toBeVisible();expect((await (await spectator.request.get(`/api/v1/public${path}/analysis`)).json()).run_id).toBe(published.run_id);
+ await openUpload(page);await page.getByLabel('Пакет результата ZIP').setInputFiles({name:'foreign.zip',mimeType:'application/zip',buffer:packageFor(job,'foreign')});await page.getByRole('button',{name:'Загрузить результат'}).click();await expect(page.getByRole('alert')).toBeVisible();expect((await (await spectator.request.get(`/api/v1/public${path}/analysis`)).json()).run_id).toBe(published.run_id);
  await spectator.goto('/login');await spectator.getByLabel('Логин',{exact:true}).fill('e2e-admin');await spectator.getByLabel('Пароль',{exact:true}).fill('e2e-only-password');await spectator.getByRole('button',{name:'Войти',exact:true}).click();await expect(spectator.getByRole('heading',{name:'Турниры',exact:true})).toBeVisible();await spectator.goto(path);await task(spectator,'Проверка').click();await expect(spectator.getByText(/Для выдачи заданий/)).toBeVisible();await expect(spectator.getByRole('button',{name:'Создать задание'})).toHaveCount(0);
  await guest.close();
 });

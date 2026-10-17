@@ -39,7 +39,8 @@ beforeEach(()=>{localStorage.clear();paths.length=0;Object.assign(owners,{active
    :/attachments|history|versions/.test(path)?{items:[],total:0}:fixture;
   return new Response(JSON.stringify(body))}));});
 afterEach(()=>vi.unstubAllGlobals());
-const go=async(user:ReturnType<typeof userEvent.setup>,name:string)=>user.click(screen.getByRole('link',{name}));
+// Матч перечитывается при смене задачи: ссылку дожидаемся, а не ищем сразу.
+const go=async(user:ReturnType<typeof userEvent.setup>,name:string)=>user.click(await screen.findByRole('link',{name}));
 
 describe('match workspace',()=>{
  it('keeps at most one protocol queue and none in read-only tasks',async()=>{
