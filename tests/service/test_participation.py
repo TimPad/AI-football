@@ -68,6 +68,8 @@ def test_video_timeline_is_bounded_by_selected_confirmed_recording(admin_client,
     run=save_assignments(admin_client,analytics_match,imported(admin_client,analytics_match)).json()
     run=command(admin_client,analytics_match,run,'confirm').json()
     data=body(analytics_match);doc=data['document']
+    # Подтверждение видео уже создало автоматическое участие.
+    data['expected_revision']=admin_client.get(path(analytics_match)).json()['revision']
     doc.update(clock_basis='video',source_analysis_run_id=run['id'],duration_ms=240001)
     result=admin_client.put(path(analytics_match),json=data)
     assert result.status_code==422,result.text

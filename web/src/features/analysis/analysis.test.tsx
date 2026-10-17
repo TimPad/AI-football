@@ -52,3 +52,11 @@ it('shows track and team period measurements before identity confirmation',async
  fireEvent.click(summary);
  expect(screen.getByRole('heading',{name:'Командные показатели по периодам'})).toBeVisible();expect(screen.getByRole('heading',{name:'Показатели фрагментов до сопоставления'})).toBeVisible();expect(screen.getByText('Нет наблюдений команды')).toBeVisible();
 });
+it('tells which rating versions the confirmed video produced',async()=>{
+ const confirmed={...run,status:'confirmed',checks:{...run.checks,critical_errors:[]},auto_sources:{participation_version_id:'p',participation_revision:2,players:7,action_version_id:'a',action_revision:3,passes:41,note:null}};
+ const overview={match_id:'match',analysis_revision:0,active_run_id:'run',published_run_id:null,jobs:[],runs:[{...run,status:'confirmed'}]};
+ vi.mocked(api).mockImplementation(async path=>String(path).endsWith('/runs/run')?confirmed:overview);
+ render(<MemoryRouter><VideoAnalysisTab matchId="match" actorId="actor" canManage/></MemoryRouter>);
+ expect(await screen.findByText(/Для оценок создано автоматически/)).toHaveTextContent('участие №2 — время на площадке у 7 игроков, действия №3 — 41 передача');
+ expect(screen.getByRole('link',{name:'участие №2'})).toHaveAttribute('href','?tab=participation');
+});

@@ -13,11 +13,21 @@ from aifootball.service.matches.models import Match
 from aifootball.service.matches.operations import get_match_view
 from aifootball.service.protocol.models import ProtocolVersion
 from aifootball.service.analysis.models import AnalysisRun,PlayerMatchMetric
-from aifootball.service.ratings.models import ParticipationVersion,ActionVersion,RatingMatchPublication
+from aifootball.service.ratings.models import ParticipationVersion,ActionVersion,RatingMatchPublication,is_auto
 from aifootball.service.ratings.operations import participation_view
 
 
 def digest(value):return sha256(canonical(value)).hexdigest()
+
+
+def _prefer_manual(versions,belongs):
+    """Последняя ручная версия матча главнее автоматической; из автоматических — та, что относится
+    к выбранному прогону видеоанализа (belongs), иначе последняя."""
+    manual,auto={},{}
+    for v in versions:
+        if not is_auto(v):manual[v.match_id]=v
+        elif belongs(v) or not (v.match_id in auto and belongs(auto[v.match_id])):auto[v.match_id]=v
+    return {**auto,**manual}
 
 
 def selected_inputs(db,tid,scope,*,lock=False):
@@ -28,7 +38,9 @@ def selected_inputs(db,tid,scope,*,lock=False):
     parts=list(db.scalars(select(ParticipationVersion).where(ParticipationVersion.match_id.in_(ids),ParticipationVersion.status=='confirmed').order_by(ParticipationVersion.revision)))
     actions=list(db.scalars(select(ActionVersion).where(ActionVersion.match_id.in_(ids),ActionVersion.status=='confirmed').order_by(ActionVersion.revision)))
     publications={v.match_id:v for v in db.scalars(select(RatingMatchPublication).where(RatingMatchPublication.match_id.in_(ids)))}
-    latest_protocol={v.match_id:v for v in protocols};latest_part={v.match_id:v for v in parts};latest_action={v.match_id:v for v in actions}
+    run_of={m.id:m.active_analysis_run_id if scope=='private' else m.published_analysis_run_id for m in matches}
+    latest_protocol={v.match_id:v for v in protocols};latest_part=_prefer_manual(parts,lambda v:v.source_analysis_run_id==run_of[v.match_id])
+    latest_action=_prefer_manual(actions,lambda v:latest_part.get(v.match_id) is not None and v.source_participation_version_id==latest_part[v.match_id].id)
     pbyid={v.id:v for v in protocols};partbyid={v.id:v for v in parts};actionbyid={v.id:v for v in actions}
     run_ids={m.active_analysis_run_id if scope=='private' else m.published_analysis_run_id for m in matches}-{None}
     runs={v.id:v for v in db.scalars(select(AnalysisRun).where(AnalysisRun.id.in_(run_ids),AnalysisRun.status=='confirmed'))}
@@ -89,7 +101,7 @@ def performances(db,tid,selected,settings,scope):
     for match,protocol,part,action,run,metrics in selected:
         snapshot=protocol.snapshot if protocol else get_match_view(db,match.id)
         if match.status=='cancelled' or snapshot['status']!='ended' or snapshot['protocol']['result_type']!='played':continue
-        reasons=[];pd=part.document if part else None
+        reasons=[];pd=part.document if part else None;auto=is_auto(part)
         part_valid=bool(part and pd['time_basis']==settings['time_basis'] and (part.source_protocol_version_id==protocol.id if protocol else False))
         if part_valid and pd['clock_basis']=='video' and (run is None or part.source_analysis_run_id!=run.id):
             part_valid=False;reasons.append('superseded_video_source')
@@ -136,7 +148,8 @@ def performances(db,tid,selected,settings,scope):
                 eligible=e.get('eligible_play_s') if full else None
                 participated=e.get('on_pitch_s') if full else None
                 covered=1 if eligible is not None and role!='unknown' else 0 if participated is not None else None
-                provenance={'side':side,'clock_basis':clock,'analysis_scope':'full_match' if full else 'unknown','source_kind':'manual_verified',
+                # Автоматическое участие — видео с подтверждённым сопоставлением игроков: та же методика, что для проверенного видео.
+                provenance={'side':side,'clock_basis':clock,'analysis_scope':'full_match' if full else 'unknown','source_kind':'reviewed_video' if auto and part_valid else 'manual_verified',
                     'categories':categories,'role_intervals':spans,'eligible_intervals':play,'single_role':single_role or role=='unknown' and not known_roles,
                     'presence_verified':bool(full and presence and presence.get('completeness')=='complete'),
                     'pitch':action.provenance.get('pitch') if action_valid else (snapshot.get('hall_snapshot') or {}),
@@ -159,6 +172,6 @@ def performances(db,tid,selected,settings,scope):
                 details[(row.match_id,pid,role)]={'display_name':person['display_name'],'team_id':str(team['id']),'team_name':team['name'],
                     'stage_label':snapshot.get('stage_label'),'scheduled_at':snapshot['scheduled_at'],'status':snapshot['status'],'result_type':snapshot['protocol']['result_type'],
                     'appeared':presence.get('appeared') if presence else None,'selected_source':digest(provenance['source_version']),
-                    'moments':moments,'physical':physical,'reasons':list(reasons)}
+                    'moments':moments,'physical':physical,'reasons':list(reasons),'source':'cv_auto' if auto and part_valid else 'manual'}
                 result.append(row)
     return result,details

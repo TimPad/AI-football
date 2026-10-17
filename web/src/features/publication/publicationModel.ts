@@ -30,7 +30,7 @@ export function performanceBlock(match:Match,part:Participation,actions:Actions,
  if(!match.published_version_id)blockers.push({text:'Сначала опубликуйте протокол',href:'?tab=publication'});
  if(!part.versions.some(v=>v.status==='confirmed'))blockers.push({text:'Нет подтверждённого участия',href:'?tab=participation'});
  if(!actions.versions.some(v=>v.status==='confirmed'))blockers.push({text:'Нет подтверждённых действий',href:'?tab=actions'});
- const label=(kind:string,id:string|null,list:{id:string;revision:number}[])=>id?`${kind} №${list.find(v=>v.id===id)?.revision??short(id)}`:`${kind} не выбрано`;
+ const label=(kind:string,id:string|null,list:{id:string;revision:number;auto?:boolean}[])=>{const v=list.find(x=>x.id===id);return id?`${kind} №${v?.revision??short(id)}${v?.auto?' (авто)':''}`:`${kind} не выбрано`};
  return {currentLabel:saved.participation_version_id||saved.action_version_id?`${label('участие',saved.participation_version_id,part.versions)} · ${label('действия',saved.action_version_id,actions.versions)}${saved.policy_approved?' · методика разрешена':''}`:'Источники не разрешены',
   selectedLabel:null,blockers};
 }

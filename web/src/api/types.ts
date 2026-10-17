@@ -1523,6 +1523,11 @@ export interface components {
              */
             created_at: string;
             /**
+             * Auto
+             * @default false
+             */
+            auto?: boolean;
+            /**
              * Match Id
              * Format: uuid
              */
@@ -1668,6 +1673,32 @@ export interface components {
              * Format: uuid
              */
             attachment_id: string;
+        };
+        /**
+         * AutoSources
+         * @description Версии для оценок, созданные из подтверждённого видеоанализа; note — почему не создано или не опубликовано.
+         */
+        AutoSources: {
+            /** Participation Version Id */
+            participation_version_id?: string | null;
+            /** Participation Revision */
+            participation_revision?: number | null;
+            /**
+             * Players
+             * @default 0
+             */
+            players?: number;
+            /** Action Version Id */
+            action_version_id?: string | null;
+            /** Action Revision */
+            action_revision?: number | null;
+            /**
+             * Passes
+             * @default 0
+             */
+            passes?: number;
+            /** Note */
+            note?: string | null;
         };
         /** Body_upload_api_v1_catalog_images_post */
         Body_upload_api_v1_catalog_images_post: {
@@ -3200,6 +3231,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Auto
+             * @default false
+             */
+            auto?: boolean;
         };
         /** ParticipationView */
         ParticipationView: {
@@ -3220,6 +3256,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Auto
+             * @default false
+             */
+            auto?: boolean;
             /**
              * Match Id
              * Format: uuid
@@ -4460,6 +4501,12 @@ export interface components {
             explanation?: {
                 [key: string]: unknown;
             };
+            /**
+             * Source
+             * @default manual
+             * @enum {string}
+             */
+            source?: "manual" | "cv_auto";
         };
         /** RatingPage */
         RatingPage: {
@@ -5067,6 +5114,7 @@ export interface components {
             assignments: components["schemas"]["AssignmentInput"][];
             /** Players */
             players: components["schemas"]["PlayerMetric"][];
+            auto_sources?: components["schemas"]["AutoSources"] | null;
         };
         /** SessionView */
         SessionView: {

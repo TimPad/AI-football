@@ -10,14 +10,21 @@ export function TournamentRatings({tournamentId,actorId,publicView=false,initial
  const [snapshot,setSnapshot]=useState(initialSnapshot);const [tick,setTick]=useState(0);
  return <div className="ratings"><section className="surface"><h2>Рейтинг турнира</h2><p>Пилотная методика: оценка подтверждённой статистической эффективности. Сравнение выполняется внутри роли.</p><p className="muted">Основной список: от 3 оценённых матчей, 20 минут и 80% покрытия. До этого игрок находится в предварительном списке.</p></section>{!publicView&&actorId&&<AnalyticsControls tournamentId={tournamentId} actorId={actorId} onSnapshot={id=>{setSnapshot(id);setTick(n=>n+1)}}/>}<Rankings key={`${snapshot}:${tick}`} tournamentId={tournamentId} snapshotId={snapshot} publicView={publicView}/></div>
 }
+// База времени по умолчанию — та, в которой записано участие большинства матчей:
+// участие из видео — «время присутствия с паузами», ручное — обычно «время мяча в игре».
+export function defaultBasis(sources:{time_basis?:string|null}[]){
+ const counts=new Map<string,number>();for(const s of sources)if(s.time_basis)counts.set(s.time_basis,(counts.get(s.time_basis)??0)+1);
+ let best='reviewed_effective';for(const [k,n] of counts)if(n>(counts.get(best)??0))best=k;return best;
+}
 const PROFILES:Record<string,string>={per10:'на 10 минут','per10-possession':'на 10 минут с учётом владения'};
 const when=(iso:string)=>new Date(iso).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 // Два действия на виду: пересчитать в кабинете и обновить рейтинг на сайте. Настройки методики и прежние версии свёрнуты.
 function AnalyticsControls({tournamentId,actorId,onSnapshot}:{tournamentId:string,actorId:string,onSnapshot:(id:string)=>void}){
  const state=useLoad(()=>api<Analytics>(`/tournaments/${tournamentId}/analytics`),tournamentId);
- const [profile,setProfile]=useState('per10');const [basis,setBasis]=useState('reviewed_effective');const [cutoff,setCutoff]=useState('');
+ const [profile,setProfile]=useState('per10');const [chosen,setBasis]=useState<string|null>(null);const [cutoff,setCutoff]=useState('');
  const command=useRatingCommand<RatingSnapshot>(`aifootball:rating-command:${actorId}:${tournamentId}`,v=>{onSnapshot(v.snapshot_id);state.reload()});
  if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const data=state.data;const locked=command.locked;
+ const basis=chosen??defaultBasis(data.sources as {time_basis?:string|null}[]);
  const cabinet=data.snapshots.find(s=>s.scope==='private');const latestPublic=data.snapshots.find(s=>s.scope==='public');
  const published=data.snapshots.find(s=>s.snapshot_id===data.public_snapshot_id&&s.published_at);
  const candidate=latestPublic&&!latestPublic.published_at?latestPublic:null;

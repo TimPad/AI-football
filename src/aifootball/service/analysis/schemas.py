@@ -102,6 +102,16 @@ class PlayerMetric(BaseModel):
     track_ids: list[int]
     metrics: MetricValues
 
+class AutoSources(BaseModel):
+    """Версии для оценок, созданные из подтверждённого видеоанализа; note — почему не создано или не опубликовано."""
+    participation_version_id: UUID | None = None
+    participation_revision: int | None = None
+    players: int = 0
+    action_version_id: UUID | None = None
+    action_revision: int | None = None
+    passes: int = 0
+    note: str | None = None
+
 class RunView(RunSummary):
     match_id: UUID
     analysis_revision: int
@@ -116,6 +126,7 @@ class RunView(RunSummary):
     side_map: dict[str, Literal['home', 'away']]
     assignments: list[AssignmentInput]
     players: list[PlayerMetric]
+    auto_sources: AutoSources | None = None
 
 class Overview(BaseModel):
     match_id: UUID

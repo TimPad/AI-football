@@ -7,7 +7,7 @@ from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
 from aifootball.service.tournaments.models import Tournament
 from aifootball.service.catalog.models import Player
-from aifootball.service.ratings.models import TournamentRatingSnapshot,PlayerRatingRow,RatingPolicyVersion,RatingReferenceVersion,RatingMatchPublication
+from aifootball.service.ratings.models import TournamentRatingSnapshot,PlayerRatingRow,RatingPolicyVersion,RatingReferenceVersion,RatingMatchPublication,is_auto
 from aifootball.service.ratings.calculation import rating_state,current_policy,snapshot_view,make_summaries,summary_facts
 from aifootball.service.ratings.inputs import selected_inputs,digest
 
@@ -28,6 +28,7 @@ def overview(db,tid):
         'snapshots':[metadata(s) for s in snapshots],
         'sources':[{'match_id':m.id,'protocol_id':p.id if p else None,'published_protocol_id':m.published_version_id,
             'participation_id':part.id if part else None,'action_id':action.id if action else None,
+            'time_basis':part.document['time_basis'] if part else None,'auto':is_auto(part),
             'active_analysis_run_id':m.active_analysis_run_id,'published_analysis_run_id':m.published_analysis_run_id} for m,p,part,action,run,metrics in selected]}
 
 

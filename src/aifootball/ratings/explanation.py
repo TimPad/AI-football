@@ -25,6 +25,7 @@ def explain_rating(score,facts,actions):
         (positive if good else errors).append(item)
     value=score.get('display_rating');components=score.get('components',{})
     text='Оценка пока недоступна: требуется достаточная база и полный профиль подтверждённых данных.' if score.get('score') is None else f'Пилотная оценка {value:.1f} из 10 рассчитана по подтверждённым показателям роли.'
-    return {'rating':value,'text':text,'reasons':list(score.get('reasons',[])),'positive':positive[:3],'errors':errors[:3],
+    note='По автоматическим данным видео: время на площадке и передачи распознаны по записи.' if score.get('source')=='cv_auto' else None
+    return {'rating':value,'text':text,'source_note':note,'reasons':list(score.get('reasons',[])),'positive':positive[:3],'errors':errors[:3],
         'components':[{'component_id':key,'value':value} for key,value in sorted(components.items()) if value is not None],
         'selection_is_exhaustive':False,'selection_note':'Это примеры подтверждённых действий. Пустая выборка не означает отсутствия ошибок.'}
