@@ -13,6 +13,7 @@ import {TournamentRatings} from '../ratings/TournamentRatings';
 import {MatchCreateForm} from '../matches/MatchForms';
 import {TournamentSettings} from './TournamentList';
 import {Entries,Rules} from './TournamentPage';
+import {TournamentOverview} from './TournamentOverview';
 import './workspace.css';
 
 const TITLES:Record<TournamentTab,string>={matches:'Матчи',ratings:'Рейтинги',teams:'Команды',rules:'Настройки',info:'Настройки'};
@@ -52,6 +53,7 @@ export function TournamentWorkspace({tournamentId:id}:{tournamentId:string}){
    <div className="row">{tab==='matches'&&<button className="primary" disabled={!canCreate} onClick={()=>setCreate(true)}><Plus/>Создать матч</button>}
     <Link className="public-action" to={`/watch/tournaments/${d.t.id}`}>Страница для зрителей<ArrowUpRight/></Link></div></div>
   <ErrorBox error={error}/>
+  <TournamentOverview data={d} onSaved={state.reload}/>
   {tab==='matches'&&(!canCreate&&!d.matches.length?<Empty>Для первого матча добавьте регламент и минимум две команды.</Empty>
    :<Schedule matches={d.matches.map(scheduleFromPrivate)} timezone={d.t.timezone} matchHref={mid=>`/matches/${mid}`} extra={id=>onSite(d.matches.find(m=>m.id===id)!)}/>)}
   {tab==='ratings'&&(analytics?<TournamentRatings tournamentId={id} actorId={session!.id}/>:<Empty>Рейтинги доступны Админ+.</Empty>)}

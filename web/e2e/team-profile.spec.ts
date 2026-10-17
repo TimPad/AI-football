@@ -32,7 +32,7 @@ test('team sheet, images, draft recovery, safe retry and tournament identity',as
  expect(team.players[0].player.name).toBe(person);expect(team.players[0].player.photo_id).toBeTruthy();
  for(const width of [1440,768,375]){await page.setViewportSize({width,height:1000});await page.evaluate(()=>window.scrollTo(0,0));expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`../data/service/screenshots/team-profile-${width}.png`,fullPage:true,animations:'disabled'})}
  await page.setViewportSize({width:1440,height:1000});
- await page.goto(`/tournaments/${tournament.tid}?tab=teams`);await page.getByRole('button',{name:'Добавить команду',exact:true}).click();await page.getByLabel('Команда',{exact:true}).selectOption({label:name});await page.getByRole('button',{name:'Добавить в турнир',exact:true}).click();
+ await page.goto(`/tournaments/${tournament.tid}?tab=teams`);await page.getByRole('button',{name:'Выбрать существующие',exact:true}).click();await page.getByLabel(name,{exact:true}).check();await page.getByRole('button',{name:/Добавить выбранные/}).click();
  await page.getByRole('row').filter({has:page.getByRole('cell',{name,exact:true})}).getByRole('link',{name:'Игроки и номера →',exact:true}).click();
  await expect(page.getByRole('checkbox',{name:person,exact:true})).toBeChecked();await expect(page.getByLabel(`Номер ${person}`,{exact:true})).toHaveValue('7');
  const rosterPath=new URL(page.url()).pathname.split('/');const entryId=rosterPath[rosterPath.length-1];

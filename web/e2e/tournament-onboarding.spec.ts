@@ -1,0 +1,28 @@
+import {test,expect} from '@playwright/test';
+import {execFileSync} from 'node:child_process';
+import {login} from './helpers';
+test('creates teams from Excel in the tournament, corrects a number and schedules a match',async({page})=>{
+ await login(page);const session=await (await page.request.get('/api/v1/auth/me')).json();
+ const hall=await (await page.request.post('/api/v1/halls',{headers:{'X-CSRF-Token':session.csrf_token,Origin:new URL(page.url()).origin},data:{name:'Зал Excel',address:'Тестовая, 1',pitch_length_m:40,pitch_width_m:20}})).json();
+ await page.getByRole('link',{name:'Создать турнир',exact:true}).click();
+ await page.getByLabel('Название турнира',{exact:true}).fill(`Excel ${crypto.randomUUID().slice(0,8)}`);
+ await page.getByLabel('Начало турнира').fill('2026-10-01');await page.getByLabel('Окончание турнира').fill('2027-05-30');
+ await page.getByRole('button',{name:'Создать и добавить команды'}).click();await page.getByRole('button',{name:'Сохранить регламент',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Применить к будущим матчам'})).toBeVisible();const tid=page.url().split('/tournaments/')[1].split('/')[0];
+ await page.getByRole('button',{name:'Продолжить',exact:true}).click();
+ const suffix=crypto.randomUUID().slice(0,8),home=`Север ${suffix}`,away=`Юг ${suffix}`;
+ const book=execFileSync('../.venv/bin/python',['-c',`from openpyxl import Workbook\nimport sys\nw=Workbook();s=w.active;s.title='Состав';s.append(['Команда','ФИО','Номер']);s.append([sys.argv[1],sys.argv[1]+' Один','7']);s.append([sys.argv[1],sys.argv[1]+' Два','7']);s.append([sys.argv[2],sys.argv[2]+' Один','7']);w.save(sys.stdout.buffer)`,home,away]);
+ await page.getByLabel('Файл Excel',{exact:true}).setInputFiles({name:'Состав.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:book});
+ await page.getByRole('button',{name:'Проверить строки',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Применить импорт',exact:true})).toBeDisabled();
+ await page.getByLabel('Номер, строка 3',{exact:true}).fill('8');await page.getByRole('button',{name:'Проверить изменения',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Применить импорт',exact:true})).toBeEnabled();
+ let failed=false;await page.route('**/roster-imports/*/commit',async route=>{if(!failed){failed=true;await route.fetch();await route.abort('failed')}else await route.continue()});
+ await page.getByRole('button',{name:'Применить импорт',exact:true}).click();await expect(page.getByRole('button',{name:'Повторить применение'})).toBeVisible();
+ await page.reload();await expect(page.getByRole('heading',{name:'Состав загружен'})).toBeVisible();await expect(page.getByText(/Новых игроков: 3/)).toBeVisible();
+ await page.getByRole('link',{name:'Вернуться к управлению'}).click();await expect(page.getByRole('cell',{name:home,exact:true})).toBeVisible();await expect(page.getByRole('cell',{name:away,exact:true})).toBeVisible();
+ await page.goto(`/tournaments/${tid}`);await page.getByRole('button',{name:'Создать матч',exact:true}).click();await page.getByLabel('Хозяева',{exact:true}).selectOption({label:home});await page.getByLabel('Гости',{exact:true}).selectOption({label:away});
+ await page.getByLabel('Дата и время · Europe/Moscow',{exact:true}).fill('2026-10-20T19:00');
+ await page.getByLabel('Зал',{exact:true}).selectOption(hall.id);
+ await page.getByRole('dialog').getByRole('button',{name:'Создать матч',exact:true}).click();await expect(page.getByRole('link',{name:`Открыть матч ${home} — ${away}`,exact:true})).toBeVisible();
+});
