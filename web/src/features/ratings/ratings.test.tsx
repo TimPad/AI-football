@@ -73,7 +73,7 @@ it('requests selected historical player edition and offers an explicit latest vi
  render(<MemoryRouter><PlayerRatingHistory playerId="p1" initialTournament="t1" initialSnapshot="edition-A"/></MemoryRouter>);
  await waitFor(()=>expect(requests.some(url=>url.includes('/players/p1/ratings'))).toBe(true));
  expect(requests.find(url=>url.includes('/players/p1/ratings'))).toContain('snapshot_id=edition-A');
- await userEvent.click(screen.getByRole('button',{name:'Открыть текущий срез'}));
+ await userEvent.click(screen.getByRole('button',{name:'Открыть текущую версию'}));
  await waitFor(()=>expect(requests.some(url=>url.endsWith('/players/p1/ratings?tournament_id=t1'))).toBe(true));
 });
 it('discloses unresolved passes beside their resolved-attempt percentage',async()=>{

@@ -1,2 +1,14 @@
 import {Field} from '../../components/ui';
-export function BroadcastFields({url,embed}:{url?:string|null,embed?:string|null}){return <><Field label="Ссылка на трансляцию ВК"><input name="broadcast_url" type="url" maxLength={2048} placeholder="https://vk.com/video-…" defaultValue={url??''}/></Field><Field label="Адрес плеера ВК (src из iframe)"><input name="broadcast_embed_url" type="url" maxLength={2048} placeholder="https://vk.com/video_ext.php?oid=…&id=…" defaultValue={embed??''}/></Field><p className="muted broadcast-help">Для просмотра на сайте скопируйте адрес из src в коде встраивания ВК. Обычную ссылку на видео сохраните в первом поле.</p></>}
+import {broadcastValue,parseBroadcast,type Broadcast} from './vk';
+
+export function BroadcastFields({url,embed}:{url?:string|null,embed?:string|null}){
+ return <><Field label="Трансляция ВК"><input name="broadcast" maxLength={4000} placeholder="Ссылка на видео или код встраивания" defaultValue={broadcastValue(url,embed)}/></Field>
+  <p className="muted broadcast-help">Чтобы видео играло прямо на сайте, вставьте код встраивания из ВК («Поделиться» → «Код для вставки»). Обычная ссылка откроет видео в ВК.</p></>;
+}
+
+// Поле формы → два поля API; ошибка разбора — до отправки.
+export function readBroadcast(f:FormData):Broadcast{
+ const parsed=parseBroadcast(String(f.get('broadcast')??''));
+ if('error' in parsed)throw new Error(parsed.error);
+ return parsed;
+}

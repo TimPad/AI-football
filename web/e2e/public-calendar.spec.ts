@@ -4,13 +4,13 @@ import {login,createTournament,task} from './helpers';
 test('guest calendar, timetable and VK broadcasts from organizer input',async({page,browser})=>{
  await login(page);const data=await createTournament(page);
  await task(page,'Сведения').click();
- await page.getByLabel('Ссылка на трансляцию ВК',{exact:true}).fill('https://vk.com/video-123_456');
  const embed='https://vk.com/video_ext.php?oid=-123&id=456&hash=test';
- await page.getByLabel('Адрес плеера ВК (src из iframe)',{exact:true}).fill(embed);
+ // Одно поле: вставляем весь код встраивания, ссылка на ВК получается из него.
+ await page.getByLabel('Трансляция ВК',{exact:true}).fill(`<iframe src="${embed.replace(/&/g,'&amp;')}" width="853" height="480" frameborder="0" allowfullscreen></iframe>`);
  await page.getByRole('button',{name:'Сохранить информацию',exact:true}).click();
  await expect(page.getByText(/Все изменения сохранены/)).toBeVisible();
  await page.reload();await task(page,'Сведения').click();
- await expect(page.getByLabel('Ссылка на трансляцию ВК',{exact:true})).toHaveValue('https://vk.com/video-123_456');
+ await expect(page.getByLabel('Трансляция ВК',{exact:true})).toHaveValue(embed);
  const guest=await browser.newContext();const viewer=await guest.newPage();const apiRequests:string[]=[];
  viewer.on('request',r=>{if(r.url().includes('/api/'))apiRequests.push(r.url())});
  // A controlled external response verifies iframe wiring; it is not a real broadcast.

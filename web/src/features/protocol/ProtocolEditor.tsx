@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {Plus} from 'lucide-react';
-import type {MatchEvent} from '../../api/domain';
+import type {Match,MatchEvent} from '../../api/domain';
 import {kinds} from '../../api/domain';
 import {useAuth} from '../auth/Auth';
 import {ErrorBox,Loading,Modal,downloadJson} from '../../components/ui';
@@ -34,9 +34,11 @@ function ProtocolEditorBody(){
   {confirmed&&<VersionsPanel match={m} dispatch={dispatch} disabled={disabled}/>}
   {!confirmed&&<ModeSelector value={mode.value} onChange={mode.change}/>}
   {mode.value==='result'?<div className="protocol-layout result-mode"><section className="surface protocol-side"><TotalsForm match={m} dispatch={dispatch} disabled={readOnly}/></section>
-   <aside className="surface protocol-side"><p className="muted">Полнота разделов не меняется автоматически: отметьте только то, что проверено.</p><Completeness match={m} dispatch={dispatch} disabled={readOnly}/></aside></div>
+   <aside className="surface protocol-side"><p className="muted">Полнота разделов не меняется автоматически: отметьте только то, что проверено.</p><Completeness match={m} dispatch={dispatch} disabled={readOnly} quick={false}/></aside></div>
   :<>{draft.value&&!open&&<div className="draft-banner">Есть сохранённый ввод события. <button onClick={()=>setOpen(true)}>Продолжить заполнение</button><button onClick={()=>{downloadJson(draft.value);draft.clear()}}>Скачать и убрать</button></div>}
-  <div className="protocol-layout"><section className="surface event-panel"><div className="panel-head"><h2>События матча</h2></div>{!confirmed&&<div className="event-toolbar">{(['goal','foul','card','timeout'] as const).map((kind,i)=><button className={i===0?'primary':''} disabled={readOnly} key={kind} onClick={()=>add(kind)}><Plus/>{kinds[kind]}</button>)}<select aria-label="Другие события" disabled={readOnly} value="" onChange={e=>{if(e.target.value)add(e.target.value as MatchEvent['kind'])}}><option value="">Ещё события…</option>{(['penalty_awarded','penalty_attempt','shootout_attempt','substitution','stoppage','period_start','period_end'] as const).map(kind=><option key={kind} value={kind}>{kinds[kind]}</option>)}</select></div>}<EventJournal events={m.protocol.events} lineup={m.lineup} home={m.home.team.name} away={m.away.team.name} disabled={readOnly} onEdit={edit} onRemove={setRemoving}/><div className="journal-foot">{m.protocol.events.length} событий · время вводится вручную</div>{m.projection.warnings.map(w=><p className="warning" key={w}>{w}</p>)}</section><aside className="surface protocol-side"><TotalsForm match={m} dispatch={dispatch} disabled={readOnly}/><hr/><Completeness match={m} dispatch={dispatch} disabled={readOnly}/></aside></div>
+  <div className="protocol-layout"><section className="surface event-panel"><div className="panel-head"><h2>События матча</h2></div>{!confirmed&&<div className="event-toolbar">{(['goal','foul','card','timeout'] as const).map((kind,i)=><button className={i===0?'primary':''} disabled={readOnly} key={kind} onClick={()=>add(kind)}><Plus/>{kinds[kind]}</button>)}<select aria-label="Другие события" disabled={readOnly} value="" onChange={e=>{if(e.target.value)add(e.target.value as MatchEvent['kind'])}}><option value="">Ещё события…</option>{(['penalty_awarded','penalty_attempt','shootout_attempt','substitution','stoppage','period_start','period_end'] as const).map(kind=><option key={kind} value={kind}>{kinds[kind]}</option>)}</select></div>}<EventJournal events={m.protocol.events} lineup={m.lineup} home={m.home.team.name} away={m.away.team.name} disabled={readOnly} onEdit={edit} onRemove={setRemoving}/><div className="journal-foot">{m.protocol.events.length} событий · время вводится вручную</div>{m.projection.warnings.map(w=><p className="warning" key={w}>{w}</p>)}</section><aside className="surface protocol-side"><Completeness match={m} dispatch={dispatch} disabled={readOnly}/><hr/>
+   {/* Итог вручную нужен, только если официальные цифры расходятся с событиями (например, по бумажному протоколу). */}
+   <details className="manual-totals" open={manualTotals(m)}><summary>Итог вручную — если отличается от событий</summary><TotalsForm match={m} dispatch={dispatch} disabled={readOnly} heading={false}/></details></aside></div>
   <details className="protocol-extras" key={`extras:${confirmed}`} open={!confirmed}><summary>Примечания и документы{m.protocol.notes||m.protocol.public_notes?' · есть записи':''}</summary>
    <NotesPanel key={m.id} match={m} dispatch={dispatch} disabled={readOnly}/><Attachments match={m} dispatch={dispatch} disabled={disabled} refresh={()=>queue.refresh()}/></details></>}
   {!confirmed&&<VersionsPanel match={m} dispatch={dispatch} disabled={disabled}/>}
@@ -44,3 +46,6 @@ function ProtocolEditorBody(){
   {target&&<Modal title="Отменить событие" onClose={()=>setRemoving(null)}><p>В истории останется запись об отмене. Будут отменены следующие события:</p><ul>{removed.map(e=><li key={e.id}>{kinds[e.kind]}</li>)}</ul><button disabled={readOnly} onClick={async()=>{try{await dispatch({kind:'remove_event',payload:{event_id:target.id,related_ids:removed.filter(e=>e.id!==target.id).map(e=>e.id)}});setRemoving(null)}catch(e){setError(e)}}}>Отменить выбранные события</button><ErrorBox error={error}/></Modal>}
  </>}</SessionChrome>;
 }
+
+// Ручной итог уже задан — блок открыт, чтобы цифры не потерялись из виду.
+function manualTotals(m:Match){return (['home','away'] as const).some(side=>Object.entries(m.protocol.reported_totals[side]).some(([k,v])=>k==='period_scores'?Object.values(v as Record<string,number|null>).some(x=>x!=null):v!=null))}
