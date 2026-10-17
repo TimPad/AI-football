@@ -1,6 +1,6 @@
 import {createContext,useContext,useEffect,type ReactNode} from 'react';
 import {Link} from 'react-router-dom';
-import {Calendar,ChartColumn,Upload,Users,UserRound,MapPin,FileText,Info,Trophy} from 'lucide-react';
+import {Calendar,ChartColumn,Users,Settings,Trophy} from 'lucide-react';
 
 // Страница задаёт контекст рейла (турнир), оболочка его показывает.
 export const RailContext=createContext<(node:ReactNode)=>void>(()=>{});
@@ -9,19 +9,24 @@ export function useCabinetRail(node:ReactNode,deps:unknown[]){
  useEffect(()=>{set(node);return()=>set(null)},deps);
 }
 
-export const TOURNAMENT_TABS=['matches','ratings','publication','teams','players','halls','rules','info'] as const;
+export const TOURNAMENT_TABS=['matches','teams','ratings','rules','info'] as const;
 export type TournamentTab=typeof TOURNAMENT_TABS[number];
-const GROUPS:{title:string;items:{tab:TournamentTab;label:string;icon:ReactNode;analytics?:boolean}[]}[]=[
- {title:'Работа',items:[{tab:'matches',label:'Матчи',icon:<Calendar/>},{tab:'ratings',label:'Рейтинги',icon:<ChartColumn/>,analytics:true},{tab:'publication',label:'Публикация',icon:<Upload/>}]},
- {title:'Участники и площадки',items:[{tab:'teams',label:'Команды',icon:<Users/>},{tab:'players',label:'Игроки',icon:<UserRound/>},{tab:'halls',label:'Залы',icon:<MapPin/>}]},
- {title:'Настройки',items:[{tab:'rules',label:'Регламент',icon:<FileText/>},{tab:'info',label:'Сведения',icon:<Info/>}]},
-];
+// Прежние ссылки разделов, которые вошли в другие: публикация видна в списке матчей, игроки — в заявках команд.
+export const LEGACY_TOURNAMENT_TABS:Record<string,TournamentTab>={publication:'matches',players:'teams',halls:'matches'};
+export function readTournamentTab(raw:string|null):TournamentTab{
+ const value=LEGACY_TOURNAMENT_TABS[raw??'']??raw;
+ return (TOURNAMENT_TABS as readonly string[]).includes(value??'')?value as TournamentTab:'matches';
+}
+
+// Четыре раздела турнира; «Настройки» — регламент и сведения о турнире.
+const ITEMS:{tab:TournamentTab;label:string;icon:ReactNode;analytics?:boolean;also?:TournamentTab[]}[]=[
+ {tab:'matches',label:'Матчи',icon:<Calendar/>},{tab:'teams',label:'Команды',icon:<Users/>},
+ {tab:'ratings',label:'Рейтинги',icon:<ChartColumn/>,analytics:true},{tab:'rules',label:'Настройки',icon:<Settings/>,also:['info']}];
 
 export function TournamentRail({id,name,active,analytics}:{id:string;name:string;active:TournamentTab|null;analytics:boolean}){
  return <>
   <Link className="rail-tournament" to={`/tournaments/${id}`}><Trophy/><span>{name}</span></Link>
-  {GROUPS.map(group=><div key={group.title} className="rail-group"><h4>{group.title}</h4>
-   {group.items.filter(item=>!item.analytics||analytics).map(item=><Link key={item.tab} to={`/tournaments/${id}?tab=${item.tab}`}
-    aria-current={active===item.tab?'page':undefined}>{item.icon}{item.label}</Link>)}</div>)}
+  {ITEMS.filter(item=>!item.analytics||analytics).map(item=><Link key={item.tab} to={`/tournaments/${id}?tab=${item.tab}`}
+   aria-current={active===item.tab||(active&&item.also?.includes(active))?'page':undefined}>{item.icon}{item.label}</Link>)}
  </>;
 }

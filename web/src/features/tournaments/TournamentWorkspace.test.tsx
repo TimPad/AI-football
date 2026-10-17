@@ -39,39 +39,37 @@ function Harness({tab}:{tab:string}){
 afterEach(()=>{vi.unstubAllGlobals();auth.analytics=false});
 
 describe('tournament workspace',()=>{
- it('groups tournament navigation and keeps the calendar in cabinet links',async()=>{
+ it('shows four tournament sections and keeps the calendar in cabinet links',async()=>{
   stub();render(<Harness tab="matches"/>);
   expect(await screen.findByRole('heading',{name:'Матчи'})).toBeInTheDocument();
   const rail=screen.getByRole('navigation',{name:'Рейл'});
-  expect(await within(rail).findByText('Работа')).toBeInTheDocument();
-  for(const group of ['Участники и площадки','Настройки'])expect(within(rail).getByText(group)).toBeInTheDocument();
+  await within(rail).findByRole('link',{name:'Матчи'});
+  expect(within(rail).getAllByRole('link').map(a=>a.textContent)).toEqual(['Кубок Ярославля','Матчи','Команды','Настройки']);
   expect(within(rail).getByRole('link',{name:'Матчи'})).toHaveAttribute('aria-current','page');
-  expect(within(rail).queryByRole('link',{name:'Рейтинги'})).toBeNull();
   expect(screen.getByRole('link',{name:'Открыть матч Север — Юг'})).toHaveAttribute('href','/matches/m1');
  });
- it('shows players from tournament entries and links to the existing roster editor',async()=>{
-  const paths=stub();render(<Harness tab="players"/>);
-  expect(await screen.findByText('Иван Петров')).toBeInTheDocument();
-  expect(screen.getByText('Пётр Иванов')).toBeInTheDocument();
-  expect(screen.getAllByRole('link',{name:'Изменить заявку →'})[0]).toHaveAttribute('href',`/tournaments/${T}/teams/e-a`);
-  expect(paths.some(p=>p.includes('/api/v1/players'))).toBe(false);
- });
- it('lists halls from the schedule and opens the shared hall editor',async()=>{
-  stub();render(<Harness tab="halls"/>);
-  expect(await screen.findByRole('link',{name:'Открыть зал →'})).toHaveAttribute('href','/halls/h1');
-  expect(screen.getByText('Спортивная, 1')).toBeInTheDocument();
- });
- it('keeps old tabs and shows ratings only to Admin+',async()=>{
-  stub();const {unmount}=render(<Harness tab="teams"/>);
-  expect(await screen.findByRole('heading',{name:'Команды турнира'})).toBeInTheDocument();unmount();
-  render(<Harness tab="rules"/>);
-  expect(await screen.findByRole('heading',{name:'Регламент турнира'})).toBeInTheDocument();
- });
- it('summarises publication readiness without per-match version requests',async()=>{
-  const paths=stub();render(<Harness tab="publication"/>);
-  expect(await screen.findByText('Не опубликован')).toBeInTheDocument();
-  // Статус видеоанализа берётся из сводки матча, без отдельных запросов версий.
-  expect(screen.getByText('Видеоанализ не опубликован')).toBeInTheDocument();
+ it('marks an ended match that is not on the site yet, without per-match requests',async()=>{
+  const paths=stub();render(<Harness tab="matches"/>);
+  expect(await screen.findByText('Не на сайте')).toBeInTheDocument();
   expect(paths.some(p=>/\/matches\/m1\/(versions|analysis|ratings)/.test(p))).toBe(false);
+ });
+ it('opens old section links in the sections that replaced them',async()=>{
+  stub();let view=render(<Harness tab="players"/>);
+  expect(await screen.findByRole('heading',{name:'Команды турнира'})).toBeInTheDocument();view.unmount();
+  view=render(<Harness tab="publication"/>);
+  expect(await screen.findByText('Не на сайте')).toBeInTheDocument();view.unmount();
+  render(<Harness tab="halls"/>);
+  expect(await screen.findByRole('heading',{name:'Матчи'})).toBeInTheDocument();
+ });
+ it('keeps regulation and tournament details under settings; ratings only for Admin+',async()=>{
+  stub();const {unmount}=render(<Harness tab="rules"/>);
+  expect(await screen.findByRole('heading',{name:'Регламент турнира'})).toBeInTheDocument();
+  const rail=screen.getByRole('navigation',{name:'Рейл'});
+  expect(await within(rail).findByRole('link',{name:'Настройки'})).toHaveAttribute('aria-current','page');
+  const settings=screen.getByRole('navigation',{name:'Настройки турнира'});
+  expect(within(settings).getByRole('link',{name:'Сведения о турнире'})).toHaveAttribute('href','?tab=info');
+  unmount();auth.analytics=true;render(<Harness tab="info"/>);
+  expect(await screen.findByRole('heading',{name:'Сведения о турнире'})).toBeInTheDocument();
+  expect(await within(screen.getByRole('navigation',{name:'Рейл'})).findByRole('link',{name:'Рейтинги'})).toBeInTheDocument();
  });
 });

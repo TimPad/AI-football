@@ -37,7 +37,7 @@ test('a lost protocol response survives report and publication tasks and is sent
  await page.getByRole('button',{name:'Гол',exact:true}).click();await page.getByRole('button',{name:'Добавить событие',exact:true}).click();
  await expect(page.getByText(/Несохранённых правок: 1/)).toBeVisible();
  await page.getByRole('dialog').getByRole('button',{name:'Закрыть'}).click();
- await task(page,'Отчёт').click();await expect(page.getByText('Отчёт в кабинете')).toBeVisible();
+ await task(page,'Предпросмотр').click();await expect(page.getByText('Отчёт в кабинете')).toBeVisible();
  await task(page,'Публикация').click();await expect(page.getByRole('heading',{name:'Сейчас видит зритель'})).toBeVisible();
  await task(page,'Протокол').click();
  await expect(page.getByText(/Все изменения сохранены/)).toBeVisible();
@@ -55,6 +55,6 @@ test('an ordinary admin sees protocol tasks only and no Admin+ requests',async({
  await task(page,'Публикация').click();
  await expect(page.getByRole('button',{name:'Опубликовать протокол',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Опубликовать видеоанализ',exact:true})).toHaveCount(0);
- await task(page,'Отчёт').click();await expect(page.getByText('Отчёт в кабинете')).toBeVisible();
+ await task(page,'Предпросмотр').click();await expect(page.getByText('Отчёт в кабинете')).toBeVisible();
  expect(urls.some(u=>/participation|performance-|analytics|\/ratings|understanding/.test(u)&&!u.includes('/public/'))).toBe(false);
 });

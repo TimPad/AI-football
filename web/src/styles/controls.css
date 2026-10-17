@@ -11,7 +11,7 @@ button.pending{cursor:progress}
 .section-nav{display:flex;gap:4px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:thin}
 .section-nav a{padding:10px 12px;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:520;font-size:14px;white-space:nowrap}
 .section-nav a:hover{color:var(--text);text-decoration:none}
-.section-nav a[aria-current]{color:var(--text);border-color:var(--accent-line);font-weight:620}
+.section-nav a[aria-current],.section-nav a.open{color:var(--text);border-color:var(--accent-line);font-weight:620}
 .source-status{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;padding:12px 16px;border-radius:var(--radius);background:#f1f4f6;font-size:14px}
 .source-status span{color:var(--text-muted);font-size:13px}
 .source-ok{background:var(--ok-soft)}.source-warn{background:var(--warn-soft)}.source-error{background:var(--danger-soft)}
@@ -21,12 +21,6 @@ button.pending{cursor:progress}
 .crest-home{background:var(--home)}.crest-away{background:var(--away)}
 .table-scroll{max-width:100%;overflow-x:auto}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
-.section-nav.grouped{gap:0;align-items:flex-end}
-.nav-group{display:flex;flex-direction:column;min-width:max-content}
-.nav-group+.nav-group{border-left:1px solid var(--border);margin-left:8px;padding-left:8px}
-.nav-group-label{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);padding:0 12px;line-height:16px}
-.nav-group-links{display:flex;gap:4px}
-.nav-group:not(:has(.nav-group-label)){padding-top:16px}
 .nav-state{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:6px;vertical-align:2px}
 .nav-state.attention{background:var(--warn)}
 .nav-state.done{background:var(--accent-line)}
@@ -38,3 +32,9 @@ button.pending{cursor:progress}
 .review-metrics>summary{cursor:pointer;font-weight:620;font-size:16px}
 .review-metrics[open]>summary{margin-bottom:12px}
 .review-metrics>section{border:0;padding:0;margin-top:16px}
+
+/* Шаги открытого раздела: вторая строка, без подчёркивания — плашками. */
+.section-steps{display:flex;flex-wrap:wrap;gap:6px;padding:10px 0 0}
+.section-steps a{padding:5px 12px;border-radius:999px;color:var(--text-muted);font-size:13px;font-weight:520;white-space:nowrap}
+.section-steps a:hover{color:var(--text);background:#f1f4f6;text-decoration:none}
+.section-steps a[aria-current]{background:var(--accent-soft);color:var(--text);font-weight:620}

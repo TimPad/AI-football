@@ -4,3 +4,5 @@
 .roster-block .row{justify-content:space-between}
 .roster-block h3{margin:8px 0}
 td small{display:block}
+
+.tournament-workspace>.section-nav{margin-bottom:16px}

@@ -46,13 +46,15 @@ describe('match workspace',()=>{
   const user=userEvent.setup();show('?tab=history');
   expect(await screen.findByText('Все изменения сохранены')).toBeInTheDocument();
   expect(owners.active).toBe(1);
-  await go(user,'Состав');expect(await screen.findByText('форма состава')).toBeInTheDocument();
+  // Шаги раздела видны, когда он открыт: «Протокол» → «Состав».
+  expect(screen.queryByRole('link',{name:'Состав'})).toBeNull();
+  await go(user,'Протокол');await go(user,'Состав');expect(await screen.findByText('форма состава')).toBeInTheDocument();
   expect(owners.mounts).toBe(1);
-  await go(user,'Отчёт');expect(await screen.findByText('отчёт без очереди')).toBeInTheDocument();
-  expect(owners.active).toBe(0);
   await go(user,'Публикация');expect(await screen.findByText('разрешение статистики')).toBeInTheDocument();
   expect(owners.active).toBe(0);
-  await go(user,'Сведения');expect(await screen.findByText('форма сведений')).toBeInTheDocument();
+  await go(user,'Предпросмотр');expect(await screen.findByText('отчёт без очереди')).toBeInTheDocument();
+  expect(owners.active).toBe(0);
+  await go(user,'Протокол');await go(user,'Сведения');expect(await screen.findByText('форма сведений')).toBeInTheDocument();
   expect(owners.active).toBe(1);expect(owners.max).toBe(1);
   expect(localStorage.length).toBe(0);
  });
@@ -60,6 +62,10 @@ describe('match workspace',()=>{
   owners.analytics=false;show('?tab=participation');
   expect(await screen.findByRole('heading',{name:'Подготовка'})).toBeInTheDocument();
   await waitFor(()=>expect(new URLSearchParams(search).get('tab')).toBe('overview'));
+  // У обычного администратора в «Видео» один шаг — строки шагов нет.
+  await userEvent.setup().click(screen.getByRole('link',{name:'Видео'}));
+  expect(await screen.findByText('проверка записи обычная')).toBeInTheDocument();
+  expect(screen.queryByRole('link',{name:'Проверка'})).toBeNull();
   expect(screen.queryByRole('link',{name:'Участие'})).toBeNull();
   expect(screen.queryByRole('link',{name:'Действия'})).toBeNull();
   expect(paths.some(p=>/participation|performance-actions|ratings|understanding/.test(p))).toBe(false);
@@ -74,6 +80,10 @@ describe('match workspace',()=>{
   expect(await screen.findByText(/Не выбрана — нужна только для видеоанализа/)).toBeInTheDocument();
   expect(screen.getByRole('link',{name:'Выбрать камеру'})).toHaveAttribute('href','/matches/'+M+'?tab=info');
   expect(screen.getByRole('link',{name:'Отметить состав'})).toHaveAttribute('href','/matches/'+M+'?tab=lineup');
+  // Один следующий шаг: зал выбран, состава нет.
+  const next=screen.getByRole('region',{name:'Следующий шаг'});
+  expect(next).toHaveTextContent('Отметьте состав');
+  expect(screen.getByRole('link',{name:/К составу/})).toHaveAttribute('href','/matches/'+M+'?tab=lineup');
  });
  it('records only the result in «Только итог» and keeps the mode',async()=>{
   const user=userEvent.setup();const {unmount}=show('?tab=protocol');

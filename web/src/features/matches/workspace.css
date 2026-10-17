@@ -12,8 +12,10 @@
 .readiness-list dt{color:var(--text-muted);font-size:13px}.readiness-list dd{margin:0;display:flex;align-items:center;gap:6px}
 .readiness-list .attention dd:nth-of-type(1){color:var(--warn)}
 .readiness-list svg{width:16px;height:16px}
-.task-links{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:10px}
-.task-links li{display:grid;gap:2px}.task-links a{font-weight:600}
+.next-step{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-left:4px solid var(--accent-line)}
+.next-step h2{margin:2px 0 4px}.next-step p{margin:0}.next-step.done{border-left-color:var(--ok)}.next-step.done>div>svg{color:var(--ok);width:22px;height:22px}
+.next-step .button{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;min-height:40px;border:1px solid var(--line);border-radius:var(--radius);background:white;color:var(--text);font-size:14px;font-weight:600}
+.next-step .button:hover{text-decoration:none}.next-step .button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.next-step .button.primary:hover{background:var(--accent-strong)}.next-step .button svg{width:16px;height:16px}
 .report-tab{display:grid;gap:16px}
 .report-sections{display:flex;gap:8px;flex-wrap:wrap}
 .report-sections button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent-line)}
@@ -24,3 +26,5 @@
 .cabinet-head-side .history-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted)}
 .cabinet-head-side .history-link svg{width:14px;height:14px}
 .cabinet-head-side .history-link[aria-current]{color:var(--text);font-weight:600}
+/* Телефон: счёт и история — строкой под названием, название не сжимается. */
+@media(max-width:600px){.cabinet-match-head{flex-wrap:wrap;align-items:flex-start}.cabinet-match-head .title{flex-basis:calc(100% - 56px)}.cabinet-match-head h1{font-size:22px}.cabinet-head-side{width:100%;flex-direction:row;align-items:center;justify-content:space-between}}
