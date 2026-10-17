@@ -1,6 +1,19 @@
 import {test,expect} from '@playwright/test';
 import {login,createTournament,task} from './helpers';
 
+// Синтетический кадр с белой рамкой «поля» — рисуется в браузере, без файлов в репозитории.
+async function openImage(page:import('@playwright/test').Page,w:number,h:number){
+ const png=await page.evaluate(([w,h])=>{const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d')!;g.fillStyle='#2a6';g.fillRect(0,0,w,h);g.strokeStyle='#fff';g.lineWidth=4;g.strokeRect(w*0.05,h*0.1,w*0.9,h*0.8);return c.toDataURL('image/png').split(',')[1]},[w,h]);
+ await page.locator('label',{hasText:/картин/}).locator('input').setInputFiles({name:'frame.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+ await expect(page.getByRole('img',{name:'Разметка точек на кадре'})).toBeVisible();
+}
+const cornersOf=(w:number,h:number)=>[[w*0.05,h*0.1],[w*0.95,h*0.1],[w*0.95,h*0.9],[w*0.05,h*0.9]];
+async function markCorners(page:import('@playwright/test').Page,w:number,h:number){
+ const stage=page.getByRole('img',{name:'Разметка точек на кадре'});const box=(await stage.boundingBox())!;
+ for(const [x,y] of cornersOf(w,h))await stage.click({position:{x:x/w*box.width,y:y/h*box.height}});
+ await expect(page.getByText('Все точки отмечены',{exact:false})).toBeVisible();
+}
+
 test('hall geometry, camera version, match binding and CV download',async({page})=>{
  await login(page);const data=await createTournament(page);
  await page.goto(`/halls/${data.hallId}`);
@@ -10,14 +23,10 @@ test('hall geometry, camera version, match binding and CV download',async({page}
  await page.getByRole('button',{name:'Сохранить зал',exact:true}).click();
  await expect(page.getByText('Ввод сохранён в черновике',{exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Добавить профиль камеры',exact:true}).click();
- // Запасной путь без кадра: размер и координаты числами (черновик и безопасный повтор).
- await page.getByText('Ввести координаты точек числами',{exact:true}).click();
- await page.getByLabel('Ширина кадра, px',{exact:true}).fill('1000');await page.getByLabel('Высота кадра, px',{exact:true}).fill('500');
- const points=[[0,0],[999,0],[999,499],[0,499]];
- for(let i=0;i<points.length;i++){await page.getByLabel(`Точка ${i+1}: X кадра`,{exact:true}).fill(String(points[i][0]));await page.getByLabel(`Точка ${i+1}: Y кадра`,{exact:true}).fill(String(points[i][1]))}
+ // Кадр 1000×500, углы отмечаются кликами; после перезагрузки точки берутся из черновика, кадр выбирается заново.
+ await openImage(page,1000,500);await markCorners(page,1000,500);
  await page.reload();await page.getByRole('button',{name:'Добавить профиль камеры',exact:true}).click();
- await page.getByText('Ввести координаты точек числами',{exact:true}).click();
- await expect(page.getByLabel('Точка 3: Y кадра',{exact:true})).toHaveValue('499');
+ await openImage(page,1000,500);await expect(page.getByText('Все точки отмечены',{exact:false})).toBeVisible();
  let lost=false;const bodies:string[]=[];
  await page.route(`**/api/v1/halls/${data.hallId}/camera-profiles`,async route=>{if(route.request().method()!=='POST')return route.continue();bodies.push(route.request().postData()!);if(!lost){lost=true;await route.fetch();await route.fulfill({status:201,contentType:'application/json',body:'{'})}else await route.continue()});
  await page.getByRole('button',{name:'Сохранить профиль камеры',exact:true}).click();
@@ -50,17 +59,26 @@ test('hall geometry, camera version, match binding and CV download',async({page}
 test('camera points are marked by clicking a frame, which becomes the reference frame',async({page})=>{
  await login(page);const data=await createTournament(page);
  await page.goto(`/halls/${data.hallId}`);await page.getByRole('button',{name:'Добавить профиль камеры',exact:true}).click();
- // Синтетический кадр 800×400 с белой рамкой «поля»; углы рамки — точки 1–4.
- const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=800;c.height=400;const g=c.getContext('2d')!;g.fillStyle='#2a6';g.fillRect(0,0,800,400);g.strokeStyle='#fff';g.lineWidth=4;g.strokeRect(40,40,720,320);return c.toDataURL('image/png').split(',')[1]});
- await page.getByText('Загрузить кадр',{exact:true}).locator('input').setInputFiles({name:'frame.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
- const stage=page.getByRole('img',{name:'Разметка точек на кадре'});await expect(stage).toBeVisible();
- const box=(await stage.boundingBox())!;const corners=[[40,40],[760,40],[760,360],[40,360]];
- for(const [x,y] of corners)await stage.click({position:{x:x/800*box.width,y:y/400*box.height}});
- await expect(page.getByText('Все точки отмечены',{exact:false})).toBeVisible();await page.locator('.camera-editor').screenshot({path:'test-results/camera-click.png'});
+ await openImage(page,800,400);await markCorners(page,800,400);await page.locator('.camera-editor').screenshot({path:'test-results/camera-click.png'});
  await page.getByRole('button',{name:'Сохранить профиль камеры',exact:true}).click();
  const summary=page.locator('summary').filter({hasText:'Основная камера · версия 1'});await expect(summary).toBeVisible();await summary.click();
  await expect(page.getByRole('img',{name:'Эталонный кадр камеры «Основная камера», версия 1'})).toBeVisible();
- const [profile]=(await (await page.request.get(`/api/v1/halls/${data.hallId}/camera-profiles`)).json()).items;
+ const [profile]=(await (await page.request.get(`/api/v1/halls/${data.hallId}/camera-profiles`)).json()).items;const corners=cornersOf(800,400);
  expect([profile.frame_width,profile.frame_height]).toEqual([800,400]);expect(profile.reference_sha256).toMatch(/^[0-9a-f]{64}$/);
  profile.points.forEach((p:{px:number[]},i:number)=>{expect(Math.abs(p.px[0]-corners[i][0])).toBeLessThanOrEqual(2);expect(Math.abs(p.px[1]-corners[i][1])).toBeLessThanOrEqual(2)});
+});
+
+test('a frame is taken from the recording itself in its own resolution',async({page})=>{
+ await login(page);const data=await createTournament(page);
+ await page.goto(`/halls/${data.hallId}`);await page.getByRole('button',{name:'Добавить профиль камеры',exact:true}).click();
+ // Короткая синтетическая запись 640×360 (WebM из canvas): видео в репозиторий не добавляется.
+ const webm=await page.evaluate(async()=>{const c=document.createElement('canvas');c.width=640;c.height=360;const g=c.getContext('2d')!;
+  const rec=new MediaRecorder(c.captureStream(10),{mimeType:'video/webm'});const parts:Blob[]=[];rec.ondataavailable=e=>parts.push(e.data);
+  let frame=0;const draw=setInterval(()=>{g.fillStyle='#2a6';g.fillRect(0,0,640,360);g.fillStyle='#fff';g.fillRect(40+frame++%50,40,20,20)},100);
+  rec.start();await new Promise(r=>setTimeout(r,1200));rec.stop();await new Promise(r=>rec.onstop=r);clearInterval(draw);
+  const bytes=new Uint8Array(await new Blob(parts,{type:'video/webm'}).arrayBuffer());let text='';bytes.forEach(b=>text+=String.fromCharCode(b));return btoa(text)});
+ await page.locator('label',{hasText:'Взять кадр из записи'}).locator('input').setInputFiles({name:'match.webm',mimeType:'video/webm',buffer:Buffer.from(webm,'base64')});
+ await expect(page.getByRole('img',{name:'Разметка точек на кадре'})).toBeVisible();
+ await expect(page.getByText(/Кадр 640 × 360 px/)).toBeVisible();
+ await expect(page.getByText(/Для специалиста/)).toHaveCount(0);
 });
