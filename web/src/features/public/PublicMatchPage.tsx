@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {useParams} from 'react-router-dom';
+import {Link,useLocation,useParams} from 'react-router-dom';
 import {useQueryPatch} from '../navigation/useQueryPatch';
 import {api} from '../../api/client';
 import type {PublicMatch} from '../../api/domain';
@@ -30,6 +30,7 @@ export function PublicMatchPage(){
 }
 
 function MatchContent({id}:{id:string}){
+ const location=useLocation();const calendarReturn=location.state?.calendarReturn;
  const [params,update]=useQueryPatch();
  const [match,setMatch]=useState<PublicMatch>();const [error,setError]=useState<unknown>();const [tick,setTick]=useState(0);
  const requested=readMatchTab(params,'public');
@@ -73,6 +74,7 @@ function MatchContent({id}:{id:string}){
   historicalRating:snapshotParam!==null,periodKey:period}};
  const note=sources.protocol.status==='ready'?resultNote(sources.protocol.value):null;
  return <>
+  {typeof calendarReturn==='string'&&/^\/(?:watch)?(?:\?|$)/.test(calendarReturn)&&<Link className="breadcrumb" to={calendarReturn}>← К календарю матчей</Link>}
   <MatchHeader match={match} resultNote={note} scorers={sources.protocol.status==='ready'?goalScorers(sources.protocol.value):null}>
    <SectionNavigation label="Разделы матча" items={SECTIONS.filter(s=>hasSection(match,s.id))} selected={tab} onSelect={value=>navigate({tab:value})}
     href={value=>`?${patchQuery(params,{tab:value})}`}/>

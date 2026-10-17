@@ -1,3 +1,5 @@
+import {PublicMatchCenter} from './match-center/PublicMatchCenter';
+export function PublicHome(){return <PublicMatchCenter/>}
 import {TournamentRatings} from '../ratings/TournamentRatings';
 import {Link,useParams} from 'react-router-dom';
 import {useQueryPatch} from '../navigation/useQueryPatch';
@@ -10,7 +12,7 @@ import {useLoad,Loading,ErrorBox,Empty} from '../../components/ui';
 import {Schedule} from './Schedule';
 import {dateRange} from '../matches/timezone';
 
-export function PublicHome(){const state=useLoad(()=>all<PublicTournament>('/public/tournaments'),'public-tournaments');return <><div className="spectator-intro"><Trophy/><h1>Футбол, который нас объединяет</h1><p>Выберите турнир, чтобы посмотреть расписание, результаты и трансляции матчей.</p></div>{!state.data?<Loading error={state.error} retry={state.reload}/>:<><ErrorBox error={state.error}/>{state.data.length?<div className="public-tournaments">{state.data.map(t=><Link className="public-tournament" key={t.id} to={`/watch/tournaments/${t.id}`}><span className="muted">Сезон {t.season}</span><h2>{t.name}</h2><p>{dateRange(t.starts_on,t.ends_on)}</p><span>Матчи и расписание<ArrowUpRight/></span></Link>)}</div>:<Empty>Турниров пока нет. Расписание появится здесь, когда организатор добавит матчи.</Empty>}</>}</>}
+export function PublicTournamentCatalog(){const state=useLoad(()=>all<PublicTournament>('/public/tournaments'),'public-tournaments');return <><div className="spectator-intro"><Trophy/><h1>Футбол, который нас объединяет</h1><p>Выберите турнир, чтобы посмотреть расписание, результаты и трансляции матчей.</p></div>{!state.data?<Loading error={state.error} retry={state.reload}/>:<><ErrorBox error={state.error}/>{state.data.length?<div className="public-tournaments">{state.data.map(t=><Link className="public-tournament" key={t.id} to={`/watch/tournaments/${t.id}`}><span className="muted">Сезон {t.season}</span><h2>{t.name}</h2><p>{dateRange(t.starts_on,t.ends_on)}</p><span>Матчи и расписание<ArrowUpRight/></span></Link>)}</div>:<Empty>Турниров пока нет. Расписание появится здесь, когда организатор добавит матчи.</Empty>}</>}</>}
 export function PublicTournamentPage(){const {id}=useParams();return <TournamentContent key={id} id={id!}/>}
 function TournamentContent({id}:{id:string}){
  const [params,update]=useQueryPatch();const tab=params.get('tab')==='ratings'?'ratings':'matches';

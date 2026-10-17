@@ -16,9 +16,11 @@ from aifootball.service.tournaments.schemas import Regulation
 
 def seed():
     os.chdir(Path(__file__).resolve().parents[1])
-    base=Settings();url=make_url(base.database_url).set(database='aifootball_e2e')
-    assert url.database=='aifootball_e2e' and url.host in ('127.0.0.1','localhost')
-    app=create_app(Settings(database_url=url.render_as_string(hide_password=False),attachment_root=Path('data/service/e2e-attachments')))
+    base=Settings();database=os.environ.get('AIF_E2E_DATABASE_NAME','aifootball_e2e')
+    assert database.startswith('aifootball_') and database.endswith('_e2e') and database.replace('_','').isalnum()
+    url=make_url(base.database_url).set(database=database)
+    assert url.database==database and url.host in ('127.0.0.1','localhost')
+    app=create_app(Settings(database_url=url.render_as_string(hide_password=False),attachment_root=Path(f'data/service/{database}-attachments')))
     suffix=uuid4().hex[:6]
     with TestClient(app) as client:
         client.headers['Origin']=base.allowed_origin
@@ -28,7 +30,7 @@ def seed():
             response=client.request(method,'/api/v1'+path,json=body)
             assert response.status_code in (200,201),f'{path}: {response.status_code} {response.text}'
             return response.json()
-        tournament=call('POST','/tournaments',{'name':f'Демо рейтинг {suffix}','season':'2026','starts_on':'2026-10-01','ends_on':'2026-11-30','timezone':'Europe/Moscow'})
+        tournament=call('POST','/tournaments',{'name':f'Демо рейтинг {suffix}','season':'2026','starts_on':'2026-10-01','ends_on':'2026-11-30','timezone':'Europe/Moscow','visibility':'public'})
         tid=tournament['id'];reg=call('POST',f'/tournaments/{tid}/regulations',{'variant_name':'Основной','rules':Regulation().model_dump(mode='json')})
         hall=call('POST','/halls',{'name':f'Демо арена {suffix}','address':'Синтетический адрес, 1','pitch_length_m':42,'pitch_width_m':18})
         entries=[];lineup=[];players=[]
