@@ -17,7 +17,7 @@ export function MatchAside({match:m}:{match:PublicMatch}){
  return <div className="match-aside">
   <section className="aside-card"><h3>Матч</h3><p className="num">{dateTime(m.scheduled_at,tz)}</p>
    <p>{m.hall?.name||m.venue_label||'Площадка не указана'}</p>
-   {m.hall&&<><p className="muted small">{m.hall.address}{m.hall.pitch_length_m&&m.hall.pitch_width_m?` · поле ${m.hall.pitch_length_m} × ${m.hall.pitch_width_m} м`:''}</p><YandexMapsLink address={m.hall.address}/></>}
+   {m.hall&&<><p className="muted small">{m.hall.address}</p><YandexMapsLink address={m.hall.address}/></>}
   </section>
   {rest.length>0&&<section className="aside-card"><h3>Матчи дня · {m.tournament.name}</h3><ul className="day-matches">{rest.map(x=>
    <li key={x.id}><Link to={`/watch/matches/${x.id}`}><span>{x.home_name}</span><b className="num">{x.score.home==null||x.score.away==null?dateTime(x.scheduled_at,tz).split(', ').pop():`${x.score.home} : ${x.score.away}`}</b><span>{x.away_name}</span></Link>

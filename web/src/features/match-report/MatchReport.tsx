@@ -13,6 +13,7 @@ import {PlayerTable} from './PlayerTable';
 import {MatchStats,topLines} from './MatchStats';
 import {MatchTimeline} from './MatchTimeline';
 import {StatRow} from './StatBlocks';
+import type {StatLine} from './stats';
 import {CircleDot} from 'lucide-react';
 import {sections} from '../../api/domain';
 import './report.css';
@@ -23,7 +24,7 @@ type Props={match:PublicMatch;model:ReportModel;section:string;group:StatGroup|n
  onRetry:()=>void;onCurrentEdition:()=>void;historyHref:(playerId:string)=>string;video?:ReactNode;audience?:'public'|'cabinet';aside?:ReactNode};
 
 const ready=<T,>(r:Resource<T>)=>r.status==='ready'?r.value:null;
-const SOURCE_LABEL={protocol:'Протокол',cv:'CV',rating:'Оценка'} as const;
+const SOURCE_LABEL={protocol:'Протокол',cv:'Видео',rating:'Оценка'} as const;
 
 // Состояние блока: ошибка и отсутствие источника не скрывают остальные блоки.
 function Block<T>({resource,absent,onRetry,children}:{resource:Resource<T>;absent:string;onRetry:()=>void;children:(v:T)=>ReactNode}){
@@ -43,16 +44,6 @@ function Readiness({model}:{model:ReportModel}){
  </div>;
 }
 
-// Гостю — одна строка происхождения данных без внутренних номеров изданий.
-function SourceLine({model}:{model:ReportModel}){
- const parts=[model.protocol.status==='ready'?'официальный протокол':null,
-  model.actions.status==='ready'&&model.actions.value.source.kind!=='cv_auto'?'проверенные действия':null,
-  model.actions.status==='ready'&&model.actions.value.source.kind!=='manual'?'передачи по видео (автоматически)':null,
-  model.cv.status==='ready'?(model.cv.value.partial?'видеоанализ обработанного фрагмента':'видеоанализ записи'):null,
-  model.ratings.status==='ready'?'опубликованные оценки':null].filter(Boolean);
- return parts.length?<p className="muted small source-line">Источники: {parts.join(' · ')}.</p>:null;
-}
-
 
 function Inspector({row,origin,model,match,onSelect,onClose,onCurrentEdition,historyHref,audience}:{row:RosterRow|null;origin:PlayerSelection['origin'];
  model:ReportModel;match:PublicMatch;onSelect:(s:PlayerSelection)=>void;onClose:()=>void;onCurrentEdition:()=>void;historyHref:(id:string)=>string;audience:'public'|'cabinet'}){
@@ -70,22 +61,25 @@ function Inspector({row,origin,model,match,onSelect,onClose,onCurrentEdition,his
   {rows.length>0&&<p>Роль в матче: {rows.map(r=>roles[r.role as keyof typeof roles]??r.role).join(', ')}</p>}
   {overall?<section className="inspector-rating"><div><b className="rating-value num">{overall.display_rating==null?'Нет оценки':overall.display_rating.toFixed(1)}</b>
     <span className="muted small">Оценка матча{audience==='cabinet'?` · издание ${ratings?.snapshot_id?.slice(0,8)}`:''}</span></div>
-   {model.context.historicalRating&&<p className="small"><span className="chip">Издание закреплено ссылкой</span> <button className="btn-link" onClick={onCurrentEdition}>Открыть текущее</button></p>}
+   {model.context.historicalRating&&<p className="small"><span className="chip">Прежняя версия рейтинга</span> <button className="btn-link" onClick={onCurrentEdition}>Открыть текущее</button></p>}
    {share&&share.text!=='Нет данных'&&<p><span className="muted">Точность передач</span><br/><b className="num">{share.text}</b>{share.note&&<span className="muted small"> · {share.note}</span>}</p>}
    {overall.reasons.length>0&&<ul className="reasons">{overall.reasons.map((r,i)=><li key={i}>{reason(r)}</li>)}</ul>}
    {typeof (overall.explanation as {text?:string}|undefined)?.text==='string'&&<p>{(overall.explanation as {text:string}).text}</p>}
-  </section>:ratings?<p className="muted">Оценки этого игрока в издании нет.</p>:null}
+  </section>:ratings?<p className="muted">Оценки этого игрока нет.</p>:null}
   <section><h3>Карта времени</h3>
    {showMap&&pitch?<><PitchMap cells={cvPlayer.metrics.heatmap_s??null} lengthM={pitch.length_m} widthM={pitch.width_m} orientation={pitch.orientation??'camera'}
      maxSeconds={sharedHeatmapMax([cvPlayer.metrics.heatmap_s??null])} scaleLabel="индивидуальная шкала" label={row.name} tone={row.side??'neutral'}/>
-    <p className="muted small">CV · текущая опубликованная версия · {cv?.partial?'обработанный фрагмент':'весь матч'}. Перемещения — отдельный источник, вес в оценке 0.</p></>
-   :origin==='rating'?<div className="map-absent"><p>Карта этого издания недоступна</p>
-     {cvPlayer&&<button className="btn-link" onClick={()=>onSelect({playerId:row.playerId,origin:'cv'})}>Открыть текущую CV-карту</button>}</div>
+    <p className="muted small">По видео · {cv?.partial?'обработанный фрагмент':'весь матч'}.</p></>
+   :origin==='rating'?<div className="map-absent"><p>Для этой оценки карты нет</p>
+     {cvPlayer&&<button className="btn-link" onClick={()=>onSelect({playerId:row.playerId,origin:'cv'})}>Открыть карту по видео</button>}</div>
    :<p className="muted">Нет наблюдений этого игрока в опубликованном видеоанализе.</p>}
   </section>
   <Link className="history-link" to={historyHref(row.playerId)}>История турнира →</Link>
  </PlayerInspector>;
 }
+
+// В обзоре — только строки, где что-то произошло: пара нулей или прочерков ничего не говорит.
+const meaningful=(l:StatLine)=>[l.home.value,l.away.value].some(v=>v!=null&&v!==0);
 
 // Рейтинг по шкале в стиле FotMob: ≥7 зелёный, ≥6 нейтральный, ниже — оранжевый.
 export const ratingTone=(v:number|null|undefined)=>v==null?'none':v>=7?'high':v>=6?'mid':'low';
@@ -135,7 +129,7 @@ export function MatchReport({match,model,section,group:requestedGroup,selection,
    <p className="muted small">Подтверждённый протокол · версия {p.number}.{p.projection.incomplete_sections.length>0&&` Заполнено не полностью: ${p.projection.incomplete_sections.map(s=>sections[s as keyof typeof sections]??s).join(', ').toLowerCase()}.`}
     {match.public_protocol_id&&<> <Link to={`/protocols/${match.public_protocol_id}`}>Полный протокол →</Link></>}</p></>}</Block></section>;
  else if(section==='players')body=<section className="report-block"><h2>Составы</h2>
-  {model.protocol.status!=='ready'&&<p className="muted">Официальный состав не опубликован; показаны игроки из опубликованных CV и оценок с отметкой источника.</p>}
+  {model.protocol.status!=='ready'&&<p className="muted">Официальный состав ещё не опубликован — показаны игроки из видеоанализа и оценок.</p>}
   {roster.length?<div className="roster-columns">{(['home','away'] as const).map(side=><div key={side}><h3 className="team-title"><span className={`side-dot ${side}`}/>{side==='home'?match.home_name:match.away_name}</h3>
    <ul className="roster-list">{roster.filter(r=>r.side===side).map(r=><li key={r.playerId} aria-selected={selection?.playerId===r.playerId}>
     <span className="num shirt">{r.shirtNumber??'—'}</span>
@@ -148,9 +142,9 @@ export function MatchReport({match,model,section,group:requestedGroup,selection,
  else if(section==='video')body=video;
  else body=<>
   {audience==='cabinet'&&<section className="report-block"><h2>Готовность данных</h2><Readiness model={model}/></section>}
-  <section className="report-block"><h2>Ключевые события</h2><Block resource={model.protocol} absent="Протокол ещё не опубликован." onRetry={onRetry}>{p=>
-   <MatchTimeline value={p} keyOnly/>}</Block></section>
-  {(()=>{const top=topLines(protocol,ready(model.actions),ready(model.cv),'all');return top.length>0&&<section className="report-block">
+  {model.protocol.status!=='absent'&&<section className="report-block"><h2>Ключевые события</h2><Block resource={model.protocol} absent="" onRetry={onRetry}>{p=>
+   <MatchTimeline value={p} keyOnly/>}</Block></section>}
+  {(()=>{const top=topLines(protocol,ready(model.actions),ready(model.cv),'all').filter(meaningful);return top.length>0&&<section className="report-block">
    <div className="block-head"><h2>Главное</h2>{ready(model.cv)?.partial&&<span className="muted small">видеоанализ — по обработанному фрагменту</span>}</div>
    <div className="stat-list">{top.map(l=><StatRow key={l.key} line={l}/>)}</div></section>})()}
   {model.cv.status==='error'&&<section className="report-block"><Block resource={model.cv} absent="" onRetry={onRetry}>{()=>null}</Block></section>}
@@ -158,7 +152,6 @@ export function MatchReport({match,model,section,group:requestedGroup,selection,
     <button className="link-button" onClick={()=>onSelect({playerId:r.player_id,origin:'rating'})}>{r.display_name}</button><span className="muted">{teamName(r)}</span>
     <b className={`rating-chip num tone-${ratingTone(r.display_rating)}`}>{r.display_rating!.toFixed(1)}</b></li>)}</ol></section>}
   {(match.broadcast_url||match.broadcast_embed_url)&&video}
-  {audience==='public'&&<SourceLine model={model}/>}
  </>;
  const inspector=selection&&<Inspector row={selectedRow} origin={selection.origin} model={model} match={match} onSelect={onSelect} onClose={onClose}
   onCurrentEdition={onCurrentEdition} historyHref={historyHref} audience={audience}/>;

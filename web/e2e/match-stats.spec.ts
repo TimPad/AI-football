@@ -15,7 +15,7 @@ test('guest reads FotMob-like match statistics from published protocol and revie
  await expect(page.getByRole('img',{name:/Карта ударов: 18/})).toBeVisible();
  await page.getByRole('button',{name:'2-й тайм',exact:true}).click();
  await expect(page).toHaveURL(/period=2/);
- await expect(page.locator('.stat-card',{has:page.getByRole('heading',{name:'Дисциплина'})}).locator('.stat-row',{hasText:'Накопленные фолы'})).toBeVisible();
+ await expect(page.locator('.stat-card',{has:page.getByRole('heading',{name:'Голы и дисциплина'})}).locator('.stat-row',{hasText:'Накопленные фолы'})).toBeVisible();
  for(const width of [1440,1024,390]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true)}
  expect(api.every(url=>url.includes('/api/v1/public/'))).toBe(true);
 });

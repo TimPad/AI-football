@@ -8,7 +8,7 @@ import {ProtocolSession,useProtocolSession} from '../protocol/ProtocolSession';
 import {CommandStatus,useRatingCommand} from '../ratings/commands';
 import type {Actions,Analytics,Participation,RatingSnapshot} from '../ratings/types';
 import {GuestPreview} from './GuestPreview';
-import {cvBlock,performanceBlock,protocolBlock,ratingBlock,type PublicationBlock} from './publicationModel';
+import {cvBlock,performanceBlock,protocolBlock,ratingBlock,when,type PublicationBlock} from './publicationModel';
 import './publication.css';
 
 type PerformanceView={revision:number;match_id:string;participation_version_id:string|null;action_version_id:string|null;policy_approved:boolean};
@@ -24,7 +24,7 @@ export function MatchPublication({matchId,tournamentId,actorId,canManage}:{match
     {canManage&&<CvRow matchId={matchId} actorId={actorId} tick={tick} onChanged={refresh}/>}
     {canManage&&<PerformanceRow match={match.data} actorId={actorId} tick={tick} onChanged={refresh}/>}
     {canManage&&<RatingRow tournamentId={tournamentId} actorId={actorId} tick={tick} onChanged={refresh}/>}
-    {!canManage&&<p className="muted small row-note">Публикация видеоанализа, источников оценок и рейтинга доступна Админ+.</p>}
+    {!canManage&&<p className="muted small row-note">Видеоанализ, оценки и рейтинг публикует Админ+.</p>}
    </>}
   </section>
   <GuestPreview matchId={matchId} refresh={tick}/>
@@ -48,7 +48,7 @@ function ProtocolRow({match,tick,onChanged}:{match:Match;tick:number;onChanged:(
  if(!versions.data)return <Loading error={versions.error} retry={versions.reload}/>;
  const list=versions.data;const chosen=selected||list.find(v=>v.id!==match.published_version_id)?.id||list[0]?.id||'';
  const block=protocolBlock(match,list,chosen||null);
- return <Row icon={<FileText/>} title="Официальный протокол" description="Счёт, события и состав на сайте. Неполный видеоанализ не блокирует публикацию протокола." block={block}>
+ return <Row icon={<FileText/>} title="Официальный протокол" description="Счёт, события и состав матча." block={block}>
   {list.length>0&&<label className="field"><span>Версия протокола</span><select aria-label="Версия протокола" value={chosen} disabled={!!acting} onChange={e=>setSelected(e.target.value)}>{list.map(v=><option key={v.id} value={v.id}>Версия {v.number}{v.id===match.published_version_id?' · на сайте':''}</option>)}</select></label>}
   {acting?<ProtocolSession matchId={match.id}><PublishAction versionId={acting} onDone={ok=>{setActing(null);if(ok)onChanged()}}/></ProtocolSession>
    :<button className="primary" disabled={!chosen||chosen===match.published_version_id} onClick={()=>setActing(chosen)}><Upload/>Опубликовать протокол</button>}
@@ -84,9 +84,9 @@ function CvRow({matchId,actorId,tick,onChanged}:{matchId:string;actorId:string;t
  const chosen=selected||o.active_run_id||confirmed[0]?.id||o.runs[0]?.id||'';const run=o.runs.find(r=>r.id===chosen);
  const block=cvBlock(o,chosen||null);
  const can=!!run&&run.status==='confirmed'&&run.passed&&run.id!==o.published_run_id;
- return <Row icon={<Video/>} title="Видеоанализ" description="Карты времени и физические показатели по обработанной записи." block={block}>
-  {o.runs.length>0&&<label className="field"><span>Версия видеоанализа</span><select aria-label="Версия видеоанализа" value={chosen} disabled={command.locked} onChange={e=>setSelected(e.target.value)}>{o.runs.map(r=><option key={r.id} value={r.id}>{r.status==='confirmed'?'Подтверждена':'На проверке'} · {r.id.slice(0,8)}{r.id===o.published_run_id?' · на сайте':''}</option>)}</select></label>}
-  <button className="primary" disabled={!can||command.locked} onClick={()=>void command.execute(`/matches/${matchId}/analysis/runs/${chosen}/publish`,{expected_revision:run!.revision,expected_analysis_revision:o.analysis_revision})}><Upload/>Опубликовать CV</button>
+ return <Row icon={<Video/>} title="Видеоанализ" description="Карты, физические показатели и передачи по записи матча." block={block}>
+  {o.runs.length>0&&<label className="field"><span>Версия видеоанализа</span><select aria-label="Версия видеоанализа" value={chosen} disabled={command.locked} onChange={e=>setSelected(e.target.value)}>{o.runs.map(r=><option key={r.id} value={r.id}>{r.status==='confirmed'?'Подтверждена':'На проверке'} · {when(r.created_at)}{r.id===o.published_run_id?' · на сайте':''}</option>)}</select></label>}
+  <button className="primary" disabled={!can||command.locked} onClick={()=>void command.execute(`/matches/${matchId}/analysis/runs/${chosen}/publish`,{expected_revision:run!.revision,expected_analysis_revision:o.analysis_revision})}><Upload/>Опубликовать видеоанализ</button>
   <CommandStatus command={command}/>
  </Row>;
 }
@@ -104,7 +104,7 @@ function PerformanceRow({match,actorId,tick,onChanged}:{match:Match;actorId:stri
  const actionId=pendingBody?.action_version_id??edit.action??saved.action_version_id??'';
  const approve=pendingBody?.approve_policy??edit.approve??saved.policy_approved;
  const block=performanceBlock(match,part,actions,saved);
- return <Row icon={<Users/>} title="Источники оценок и статистики" description="Подтверждённые версии участия и действий для публичного рейтинга и командной статистики матча на сайте (удары, передачи, единоборства)." block={block}>
+ return <Row icon={<Users/>} title="Данные для оценок и статистики" description="Какие проверенные версии участия и действий идут в оценки игроков и командную статистику на сайте." block={block}>
   <label className="field"><span>Участие</span><select aria-label="Публикуемая версия участия" disabled={command.locked} value={partId} onChange={e=>setEdit({...edit,part:e.target.value})}><option value="">Не выбрано</option>{part.versions.filter(v=>v.status==='confirmed').map(v=><option key={v.id} value={v.id}>Участие №{v.revision}</option>)}</select></label>
   <label className="field"><span>Действия</span><select aria-label="Публикуемая версия действий" disabled={command.locked} value={actionId} onChange={e=>setEdit({...edit,action:e.target.value})}><option value="">Не выбрано</option>{actions.versions.filter(v=>v.status==='confirmed').map(v=><option key={v.id} value={v.id}>Действия №{v.revision}</option>)}</select></label>
   <label className="check"><input type="checkbox" disabled={command.locked} checked={approve} onChange={e=>setEdit({...edit,approve:e.target.checked})}/>Разрешить методику для публичного рейтинга</label>
@@ -120,11 +120,11 @@ function RatingRow({tournamentId,actorId,tick,onChanged}:{tournamentId:string;ac
  if(!analytics.data)return <Loading error={analytics.error} retry={analytics.reload}/>;
  const a=analytics.data;const block=ratingBlock(a,tournamentId);const base=block.candidate??a.snapshots.find(s=>s.scope==='public');
  const settings=(base?.settings??{}) as {profile_id?:string;time_basis?:string;level?:string;cutoff?:string|null};
- return <Row icon={<ChartColumn/>} title="Рейтинг турнира" tag="Операция турнира" description="Издание рассчитывается по всем опубликованным матчам турнира. Прежнее издание остаётся на сайте до публикации нового." block={block}>
+ return <Row icon={<ChartColumn/>} title="Рейтинг турнира" tag="Общий для турнира" description="Считается по всем опубликованным матчам. Прежний рейтинг виден на сайте, пока не опубликован новый." block={block}>
   <div className="row">
    <button disabled={command.locked} onClick={()=>void command.execute(`/tournaments/${tournamentId}/analytics/calculate`,{expected_revision:a.revision,scope:'public',
     profile_id:settings.profile_id??'per10',time_basis:settings.time_basis??'reviewed_effective',level:settings.level??'amateur',cutoff:settings.cutoff??null})}><RefreshCw/>Пересчитать рейтинг</button>
-   <button className="primary" disabled={command.locked||!block.candidate||!!block.candidate.stale} onClick={()=>void command.execute(`/tournaments/${tournamentId}/analytics/publish`,{expected_revision:a.revision,snapshot_id:block.candidate!.snapshot_id})}><Upload/>Опубликовать издание</button>
+   <button className="primary" disabled={command.locked||!block.candidate||!!block.candidate.stale} onClick={()=>void command.execute(`/tournaments/${tournamentId}/analytics/publish`,{expected_revision:a.revision,snapshot_id:block.candidate!.snapshot_id})}><Upload/>Опубликовать рейтинг</button>
   </div>
   <Link to={`/tournaments/${tournamentId}?tab=ratings`}>Открыть рейтинг турнира →</Link>
   <CommandStatus command={command}/>

@@ -40,5 +40,6 @@ test('hall geometry, camera version, match binding and CV download',async({page}
  await page.goto(data.path);await task(page,'Сведения').click();
  await expect(page.getByText(/Поле: 41 × 15.5 м/)).toBeVisible();await expect(page.getByLabel('Профиль камеры',{exact:true})).toHaveValue(match.camera_profile_id);
  const guest=await page.context().browser()!.newContext();const viewer=await guest.newPage();await viewer.goto(`/watch/matches/${matchId}`);
- await expect(viewer.getByText(/Ярославль, Спортивная.*поле 41 × 15.5 м/)).toBeVisible();await expect(viewer.getByRole('link',{name:'Открыть в Яндекс Картах',exact:true})).toHaveAttribute('href',`https://yandex.ru/maps/?text=${encodeURIComponent(hallAddress)}`);await guest.close();
+ // Зрителю — адрес без технических размеров поля.
+ await expect(viewer.getByText(/Ярославль, Спортивная/)).toBeVisible();await expect(viewer.getByText(/поле 41/)).toHaveCount(0);await expect(viewer.getByRole('link',{name:'Открыть в Яндекс Картах',exact:true})).toHaveAttribute('href',`https://yandex.ru/maps/?text=${encodeURIComponent(hallAddress)}`);await guest.close();
 });

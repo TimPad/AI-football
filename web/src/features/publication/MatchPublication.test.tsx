@@ -50,7 +50,7 @@ describe('match publication',()=>{
  });
  it('keeps an unconfirmed CV blocked with a fix link while the protocol can be published',async()=>{
   stub();const user=userEvent.setup();show();
-  const cv=await screen.findByRole('button',{name:'Опубликовать CV'});
+  const cv=await screen.findByRole('button',{name:'Опубликовать видеоанализ'});
   expect(cv).toBeDisabled();
   expect(screen.getByText(/Версия на проверке не подтверждена/).closest('p')!.querySelector('a')).toHaveAttribute('href','/?tab=review');
   expect(Object.keys(localStorage).some(k=>k.endsWith(':lease'))).toBe(false);
@@ -71,10 +71,10 @@ describe('match publication',()=>{
   stub({'/analytics':{...analytics,snapshots:[...analytics.snapshots,{snapshot_id:'C',scope:'public',calculated_at:'2026-10-21T10:00:00Z',published_at:null,stale:false,settings:{}}]}});
   const user=userEvent.setup();show();
   const row=(await screen.findByRole('heading',{name:'Рейтинг турнира'})).closest('article')!;
-  expect(within(row).getByText(/издание B/)).toBeInTheDocument();
-  expect(within(row).getByText(/издание C · рассчитано/)).toBeInTheDocument();
+  expect(within(row).getByText(/^опубликован \d+ окт\./)).toBeInTheDocument();
+  expect(within(row).getByText(/^новый расчёт от/)).toBeInTheDocument();
   expect(calls.some(c=>c.path.endsWith('/analytics/publish'))).toBe(false);
-  await user.click(within(row).getByRole('button',{name:'Опубликовать издание'}));
+  await user.click(within(row).getByRole('button',{name:'Опубликовать рейтинг'}));
   await waitFor(()=>expect(calls.find(c=>c.path.endsWith('/analytics/publish'))?.body).toMatchObject({expected_revision:7,snapshot_id:'C'}));
  });
  it('lets an ordinary admin see only the protocol and guest preview from public routes',async()=>{
@@ -82,7 +82,7 @@ describe('match publication',()=>{
   expect(await screen.findByRole('button',{name:'Опубликовать протокол'})).toBeInTheDocument();
   await waitFor(()=>expect(document.querySelectorAll('.guest-sources .v')).toHaveLength(3));
   expect(document.querySelector('.guest-sources')).toHaveTextContent('не опубликован');
-  expect(screen.queryByRole('button',{name:'Опубликовать CV'})).toBeNull();
+  expect(screen.queryByRole('button',{name:'Опубликовать видеоанализ'})).toBeNull();
   expect(calls.some(c=>/participation|performance|analytics|\/analysis/.test(c.path)&&!c.path.startsWith('/public/'))).toBe(false);
   const preview=calls.filter(c=>c.path.startsWith('/public/'));
   expect(preview.length).toBeGreaterThan(0);

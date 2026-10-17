@@ -13,7 +13,8 @@ export function MatchOverview({match:m,timezone,analytics}:{match:Match;timezone
   {label:'Зал',value:m.hall_snapshot?`${m.hall_snapshot.name} · ${m.hall_snapshot.address}`:'Зал не выбран',ok:!!m.hall_id,fix:{tab:'info',text:'Выбрать зал'}},
   {label:'Состав матча',value:m.lineup.length?`${m.lineup.filter(l=>l.side==='home').length} + ${m.lineup.filter(l=>l.side==='away').length} игроков`:'Состав не отмечен',ok:m.lineup.length>0,fix:{tab:'lineup',text:'Отметить состав'}},
   {label:'Трансляция ВК',value:m.broadcast_url||m.broadcast_embed_url?'Ссылка указана':'Ссылка не указана',ok:true,fix:{tab:'info',text:'Указать'}},
-  {label:'Камера для видеоанализа',value:m.camera_profile_id?'Профиль камеры выбран':'Не выбрана: нужна только для CV, протокол можно вести',ok:!!m.camera_profile_id,fix:{tab:'info',text:'Выбрать камеру'}},
+  // Камера нужна только видеоанализу: её отсутствие — не проблема протокола.
+  {label:'Камера для видеоанализа',value:m.camera_profile_id?'Профиль камеры выбран':'Не выбрана — нужна только для видеоанализа',ok:true,fix:{tab:'info',text:m.camera_profile_id?'Изменить':'Выбрать камеру'}},
  ];
  const incomplete=m.projection.incomplete_sections.map(s=>sections[s as keyof typeof sections]??s);
  const protocol:Row[]=[

@@ -18,18 +18,24 @@ test('guest calendar, timetable and VK broadcasts from organizer input',async({p
  await viewer.goto('/');await expect(viewer.getByRole('heading',{name:'Футбол, который нас объединяет'})).toBeVisible();
  await viewer.goto(`/watch/tournaments/${data.tid}`);
  await expect(viewer.getByRole('link',{name:new RegExp(`${data.home}.*${data.away}`)})).toBeVisible();
- await viewer.getByRole('button',{name:'Сетка',exact:true}).click();
- await viewer.getByLabel('Дата',{exact:true}).fill('2026-10-20');
- await expect(viewer.getByRole('table',{name:'Сетка расписания'})).toContainText('19:00');
- await expect(viewer.getByRole('table',{name:'Сетка расписания'})).toContainText('Тестовый зал');
+ // Один матч в одном зале: фильтры ничего не меняют и не показываются.
+ await expect(viewer.locator('.schedule-toolbar')).toHaveCount(0);
+ const row=viewer.locator('.schedule-row').first();
+ await expect(row).toContainText('19:00');await expect(row).toContainText('Тестовый зал');
  for(const width of [1440,768,375]){
   await viewer.setViewportSize({width,height:1000});
   expect(await viewer.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await viewer.screenshot({path:`../data/service/screenshots/public-grid-${width}.png`,fullPage:true});
+  // Название команды — в одну строку, ссылка на матч не выходит за карточку.
+  for(const name of await row.locator('.slot-team b').all())
+   expect(await name.evaluate(e=>e.getBoundingClientRect().height<parseFloat(getComputedStyle(e).fontSize)*2)).toBe(true);
+  expect(await row.evaluate(r=>r.querySelector('.slot-open')!.getBoundingClientRect().right<=r.getBoundingClientRect().right)).toBe(true);
+  await viewer.screenshot({path:`../data/service/screenshots/public-schedule-${width}.png`,fullPage:true});
  }
  await viewer.getByRole('link',{name:new RegExp(`${data.home}.*${data.away}`)}).click();
  await expect(viewer.getByRole('link',{name:'Смотреть в ВК'})).toHaveAttribute('href','https://vk.com/video-123_456');
- await expect(viewer.getByText('Протокол ещё не опубликован.')).toBeVisible();
+ // Без протокола вкладки «События» нет; видео есть — есть и вкладка.
+ await expect(viewer.getByRole('navigation',{name:'Разделы матча'}).getByRole('link',{name:'События'})).toHaveCount(0);
+ await expect(viewer.getByRole('navigation',{name:'Разделы матча'}).getByRole('link',{name:'Видео'})).toBeVisible();
  await expect(viewer.locator('iframe')).toHaveCount(0);
  await viewer.getByRole('button',{name:'Смотреть на сайте'}).click();
  await expect(viewer.locator('iframe')).toHaveAttribute('src',embed);

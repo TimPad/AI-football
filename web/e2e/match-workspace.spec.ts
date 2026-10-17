@@ -54,7 +54,7 @@ test('an ordinary admin sees protocol tasks only and no Admin+ requests',async({
  await expect(nav.getByRole('link',{name:'Действия',exact:true})).toHaveCount(0);
  await task(page,'Публикация').click();
  await expect(page.getByRole('button',{name:'Опубликовать протокол',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Опубликовать CV',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Опубликовать видеоанализ',exact:true})).toHaveCount(0);
  await task(page,'Отчёт').click();await expect(page.getByText('Отчёт в кабинете')).toBeVisible();
  expect(urls.some(u=>/participation|performance-|analytics|\/ratings|understanding/.test(u)&&!u.includes('/public/'))).toBe(false);
 });

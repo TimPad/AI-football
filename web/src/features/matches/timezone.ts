@@ -15,3 +15,9 @@ export const matchTime=(value:string,timezone:string)=>new Intl.DateTimeFormat('
 // Минуты от полуночи местного дня турнира.
 export function localMinutes(value:string,timezone:string){const [h,m]=localInput(value,timezone).slice(11).split(':').map(Number);return h*60+m}
 export function shiftDay(day:string,delta:number){const d=new Date(`${day}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+delta);return d.toISOString().slice(0,10)}
+// Сроки турнира (даты без времени): «1 окт. — 31 дек. 2026», год один раз, если он общий.
+export function dateRange(from:string,to:string){
+ if(!from||!to)return from||to;
+ const f=(day:string,year:boolean)=>new Intl.DateTimeFormat('ru-RU',{timeZone:'UTC',day:'numeric',month:'short',...(year?{year:'numeric'}:{})}).format(new Date(`${day}T00:00:00Z`));
+ return from.slice(0,4)===to.slice(0,4)?`${f(from,false)} — ${f(to,true)}`:`${f(from,true)} — ${f(to,true)}`;
+}

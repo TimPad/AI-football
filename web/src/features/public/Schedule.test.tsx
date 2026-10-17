@@ -16,9 +16,10 @@ const show=(entry:string,items=matches,href?:(id:string)=>string)=>render(<Memor
  <Route path="/elsewhere" element={<Back/>}/></Routes></MemoryRouter>);
 const open=(name:RegExp)=>screen.getByRole('link',{name});
 
-it('filters a local day, switches timetable/list and links to match details',()=>{
+it('switches timetable/list, filters a hall and links to match details',()=>{
  show('/t');
- fireEvent.change(screen.getByLabelText('Дата'),{target:{value:'2026-10-20'}});
+ // Оба матча в один местный день: выбирать дату не из чего.
+ expect(screen.queryByLabelText('Дата')).toBeNull();
  expect(open(/Север — Юг/)).toHaveAttribute('href','/watch/matches/one');
  fireEvent.click(screen.getByRole('button',{name:'Сетка'}));
  const grid=screen.getByRole('table',{name:'Сетка расписания'});
@@ -27,8 +28,27 @@ it('filters a local day, switches timetable/list and links to match details',()=
  fireEvent.change(screen.getByLabelText('Фильтр по залу'),{target:{value:'Зал 2'}});
  expect(screen.queryByRole('link',{name:/Север — Юг/})).toBeNull();
  expect(screen.getByRole('table',{name:'Сетка расписания'})).toHaveTextContent('3 : 2');
- fireEvent.change(screen.getByLabelText('Дата'),{target:{value:'2026-10-21'}});
+});
+
+it('shows a filter only when it can change something',()=>{
+ const one=[{...matches[1],hall:{id:'h',name:'Арена',address:'Улица, 1',pitch_length_m:40,pitch_width_m:20}}] as ScheduleItem[];
+ const {container,unmount}=show('/t',one);
+ // Один матч, один зал, один день: без панели фильтров, зал — без адреса.
+ expect(container.querySelector('.schedule-toolbar')).toBeNull();
+ expect(container.querySelector('.row-hall')).toHaveTextContent(/^Арена$/);
+ expect(container.querySelector('.schedule-foot')).toHaveTextContent('1 матчВремя московское');
+ unmount();
+ // Фильтр из ссылки остаётся видимым, чтобы его можно было сбросить.
+ show('/t?day=2026-10-21',one);
  expect(screen.getByText('Матчей с такими условиями нет.')).toBeVisible();
+ fireEvent.click(screen.getByRole('button',{name:'Сбросить'}));
+ expect(open(/Восток — Запад/)).toBeVisible();
+ const many=Array.from({length:11},(_,i)=>({...matches[1],id:`m${i}`,scheduled_at:`2026-10-${10+i}T16:00:00Z`}));
+ show('/t',many);
+ expect(screen.getByLabelText('Фильтр по статусу')).toBeInTheDocument();
+ expect(screen.getByLabelText('Дата')).toBeInTheDocument();
+ expect(screen.queryByLabelText('Фильтр по залу')).toBeNull();
+ expect(screen.queryByRole('button',{name:'Сетка'})).toBeNull();
 });
 
 it('keeps two halls with the same name in separate columns and filters by identity',()=>{

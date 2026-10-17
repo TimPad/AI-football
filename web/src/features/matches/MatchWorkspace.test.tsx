@@ -44,7 +44,7 @@ const go=async(user:ReturnType<typeof userEvent.setup>,name:string)=>user.click(
 describe('match workspace',()=>{
  it('keeps at most one protocol queue and none in read-only tasks',async()=>{
   const user=userEvent.setup();show('?tab=history');
-  expect(await screen.findByText('Все изменения сохранены · ревизия 4')).toBeInTheDocument();
+  expect(await screen.findByText('Все изменения сохранены')).toBeInTheDocument();
   expect(owners.active).toBe(1);
   await go(user,'Состав');expect(await screen.findByText('форма состава')).toBeInTheDocument();
   expect(owners.mounts).toBe(1);
@@ -71,7 +71,7 @@ describe('match workspace',()=>{
  });
  it('shows readiness with fix links; missing camera does not block the protocol',async()=>{
   show('');
-  expect(await screen.findByText(/Не выбрана: нужна только для CV, протокол можно вести/)).toBeInTheDocument();
+  expect(await screen.findByText(/Не выбрана — нужна только для видеоанализа/)).toBeInTheDocument();
   expect(screen.getByRole('link',{name:'Выбрать камеру'})).toHaveAttribute('href','/matches/'+M+'?tab=info');
   expect(screen.getByRole('link',{name:'Отметить состав'})).toHaveAttribute('href','/matches/'+M+'?tab=lineup');
  });

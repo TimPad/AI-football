@@ -59,7 +59,7 @@ export function MatchWorkspace({matchId}:{matchId:string}){
  return <div className="match-workspace">
   <header className="cabinet-match-head">
    <Link className="icon-button back" to={`/tournaments/${m.tournament_id}?tab=matches`} aria-label="К матчам турнира"><ArrowLeft/></Link>
-   <div className="title"><h1>{m.home.team.name} — {m.away.team.name} <span className={`chip status-chip ${m.status}`}>{statuses[m.status]}</span> <span className="chip private">Кабинет</span></h1>
+   <div className="title"><h1>{m.home.team.name} — {m.away.team.name} <span className={`chip status-chip ${m.status}`}>{statuses[m.status]}</span></h1>
     <p className="muted num">{dateTime(m.scheduled_at,tz)} · {m.hall_snapshot?.name||m.venue_label||'Место не указано'}</p></div>
    <div className="cabinet-head-side">
     <div className="cabinet-score num" aria-label="Текущий счёт протокола в кабинете">{m.projection.effective_score.home??'—'} : {m.projection.effective_score.away??'—'}</div>

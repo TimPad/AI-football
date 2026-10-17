@@ -64,13 +64,19 @@ describe('public match page',()=>{
   expect(paths.some(p=>/analysis|ratings|\/players\/|\/versions/.test(p))).toBe(false);
   expect(document.querySelector('img')?.getAttribute('src')).toBe('/api/v1/public/catalog/team-logos/logo-h');
  });
- it('does not request private history when no protocol is published',async()=>{
+ it('hides empty sections and does not request private history when no protocol is published',async()=>{
   const paths=stub(p=>p.endsWith(`/public/matches/${A}`)?{status:200,body:match(A,'Север',{public_protocol_id:null,score:{home:null,away:null}})}:undefined);
   show(`/watch/matches/${A}?tab=events`);
-  expect(await screen.findByText('Протокол ещё не опубликован.')).toBeInTheDocument();
-  expect(screen.getByLabelText('Результат не опубликован')).toHaveTextContent('— : —');
-  // Кроме шапки — только соседние матчи турнира для боковой колонки.
-  expect(paths.filter(p=>!p.startsWith('/api/v1/public/tournaments/t1/matches?day='))).toEqual([`/api/v1/public/matches/${A}`]);
+  expect(await screen.findByLabelText('Результат не опубликован')).toHaveTextContent('— : —');
+  // Без протокола и трансляции вкладок «События» и «Видео» нет: ссылка на них открывает обзор.
+  const nav=screen.getByRole('navigation',{name:'Разделы матча'});
+  expect(within(nav).queryByRole('link',{name:'События'})).toBeNull();
+  expect(within(nav).queryByRole('link',{name:'Видео'})).toBeNull();
+  expect(within(nav).getByRole('link',{name:'Обзор'})).toHaveAttribute('aria-current','page');
+  await waitFor(()=>expect(paths.some(p=>p.includes('/analysis'))).toBe(true));
+  expect(screen.queryByRole('heading',{name:'Ключевые события'})).toBeNull();
+  expect(paths.every(p=>p.startsWith('/api/v1/public/'))).toBe(true);
+  expect(paths.some(p=>p.includes('/protocols/'))).toBe(false);
  });
  it('keeps the edition with a rating selection and does not attach current CV as its map',async()=>{
   stub(standard);const user=userEvent.setup();
@@ -83,9 +89,9 @@ describe('public match page',()=>{
   expect(params.get('origin')).toBe('rating');
   expect(params.get('snapshot_id')).toBe(SNAP);
   const card=screen.getByRole('dialog',{name:'Игрок 01'});
-  expect(within(card).getByText('Карта этого издания недоступна')).toBeInTheDocument();
+  expect(within(card).getByText('Для этой оценки карты нет')).toBeInTheDocument();
   expect(card.querySelectorAll('rect.heat-cell')).toHaveLength(0);
-  await user.click(within(card).getByRole('button',{name:'Открыть текущую CV-карту'}));
+  await user.click(within(card).getByRole('button',{name:'Открыть карту по видео'}));
   expect(new URLSearchParams(location).get('origin')).toBe('cv');
   const cv=screen.getByRole('dialog',{name:'Игрок 01'});
   expect(cv.querySelectorAll('rect.heat-cell')).toHaveLength(2);
