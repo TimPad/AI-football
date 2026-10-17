@@ -1416,6 +1416,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tid}/analysis-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tournament Queue */
+        get: operations["tournament_queue_api_v1_tournaments__tid__analysis_queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{mid}/analysis/jobs": {
         parameters: {
             query?: never;
@@ -2706,6 +2723,49 @@ export interface components {
             units: {
                 [key: string]: string;
             };
+        };
+        /** AnalysisQueueItem */
+        AnalysisQueueItem: {
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /** Home Name */
+            home_name: string;
+            /** Away Name */
+            away_name: string;
+            /**
+             * Scheduled At
+             * Format: date-time
+             */
+            scheduled_at: string;
+            /** Job Id */
+            job_id?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            /** Published Run Id */
+            published_run_id?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_started" | "awaiting_result" | "stale" | "quality_blocked" | "review" | "unpublished" | "published";
+            /**
+             * Unresolved
+             * @default 0
+             */
+            unresolved?: number;
+            /**
+             * Context Stale
+             * @default false
+             */
+            context_stale?: boolean;
+            /** Reason */
+            reason: string;
+            /** Teams */
+            teams?: components["schemas"]["TeamSideStatus"][];
+            next_action: components["schemas"]["QueueAction"];
         };
         /** AnalyticsOverview */
         AnalyticsOverview: {
@@ -4678,6 +4738,13 @@ export interface components {
              */
             message?: string;
         };
+        /** Page[AnalysisQueueItem] */
+        Page_AnalysisQueueItem_: {
+            /** Items */
+            items: components["schemas"]["AnalysisQueueItem"][];
+            /** Total */
+            total: number;
+        };
         /** Page[ApplicationView] */
         Page_ApplicationView_: {
             /** Items */
@@ -6194,6 +6261,13 @@ export interface components {
              */
             kind: "publish";
             payload: components["schemas"]["Publish"];
+        };
+        /** QueueAction */
+        QueueAction: {
+            /** Label */
+            label: string;
+            /** Href */
+            href: string;
         };
         /** RatingCalculate */
         RatingCalculate: {
@@ -11505,6 +11579,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tournament_queue_api_v1_tournaments__tid__analysis_queue_get: {
+        parameters: {
+            query?: {
+                status?: ("not_started" | "awaiting_result" | "stale" | "quality_blocked" | "review" | "unpublished" | "published") | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AnalysisQueueItem_"];
                 };
             };
             /** @description Validation Error */

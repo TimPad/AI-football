@@ -11,6 +11,7 @@ class AnalysisJob(Entity, Base):
     context_hash = Column(String(64), nullable=False)
     context = Column(JSONB, nullable=False)
     cv_files = Column(JSONB, nullable=False)
+    __table_args__=(Index('ix_analysis_job_match_created','match_id','created_at','id'),)
 
 
 class AnalysisRun(Entity, Base):
@@ -35,7 +36,8 @@ class AnalysisRun(Entity, Base):
     side_map = Column(JSONB, nullable=False, default=lambda: {'A': 'home', 'B': 'away'})
     confirmed_by = Column(Uuid, ForeignKey('admins.id'))
     __table_args__ = (Index('uq_analysis_import_content', 'job_id', 'content_hash', unique=True,
-                           postgresql_where=text('source_run_id IS NULL')),)
+                           postgresql_where=text('source_run_id IS NULL')),
+                     Index('ix_analysis_run_job_created','job_id','created_at','id'))
 
 
 class AnalysisAssignment(Base):

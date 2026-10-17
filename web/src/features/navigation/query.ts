@@ -24,3 +24,8 @@ export function scheduleReturn(value:unknown,tournamentId:string):string{
  if(typeof value!=='string'||value.length>2000||!value.startsWith('/')||value.startsWith('//'))return fallback;
  try{const url=new URL(value,'https://local.invalid');if(url.origin!=='https://local.invalid'||url.pathname!==path)return fallback;const params=new URLSearchParams({tab:'matches'});for(const key of ['day','hall_id','status','view','team_id','attention']){const v=url.searchParams.get(key);if(v)params.set(key,v)}return path+'?'+params.toString()}catch{return fallback}
 }
+
+export function analysisQueueReturn(value:unknown,tournamentId:string):string|null{
+ if(typeof value!=='string'||value.length>2000||!value.startsWith('/')||value.startsWith('//'))return null;
+ try{const url=new URL(value,'https://local.invalid');const path=`/tournaments/${tournamentId}`;if(url.origin!=='https://local.invalid'||url.pathname!==path||url.searchParams.get('tab')!=='analysis')return null;const params=new URLSearchParams({tab:'analysis'});for(const key of ['status','offset']){const v=url.searchParams.get(key);if(v)params.set(key,v)}return path+'?'+params.toString()}catch{return null}
+}

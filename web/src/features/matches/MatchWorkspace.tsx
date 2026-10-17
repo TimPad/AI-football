@@ -1,4 +1,4 @@
-import {scheduleReturn} from '../navigation/query';
+import {scheduleReturn,analysisQueueReturn} from '../navigation/query';
 import {useEffect,useState,type ReactNode} from 'react';
 import {Link,useParams,useLocation} from 'react-router-dom';
 import {ArrowLeft,History} from 'lucide-react';
@@ -50,8 +50,9 @@ export function MatchWorkspace({matchId}:{matchId:string}){
  // Шапка перечитывается при смене задачи: правки протокола видны без общей очереди.
  const match=useLoad(()=>api<Match>(`/matches/${matchId}`),`${matchId}:${tab}:${tick}`);
  const tid=match.data?.tournament_id??'';
+ const queueBack=analytics&&tid?analysisQueueReturn(location.state?.analysisReturn,tid):null;
  const tournament=useLoad(async()=>tid?api<Tournament>(`/tournaments/${tid}`):undefined,tid);
- useCabinetRail(tournament.data?<TournamentRail id={tournament.data.id} name={tournament.data.name} active="matches" analytics={analytics}/>:null,[tournament.data?.id,tournament.data?.name,analytics]);
+ useCabinetRail(tournament.data?<TournamentRail id={tournament.data.id} name={tournament.data.name} active={queueBack?'analysis':'matches'} analytics={analytics}/>:null,[tournament.data?.id,tournament.data?.name,analytics,queueBack]);
  const m=match.data;
  if(!m)return <Loading error={match.error} retry={match.reload}/>;
  const tz=tournament.data?.timezone??'Europe/Moscow';
@@ -62,7 +63,7 @@ export function MatchWorkspace({matchId}:{matchId:string}){
   const own=steps?.some(s=>s.state==='attention')?'attention':state[t.id];return {...t,steps,state:own}});
  return <div className="match-workspace">
   <header className="cabinet-match-head">
-   <Link className="icon-button back" to={scheduleReturn(location.state?.scheduleReturn,m.tournament_id)} aria-label="К матчам турнира"><ArrowLeft/></Link>
+   <Link className="icon-button back" to={queueBack??scheduleReturn(location.state?.scheduleReturn,m.tournament_id)} aria-label={queueBack?'К очереди аналитики':'К матчам турнира'}><ArrowLeft/></Link>
    <div className="title"><h1>{m.home.team.name} — {m.away.team.name} <span className={`chip status-chip ${m.status}`}>{statuses[m.status]}</span></h1>
     <p className="muted num">{dateTime(m.scheduled_at,tz)} · {m.hall_snapshot?.name||m.venue_label||'Место не указано'}</p></div>
    <div className="cabinet-head-side">

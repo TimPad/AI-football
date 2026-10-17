@@ -12,12 +12,12 @@ function packageFor(job:unknown,mode:'valid'|'foreign'|'events'='valid'){
 async function openUpload(page:import('@playwright/test').Page){const box=page.locator('details.analysis-upload');if(await box.getAttribute('open')===null)await box.locator(':scope > summary').click()}
 test('external report → identities → one-match history → separate publication and safe retries',async({page,browser})=>{
  await page.goto('/login');await page.getByLabel('Логин',{exact:true}).fill('e2e-analyst');await page.getByLabel('Пароль',{exact:true}).fill('e2e-only-password');await page.getByRole('button',{name:'Войти',exact:true}).click();await expect(page.getByRole('heading',{name:'Турниры',exact:true})).toBeVisible();
- const session=await (await page.request.get('/api/v1/auth/me')).json();const headers={'X-CSRF-Token':session.csrf_token,Origin:'http://127.0.0.1:8181'};
+ const session=await (await page.request.get('/api/v1/auth/me')).json();const headers={'X-CSRF-Token':session.csrf_token,Origin:new URL(page.url()).origin};
  async function call(path:string,data:unknown,method='POST'){const r=await page.request.fetch(`/api/v1${path}`,{method,data,headers});expect(r.ok(),await r.text()).toBeTruthy();return r.json()}
  const suffix=crypto.randomUUID().slice(0,6);
  const hall=await call('/halls',{name:`Аналитика ${suffix}`,address:'Тестовый адрес',pitch_length_m:41,pitch_width_m:15.5});
  const camera=await call(`/halls/${hall.id}/camera-profiles`,{name:'Камера',expected_hall_revision:hall.revision,frame_width:1000,frame_height:500,points:[{px:[0,0],m:[0,0]},{px:[999,0],m:[41,0]},{px:[999,499],m:[41,15.5]},{px:[0,499],m:[0,15.5]}],pitch_polygon_px:[[0,0],[999,0],[999,499],[0,499]]});
- const tour=await call('/tournaments',{name:`Импорт ${suffix}`,season:'2026',starts_on:'2026-10-01',ends_on:'2026-12-31'});
+ const tour=await call('/tournaments',{name:`Импорт ${suffix}`,visibility:'public',season:'2026',starts_on:'2026-10-01',ends_on:'2026-12-31'});
  const regulation=await call(`/tournaments/${tour.id}/regulations`,{variant_name:'Группа',rules:{}});
  const entries=[];const lineup=[];const people=[];
  for(const [side,name] of [['home','Север'],['away','Юг']]){

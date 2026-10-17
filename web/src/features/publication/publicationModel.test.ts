@@ -9,11 +9,14 @@ describe('publication blocks',()=>{
  it('describes each source separately',()=>{
   const p=protocolBlock(match,versions,'v3');
   expect(p.currentLabel).toMatch(/^версия 2/);expect(p.selectedLabel).toMatch(/^версия 3/);expect(p.blockers).toEqual([]);
+  expect(p.changeSummary).toMatch(/Счёт, события и состав/);
+  expect(protocolBlock(match,versions,'v2').changeSummary).toBe('Выбранная версия уже на сайте');
   expect(protocolBlock({published_version_id:null} as Match,[],null).blockers[0].href).toBe('?tab=protocol');
  });
  it('blocks CV without a confirmed run and links to review',()=>{
   const overview={published_run_id:'r1',runs:[{id:'r1',status:'confirmed',passed:true,partial:true,created_at:'2026-10-20T18:00:00Z'},{id:'r3',status:'review',passed:true,partial:true}]} as AnalysisOverview;
   expect(cvBlock(overview,'r3').currentLabel).toMatch(/^от \d+ окт\..* · фрагмент$/);
+  expect(cvBlock(overview,'r3').blockers).toContainEqual({text:'Выбранная версия ещё не подтверждена',href:'?tab=review&run_id=r3'});
   expect(cvBlock({published_run_id:null,runs:[{id:'r3',status:'review'}]} as AnalysisOverview,'r3').blockers[0]).toEqual({text:'Версия на проверке не подтверждена',href:'?tab=review'});
  });
  it('keeps the published edition until a new one is explicitly published',()=>{

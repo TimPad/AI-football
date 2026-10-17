@@ -1,3 +1,4 @@
+import {TournamentAnalysisQueue} from '../analysis/TournamentAnalysisQueue';
 import {protocolPublicationState} from './readiness';
 import {ApplicationSettings} from '../captain/TournamentApplications';
 import {useState} from 'react';
@@ -18,7 +19,7 @@ import {Entries,Rules} from './TournamentPage';
 import {TournamentOverview} from './TournamentOverview';
 import './workspace.css';
 
-const TITLES:Record<TournamentTab,string>={matches:'Матчи',ratings:'Рейтинги',teams:'Команды',rules:'Настройки',info:'Настройки'};
+const TITLES:Record<TournamentTab,string>={analysis:'Обработка',matches:'Матчи',ratings:'Рейтинги',teams:'Команды',rules:'Настройки',info:'Настройки'};
 
 // Кабинетный календарь показывает текущий частный счёт протокола; шапка помечает это как кабинет.
 export function scheduleFromPrivate(m:Match):ScheduleItem{
@@ -61,6 +62,7 @@ export function TournamentWorkspace({tournamentId:id}:{tournamentId:string}){
   <TournamentOverview data={d} onSaved={state.reload}/>
   {tab==='matches'&&(!canCreate&&!d.matches.length?<Empty>Для первого матча добавьте регламент и минимум две команды.</Empty>
    :<Schedule matches={d.matches.map(scheduleFromPrivate)} timezone={d.t.timezone} matchHref={mid=>`/matches/${mid}`} matchState={{scheduleReturn:`/tournaments/${id}?${params.toString()}`}} extra={mid=>onSite(d.matches.find(m=>m.id===mid)!,`/tournaments/${id}?${params.toString()}`)}/>)}
+  {tab==='analysis'&&(analytics?<TournamentAnalysisQueue tournamentId={id} timezone={d.t.timezone}/>:<Empty>Очередь обработки доступна Админ+.</Empty>)}
   {tab==='ratings'&&(analytics?<TournamentRatings tournamentId={id} actorId={session!.id}/>:<Empty>Рейтинги доступны Админ+.</Empty>)}
   {tab==='teams'&&<Entries tid={id} data={d} onSaved={state.reload}/>}
   {(tab==='rules'||tab==='info')&&<SectionNavigation label="Настройки турнира" items={SETTINGS} selected={tab} onSelect={value=>update({tab:value})}
