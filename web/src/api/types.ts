@@ -1261,6 +1261,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/team-confirmations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Side Status */
+        get: operations["admin_side_status_api_v1_matches__mid__analysis_runs__rid__team_confirmations_get"];
+        put?: never;
+        /** Admin Side Confirm */
+        post: operations["admin_side_confirm_api_v1_matches__mid__analysis_runs__rid__team_confirmations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/identity-tasks/{task_id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Captain Draft */
+        put: operations["captain_draft_api_v1_captain_identity_tasks__task_id__draft_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/identity-tasks/{task_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Captain Confirm */
+        post: operations["captain_confirm_api_v1_captain_identity_tasks__task_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/captain/identity-tasks/{task_id}/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Captain Corrections */
+        post: operations["captain_corrections_api_v1_captain_identity_tasks__task_id__corrections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{mid}/analysis/runs/{rid}/team-review-tasks": {
         parameters: {
             query?: never;
@@ -2572,6 +2641,23 @@ export interface components {
             available: boolean;
             /** Items */
             items: components["schemas"]["AddressSuggestion"][];
+        };
+        /** AdminSideConfirmation */
+        AdminSideConfirmation: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Run Revision */
+            expected_run_revision: number;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Reason */
+            reason: string;
         };
         /** AnalysisContext */
         AnalysisContext: {
@@ -7481,6 +7567,39 @@ export interface components {
             /** Expected Revision */
             expected_revision: number;
         };
+        /** TeamSideStatus */
+        TeamSideStatus: {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Status */
+            status: string;
+            /** Actor Kind */
+            actor_kind?: string | null;
+            /** Actor Id */
+            actor_id?: string | null;
+            /** Version */
+            version?: number | null;
+            /** Confirmation Id */
+            confirmation_id?: string | null;
+            /**
+             * Reason
+             * @default
+             */
+            reason?: string;
+        };
+        /** TeamSideStatuses */
+        TeamSideStatuses: {
+            /**
+             * Workflow
+             * @enum {string}
+             */
+            workflow: "admin" | "team";
+            /** Sides */
+            sides: components["schemas"]["TeamSideStatus"][];
+        };
         /** TeamSnapshot */
         TeamSnapshot: {
             /**
@@ -7523,6 +7642,16 @@ export interface components {
             home: components["schemas"]["StatValue"];
             away: components["schemas"]["StatValue"];
         };
+        /** TeamTaskCommand */
+        TeamTaskCommand: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+        };
         /** TeamTaskCreate */
         TeamTaskCreate: {
             /**
@@ -7537,6 +7666,18 @@ export interface components {
             team_id: string;
             /** Expected Run Revision */
             expected_run_revision: number;
+        };
+        /** TeamTaskDraft */
+        TeamTaskDraft: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** Expected Revision */
+            expected_revision: number;
+            /** Decisions */
+            decisions: components["schemas"]["TeamDecision"][];
         };
         /** TeamTaskList */
         TeamTaskList: {
@@ -7602,6 +7743,8 @@ export interface components {
             confirmed_by_kind?: string | null;
             /** Confirmation Id */
             confirmation_id?: string | null;
+            /** Confirmation Version */
+            confirmation_version?: number | null;
         };
         /** TeamTotals */
         "TeamTotals-Input": {
@@ -10953,6 +11096,179 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CameraProfileView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_side_status_api_v1_matches__mid__analysis_runs__rid__team_confirmations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSideStatuses"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_side_confirm_api_v1_matches__mid__analysis_runs__rid__team_confirmations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminSideConfirmation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSideStatuses"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    captain_draft_api_v1_captain_identity_tasks__task_id__draft_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamTaskDraft"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamTaskView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    captain_confirm_api_v1_captain_identity_tasks__task_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamTaskCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamTaskView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    captain_corrections_api_v1_captain_identity_tasks__task_id__corrections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamTaskCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamTaskView"];
                 };
             };
             /** @description Validation Error */

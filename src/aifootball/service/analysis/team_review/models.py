@@ -1,4 +1,4 @@
-from sqlalchemy import Column,Uuid,String,Integer,ForeignKey,DateTime,Index,text
+from sqlalchemy import Column,Uuid,String,Integer,ForeignKey,DateTime,Index,text,UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from aifootball.service.db import Base,Entity
 
@@ -28,6 +28,7 @@ class TeamIdentityConfirmation(Entity,Base):
     run_id=Column(Uuid,ForeignKey('analysis_runs.id'),nullable=False,index=True)
     team_id=Column(Uuid,ForeignKey('teams.id'),nullable=False)
     side=Column(String(10),nullable=False)
+    version=Column(Integer,nullable=False)
     task_id=Column(Uuid,ForeignKey('team_identity_review_tasks.id'))
     actor_kind=Column(String(10),nullable=False)
     actor_id=Column(Uuid,nullable=False)  # Discriminated actor; never a captain UUID in an admins FK.
@@ -36,3 +37,4 @@ class TeamIdentityConfirmation(Entity,Base):
     group_fingerprint=Column(String(64),nullable=False)
     assignment_fingerprint=Column(String(64),nullable=False)
     decisions=Column(JSONB,nullable=False)
+    __table_args__=(UniqueConstraint('run_id','side','version',name='uq_team_confirmation_version'),)

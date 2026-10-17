@@ -35,6 +35,8 @@ def mutate(db, match_id, run_id, actor_id, data, kind):
         if run.status != 'review': raise DomainError('already_confirmed', 'Эта версия уже подтверждена', status=409)
         if context_hash(build_context(db, match_id)) != job.context_hash:
             raise DomainError('analysis_context', 'Состав или камера изменились после импорта. Создайте новое задание.')
+        from aifootball.service.analysis.team_review.confirmations import require_confirmed_sides
+        require_confirmed_sides(db,run,job)
         create_metrics(db, run, job)
         run.status = 'confirmed'; run.confirmed_by = actor_id; run.revision += 1
         match.active_analysis_run_id = run.id; match.analysis_revision += 1

@@ -44,3 +44,19 @@ def test_revocation_and_obsolete_material_prevent_reading(admin_client,analytics
     revoked=admin_client.post(f"/api/v1/teams/{team_id}/captain-grants/{grant['id']}/revoke",json={'request_id':str(uuid4()),'reason':'Смена капитана'})
     assert revoked.status_code==200,revoked.text
     assert cap.get(path).status_code==404
+
+def test_reading_a_task_does_not_lock_match_and_missing_camera_is_obsolete(admin_client,analytics_match):
+    from sqlalchemy import event
+    from sqlalchemy.orm import Session
+    from aifootball.service.matches.models import Match
+    cap,team_id,_=owner(admin_client,analytics_match);run=save_assignments(admin_client,analytics_match,import_run(admin_client,analytics_match)).json();task=issue(admin_client,analytics_match,run,team_id).json()
+    statements=[]
+    def capture(conn,cursor,statement,parameters,context,many):statements.append(statement)
+    event.listen(admin_client.app.state.engine,'before_cursor_execute',capture)
+    try:
+        assert cap.get('/api/v1/captain/identity-tasks/'+task['id']).status_code==200
+    finally:event.remove(admin_client.app.state.engine,'before_cursor_execute',capture)
+    assert not any('FOR UPDATE' in s.upper() for s in statements)
+    with Session(admin_client.app.state.engine) as db,db.begin():db.get(Match,analytics_match['id']).camera_profile_id=None
+    response=cap.get('/api/v1/captain/identity-tasks/'+task['id']);assert response.status_code==200,response.text
+    assert response.json()['status']=='obsolete'

@@ -8,7 +8,8 @@ from aifootball.service.db import get_session,utcnow
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
 from aifootball.service.auth.security import require_analytics_admin,require_analytics_reader
-from aifootball.service.captains.security import require_captain
+from aifootball.service.captains.security import require_captain,require_captain_csrf
+from aifootball.service.captains.commands import command as captain_command
 from aifootball.service.captains.models import TeamCaptainGrant
 from aifootball.service.matches.models import Match
 from aifootball.service.analysis.models import AnalysisRun,AnalysisJob
@@ -16,10 +17,41 @@ from aifootball.service.analysis.jobs import prior_command,remember
 from aifootball.service.analysis.context import build_context,context_hash
 from aifootball.service.analysis.storage import read_file
 from .models import TeamIdentityReviewTask
-from .schemas import TeamTaskCreate,TeamTaskView,TeamTaskList
+from .schemas import TeamTaskCreate,TeamTaskView,TeamTaskList,TeamTaskDraft,TeamTaskCommand,AdminSideConfirmation,TeamSideStatuses
 from .queries import side_material,assignment_fingerprint,task_status,task_view,scoped_task
+from .confirmations import save_draft,confirm_team,corrections,admin_confirm_side,side_statuses
 
 router=APIRouter()
+
+@router.get('/matches/{mid}/analysis/runs/{rid}/team-confirmations',response_model=TeamSideStatuses)
+def admin_side_status(mid:UUID,rid:UUID,admin=Depends(require_analytics_reader),db:Session=Depends(get_session)):
+    run=get_entity(db,AnalysisRun,rid)
+    if run.match_id!=mid:raise DomainError('not_found','Отчёт не найден',status=404)
+    return side_statuses(db,run)
+
+@router.post('/matches/{mid}/analysis/runs/{rid}/team-confirmations',response_model=TeamSideStatuses)
+def admin_side_confirm(mid:UUID,rid:UUID,data:AdminSideConfirmation,admin=Depends(require_analytics_admin),db:Session=Depends(get_session)):
+    with db.begin():
+        prior,digest=prior_command(db,mid,admin.id,data.request_id,'admin_side_confirmation',{'run_id':str(rid),**data.model_dump(mode='json',exclude={'request_id'})})
+        if prior:return prior.response
+        result=admin_confirm_side(db,mid,rid,admin.id,data)
+        return remember(db,mid,admin.id,data.request_id,digest,result)
+
+def captain_mutation(db,captain,task_id,data,kind,execute):
+    scoped_task(db,captain,task_id)  # Recheck current access before even replaying a committed command.
+    return captain_command(db,captain.id,data.request_id,'identity_'+kind,{'task_id':str(task_id),**data.model_dump(mode='json',exclude={'request_id'})},lambda:execute(db,captain,task_id,data))
+
+@router.put('/captain/identity-tasks/{task_id}/draft',response_model=TeamTaskView)
+def captain_draft(task_id:UUID,data:TeamTaskDraft,captain=Depends(require_captain_csrf),db:Session=Depends(get_session)):
+    with db.begin():return captain_mutation(db,captain,task_id,data,'draft',save_draft)
+
+@router.post('/captain/identity-tasks/{task_id}/confirm',response_model=TeamTaskView)
+def captain_confirm(task_id:UUID,data:TeamTaskCommand,captain=Depends(require_captain_csrf),db:Session=Depends(get_session)):
+    with db.begin():return captain_mutation(db,captain,task_id,data,'confirm',confirm_team)
+
+@router.post('/captain/identity-tasks/{task_id}/corrections',response_model=TeamTaskView)
+def captain_corrections(task_id:UUID,data:TeamTaskCommand,captain=Depends(require_captain_csrf),db:Session=Depends(get_session)):
+    with db.begin():return captain_mutation(db,captain,task_id,data,'corrections',corrections)
 
 @router.post('/matches/{mid}/analysis/runs/{rid}/team-review-tasks',response_model=TeamTaskView,status_code=201)
 def create_task(mid:UUID,rid:UUID,data:TeamTaskCreate,admin=Depends(require_analytics_admin),db:Session=Depends(get_session)):

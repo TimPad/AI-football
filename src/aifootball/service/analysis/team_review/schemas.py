@@ -59,7 +59,28 @@ class TeamTaskView(BaseModel):
     draft:list[TeamDecision]
     confirmed_by_kind:str|None=None
     confirmation_id:UUID|None=None
+    confirmation_version:int|None=None
 
 class TeamTaskList(BaseModel):
     items:list[TeamTaskView]
     total:int
+
+class AdminSideConfirmation(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    request_id:UUID
+    expected_run_revision:int=Field(ge=0)
+    side:Literal['home','away']
+    reason:str=Field(min_length=1,max_length=1000)
+
+class TeamSideStatus(BaseModel):
+    side:Literal['home','away']
+    status:str
+    actor_kind:str|None=None
+    actor_id:UUID|None=None
+    version:int|None=None
+    confirmation_id:UUID|None=None
+    reason:str=''
+
+class TeamSideStatuses(BaseModel):
+    workflow:Literal['admin','team']
+    sides:list[TeamSideStatus]

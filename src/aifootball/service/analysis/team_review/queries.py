@@ -30,16 +30,21 @@ def assignment_fingerprint(db,run,track_ids):
 def task_status(db,task,run=None,job=None):
     if task.status in ('revoked','obsolete'):return task.status
     run=run or get_entity(db,AnalysisRun,task.run_id);job=job or get_entity(db,AnalysisJob,run.job_id)
-    try:current=side_material(run,job,task.side)[3]
+    try:
+        current=side_material(run,job,task.side)[3]
+        live_hash=context_hash(build_context(db,run.match_id,lock=False))
     except DomainError:return 'obsolete'
     grant=db.get(TeamCaptainGrant,task.grant_id)
     if (not grant or not grant.active or task.expires_at<=utcnow() or current!=task.group_fingerprint or
-        context_hash(build_context(db,run.match_id))!=task.context_hash or
+        live_hash!=task.context_hash or
         assignment_fingerprint(db,run,task.allowed_track_ids)!=task.own_assignment_fingerprint):return 'obsolete'
     return task.status
 
 def scoped_task(db,account,task_id,*,lock=False,current=False):
     task=get_entity(db,TeamIdentityReviewTask,task_id,lock=lock);grant=require_captain_team(db,account,task.team_id)
+    if lock:
+        grant=db.scalar(select(TeamCaptainGrant).where(TeamCaptainGrant.id==grant.id,TeamCaptainGrant.active).with_for_update().execution_options(populate_existing=True))
+        if grant is None:raise DomainError('not_found','Задание недоступно',status=404)
     if grant.id!=task.grant_id:raise DomainError('not_found','Задание недоступно',status=404)
     if current and task_status(db,task) not in ('open','needs_material_fix','team_confirmed'):
         raise DomainError('obsolete_task','Задание отозвано или устарело. Организатор должен выдать новое.',status=409)
@@ -52,4 +57,4 @@ def task_view(db,task):
         'opponent_name':job.context['teams']['away' if task.side=='home' else 'home']['name'],'scheduled_at':match.scheduled_at,
         'side':task.side,'status':task_status(db,task,run,job),'revision':task.revision,'expires_at':task.expires_at,
         'reason':task.reason,'groups':task.groups,'players':task.players,'draft':task.draft,
-        'confirmed_by_kind':confirmation.actor_kind if confirmation else None,'confirmation_id':confirmation.id if confirmation else None}
+        'confirmed_by_kind':confirmation.actor_kind if confirmation else None,'confirmation_id':confirmation.id if confirmation else None,'confirmation_version':confirmation.version if confirmation else None}
