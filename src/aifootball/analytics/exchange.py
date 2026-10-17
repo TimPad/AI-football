@@ -144,6 +144,29 @@ def read_archive(source, limits=Limits(), *, job=False):
     return files
 
 
+def validate_groups(groups, index):
+    """Кандидаты-игроки из склейки треков: цепочки одной команды без одновременной видимости."""
+    from aifootball.analytics.track_groups import OVERLAP_S
+    ensure(isinstance(groups, list) and len(groups) <= 5000, 'Неверный список групп треков')
+    seen = set()
+    for group in groups:
+        ensure(isinstance(group, dict) and set(group) <= {'track_ids', 'links'} and isinstance(group.get('track_ids'), list)
+               and 2 <= len(group['track_ids']) <= 1000, 'Неверная группа треков')
+        ids = group['track_ids']
+        ensure(all(type(t) is int and t in index for t in ids) and len(set(ids)) == len(ids) and not seen & set(ids),
+               'Группа ссылается на неизвестный или повторный трек')
+        seen |= set(ids)
+        ensure(len({index[t]['team'] for t in ids}) == 1 and index[ids[0]]['team'] is not None
+               and {index[t]['role'] for t in ids} <= {'player', 'goalkeeper'}, 'Группа смешивает команды или роли')
+        spans = [(index[t]['intervals'][0][0], index[t]['intervals'][-1][1]) for t in ids]
+        ensure(all(b[0] >= a[0] and b[0] >= a[1] - OVERLAP_S for a, b in zip(spans, spans[1:])),
+               'Треки группы видны одновременно')
+        links = group.get('links', [])
+        ensure(isinstance(links, list) and all(isinstance(l, dict) and set(l) == {'from', 'to', 'cost'} and l['from'] in ids
+               and l['to'] in ids and isinstance(l['cost'], (int, float)) and 0 <= l['cost'] < 1000 for l in links),
+               'Неверные связи группы')
+
+
 def intervals(values, duration, label):
     ensure(isinstance(values, list) and 0 < len(values) <= 100000, f'Нет интервалов: {label}')
     previous = -1
@@ -209,6 +232,7 @@ def validate_result(source, limits=Limits()):
             ensure(type(track['has_metrics']) is bool, 'Неверный признак метрик')
             thumb = track.get('thumb'); ensure(thumb is None or (isinstance(thumb, str) and thumb in files and thumb.startswith('thumbs/')), 'Нет миниатюры в пакете')
             index[tid] = track
+        validate_groups(tracks.get('groups', []), index)
         ensure(isinstance(report['periods'], list) and 0 < len(report['periods']) <= 20, 'Неверное число периодов')
         keys = set(); primary = None
         for period in report['periods']:
