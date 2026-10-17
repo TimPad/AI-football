@@ -1,3 +1,4 @@
+import {protocolPublicationState} from './readiness';
 import {ApplicationSettings} from '../captain/TournamentApplications';
 import {useState} from 'react';
 import {Link,useParams} from 'react-router-dom';
@@ -31,7 +32,10 @@ export function scheduleFromPrivate(m:Match):ScheduleItem{
 const SETTINGS=[{id:'rules',label:'Регламент'},{id:'info',label:'Сведения о турнире'}];
 
 // Публикация матча — отметкой в строке расписания: не нужен отдельный раздел «Публикация».
-function onSite(m:Match){
+function onSite(m:Match,scheduleReturn:string){
+ const state=protocolPublicationState(m);
+ if(state==='new_version')return <Link className="chip warn" state={{scheduleReturn}} to={`/matches/${m.id}?tab=publication`}>Есть новая версия →</Link>;
+ if(state==='ready')return <Link className="chip warn" state={{scheduleReturn}} to={`/matches/${m.id}?tab=publication`}>Готов к публикации →</Link>;
  if(m.published_version_id)return <span className="chip ok">{m.published_analysis_run_id?'На сайте · видео':'На сайте'}</span>;
  return m.status==='ended'?<span className="chip warn">Не на сайте</span>:null;
 }
@@ -56,7 +60,7 @@ export function TournamentWorkspace({tournamentId:id}:{tournamentId:string}){
   <ErrorBox error={error}/>
   <TournamentOverview data={d} onSaved={state.reload}/>
   {tab==='matches'&&(!canCreate&&!d.matches.length?<Empty>Для первого матча добавьте регламент и минимум две команды.</Empty>
-   :<Schedule matches={d.matches.map(scheduleFromPrivate)} timezone={d.t.timezone} matchHref={mid=>`/matches/${mid}`} extra={id=>onSite(d.matches.find(m=>m.id===id)!)}/>)}
+   :<Schedule matches={d.matches.map(scheduleFromPrivate)} timezone={d.t.timezone} matchHref={mid=>`/matches/${mid}`} matchState={{scheduleReturn:`/tournaments/${id}?${params.toString()}`}} extra={mid=>onSite(d.matches.find(m=>m.id===mid)!,`/tournaments/${id}?${params.toString()}`)}/>)}
   {tab==='ratings'&&(analytics?<TournamentRatings tournamentId={id} actorId={session!.id}/>:<Empty>Рейтинги доступны Админ+.</Empty>)}
   {tab==='teams'&&<Entries tid={id} data={d} onSaved={state.reload}/>}
   {(tab==='rules'||tab==='info')&&<SectionNavigation label="Настройки турнира" items={SETTINGS} selected={tab} onSelect={value=>update({tab:value})}

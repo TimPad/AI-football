@@ -85,3 +85,7 @@ class RosterPlayer(Input):
 class RosterUpdate(Input):
     expected_revision:int=Field(ge=0)
     players:list[RosterPlayer]=Field(max_length=1000)
+
+class RosterProfileUpdate(RosterUpdate):
+    request_id:UUID
+    new_players:list[ProfilePlayer]=Field(default_factory=list,max_length=1000)

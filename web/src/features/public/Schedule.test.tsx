@@ -16,6 +16,13 @@ const show=(entry:string,items=matches,href?:(id:string)=>string)=>render(<Memor
  <Route path="/elsewhere" element={<Back/>}/></Routes></MemoryRouter>);
 const open=(name:RegExp)=>screen.getByRole('link',{name});
 
+it('carries schedule context through a grid match link',()=>{
+ let received:unknown;const saved={scheduleReturn:'/t?tab=matches&view=grid&day=2026-10-20'};
+ function Target(){received=useLocation().state;return null}
+ render(<MemoryRouter initialEntries={['/t?view=grid&day=2026-10-20']}><Routes><Route path="/t" element={<Schedule matches={matches} timezone="Europe/Moscow" matchHref={id=>`/m/${id}`} matchState={saved}/>}/><Route path="/m/:id" element={<Target/>}/></Routes></MemoryRouter>);
+ fireEvent.click(open(/Север — Юг/));expect(received).toEqual(saved);
+});
+
 it('switches timetable/list, filters a hall and links to match details',()=>{
  show('/t');
  // Оба матча в один местный день: выбирать дату не из чего.

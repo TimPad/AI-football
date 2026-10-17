@@ -880,6 +880,23 @@ export interface paths {
         patch: operations["update_players_api_v1_players__entity_id__patch"];
         trace?: never;
     };
+    "/api/v1/entries/{entry_id}/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Entry Roster */
+        put: operations["save_entry_roster_api_v1_entries__entry_id__roster_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{team_id}": {
         parameters: {
             query?: never;
@@ -4562,6 +4579,8 @@ export interface components {
             clock: components["schemas"]["ClockState"];
             /** Published Version Id */
             published_version_id: string | null;
+            /** Latest Confirmed Version Id */
+            latest_confirmed_version_id?: string | null;
             /** Published Analysis Run Id */
             published_analysis_run_id?: string | null;
             /** Lineup */
@@ -6786,6 +6805,20 @@ export interface components {
             /** Active */
             active: boolean;
             player: components["schemas"]["PlayerView"];
+        };
+        /** RosterProfileUpdate */
+        RosterProfileUpdate: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Players */
+            players: components["schemas"]["RosterPlayer-Input"][];
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /** New Players */
+            new_players?: components["schemas"]["ProfilePlayer"][];
         };
         /** RosterUpdate */
         RosterUpdate: {
@@ -10145,6 +10178,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlayerView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_entry_roster_api_v1_entries__entry_id__roster_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterView"];
                 };
             };
             /** @description Validation Error */

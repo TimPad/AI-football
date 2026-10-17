@@ -33,8 +33,8 @@ function Teams({match:m}:{match:ScheduleItem}){
  return <div className="slot-teams"><span className="slot-team"><TeamCrest name={m.home_name} logoId={m.home_logo_id} side="home" size="sm"/><b>{m.home_name}</b></span>
   <Score match={m}/><span className="slot-team away"><b>{m.away_name}</b><TeamCrest name={m.away_name} logoId={m.away_logo_id} side="away" size="sm"/></span></div>;
 }
-function Open({match:m,href}:{match:ScheduleItem;href:string}){
- return <Link className="slot-open" to={href} aria-label={`Открыть матч ${m.home_name} — ${m.away_name}`}>Открыть матч<ArrowRight/></Link>;
+function Open({match:m,href,matchState}:{match:ScheduleItem;href:string;matchState?:unknown}){
+ return <Link className="slot-open" to={href} state={matchState} aria-label={`Открыть матч ${m.home_name} — ${m.away_name}`}>Открыть матч<ArrowRight/></Link>;
 }
 const Status=({match:m}:{match:ScheduleItem})=><span className={`chip status-chip ${m.status}`}>{statuses[m.status]}</span>;
 
@@ -45,7 +45,7 @@ function lanes(items:{start:number;end:number}[]){
 }
 
 // extra — отметка кабинета в строке матча (например, «На сайте»); у зрителя её нет.
-export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`,extra}:{matches:ScheduleItem[];timezone:string;matchHref?:(id:string)=>string;extra?:(id:string)=>ReactNode}){
+export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`,extra,matchState}:{matches:ScheduleItem[];timezone:string;matchHref?:(id:string)=>string;extra?:(id:string)=>ReactNode;matchState?:unknown}){
  const [params,update]=useQueryPatch();
  const set=(patch:Record<string,string|null>)=>update(patch,{replace:true});
  const view=params.get('view')==='grid'?'grid':'list';
@@ -76,13 +76,13 @@ export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`,
   :view==='list'?<div className="schedule-list">{shown.map(m=><article key={m.id} className="schedule-row">
     <div className="row-time num"><b>{matchTime(m.scheduled_at,timezone)}</b><small>{new Intl.DateTimeFormat('ru-RU',{timeZone:timezone,day:'numeric',month:'short'}).format(new Date(m.scheduled_at))}</small></div>
     <Teams match={m}/><span className="row-hall">{venueName(m)}</span>
-    <div className="row-meta"><Status match={m}/>{extra?.(m.id)}<span className="row-video">{hasVideo(m)&&<><Radio aria-hidden="true"/>ВК</>}</span><Open match={m} href={matchHref(m.id)}/></div></article>)}</div>
-  :<TimeGrid matches={shown} columns={columns} names={names} timezone={timezone} matchHref={matchHref}/>}
+    <div className="row-meta"><Status match={m}/>{extra?.(m.id)}<span className="row-video">{hasVideo(m)&&<><Radio aria-hidden="true"/>ВК</>}</span><Open match={m} href={matchHref(m.id)} matchState={matchState}/></div></article>)}</div>
+  :<TimeGrid matches={shown} columns={columns} names={names} timezone={timezone} matchHref={matchHref} matchState={matchState}/>}
   <footer className="schedule-foot"><span>{plural(shown.length,['матч','матча','матчей'])}{columns.length>1?` · ${plural(columns.length,['зал','зала','залов'])}`:''}</span><span>{timezoneLabel(timezone)}</span></footer>
  </section>;
 }
 
-function TimeGrid({matches,columns,names,timezone,matchHref}:{matches:ScheduleItem[];columns:string[];names:Map<string,string>;timezone:string;matchHref:(id:string)=>string}){
+function TimeGrid({matches,columns,names,timezone,matchHref,matchState}:{matches:ScheduleItem[];columns:string[];names:Map<string,string>;timezone:string;matchHref:(id:string)=>string;matchState?:unknown}){
  const spans=matches.map(m=>{const start=localMinutes(m.scheduled_at,timezone);return {m,start,end:start+m.schedule_slot_s/60}});
  const from=Math.floor(Math.min(...spans.map(s=>s.start))/30)*30,to=Math.ceil(Math.max(...spans.map(s=>s.end))/30)*30;
  const marks=Array.from({length:(to-from)/30+1},(_,i)=>from+i*30);
@@ -99,7 +99,7 @@ function TimeGrid({matches,columns,names,timezone,matchHref}:{matches:ScheduleIt
         left:`calc(${100*lane[i]/count}% + 4px)`,width:`calc(${100/count}% - 8px)`}}>
        <div className="slot-head"><span className="num">{matchTime(s.m.scheduled_at,timezone)} – {matchTime(endIso(s.m),timezone)}</span><Status match={s.m}/></div>
        <Teams match={s.m}/>
-       <div className="slot-foot">{hasVideo(s.m)?<span className="row-video"><Radio aria-hidden="true"/>ВК</span>:<span/>}<Open match={s.m} href={matchHref(s.m.id)}/></div>
+       <div className="slot-foot">{hasVideo(s.m)?<span className="row-video"><Radio aria-hidden="true"/>ВК</span>:<span/>}<Open match={s.m} href={matchHref(s.m.id)} matchState={matchState}/></div>
       </article>)}</div>;})}
    </div></div>
   </div>

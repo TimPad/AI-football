@@ -5,7 +5,7 @@ export function TournamentFields({value}:{value?:Tournament}){return <div classN
 export function TournamentSettings({value,onSaved}:{value?:Tournament,onSaved:(t:Tournament)=>void}){
  const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);
  async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const body=Object.fromEntries(f);setBusy(true);setError(undefined);try{const t=value?await api<Tournament>(`/tournaments/${value.id}`,{method:'PATCH',body:JSON.stringify({...body,expected_revision:value.revision})}):await post<Tournament>('/tournaments',body);onSaved(t)}catch(e){setError(e)}finally{setBusy(false)}}
- return <form onSubmit={submit}><TournamentFields value={value}/><ErrorBox error={error}/><button className="primary" disabled={busy}>{value?'Сохранить настройки':'Создать турнир'}</button></form>
+ return <form onSubmit={submit}><fieldset className="team-fieldset" disabled={busy||value?.archived}><TournamentFields value={value}/><ErrorBox error={error}/><button className="primary" disabled={busy}>{value?'Сохранить настройки':'Создать турнир'}</button></fieldset></form>
 }
 export function TournamentList(){
  const state=useLoad(()=>all<Tournament>('/tournaments'),'tournaments');const [archive,setArchive]=useState(false);

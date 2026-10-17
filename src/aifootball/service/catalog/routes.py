@@ -45,6 +45,25 @@ def register_named(path,cls,create_schema,patch_schema,view):
 register_named('/teams',Team,TeamCreate,TeamPatch,TeamView)
 register_named('/players',Player,PlayerCreate,PlayerPatch,PlayerView)
 
+from aifootball.service.catalog.schemas import RosterProfileUpdate,PlayerDetails
+
+@router.put('/entries/{entry_id}/roster',response_model=RosterView)
+def save_entry_roster(entry_id:UUID,data:RosterProfileUpdate,admin=Depends(require_csrf),db:Session=Depends(get_session)):
+    def execute():
+        entry=get_entity(db,Entry,entry_id)
+        tournament=get_entity(db,Tournament,entry.tournament_id,lock=True)
+        if tournament.archived:raise DomainError('archived','Турнир в архиве')
+        entry=get_entity(db,Entry,entry_id,lock=True)
+        selected={p.player_id for p in data.players};new_ids=set()
+        for p in data.new_players:
+            if p.player_id in new_ids or p.player_id not in selected or p.revision!=0:raise DomainError('new_player','Новый игрок должен входить в заявку ровно один раз')
+            if db.get(Player,p.player_id) is not None:raise DomainError('player_exists','UUID игрока уже существует. Выберите его из справочника.',status=409)
+            new_ids.add(p.player_id);check_image(db,p.photo_id)
+            db.add(Player(id=p.player_id,name=p.name,**{key:getattr(p,key) for key in PlayerDetails.model_fields}))
+        db.flush()
+        return set_roster(db,entry,data)
+    with db.begin():return setup_command(db,admin.id,data.request_id,'entry-roster',{'entry_id':str(entry_id),**data.model_dump(mode='json',exclude={'request_id'})},execute)
+
 
 @router.get('/teams/{team_id}',response_model=TeamProfile,dependencies=[Depends(require_admin)])
 def detail(team_id:UUID,db:Session=Depends(get_session)):

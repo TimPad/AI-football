@@ -1,5 +1,6 @@
+import {scheduleReturn} from '../navigation/query';
 import {useEffect,useState,type ReactNode} from 'react';
-import {Link,useParams} from 'react-router-dom';
+import {Link,useParams,useLocation} from 'react-router-dom';
 import {ArrowLeft,History} from 'lucide-react';
 import {api} from '../../api/client';
 import type {Match,Tournament} from '../../api/domain';
@@ -39,6 +40,7 @@ export function MatchWorkspacePage(){
 }
 
 export function MatchWorkspace({matchId}:{matchId:string}){
+ const location=useLocation();
  const {session}=useAuth();const analytics=Boolean(session?.can_manage_analytics);
  const [params,update]=useQueryPatch();
  const requested=readMatchTab(params,'private');
@@ -60,7 +62,7 @@ export function MatchWorkspace({matchId}:{matchId:string}){
   const own=steps?.some(s=>s.state==='attention')?'attention':state[t.id];return {...t,steps,state:own}});
  return <div className="match-workspace">
   <header className="cabinet-match-head">
-   <Link className="icon-button back" to={`/tournaments/${m.tournament_id}?tab=matches`} aria-label="К матчам турнира"><ArrowLeft/></Link>
+   <Link className="icon-button back" to={scheduleReturn(location.state?.scheduleReturn,m.tournament_id)} aria-label="К матчам турнира"><ArrowLeft/></Link>
    <div className="title"><h1>{m.home.team.name} — {m.away.team.name} <span className={`chip status-chip ${m.status}`}>{statuses[m.status]}</span></h1>
     <p className="muted num">{dateTime(m.scheduled_at,tz)} · {m.hall_snapshot?.name||m.venue_label||'Место не указано'}</p></div>
    <div className="cabinet-head-side">
