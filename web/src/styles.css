@@ -33,3 +33,4 @@
 .frame-picker{margin:12px 0}.frame-picker svg{cursor:crosshair}.frame-picker g.active circle{fill:#ffd166}.frame-step{margin:12px 0 0}
 .frame-points{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.frame-points button{min-height:32px;padding:4px 10px;font-size:13px}.frame-points button.done{color:var(--ok)}.frame-points button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent-line)}.frame-points select{min-height:32px;font-size:13px}
 .camera-editor label.button,.reference-upload label.button{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;min-height:40px;border:1px solid var(--line);border-radius:var(--radius);background:white;font-size:14px;font-weight:550;cursor:pointer}.camera-editor label.button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.hall-size-warning{grid-column:1/-1;margin:0}

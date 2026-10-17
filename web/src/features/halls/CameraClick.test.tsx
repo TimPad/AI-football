@@ -4,10 +4,13 @@ import {MemoryRouter,Routes,Route} from 'react-router-dom';
 import {HallPage} from './HallPage';
 import {landmarks} from './FramePicker';
 
-vi.mock('../auth/Auth',()=>({useAuth:()=>({session:{id:'admin-test'}})}));
+const auth=vi.hoisted(()=>({analytics:false}));
+vi.mock('../auth/Auth',()=>({useAuth:()=>({session:{id:'admin-test',can_manage_analytics:auth.analytics}})}));
 // jsdom не декодирует изображения: размер кадра подставляем, остальная разметка — настоящая.
-vi.mock('./FramePicker',async original=>({...await original<typeof import('./FramePicker')>(),readImageSize:vi.fn(async()=>({url:'blob:frame',w:1000,h:500}))}));
-afterEach(()=>{vi.unstubAllGlobals();localStorage.clear()});
+const video=vi.hoisted(()=>({calls:0}));
+vi.mock('./FramePicker',async original=>({...await original<typeof import('./FramePicker')>(),readImageSize:vi.fn(async()=>({url:'blob:frame',w:1000,h:500})),
+ frameFromVideo:vi.fn(async()=>{video.calls++;return new File(['jpg'],'frame.jpg',{type:'image/jpeg'})})}));
+afterEach(()=>{vi.unstubAllGlobals();localStorage.clear();auth.analytics=false;video.calls=0});
 
 it('marks points by clicking the frame and uploads that frame as the reference',async()=>{
  const hall={id:'h1',revision:1,name:'Арена',address:'Ярославль',pitch_length_m:40,pitch_width_m:20,ceiling_height_m:null,surface:'',description:'',archived:false};
@@ -21,7 +24,7 @@ it('marks points by clicking the frame and uploads that frame as the reference',
  }));
  render(<MemoryRouter initialEntries={['/halls/h1']}><Routes><Route path="/halls/:id" element={<HallPage/>}/></Routes></MemoryRouter>);
  fireEvent.click(await screen.findByRole('button',{name:'Добавить профиль камеры'}));
- const input=screen.getByText('Загрузить кадр').querySelector('input')!;
+ const input=screen.getByText('Загрузить картинку').querySelector('input')!;
  fireEvent.change(input,{target:{files:[new File(['png'],'frame.png',{type:'image/png'})]}});
  expect(await screen.findByRole('status')).toHaveTextContent('Отметьте точку 1: Угол · 0 × 0 м');
  // Кадр 1000×500 показан в 500×250: клик в пикселях экрана переводится в пиксели кадра.
@@ -47,4 +50,31 @@ it('names futsal landmarks from the hall size',()=>{
  const marks=landmarks(37.32,17.68);
  expect(marks.map(m=>m.m)).toContainEqual([31.32,8.84]);
  expect(marks.find(m=>m.m[0]===18.66&&m.m[1]===8.84)?.label).toBe('Центр поля · 18,66 × 8,84 м');
+});
+
+function stubHall(){
+ const hall={id:'h1',revision:1,name:'Арена',address:'Ярославль',pitch_length_m:40,pitch_width_m:20,ceiling_height_m:null,surface:'',description:'',archived:false};
+ vi.stubGlobal('fetch',vi.fn(async(url:unknown)=>new Response(JSON.stringify(String(url).includes('/camera-profiles')?{items:[],total:0}:hall),{headers:{'Content-Type':'application/json'}})));
+ render(<MemoryRouter initialEntries={['/halls/h1']}><Routes><Route path="/halls/:id" element={<HallPage/>}/></Routes></MemoryRouter>);
+}
+
+it('takes the frame from the recording file and shows nothing technical to an ordinary admin',async()=>{
+ stubHall();
+ fireEvent.click(await screen.findByRole('button',{name:'Добавить профиль камеры'}));
+ // Без кадра — только две кнопки; пиксели, контур и объектив обычному администратору не показываются.
+ expect(screen.queryByLabelText('Ширина кадра, px')).toBeNull();
+ expect(screen.queryByText(/Для специалиста/)).toBeNull();
+ const input=screen.getByText('Взять кадр из записи').querySelector('input')!;
+ expect(input).toHaveAttribute('accept','video/*');
+ fireEvent.change(input,{target:{files:[new File(['mp4'],'match.mp4',{type:'video/mp4'})]}});
+ expect(await screen.findByRole('img',{name:'Разметка точек на кадре'})).toBeInTheDocument();
+ expect(video.calls).toBe(1);
+ expect(screen.getByText(/Кадр 1000 × 500 px/)).toBeInTheDocument();
+});
+
+it('keeps coordinates, outline and lens settings for Admin+ in a folded block',async()=>{
+ auth.analytics=true;stubHall();
+ fireEvent.click(await screen.findByRole('button',{name:'Добавить профиль камеры'}));
+ expect(screen.getByText('Для специалиста: координаты, контур и объектив')).toBeInTheDocument();
+ expect(screen.getByLabelText('Калибровка объектива, JSON')).toBeInTheDocument();
 });

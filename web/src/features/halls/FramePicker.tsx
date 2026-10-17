@@ -33,6 +33,27 @@ export function readImageSize(file:File):Promise<{url:string;w:number;h:number}>
  });
 }
 
+// Кадр из файла записи — в исходном разрешении видео (скриншот экрана дал бы размер окна, а не записи).
+// Видео не покидает компьютер: на сервер уходит только этот кадр. Берём момент через несколько секунд от начала.
+export function frameFromVideo(file:File):Promise<File>{
+ return new Promise((resolve,reject)=>{
+  const url=URL.createObjectURL(file);const video=document.createElement('video');
+  const unreadable='Браузер не смог открыть это видео. Сохраните стоп-кадр в полном разрешении и загрузите картинку.';
+  const timer=setTimeout(()=>fail(unreadable),20000);
+  const fail=(text:string)=>{clearTimeout(timer);URL.revokeObjectURL(url);reject(new Error(text))};
+  video.muted=true;video.preload='auto';video.playsInline=true;
+  video.onerror=()=>fail(unreadable);
+  // У записей без длительности в заголовке duration = Infinity: тогда берём начало. Ноль не годится — переход на 0 не всегда даёт seeked.
+  video.onloadedmetadata=()=>{if(!video.videoWidth)return fail('В файле нет видеодорожки');const d=Number.isFinite(video.duration)?video.duration:0;video.currentTime=Math.max(0.05,Math.min(5,d/2))};
+  video.onseeked=()=>{clearTimeout(timer);
+   const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+   canvas.getContext('2d')!.drawImage(video,0,0);URL.revokeObjectURL(url);
+   canvas.toBlob(blob=>blob?resolve(new File([blob],'frame.jpg',{type:'image/jpeg'})):reject(new Error('Не удалось сохранить кадр')),'image/jpeg',0.95);
+  };
+  video.src=url;
+ });
+}
+
 // Кадр с наложенными точками: клик ставит пиксель активной точки.
 export function FramePicker({frame,points,active,disabled,onPick}:{frame:Frame;points:PickPoint[];active:number;disabled:boolean;onPick:(px:[number,number])=>void}){
  const {w,h}=frame;
