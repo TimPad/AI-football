@@ -70,7 +70,8 @@ def get_player_history(db, player_id):
 
 def get_public_analysis(db, match_id):
     from aifootball.service.errors import DomainError
-    match = get_entity(db, Match, match_id)
+    from aifootball.service.public_visibility import require_public_match
+    match = require_public_match(db, match_id)
     if not match.published_analysis_run_id: raise DomainError('not_found', 'Аналитика ещё не опубликована', status=404)
     run = get_entity(db, AnalysisRun, match.published_analysis_run_id)
     job = get_entity(db, AnalysisJob, run.job_id)

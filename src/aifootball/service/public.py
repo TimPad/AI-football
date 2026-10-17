@@ -16,15 +16,13 @@ from aifootball.service.tournaments.models import Tournament, RegulationVersion
 from aifootball.service.tournaments.rules import resolve_rules
 from aifootball.service.protocol.models import ProtocolVersion
 from aifootball.service.views import Page, PublicTournament, PublicMatch
+from aifootball.service.public_visibility import require_public_tournament
 
 router = APIRouter(prefix='/public')
 
 
 def visible_tournament(db, tid):
-    tournament = get_entity(db, Tournament, tid)
-    if tournament.archived:
-        raise DomainError('not_found', 'Турнир не найден', status=404)
-    return tournament
+    return require_public_tournament(db, tid)
 
 
 def match_query():
@@ -37,7 +35,7 @@ def match_query():
             .join(away_entry, Match.away_entry_id == away_entry.id).join(away, away_entry.team_id == away.id)
             .join(RegulationVersion, Match.regulation_id == RegulationVersion.id)
             .outerjoin(ProtocolVersion, Match.published_version_id == ProtocolVersion.id)
-            .where(Tournament.archived.is_(False)))
+            .where(Tournament.archived.is_(False), Tournament.visibility == 'public'))
 
 
 def match_view(row):
@@ -53,7 +51,7 @@ def match_view(row):
 
 @router.get('/tournaments', response_model=Page[PublicTournament])
 def tournaments(db: Session = Depends(get_session), limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0)):
-    return list_entities(db, Tournament, where=[Tournament.archived.is_(False)], limit=limit, offset=offset,
+    return list_entities(db, Tournament, where=[Tournament.archived.is_(False), Tournament.visibility == 'public'], limit=limit, offset=offset,
                          order=Tournament.starts_on.desc())
 
 
@@ -88,7 +86,7 @@ def match(mid: UUID, db: Session = Depends(get_session)):
 def team_logo(image_id: UUID, request: Request, db: Session = Depends(get_session)):
     # Только логотип команды неархивного турнира; общий файл с фото игрока остаётся закрытым.
     linked = (select(Team.id).join(Entry, Entry.team_id == Team.id).join(Tournament, Entry.tournament_id == Tournament.id)
-              .where(Team.logo_id == image_id, Team.archived.is_(False), Tournament.archived.is_(False)))
+              .where(Team.logo_id == image_id, Team.archived.is_(False), Tournament.archived.is_(False), Tournament.visibility == 'public'))
     visible = db.scalar(select(exists().where(CatalogImage.id == image_id)
                                .where(exists(linked)).where(~exists().where(Player.photo_id == image_id))))
     path = Path(request.app.state.settings.attachment_root) / 'catalog' / (str(image_id) + '.png')

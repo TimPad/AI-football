@@ -74,6 +74,7 @@ class TeamProfile(TeamView):
 class CatalogImageView(EntityView):
     size: int
 class TournamentView(NamedView):
+    visibility: Literal['draft','public']
     season: str
     starts_on: date
     ends_on: date

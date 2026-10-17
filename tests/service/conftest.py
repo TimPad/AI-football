@@ -79,7 +79,7 @@ def regulation_data():
 def tournament_factory(admin_client):
     def create(**changes):
         data={'name':'Тестовый кубок','season':'2026','starts_on':'2026-10-01',
-              'ends_on':'2026-12-31','timezone':'Europe/Moscow', **changes}
+              'ends_on':'2026-12-31','timezone':'Europe/Moscow','visibility':'public', **changes}
         r=admin_client.post('/api/v1/tournaments', json=data)
         assert r.status_code==201, r.text
         return r.json()

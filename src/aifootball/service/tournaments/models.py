@@ -12,6 +12,7 @@ class Tournament(Entity,Base):
     timezone=Column(String(100),nullable=False)
     revision=Column(Integer,nullable=False,default=0)
     archived=Column(Boolean,nullable=False,default=False)
+    visibility=Column(String(10),nullable=False,default='draft',server_default='draft')
 
 
 class RegulationVersion(Entity,Base):

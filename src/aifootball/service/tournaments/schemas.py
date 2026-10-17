@@ -94,6 +94,7 @@ class TournamentCreate(Input):
     starts_on: date
     ends_on: date
     timezone: str='Europe/Moscow'
+    visibility: Literal['draft','public']='draft'
 
     @model_validator(mode='after')
     def valid_dates(self):
@@ -111,6 +112,7 @@ class TournamentPatch(Input):
     ends_on: date|None=None
     timezone: str|None=None
     archived: bool|None=None
+    visibility: Literal['draft','public']|None=None
 
 
 class RegulationCreate(Input):

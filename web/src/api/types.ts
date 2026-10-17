@@ -5915,6 +5915,12 @@ export interface components {
              * @default Europe/Moscow
              */
             timezone?: string;
+            /**
+             * Visibility
+             * @default draft
+             * @enum {string}
+             */
+            visibility?: "draft" | "public";
         };
         /** TournamentPatch */
         TournamentPatch: {
@@ -5932,6 +5938,8 @@ export interface components {
             timezone?: string | null;
             /** Archived */
             archived?: boolean | null;
+            /** Visibility */
+            visibility?: ("draft" | "public") | null;
         };
         /** TournamentView */
         TournamentView: {
@@ -5949,6 +5957,11 @@ export interface components {
             name: string;
             /** Archived */
             archived: boolean;
+            /**
+             * Visibility
+             * @enum {string}
+             */
+            visibility: "draft" | "public";
             /** Season */
             season: string;
             /**

@@ -27,3 +27,29 @@ def test_clean_migration_upgrade_downgrade(service_settings):
     command.upgrade(cfg, 'head')
     assert 'admins' in inspect(e).get_table_names()
     e.dispose(); engine.dispose()
+
+
+def test_visibility_migration_preserves_existing_public_tournaments(service_settings):
+    from uuid import uuid4
+    from alembic.config import Config
+    from alembic import command
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.engine import make_url
+
+    url = make_url(service_settings.database_url).set(database='aifootball_migration_test')
+    assert url.database.endswith('_test')
+    cfg = Config('alembic.ini')
+    cfg.attributes['database_url'] = url.render_as_string(hide_password=False)
+    command.upgrade(cfg, 'head')
+    command.downgrade(cfg, '0015_camera_reference')
+    identifier = uuid4()
+    engine = create_engine(url)
+    with engine.begin() as db:
+        db.execute(text("""INSERT INTO tournaments
+            (id, created_at, name, season, starts_on, ends_on, timezone, revision, archived)
+            VALUES (:id, now(), 'Исторический турнир', '2026', '2026-10-01', '2026-12-31',
+                    'Europe/Moscow', 0, false)"""), {'id': identifier})
+    command.upgrade(cfg, 'head')
+    with engine.connect() as db:
+        assert db.execute(text('SELECT visibility FROM tournaments WHERE id=:id'), {'id': identifier}).scalar_one() == 'public'
+    engine.dispose()
