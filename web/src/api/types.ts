@@ -7745,6 +7745,11 @@ export interface components {
             confirmation_id?: string | null;
             /** Confirmation Version */
             confirmation_version?: number | null;
+            /**
+             * Can Correct
+             * @default false
+             */
+            can_correct?: boolean;
         };
         /** TeamTotals */
         "TeamTotals-Input": {

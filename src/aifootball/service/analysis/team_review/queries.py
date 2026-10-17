@@ -53,8 +53,9 @@ def scoped_task(db,account,task_id,*,lock=False,current=False):
 def task_view(db,task):
     run=get_entity(db,AnalysisRun,task.run_id);job=get_entity(db,AnalysisJob,run.job_id);match=get_entity(db,Match,run.match_id)
     confirmation=db.scalar(select(TeamIdentityConfirmation).where(TeamIdentityConfirmation.task_id==task.id).order_by(TeamIdentityConfirmation.created_at.desc()).limit(1))
+    status=task_status(db,task,run,job)
     return {'id':task.id,'run_id':run.id,'match_id':run.match_id,'team_id':task.team_id,'team_name':job.context['teams'][task.side]['name'],
         'opponent_name':job.context['teams']['away' if task.side=='home' else 'home']['name'],'scheduled_at':match.scheduled_at,
-        'side':task.side,'status':task_status(db,task,run,job),'revision':task.revision,'expires_at':task.expires_at,
+        'side':task.side,'status':status,'revision':task.revision,'expires_at':task.expires_at,'can_correct':run.status=='review' and status=='team_confirmed',
         'reason':task.reason,'groups':task.groups,'players':task.players,'draft':task.draft,
         'confirmed_by_kind':confirmation.actor_kind if confirmation else None,'confirmation_id':confirmation.id if confirmation else None,'confirmation_version':confirmation.version if confirmation else None}

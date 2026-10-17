@@ -60,6 +60,7 @@ class TeamTaskView(BaseModel):
     confirmed_by_kind:str|None=None
     confirmation_id:UUID|None=None
     confirmation_version:int|None=None
+    can_correct:bool=False
 
 class TeamTaskList(BaseModel):
     items:list[TeamTaskView]
