@@ -8,6 +8,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import math
 import yaml
 from aifootball.understanding.schema import restrict_to_tracks
+from aifootball.analytics.track_groups import track_groups
 from aifootball.analytics.exchange import (canonical, read_archive, load_json, ensure, uuid,
                                            hash_value, validate_result, ExchangeError, UNITS, EVENT_KINDS)
 
@@ -241,7 +242,13 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
               'partial': partial, 'warnings': warnings}
     if alignment:
         checks['camera_alignment'] = {k: alignment[k] for k in ('status', 'shift_px', 'error_if_uncorrected_m', 'moved_at_s') if k in alignment}
-    for name, value in [('report.json', report), ('track-index.json', {'tracks': indexed}), ('checks.json', checks)]:
+    # Кандидаты-игроки: склейка по тем же команде и роли, что в индексе (их видит проверка в кабинете).
+    labels = pl.DataFrame({'track_id': [t['track_id'] for t in indexed], 'team_index': [t['team'] for t in indexed],
+                           'role_index': [t['role'] for t in indexed]}, schema={'track_id': normalized.schema['track_id'],
+                           'team_index': pl.String, 'role_index': pl.String})
+    labelled = normalized.join(labels, on='track_id').with_columns(team=pl.col('team_index'), role=pl.col('role_index'))
+    groups = track_groups(labelled, venue.width_m)
+    for name, value in [('report.json', report), ('track-index.json', {'tracks': indexed, 'groups': groups}), ('checks.json', checks)]:
         files[name] = canonical(value)
     if events is not None:
         files['events.json'] = canonical(events)

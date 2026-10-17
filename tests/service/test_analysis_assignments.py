@@ -100,3 +100,17 @@ def test_player_history_has_catalog_detail(admin_client, analytics_match):
     response = admin_client.get(f'/api/v1/players/{person}')
     assert response.status_code == 200
     assert response.json()['id'] == person
+
+
+def test_track_groups_are_shown_and_a_short_handoff_confirms(admin_client, analytics_match):
+    # Трекер передал игрока между треками с дублем 0,8 с: это один человек, подтверждение проходит.
+    def handoff(m, r, t, c):
+        t['tracks'][1]['intervals'] = [[59.2, 240]]
+        t['groups'] = [{'track_ids': [1, 2], 'links': [{'from': 1, 'to': 2, 'cost': 0.5}]}]
+    run = import_run(admin_client, analytics_match, handoff)
+    view = admin_client.get(f"/api/v1/matches/{analytics_match['id']}/analysis/runs/{run['id']}").json()
+    assert view['groups'] == [[1, 2]]
+    saved = save_assignments(admin_client, analytics_match, view)
+    assert saved.status_code == 200, saved.text
+    confirmed = command(admin_client, analytics_match, saved.json(), 'confirm')
+    assert confirmed.status_code == 200, confirmed.text

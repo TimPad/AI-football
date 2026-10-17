@@ -4,6 +4,8 @@ import type {IdentitySuggestion} from './understandingTypes';
 import {useDraft} from '../protocol/drafts';
 import {ErrorBox,downloadJson} from '../../components/ui';
 import {TRACK_FILTERS,filteredCount,trackState,visibleTrackIds,type TrackFilter} from './reviewQueue';
+import {PlayerCandidates} from './PlayerCandidates';
+import {baseGroups} from './candidates';
 import './review.css';
 type Review={side_map:AnalysisRun['side_map'],assignments:AnalysisAssignment[]};
 function valid(v:unknown):v is Review{if(!v||typeof v!=='object')return false;const r=v as Review;return !!r.side_map&&['home','away'].includes(r.side_map.A)&&['home','away'].includes(r.side_map.B)&&Array.isArray(r.assignments)&&r.assignments.every(a=>Number.isInteger(a.track_id)&&(a.player_id==null||typeof a.player_id==='string')&&(a.excluded_reason==null||typeof a.excluded_reason==='string'))}
@@ -13,6 +15,8 @@ export function IdentityReview({run,actorId,editable,onSave,onDirty,suggestions=
  const draft=useDraft<Review>(`aifootball:identity:v1:${actorId}:${run.id}`,{side_map:run.side_map,assignments:run.assignments},valid);const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);
  const [local,setLocal]=useState<View>({page:1,item:null});const view=external??local;const navigate=onView??((patch:Partial<View>)=>setLocal(v=>({...v,...patch})));
  const [queueOpen,setQueueOpen]=useState(false);
+ // Есть склейка треков — по умолчанию сопоставляем кандидатов-игроков; старые версии открываются по фрагментам.
+ const [mode,setMode]=useState<'players'|'tracks'>(run.groups?.length?'players':'tracks');
  useEffect(()=>{onDirty?.(draft.dirty)},[draft.dirty,onDirty]);
  function change(next:Review){draft.change(next);onDirty?.(true)}
  function assign(track_id:number,value:string){const rest=draft.value.assignments.filter(a=>a.track_id!==track_id);const old=draft.value.assignments.find(a=>a.track_id===track_id);change({...draft.value,assignments:value?[...rest,value==='exclude'?{track_id,excluded_reason:old?.excluded_reason??''}:{track_id,player_id:value}]:rest})}
@@ -35,8 +39,11 @@ export function IdentityReview({run,actorId,editable,onSave,onDirty,suggestions=
  const dirtyCount=draft.dirty?draft.value.assignments.length:0;
  return <section className="identity-review" aria-label="Сопоставление игроков">
   <div className="review-bar"><div className="form-grid side-map">{(['A','B'] as const).map(s=><label className="field" key={s}><span>Команда {s} на видео</span><select aria-label={`Команда ${s} на видео`} value={draft.value.side_map[s]} disabled={disabled} onChange={e=>change({...draft.value,side_map:{A:e.target.value as 'home'|'away',B:e.target.value==='home'?'away':'home',...(s==='B'?{B:e.target.value as 'home'|'away',A:e.target.value==='home'?'away':'home'}:{})}})}><option value="home">{run.context.teams.home.name}</option><option value="away">{run.context.teams.away.name}</option></select></label>)}</div>
-   <label className="field"><span>Показать треки</span><select aria-label="Фильтр треков" value={filter} onChange={e=>navigate({filter:e.target.value as TrackFilter,page:1})}>{TRACK_FILTERS.map(f=><option key={f.id} value={f.id}>{f.label} · {filteredCount(run,f.id,assignments)}</option>)}</select></label>
-   <button className="queue-toggle" aria-expanded={queueOpen} onClick={()=>setQueueOpen(!queueOpen)}>Очередь · {total}</button></div>
+   <div className="segmented review-mode" role="group" aria-label="Сопоставлять"><button aria-pressed={mode==='players'} onClick={()=>setMode('players')}>По игрокам · {baseGroups(run).length}</button><button aria-pressed={mode==='tracks'} onClick={()=>setMode('tracks')}>По фрагментам · {run.tracks.length}</button></div>
+   {mode==='tracks'&&<><label className="field"><span>Показать треки</span><select aria-label="Фильтр треков" value={filter} onChange={e=>navigate({filter:e.target.value as TrackFilter,page:1})}>{TRACK_FILTERS.map(f=><option key={f.id} value={f.id}>{f.label} · {filteredCount(run,f.id,assignments)}</option>)}</select></label>
+   <button className="queue-toggle" aria-expanded={queueOpen} onClick={()=>setQueueOpen(!queueOpen)}>Очередь · {total}</button></>}</div>
+  {mode==='players'?<PlayerCandidates run={run} assignments={assignments} sideMap={draft.value.side_map} disabled={disabled} suggestions={sidesChanged?[]:suggestions}
+   onChange={next=>change({...draft.value,assignments:next})}/>:
   <div className={`review-panes${queueOpen?' queue-open':''}`}>
    <nav className="surface review-queue" aria-label="Очередь треков"><div className="queue-head"><h3>Треки</h3><span className="muted small num">{total?`${(page-1)*PAGE+1}–${(page-1)*PAGE+visible.length} из ${total}`:'0'}</span></div>
     {visible.length?<ul>{visible.map(id=>{const track=run.tracks.find(x=>x.track_id===id)!;const st=trackState(assignments,id);const saved=trackState(run.assignments,id);
@@ -64,7 +71,7 @@ export function IdentityReview({run,actorId,editable,onSave,onDirty,suggestions=
     <details><summary>Источник</summary><dl className="small num"><dt>Версия</dt><dd>{String(run.id).slice(0,8)} · ревизия {run.revision}</dd><dt>Задание</dt><dd>{run.job_id?String(run.job_id).slice(0,8):"—"}</dd><dt>UUID игрока</dt><dd>{a?.player_id??'—'}</dd></dl></details>
     <button onClick={next}>Следующий трек</button>
    </>:null}</aside>
-  </div>
+  </div>}
   {draft.dirty&&<p className="draft-banner">Черновик сопоставления сохранён в этом браузере{dirtyCount?` · назначений в черновике: ${dirtyCount}`:''}. Подтверждение версии недоступно до сохранения.</p>}
   <p className="muted small">Несколько треков можно назначить одному игроку. Пересекающиеся по времени треки нужно проверить. Неопределённые треки не попадают в индивидуальную статистику.</p>
   <ErrorBox error={error||draft.error}/>{editable&&<div className="row"><button className="primary" disabled={disabled} onClick={save}>Сохранить сопоставление</button><button onClick={()=>downloadJson(draft.raw??draft.value,'сопоставление.json')}>Скачать черновик</button>{draft.corrupt&&<button onClick={draft.clear}>Очистить повреждённый черновик</button>}</div>}

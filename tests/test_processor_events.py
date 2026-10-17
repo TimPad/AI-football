@@ -105,6 +105,8 @@ def test_package_with_ball_is_contract_3(venue, tmp_path):
     assert result.manifest['contract_version'] == '3' and result.manifest['processor']['ball_model'] == 'ball/best.pt'
     assert result.events['kinds'] == ['pass'] and result.events['events'] == []
     assert result.understanding is None
+    # Кандидаты-игроки всегда в индексе треков (пустой список, если склеивать нечего)
+    assert isinstance(result.tracks['groups'], list)
 
 
 def test_ball_model_uses_measured_confidence_and_margin(venue):

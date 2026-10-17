@@ -27,6 +27,7 @@ def run_view(db, run):
                              'analysis_revision': match.analysis_revision, 'active_run_id': match.active_analysis_run_id,
                              'published_run_id': match.published_analysis_run_id,
                              'report': run.report, 'tracks': run.tracks['tracks'], 'checks': run.checks,
+                             'groups': [g['track_ids'] for g in run.tracks.get('groups', [])],
                              'context': job.context, 'side_map': run.side_map,
                              'assignments': [{'track_id': a.track_id, 'player_id': a.player_id,
                                               'excluded_reason': a.excluded_reason} for a in assigned],

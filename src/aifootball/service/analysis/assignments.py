@@ -4,6 +4,7 @@ from sqlalchemy import select, delete
 from aifootball.service.analysis.models import AnalysisAssignment, PlayerMatchMetric
 from aifootball.service.analysis.aggregation import aggregate_player
 from aifootball.service.errors import DomainError
+from aifootball.analytics.track_groups import OVERLAP_S
 
 
 def set_assignments(db, run, job, data):
@@ -51,9 +52,10 @@ def create_metrics(db, run, job):
         observed = sorted((start, end, tid) for tid in ids for start, end in tracks[tid]['intervals'])
         previous_end = -1
         for start, end, tid in observed:
-            if start < previous_end:
+            # Передача игрока между треками даёт короткий дубль — до OVERLAP_S это один человек.
+            if start < previous_end - OVERLAP_S:
                 raise DomainError('overlapping_identity', 'Одному игроку назначены пересекающиеся фрагменты. Исключите дубль или пересчитайте трек.')
-            previous_end = end
+            previous_end = max(previous_end, end)
         values = aggregate_player([metrics.get(tid, {}) for tid in ids])
         values['missing_track_ids'] = [tid for tid in ids if tid not in metrics]
         person = roster[str(player_id)]

@@ -5054,6 +5054,11 @@ export interface components {
             };
             /** Tracks */
             tracks: components["schemas"]["TrackView"][];
+            /**
+             * Groups
+             * @default []
+             */
+            groups?: number[][];
             /** Side Map */
             side_map: {
                 [key: string]: "home" | "away";

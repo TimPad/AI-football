@@ -112,6 +112,7 @@ class RunView(RunSummary):
     report: dict[str, Any]
     checks: dict[str, Any]
     tracks: list[TrackView]
+    groups: list[list[int]] = []  # кандидаты-игроки из склейки треков; старые прогоны — без групп
     side_map: dict[str, Literal['home', 'away']]
     assignments: list[AssignmentInput]
     players: list[PlayerMetric]
