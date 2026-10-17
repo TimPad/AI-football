@@ -1,3 +1,4 @@
+import type {ReactNode} from 'react';
 import {Link} from 'react-router-dom';
 import {Radio,ChevronLeft,ChevronRight,ArrowRight} from 'lucide-react';
 import type {PublicMatch} from '../../api/domain';
@@ -43,7 +44,8 @@ function lanes(items:{start:number;end:number}[]){
  return {lane,count:Math.max(1,ends.length)};
 }
 
-export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`}:{matches:ScheduleItem[];timezone:string;matchHref?:(id:string)=>string}){
+// extra — отметка кабинета в строке матча (например, «На сайте»); у зрителя её нет.
+export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`,extra}:{matches:ScheduleItem[];timezone:string;matchHref?:(id:string)=>string;extra?:(id:string)=>ReactNode}){
  const [params,update]=useQueryPatch();
  const set=(patch:Record<string,string|null>)=>update(patch,{replace:true});
  const view=params.get('view')==='grid'?'grid':'list';
@@ -74,7 +76,7 @@ export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`}
   :view==='list'?<div className="schedule-list">{shown.map(m=><article key={m.id} className="schedule-row">
     <div className="row-time num"><b>{matchTime(m.scheduled_at,timezone)}</b><small>{new Intl.DateTimeFormat('ru-RU',{timeZone:timezone,day:'numeric',month:'short'}).format(new Date(m.scheduled_at))}</small></div>
     <Teams match={m}/><span className="row-hall">{venueName(m)}</span>
-    <div className="row-meta"><Status match={m}/><span className="row-video">{hasVideo(m)&&<><Radio aria-hidden="true"/>ВК</>}</span><Open match={m} href={matchHref(m.id)}/></div></article>)}</div>
+    <div className="row-meta"><Status match={m}/>{extra?.(m.id)}<span className="row-video">{hasVideo(m)&&<><Radio aria-hidden="true"/>ВК</>}</span><Open match={m} href={matchHref(m.id)}/></div></article>)}</div>
   :<TimeGrid matches={shown} columns={columns} names={names} timezone={timezone} matchHref={matchHref}/>}
   <footer className="schedule-foot"><span>{plural(shown.length,['матч','матча','матчей'])}{columns.length>1?` · ${plural(columns.length,['зал','зала','залов'])}`:''}</span><span>{timezoneLabel(timezone)}</span></footer>
  </section>;

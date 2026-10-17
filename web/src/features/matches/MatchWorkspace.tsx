@@ -23,11 +23,11 @@ import {MatchReportTab} from './MatchReportTab';
 import {dateTime} from './timezone';
 import './workspace.css';
 
-// Порядок групп повторяет ход работы: подготовка → протокол → видеоанализ → итог.
-const TASKS:SectionItem[]=[{id:'overview',label:'Обзор'},{id:'info',label:'Сведения',group:'Подготовка'},{id:'lineup',label:'Состав',group:'Подготовка'},
- {id:'protocol',label:'Протокол',group:'Матч'},{id:'review',label:'Проверка',group:'Видеоанализ'},
- {id:'participation',label:'Участие',group:'Видеоанализ'},{id:'actions',label:'Действия',group:'Видеоанализ'},
- {id:'report',label:'Отчёт',group:'Итог'},{id:'publication',label:'Публикация',group:'Итог'}];
+// Четыре раздела по ходу работы; шаги раздела видны, когда он открыт. Ссылка раздела ведёт на его основной шаг.
+const TASKS:SectionItem[]=[{id:'overview',label:'Обзор'},
+ {id:'protocol',label:'Протокол',steps:[{id:'info',label:'Сведения'},{id:'lineup',label:'Состав'},{id:'protocol',label:'События'}]},
+ {id:'review',label:'Видео',steps:[{id:'review',label:'Проверка'},{id:'participation',label:'Участие'},{id:'actions',label:'Действия'}]},
+ {id:'publication',label:'Публикация',steps:[{id:'publication',label:'Опубликовать'},{id:'report',label:'Предпросмотр'}]}];
 const ANALYTICS_ONLY=new Set(['participation','actions']);
 // Редактирующие задачи делят один экземпляр очереди протокола.
 const EDITING=new Set(['protocol','lineup','info','history']);
@@ -55,7 +55,9 @@ export function MatchWorkspace({matchId}:{matchId:string}){
  const tz=tournament.data?.timezone??'Europe/Moscow';
  const state:Record<string,SectionItem['state']>={info:m.hall_id?undefined:'attention',lineup:m.lineup.length?undefined:'attention',
   protocol:m.protocol.draft?(m.status==='ended'?'attention':undefined):'done',publication:m.published_version_id?'done':undefined};
- const items=TASKS.filter(t=>analytics||!ANALYTICS_ONLY.has(t.id)).map(t=>({...t,state:state[t.id]}));
+ // Состояние раздела — по его шагам: хоть один требует внимания → раздел тоже.
+ const items=TASKS.map(t=>{const steps=t.steps?.filter(s=>analytics||!ANALYTICS_ONLY.has(s.id)).map(s=>({...s,state:state[s.id]}));
+  const own=steps?.some(s=>s.state==='attention')?'attention':state[t.id];return {...t,steps,state:own}});
  return <div className="match-workspace">
   <header className="cabinet-match-head">
    <Link className="icon-button back" to={`/tournaments/${m.tournament_id}?tab=matches`} aria-label="К матчам турнира"><ArrowLeft/></Link>

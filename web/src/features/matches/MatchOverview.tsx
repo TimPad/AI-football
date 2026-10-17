@@ -1,10 +1,47 @@
 import {Link} from 'react-router-dom';
-import {CircleAlert} from 'lucide-react';
-import type {Match} from '../../api/domain';
+import {ArrowRight,CircleAlert,CircleCheck} from 'lucide-react';
+import {api} from '../../api/client';
+import type {AnalysisOverview,Match} from '../../api/domain';
 import {sections} from '../../api/domain';
+import {useLoad} from '../../components/ui';
 import {dateTime} from './timezone';
 
 type Row={label:string;value:string;ok:boolean;fix?:{tab:string;text:string}};
+export type NextStep={title:string;hint:string;tab?:string;action?:string;done?:boolean};
+
+// Один следующий шаг по состоянию матча: сначала подготовка и протокол, потом видеоанализ (только Админ+).
+export function nextStep(m:Match,analysis:AnalysisOverview|null):NextStep{
+ if(m.status==='cancelled')return {title:'Матч отменён',hint:'Ничего делать не нужно.',done:true};
+ if(!m.hall_id)return {title:'Выберите зал',hint:'Зал нужен для расписания и адреса на сайте.',tab:'info',action:'К выбору зала'};
+ if(!m.lineup.length)return {title:'Отметьте состав',hint:'Кто играет и под какими номерами.',tab:'lineup',action:'К составу'};
+ if(m.protocol.draft){
+  if(m.status==='ended')return {title:'Подтвердите протокол',hint:'Проверьте события и итог, затем подтвердите версию.',tab:'protocol',action:'К протоколу'};
+  return {title:'Ведите протокол',hint:'Голы, фолы и карточки — по ходу матча.',tab:'protocol',action:'К протоколу'};
+ }
+ if(!m.published_version_id)return {title:'Опубликуйте протокол',hint:'Счёт, события и состав появятся на сайте.',tab:'publication',action:'К публикации'};
+ if(analysis&&m.camera_profile_id){
+  const confirmed=analysis.runs.some(r=>r.status==='confirmed');
+  if(!analysis.runs.length)return analysis.jobs.length
+   ?{title:'Загрузите результат обработки',hint:'Обработайте запись на компьютере и загрузите пакет результата.',tab:'review',action:'К видео'}
+   :{title:'Начните видеоанализ',hint:'Скачайте задание, обработайте запись и загрузите результат.',tab:'review',action:'К видео'};
+  if(!confirmed)return {title:'Проверьте видеоанализ',hint:'Сопоставьте игроков и подтвердите результат.',tab:'review',action:'К проверке'};
+  if(!analysis.published_run_id)return {title:'Опубликуйте видеоанализ',hint:'Карты и статистика по видео появятся на сайте.',tab:'publication',action:'К публикации'};
+ }
+ return {title:'Матч опубликован',hint:'Зрители видят протокол'+(analysis?.published_run_id?' и видеоанализ.':'.'),done:true};
+}
+
+function NextStepCard({match:m,analytics}:{match:Match;analytics:boolean}){
+ // Видеоанализ читается только для Админ+ и только когда выбрана камера.
+ const needed=analytics&&!!m.camera_profile_id;
+ const analysis=useLoad(async()=>needed?api<AnalysisOverview>(`/matches/${m.id}/analysis`):null,`${m.id}:${m.revision}:${needed}`);
+ if(needed&&analysis.data===undefined&&!analysis.error)return <section className="surface next-step" aria-label="Следующий шаг"><p className="muted">Загружаем…</p></section>;
+ const step=nextStep(m,analysis.data??null);
+ return <section className={`surface next-step${step.done?' done':''}`} aria-label="Следующий шаг">
+  <div>{step.done?<CircleCheck aria-hidden="true"/>:<span className="muted small">Следующий шаг</span>}<h2>{step.title}</h2><p className="muted">{step.hint}</p></div>
+  {step.tab?<Link className="button primary" to={`?tab=${step.tab}`}>{step.action}<ArrowRight/></Link>
+   :step.done&&m.published_version_id?<Link className="button" to={`/watch/matches/${m.id}`} target="_blank">Открыть страницу матча<ArrowRight/></Link>:null}
+ </section>;
+}
 
 // Готовность из текущей сводки матча; каждая проблема ведёт к своей задаче.
 export function MatchOverview({match:m,timezone,analytics}:{match:Match;timezone:string;analytics:boolean}){
@@ -23,15 +60,9 @@ export function MatchOverview({match:m,timezone,analytics}:{match:Match;timezone
   {label:'Неполные разделы',value:incomplete.join(', ')||'Нет',ok:!incomplete.length},
  ];
  return <div className="match-overview">
+  <NextStepCard match={m} analytics={analytics}/>
   <Block title="Подготовка" rows={prep}/>
   <Block title="Официальный протокол" rows={protocol}/>
-  <section className="surface"><h2>Следующие задачи</h2><ul className="task-links">
-   <li><Link to="?tab=review">Проверка записи</Link><span className="muted">Импорт результата и сопоставление игроков</span></li>
-   {analytics&&<li><Link to="?tab=participation">Участие</Link><span className="muted">Время на площадке и роли</span></li>}
-   {analytics&&<li><Link to="?tab=actions">Действия</Link><span className="muted">Проверенные действия и полнота</span></li>}
-   <li><Link to="?tab=report">Отчёт</Link><span className="muted">Чтение данных матча в кабинете</span></li>
-   <li><Link to="?tab=publication">Публикация</Link><span className="muted">Независимые публикации источников</span></li>
-  </ul></section>
  </div>;
 }
 
