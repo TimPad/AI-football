@@ -61,4 +61,3 @@ def downgrade():
     # ### end Alembic commands ###
     op.drop_column("tournaments","applications_deadline")
     op.drop_column("tournaments","applications_open")
-
