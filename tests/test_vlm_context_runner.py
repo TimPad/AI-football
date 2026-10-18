@@ -64,6 +64,22 @@ def test_changed_inputs_are_rejected_in_same_workspace_before_network(monkeypatc
     assert client.calls==1
 
 
+@pytest.mark.parametrize('difference',['passport','artifacts','partial_interval'])
+def test_overlapping_cases_of_same_source_are_rejected_before_any_call(monkeypatch,tmp_path,difference):
+    m=runner(monkeypatch);inputs=manifest(tmp_path);second=deepcopy(inputs['cases'][0]);second['id']='case2'
+    if difference=='passport':second['passport']['facts']['team_A_color']['value']='розовая'
+    elif difference=='artifacts':
+        artifacts=tmp_path/'other-artifacts';artifacts.mkdir()
+        for original in Path(second['artifacts']).iterdir():(artifacts/original.name).write_bytes(original.read_bytes())
+        (artifacts/'tracks.parquet').write_bytes(b'different-tracks')
+        second['artifacts']=str(artifacts)
+    else:second.update(start_ms=6000,end_ms=18000)
+    inputs['cases'].append(second);client=Client(response())
+    with pytest.raises(ValueError,match='overlapping cases'):
+        m.run(inputs,tmp_path/'out',apply=True,client=client,prepare=prepare)
+    assert client.calls==0
+
+
 def test_crash_after_plan_and_before_response_does_not_retry(monkeypatch,tmp_path):
     m=runner(monkeypatch);inputs=manifest(tmp_path);client=Client(response());output=tmp_path/'out'
     def crash(*a,**kw):client.calls+=1;raise RuntimeError('crash-after-send')

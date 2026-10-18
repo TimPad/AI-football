@@ -60,6 +60,24 @@ def test_approach_to_goal_does_not_create_shot_or_highlight_line(tmp_path):
     assert len(history.document()['events'])==1
 
 
+def test_save_without_observed_kick_does_not_assert_shot_or_create_highlight(tmp_path):
+    from aifootball.understanding.context_pilot import project_context
+    from aifootball.understanding.match_context import MatchChronology
+    from aifootball.understanding.commentary import compile_commentary
+    window,_,_=environment(tmp_path);raw=response()
+    raw['events'][0].update(kind='save_candidate',
+        visual_signals=['ball_visible','ball_toward_goal','keeper_contact'],
+        limitations=['Контакт бьющего с мячом не виден'])
+    projected,_=project_context(raw,window);history=MatchChronology(SOURCE,passport());history.add(window,projected,'save')
+    feed=compile_commentary(history.document(),passport())
+    assert feed['entries']==[] and feed['highlight_candidates']==[]
+    assert feed['rejected_events'][0]['reason']=='insufficient_visual_signals'
+    assert history.document()['events'][0]['kind']=='save_candidate'
+    raw['events'][0]['visual_signals'].append('kick_contact')
+    projected,_=project_context(raw,window);supported=MatchChronology(SOURCE,passport());supported.add(window,projected,'observed-save')
+    assert len(compile_commentary(supported.document(),passport())['entries'])==1
+
+
 def test_observed_shot_becomes_stable_video_timed_entry_exactly_once(tmp_path):
     from aifootball.understanding.context_pilot import project_context
     from aifootball.understanding.match_context import MatchChronology

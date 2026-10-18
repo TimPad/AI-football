@@ -1,6 +1,6 @@
 # VLM Context and Commentary Pilot Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Проверить, улучшают ли паспорт/память и лента из конкретных событий качество единого экономичного разбора.
 
@@ -32,9 +32,9 @@
 
 **Interfaces:** `validate_passport(document: dict, source_sha256: str) -> dict`; `MatchChronology(source_sha256: str, passport: dict)` with `add(window, document, request_key)`, `gap(start_ms, end_ms, reason)`, `snapshot(before_ms, track_ids=()) -> dict`, `document() -> dict`.
 
-- [ ] Write synthetic tests for source/provenance/unknown facts; 20 windows retain all events while snapshot bounded; future exclusion, gap, idempotent add, conflicting numbers, track scope. Expected: import failure before module exists.
-- [ ] Implement validated passport and deterministic full journal/compact snapshot per spec. No external I/O/API in this module.
-- [ ] Run `.venv/bin/python -m pytest tests/test_vlm_match_context.py -q`; Expected: all pass. Commit task.
+- [x] Write synthetic tests for source/provenance/unknown facts; 20 windows retain all events while snapshot bounded; future exclusion, gap, idempotent add, conflicting numbers, track scope. Expected: import failure before module exists.
+- [x] Implement validated passport and deterministic full journal/compact snapshot per spec. No external I/O/API in this module.
+- [x] Run `.venv/bin/python -m pytest tests/test_vlm_match_context.py -q`; Expected: all pass. Commit task.
 
 ### Task 2: Grounded joint contract and timed feed
 
@@ -42,9 +42,9 @@
 
 **Interfaces:** `context_prompt(window, *, context, passport, memory, crop_tracks=None) -> str`; `project_context(document, window, *, crop_tracks=None) -> tuple[dict,list]`; `compile_commentary(chronology: dict, passport: dict) -> dict`.
 
-- [ ] Write failing tests: v2 has no free commentary dependency; invalid visual signals rejected; unsupported playing becomes unknown; approach to goal is not a shot; valid observed shot produces one stable video-timed entry; no match start/official score; gap prevents resumed-play line; raw immutable.
-- [ ] Implement v2 response adapter using existing base validator, explicit signal gates and code templates. Keep candidates and rejection reasons visible. Export stable IDs and video time exactly once; version contract separately from v1.
-- [ ] Run `.venv/bin/python -m pytest tests/test_vlm_match_context.py tests/test_vlm_context_commentary.py tests/test_joint_vlm_pilot.py -q`; Expected: all pass. Commit task.
+- [x] Write failing tests: v2 has no free commentary dependency; invalid visual signals rejected; unsupported playing becomes unknown; approach to goal is not a shot; valid observed shot produces one stable video-timed entry; no match start/official score; gap prevents resumed-play line; raw immutable.
+- [x] Implement v2 response adapter using existing base validator, explicit signal gates and code templates. Keep candidates and rejection reasons visible. Export stable IDs and video time exactly once; version contract separately from v1.
+- [x] Run `.venv/bin/python -m pytest tests/test_vlm_match_context.py tests/test_vlm_context_commentary.py tests/test_joint_vlm_pilot.py -q`; Expected: all pass. Commit task.
 
 ### Task 3: Resumable runner and report
 
@@ -52,15 +52,15 @@
 
 **Interfaces:** CLI `--manifest --output [--apply|--cache-only]`; manifest passport per case and optional `baseline_report`. Save exact request plans before inference, chronology JSON, commentary JSON, report JSON/HTML.
 
-- [ ] Write failing tests for synthetic client first run/resume (one paid call), crash after plan/receipt, changed source/passport/tracks rejection, corrupted cached answer rendered safely, all labelled points counted, no GT in prompt.
-- [ ] Implement input fingerprint, six-call budget, frozen plans and standalone report with global timed feed, evidence/rejections, per-case comparison and unknown outcomes. New output workspace; old experiment remains readable.
-- [ ] Run `.venv/bin/python -m pytest tests/test_vlm_match_context.py tests/test_vlm_context_commentary.py tests/test_vlm_context_runner.py tests/test_joint_vlm_pilot.py tests/test_qwen_client.py -q`; Expected: all pass. Commit task.
+- [x] Write failing tests for synthetic client first run/resume (one paid call), crash after plan/receipt, changed source/passport/tracks rejection, corrupted cached answer rendered safely, all labelled points counted, no GT in prompt.
+- [x] Implement input fingerprint, six-call budget, frozen plans and standalone report with global timed feed, evidence/rejections, per-case comparison and unknown outcomes. New output workspace; old experiment remains readable.
+- [x] Run `.venv/bin/python -m pytest tests/test_vlm_match_context.py tests/test_vlm_context_commentary.py tests/test_vlm_context_runner.py tests/test_joint_vlm_pilot.py tests/test_qwen_client.py -q`; Expected: all pass. Commit task.
 
 ### Task 4: Comparative pilot and acceptance
 
 **Files:** Create `docs/2026-10-18-vlm-context-pilot-acceptance.md`; update `docs/README.md`. Only synthetic fixtures/source/docs in Git.
 
-- [ ] Review the two recordings for passport provenance, create ignored manifest for the same 72 seconds and capture dry run. Expected: zero API calls.
-- [ ] Run at most six new calls, inspect raw/schema/content, then cache-only. Expected: zero new calls on replay; failures/unknowns remain visible, not silently retried. Record actual tokens/coverage/error comparison even if quality worsens.
-- [ ] Run processor/understanding/Qwen/v2 regression tests and browser-check report. Expected: green tests and accessible clips/feed.
-- [ ] Obtain fresh read-only final code review for changes since `2bebd2f`; fix material findings with RED→GREEN. Commit acceptance and verified changes; delete this plan's scratch ledger only after completion.
+- [x] Review the two recordings for passport provenance, create ignored manifest for the same 72 seconds and capture dry run. Expected: zero API calls.
+- [x] Run at most six new calls, inspect raw/schema/content, then cache-only. Expected: zero new calls on replay; failures/unknowns remain visible, not silently retried. Record actual tokens/coverage/error comparison even if quality worsens.
+- [x] Run processor/understanding/Qwen/v2 regression tests and browser-check report. Expected: green tests and accessible clips/feed.
+- [x] Obtain fresh read-only final code review for changes since `2bebd2f`; fix material findings with RED→GREEN. Commit acceptance and verified changes; delete this plan's scratch ledger only after completion.

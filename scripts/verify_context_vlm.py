@@ -35,6 +35,8 @@ def input_identity(manifest,client):
         if type(start) is not int or type(end) is not int or not 0<=start<end:raise ValueError('invalid interval')
         count+=(end-start+11999)//12000
         source=file_hash(Path(case['video']));p=validate_passport(case['passport'],source)
+        if any(i['source_sha256']==source and start<i['end_ms'] and i['start_ms']<end for i in identities):
+            raise ValueError('overlapping cases for the same source; use separate pilot workspaces')
         folder=Path(case['artifacts']);meta=json.loads((folder/'meta.json').read_text())
         if meta.get('source_sha256') and meta['source_sha256']!=source:raise ValueError('CV source mismatch')
         identities.append({'source_sha256':source,'start_ms':start,'end_ms':end,'passport':p,

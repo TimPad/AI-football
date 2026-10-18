@@ -13,7 +13,7 @@ SIGNALS={'ball_visible','active_ball_play','ball_outside_pitch','referee_stop_si
          'pressure_on_ball','defensive_closing','substitution_visible'}
 EVENT_GATES={
     'shot_candidate':{'ball_visible','kick_contact','ball_toward_goal'},
-    'save_candidate':{'ball_visible','ball_toward_goal','keeper_contact'},
+    'save_candidate':{'ball_visible','kick_contact','ball_toward_goal','keeper_contact'},
     'goal_candidate':{'ball_visible','goal_frame_visible','ball_enters_goal'},
     'kick_in':{'ball_visible','ball_outside_pitch','restart_contact'},
     'corner':{'ball_visible','ball_outside_pitch','restart_contact','restart_position'},
@@ -56,7 +56,7 @@ playing требует ball_visible И active_ball_play. Нет мяча — э�
 stoppage требует ball_outside_pitch ИЛИ referee_stop_signal вместе с players_stopped.
 Один свисток, неподвижность игроков или их расположение не устанавливают причину остановки.
 shot_candidate: ball_visible + kick_contact + ball_toward_goal; подход к воротам не удар.
-save_candidate: ball_visible + ball_toward_goal + keeper_contact. goal_candidate не официальный гол.
+save_candidate: ball_visible + kick_contact + ball_toward_goal + keeper_contact. goal_candidate не официальный гол.
 kick_in требует видимого выхода мяча/мяча вне поля и restart_contact. Не додумывай скрытый мяч.
 Событие с неполными основаниями можно оставить кандидатом с limitations; не придумывай сигналы.
 evidence_ids: clip и только переданные кропы. Номер читается только с кропа своего track_id;
