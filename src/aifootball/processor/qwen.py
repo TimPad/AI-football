@@ -85,13 +85,13 @@ class QwenClient:
         if len(raw)>12*1024*1024:raise QwenError('request_size')
         return raw
 
-    def infer(self,window:Window,prompt:str,*,max_output_tokens:int)->InferenceResult:
+    def infer(self,window:Window,prompt:str,*,max_output_tokens:int,response_sink=None)->InferenceResult:
         import anyio
         raw=self._body(window,prompt,max_output_tokens)
         # Async timeout bounds the entire operation, including a slow/never-ending stream.
-        return anyio.run(self._infer,raw)
+        return anyio.run(self._infer,raw,response_sink)
 
-    async def _infer(self,raw):
+    async def _infer(self,raw,response_sink=None):
         import httpx
         import anyio
         timeout=httpx.Timeout(60,connect=15,write=30,pool=10)
@@ -107,11 +107,11 @@ class QwenClient:
                             if retry_after is not None and not math.isfinite(retry_after):retry_after=None
                             raise QwenError(f'http_{status}',retryable=status==429 or status>=500,retry_after=retry_after,
                                             usage_unknown=status>=500)
-                        return await self._parse(response)
+                        return await self._parse(response,response_sink)
         except QwenError:raise
         except (httpx.HTTPError,TimeoutError):raise QwenError('transport',retryable=True,usage_unknown=True) from None
 
-    async def _parse(self,response):
+    async def _parse(self,response,response_sink=None):
         buffer=b'';data_lines=[];pieces=[];size=0;chunks=0;finished=False;done=False;usage=None;request_id=None;model=self.config.model
         def consume(data):
             nonlocal chunks,finished,done,usage,request_id,model
@@ -154,6 +154,9 @@ class QwenClient:
                 if line.startswith(b'data:'):data_lines.append(line[5:].lstrip(b' '))
                 elif not line and data_lines:consume(b'\n'.join(data_lines));data_lines=[]
         if buffer.strip() or data_lines or not done or not finished:raise QwenError('incomplete_stream',usage_unknown=True)
-        try:document=load_json(''.join(pieces).encode(),'Qwen content')
+        content=''.join(pieces)
+        if response_sink is not None:
+            response_sink({'content':content,'usage':usage,'request_id':request_id,'model':model})
+        try:document=load_json(content.encode(),'Qwen content')
         except ValueError:raise QwenError('response_json',usage_unknown=True) from None
         return InferenceResult(document,usage,request_id,model)

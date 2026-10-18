@@ -137,3 +137,22 @@ def test_frame_labels_give_only_window_time_to_avoid_absolute_answers(frame_wind
         return httpx.Response(200,content=sse(completed('{"events":[]}')))
     client(respond).infer(frame_window,'Return JSON',max_output_tokens=512)
     assert labels and all('video_ms' not in label and 'window_ms' in label for label in labels)
+
+
+def test_complete_raw_answer_and_usage_are_saved_before_json_validation(frame_window):
+    from aifootball.processor.qwen import QwenError
+    receipts=[]
+    with pytest.raises(QwenError,match='response_json'):
+        client(lambda req:httpx.Response(200,content=sse(completed('{bad}')))).infer(
+            frame_window,'JSON',max_output_tokens=512,response_sink=receipts.append)
+    assert receipts[0]['content']=='{bad}'
+    assert receipts[0]['usage']['prompt_tokens']==10 and receipts[0]['request_id']=='request-1'
+
+
+def test_raw_receipt_callback_does_not_receive_auth_or_input(frame_window):
+    receipts=[]
+    result=client(lambda req:httpx.Response(200,content=sse(completed()))).infer(
+        frame_window,'JSON private input',max_output_tokens=512,response_sink=receipts.append)
+    assert result.document=={'events':[]}
+    assert set(receipts[0])=={'content','usage','request_id','model'}
+    assert 'test-key' not in json.dumps(receipts) and 'private input' not in json.dumps(receipts)
