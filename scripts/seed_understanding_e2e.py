@@ -1,5 +1,6 @@
 """Seed synthetic understanding through the dedicated localhost E2E API only."""
 import argparse
+import os
 import json
 from pathlib import Path
 import sys
@@ -10,9 +11,11 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tests'))
 from test_understanding_exchange import result_v2
 
 parser=argparse.ArgumentParser();parser.add_argument('--review',action='store_true');args=parser.parse_args()
-with httpx.Client(base_url='http://127.0.0.1:8181',trust_env=False,timeout=30) as client:
-    response=client.post('/api/v1/auth/login',json={'login':'e2e-analyst','password':'e2e-only-password'},headers={'Origin':'http://127.0.0.1:8181'})
-    response.raise_for_status();client.headers.update({'Origin':'http://127.0.0.1:8181','X-CSRF-Token':response.json()['csrf_token']})
+base_url='http://127.0.0.1:'+str(int(os.environ.get('AIF_E2E_PORT','8181')))
+if not os.environ.get('AIF_E2E_DATABASE_NAME','aifootball_e2e').endswith('_e2e'):raise SystemExit('Dedicated E2E database required')
+with httpx.Client(base_url=base_url,trust_env=False,timeout=30) as client:
+    response=client.post('/api/v1/auth/login',json={'login':'e2e-analyst','password':'e2e-only-password'},headers={'Origin':base_url})
+    response.raise_for_status();client.headers.update({'Origin':base_url,'X-CSRF-Token':response.json()['csrf_token']})
     def call(path,data,method='POST'):
         response=client.request(method,'/api/v1'+path,json=data)
         if not response.is_success:raise RuntimeError(f'E2E seed failed: {path} ({response.status_code})')
