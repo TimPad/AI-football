@@ -142,6 +142,8 @@ def main(argv=None):
             predicted = predicted_seconds(states, reference)
             add(run['name'], 'span', fid, reference, predicted)
             shots = [s for s in f['shots'] if span[0] <= s['ts'] < span[1]]
+            # Кандидаты вне интервала сравнения не должны снижать точность ударов.
+            events = [e for e in events if span[0] * 1000 <= e['start_ms'] < span[1] * 1000]
             interval = stoppage_interval_recall(f['dead'], predicted)
             runs.setdefault(run['name'], {})[fid] = {
                 'windows': windows, 'score': score_seconds(reference, predicted), 'dead_intervals': interval,
