@@ -22,6 +22,8 @@ class CaptainToken(Entity,Base):
     __tablename__='captain_tokens'
     account_id=Column(Uuid,ForeignKey('captain_accounts.id'),nullable=False)
     purpose=Column(String(20),nullable=False)
+    registration_password_hash=Column(String)
+    registration_display_name=Column(String(200))
     token_hash=Column(String(64),nullable=False,unique=True)
     security_revision=Column(Integer,nullable=False)
     expires_at=Column(DateTime(timezone=True),nullable=False)

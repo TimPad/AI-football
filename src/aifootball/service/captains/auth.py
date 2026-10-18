@@ -21,9 +21,9 @@ MESSAGE={'message':'Если адрес подходит для продолже
 
 def digest(settings,data):
     return hmac.new(settings.captain_mail_key.encode(),json.dumps(data.model_dump(mode='json'),sort_keys=True).encode(),hashlib.sha256).hexdigest()
-def issue_token(db,app,account,purpose):
+def issue_token(db,app,account,purpose,*,password_hash=None,display_name=None):
     token=token_urlsafe(32);expires=utcnow()+({'verify':timedelta(hours=24),'reset':timedelta(minutes=30)}[purpose])
-    db.add(CaptainToken(account_id=account.id,purpose=purpose,token_hash=token_hash(token),security_revision=account.security_revision,expires_at=expires))
+    db.add(CaptainToken(account_id=account.id,purpose=purpose,registration_password_hash=password_hash,registration_display_name=display_name,token_hash=token_hash(token),security_revision=account.security_revision,expires_at=expires))
     enqueue(db,app,purpose,account.email,token,expires)
 
 @router.post('/register',response_model=MessageView,status_code=202)
@@ -40,7 +40,7 @@ def register(data:Register,request:Request):
         account=db.scalar(select(CaptainAccount).where(CaptainAccount.email==data.email))
         if account is None:
             account=CaptainAccount(email=data.email,display_name=data.display_name.strip(),password_hash=password_hash);db.add(account);db.flush()
-        if account.active and account.verified_at is None:issue_token(db,request.app,account,'verify')
+        if account.active and account.verified_at is None:issue_token(db,request.app,account,'verify',password_hash=password_hash,display_name=data.display_name.strip())
         db.add(CaptainAuthCommand(request_id=data.request_id,request_hash=hashed,response=MESSAGE))
     return MESSAGE
 
@@ -57,6 +57,12 @@ def consume(db,request,data,purpose):
         raise DomainError('token_used','Ссылка уже использована',status=409)
     account=db.scalar(select(CaptainAccount).where(CaptainAccount.id==token.account_id).with_for_update())
     if token.expires_at<=utcnow() or not account.active or token.security_revision!=account.security_revision:raise DomainError('token','Ссылка недействительна или устарела',status=422)
+    if purpose=='verify':
+        if account.verified_at is not None or not token.registration_password_hash or not token.registration_display_name:
+            raise DomainError('token','Ссылка устарела. Повторите регистрацию и используйте новое письмо.',status=422)
+        account.password_hash=token.registration_password_hash
+        account.display_name=token.registration_display_name
+        token.registration_password_hash=None;token.registration_display_name=None
     token.used_at=utcnow();token.used_request_id=data.request_id;token.used_hash=hashed
     return account
 
@@ -65,7 +71,8 @@ def verify(data:TokenInput,request:Request):
     check_origin(request,required=True);throttle(request,'verify',limit=20)
     with Session(request.app.state.engine) as db,db.begin():
         account=consume(db,request,data,'verify')
-        if account:account.verified_at=account.verified_at or utcnow()
+        if account:
+            account.verified_at=utcnow();account.security_revision+=1
     return {'message':'Email подтверждён. Войдите в кабинет команды.'}
 
 @router.post('/login',response_model=CaptainSessionView)

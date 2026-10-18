@@ -186,3 +186,19 @@ def test_one_entry_import_needs_no_team_column(admin_client, tournament_factory)
     assert commit(admin_client, state).status_code == 200
     assert len(admin_client.get(f"/api/v1/entries/{entry['id']}/players").json()['players']) == 1
     assert admin_client.get(f"/api/v1/teams/{team['id']}").json()['players'] == []
+
+
+def test_excel_error_cells_require_correction_or_exclusion(admin_client):
+    team=admin_client.post('/api/v1/teams',json={'name':'Ошибки Excel'}).json()
+    mapping={'name':0,'shirt_number':1}
+    source=upload(admin_client,team['id'],[['ФИО','Номер'],['#N/A','7'],['Хорошая строка','8']],'team')
+    state=preview(admin_client,source,mapping)
+    assert not state['can_commit']
+    assert any('Excel' in issue for issue in state['rows'][0]['issues'])
+    assert not state['rows'][1]['issues'] and state['rows'][1]['source_row']==3
+    assert commit(admin_client,state).status_code==422
+    excluded=preview(admin_client,state,mapping,excluded_rows=[state['rows'][0]['id']]);assert excluded['can_commit']
+    fixed=preview(admin_client,excluded,mapping,edits={state['rows'][0]['id']:{'name':'Исправленное имя'}})
+    assert fixed['can_commit'];r=commit(admin_client,fixed);assert r.status_code==200,r.text
+    assert r.json()['players_created']==2
+    assert '#N/A' not in admin_client.get('/api/v1/players').text

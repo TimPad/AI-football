@@ -61,6 +61,8 @@ def mutate(db, match_id, run_id, actor_id, data, kind):
                           events=deepcopy(source.events),
                           understanding_reviews=deepcopy(source.understanding_reviews))
         db.add(run); db.flush()
+        from aifootball.service.analysis.team_review.queries import obsolete_prior_tasks
+        obsolete_prior_tasks(db,run)
         for assignment in db.scalars(select(AnalysisAssignment).where(AnalysisAssignment.run_id == source.id)):
             db.add(AnalysisAssignment(run_id=run.id, track_id=assignment.track_id,
                                       player_id=assignment.player_id, excluded_reason=assignment.excluded_reason))

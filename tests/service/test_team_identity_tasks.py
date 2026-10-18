@@ -60,3 +60,29 @@ def test_reading_a_task_does_not_lock_match_and_missing_camera_is_obsolete(admin
     with Session(admin_client.app.state.engine) as db,db.begin():db.get(Match,analytics_match['id']).camera_profile_id=None
     response=cap.get('/api/v1/captain/identity-tasks/'+task['id']);assert response.status_code==200,response.text
     assert response.json()['status']=='obsolete'
+
+
+import pytest
+@pytest.mark.parametrize('replacement',['import','review'])
+def test_replacement_run_obsoletes_old_task_and_prevents_reissue(admin_client,analytics_match,replacement):
+    from .test_analysis_assignments import command
+    cap,team_id,_=owner(admin_client,analytics_match)
+    source=save_assignments(admin_client,analytics_match,import_run(admin_client,analytics_match)).json()
+    if replacement=='review':
+        source=command(admin_client,analytics_match,source,'confirm').json()
+        source=command(admin_client,analytics_match,source,'publish').json()
+        run=command(admin_client,analytics_match,source,'reviews').json()
+    else:run=source
+    task=issue(admin_client,analytics_match,run,team_id).json();path='/api/v1/captain/identity-tasks/'+task['id']
+    if replacement=='review':new=command(admin_client,analytics_match,source,'reviews').json()
+    else:new=import_run(admin_client,analytics_match)
+    assert new['id']!=run['id']
+    assert cap.get(path).json()['status']=='obsolete'
+    assert cap.get(path+'/tracks/1/thumbnail').status_code==409
+    assert cap.put(path+'/draft',json={'request_id':str(uuid4()),'expected_revision':task['revision'],'decisions':[]}).status_code==409
+    assert cap.post(path+'/confirm',json={'request_id':str(uuid4()),'expected_revision':task['revision']}).status_code==409
+    old=admin_client.get(f"/api/v1/matches/{analytics_match['id']}/analysis/runs/{run['id']}").json()
+    assert issue(admin_client,analytics_match,old,team_id).status_code==409
+    if replacement=='review':
+        history=admin_client.get(f"/api/v1/matches/{analytics_match['id']}/analysis/runs/{source['id']}").json()
+        assert history['status']=='confirmed' and history['published_run_id']==source['id']

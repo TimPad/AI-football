@@ -1,6 +1,6 @@
 import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
-import {MemoryRouter} from 'react-router-dom';
+import {MemoryRouter,Routes,Route,useNavigate} from 'react-router-dom';
 import {PublicMatchCenter} from './PublicMatchCenter';
 const t={id:'a',name:'Кубок',season:'2026'},u={...t,id:'b'};
 const match=(id:string,tournament=t)=>({id,tournament,home_name:'Север '+id,away_name:'Юг',scheduled_at:'2026-10-20T18:00:00Z',status:'scheduled',score:{home:null,away:null}});
@@ -18,4 +18,15 @@ it('does not show a stale day under a newly selected date',async()=>{
  render(<MemoryRouter initialEntries={['/?day=2026-10-20']}><PublicMatchCenter/></MemoryRouter>);await screen.findByText('Север old');
  fireEvent.click(screen.getByRole('button',{name:'Следующий день'}));expect(screen.queryByText('Север old')).not.toBeInTheDocument();
  await waitFor(()=>expect(release).toBeDefined());release!(new Response(JSON.stringify({...day([]),day:'2026-10-21'})));await screen.findByText(/матчей нет/);
+});
+
+it('restores loaded pages when returning from a match and refreshes them together',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async input=>{const path=String(input);return new Response(JSON.stringify(path.includes('/ratings')?{items:[],snapshot_id:null}:path.includes('/upcoming')?{items:[]}:path.includes('/tournaments?')?{items:[t],total:1}:path.includes('cursor=next')?day([match('2')]):day([match('1')],'next')))}));
+ function Back(){const go=useNavigate();return <button onClick={()=>go(-1)}>Вернуться</button>}
+ render(<MemoryRouter initialEntries={['/?day=2026-10-20']}><Routes><Route path="/" element={<PublicMatchCenter/>}/><Route path="/watch/matches/:id" element={<Back/>}/></Routes></MemoryRouter>);
+ await screen.findByRole('button',{name:'Ещё матчи'});fireEvent.click(screen.getByRole('button',{name:'Ещё матчи'}));
+ fireEvent.click(await screen.findByRole('link',{name:'Открыть матч Север 2 — Юг'}));fireEvent.click(screen.getByRole('button',{name:'Вернуться'}));
+ await screen.findByRole('link',{name:'Открыть матч Север 2 — Юг'});
+ fireEvent.click(screen.getByRole('button',{name:'Обновить матчи'}));await waitFor(()=>expect(screen.queryByText('Загружаем…')).toBeNull());
+ expect(screen.getAllByRole('link',{name:/Открыть матч Север/})).toHaveLength(2);
 });

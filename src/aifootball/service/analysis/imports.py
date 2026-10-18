@@ -45,4 +45,6 @@ def import_result(db, match_id, actor_id, request_id, result, root, created_path
                           report=result.report, tracks=result.tracks, checks=result.checks, understanding=result.understanding,
                           events=result.events)
         db.add(run); db.flush()
+        from aifootball.service.analysis.team_review.queries import obsolete_prior_tasks
+        obsolete_prior_tasks(db,run)
     return remember(db, match_id, actor_id, request_id, hashed, run_view(db, run))

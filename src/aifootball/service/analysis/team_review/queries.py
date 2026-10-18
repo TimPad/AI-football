@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select,update
 from aifootball.service.analysis.models import AnalysisJob,AnalysisRun,AnalysisAssignment
 from aifootball.service.analysis.context import context_hash,build_context
 from aifootball.service.captains.models import TeamCaptainGrant
@@ -27,9 +27,19 @@ def assignment_fingerprint(db,run,track_ids):
     rows=db.scalars(select(AnalysisAssignment).where(AnalysisAssignment.run_id==run.id,AnalysisAssignment.track_id.in_(track_ids)).order_by(AnalysisAssignment.track_id)).all()
     return context_hash([{'track_id':a.track_id,'player_id':str(a.player_id) if a.player_id else None,'excluded_reason':a.excluded_reason} for a in rows])
 
+def latest_run_id(db,match_id):
+    return db.scalar(select(AnalysisRun.id).where(AnalysisRun.match_id==match_id).order_by(AnalysisRun.created_at.desc(),AnalysisRun.id.desc()).limit(1))
+
+def obsolete_prior_tasks(db,run):
+    # Caller holds the match lock, as do captain writes. Immutable side
+    # confirmations and published/confirmed run contents are untouched.
+    prior=select(AnalysisRun.id).where(AnalysisRun.match_id==run.match_id,AnalysisRun.id!=run.id)
+    db.execute(update(TeamIdentityReviewTask).where(TeamIdentityReviewTask.run_id.in_(prior),TeamIdentityReviewTask.status.in_(['open','needs_material_fix','team_confirmed'])).values(status='obsolete',revision=TeamIdentityReviewTask.revision+1))
+
 def task_status(db,task,run=None,job=None):
     if task.status in ('revoked','obsolete'):return task.status
     run=run or get_entity(db,AnalysisRun,task.run_id);job=job or get_entity(db,AnalysisJob,run.job_id)
+    if latest_run_id(db,run.match_id)!=run.id:return 'obsolete'
     try:
         current=side_material(run,job,task.side)[3]
         live_hash=context_hash(build_context(db,run.match_id,lock=False))

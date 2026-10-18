@@ -34,7 +34,7 @@ test('team sheet, images, draft recovery, safe retry and tournament identity',as
  await page.setViewportSize({width:1440,height:1000});
  await page.goto(`/tournaments/${tournament.tid}?tab=teams`);await page.getByRole('button',{name:'Выбрать существующие',exact:true}).click();await page.getByLabel(name,{exact:true}).check();await page.getByRole('button',{name:/Добавить выбранные/}).click();
  await page.getByRole('row').filter({has:page.getByRole('cell',{name,exact:true})}).getByRole('link',{name:'Игроки и номера →',exact:true}).click();
- await expect(page.getByRole('checkbox',{name:person,exact:true})).toBeChecked();await expect(page.getByLabel(`Номер ${person}`,{exact:true})).toHaveValue('7');
+ await expect(page.getByRole('region',{name:'Текущая заявка',exact:true}).getByText(person,{exact:true})).toBeVisible();await expect(page.getByLabel(`Номер ${person}`,{exact:true})).toHaveValue('7');
  const rosterPath=new URL(page.url()).pathname.split('/');const entryId=rosterPath[rosterPath.length-1];
  const roster=await (await page.request.get(`/api/v1/entries/${entryId}/players`)).json();expect(roster.players[0].player_id).toBe(playerId);
  // Existing player selection adds membership, not another person.

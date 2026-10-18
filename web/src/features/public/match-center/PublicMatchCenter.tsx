@@ -1,4 +1,4 @@
-import {useState,useEffect,type FormEvent} from 'react';
+import {useState,useEffect,useRef,type FormEvent} from 'react';
 import {Link} from 'react-router-dom';
 import {Search,RefreshCw} from 'lucide-react';
 import type {PublicMatch,PublicTournament} from '../../../api/domain';
@@ -45,17 +45,28 @@ export function PublicMatchCenter(){
 }
 
 function DayMatches({query,tick,day,onFirst}:{query:string,tick:number,day:string,onFirst:(id:string)=>void}){
- const [params,update]=useQueryPatch();const [cursor,setCursor]=useState('');const [data,setData]=useState<Day>();const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(true);const [retry,setRetry]=useState(0);
- useEffect(()=>{const controller=new AbortController();setBusy(true);setError(undefined);
-  api<Day>(`/public/matches?${query}${cursor?`&cursor=${encodeURIComponent(cursor)}`:''}`,{signal:controller.signal}).then(page=>{if(controller.signal.aborted)return;setData(old=>cursor&&old?{...page,tournament_totals:{...old.tournament_totals,...page.tournament_totals},items:[...new Map([...old.items,...page.items].map(m=>[m.id,m])).values()]}:page);setBusy(false)}).catch(e=>{if(!controller.signal.aborted){setError(e);setBusy(false)}});return()=>controller.abort();
- },[query,cursor,tick,retry]);
+ const [params,update]=useQueryPatch();const [data,setData]=useState<Day>();const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(true);const [retry,setRetry]=useState(0);
+ const pages=useRef(1);const pending=useRef<AbortController|null>(null);
+ const merge=(old:Day|undefined,page:Day):Day=>old?{...page,tournament_totals:{...old.tournament_totals,...page.tournament_totals},items:[...new Map([...old.items,...page.items].map(m=>[m.id,m])).values()]}:page;
+ useEffect(()=>{const controller=new AbortController();pending.current=controller;setBusy(true);setError(undefined);
+  // Restore depth from fresh public reads, rather than retaining withdrawn data.
+  let depth=pages.current;try{depth=Math.max(depth,Math.min(100,Math.max(1,Number(sessionStorage.getItem(`aifootball:calendar-pages:${query}`))||1)))}catch{}
+  void (async()=>{let combined:Day|undefined;let count=0;
+   do{const cursor=combined?.next_cursor;const page:Day=await api<Day>(`/public/matches?${query}${cursor?`&cursor=${encodeURIComponent(cursor)}`:''}`,{signal:controller.signal});if(controller.signal.aborted)return;combined=merge(combined,page);count++}while(count<depth&&combined.next_cursor);
+   pages.current=count;setData(combined);setBusy(false);
+  })().catch(e=>{if(!controller.signal.aborted){setError(e);setBusy(false)}});
+  return()=>{controller.abort();pending.current?.abort()};
+ },[query,tick,retry]);
+ async function more(){if(busy||!data?.next_cursor)return;const controller=new AbortController();pending.current=controller;setBusy(true);setError(undefined);
+  try{const page=await api<Day>(`/public/matches?${query}&cursor=${encodeURIComponent(data.next_cursor)}`,{signal:controller.signal});if(controller.signal.aborted)return;pages.current++;setData(old=>merge(old,page));setBusy(false)}catch(e){if(!controller.signal.aborted){setError(e);setBusy(false)}}
+ }
  useEffect(()=>{if(data?.items[0])onFirst(data.items[0].tournament.id)},[data?.items[0]?.tournament.id]);
- useEffect(()=>{if(data&&!cursor){try{const y=Number(sessionStorage.getItem(`aifootball:calendar-scroll:${query}`));if(y>0)window.scrollTo(0,y)}catch{}}},[!!data]);
+ useEffect(()=>{if(data){try{const y=Number(sessionStorage.getItem(`aifootball:calendar-scroll:${query}`));if(y>0)window.scrollTo(0,y)}catch{}}},[!!data]);
  if(!data)return <Loading error={error} retry={()=>setRetry(n=>n+1)}/>;
  const groups=new Map<string,{tournament:PublicTournament,items:PublicMatch[]}>();for(const m of data.items){let group=groups.get(m.tournament.id);if(!group){group={tournament:m.tournament,items:[]};groups.set(m.tournament.id,group)}group.items.push(m)}
  const closed=(params.get('closed')??'').split(',').filter(Boolean);
  return <><div className="center-count muted small">Найдено: {data.total} · Получено в {new Date(data.generated_at).toLocaleTimeString('ru-RU',{timeZone:'Europe/Moscow',hour:'2-digit',minute:'2-digit'})}</div>
-  {!data.items.length?<Empty>{new Date(day+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} матчей нет. Выберите другой день или измените фильтры.</Empty>:[...groups.values()].map(g=><TournamentMatchGroup key={g.tournament.id} {...g} total={data.tournament_totals[g.tournament.id]??g.items.length} closed={closed.includes(g.tournament.id)} onToggle={()=>update({closed:(closed.includes(g.tournament.id)?closed.filter(id=>id!==g.tournament.id):[...closed,g.tournament.id]).join(',')||null},{replace:true})} onOpen={()=>{try{sessionStorage.setItem(`aifootball:calendar-scroll:${query}`,String(window.scrollY))}catch{}}}/>)}
-  <ErrorBox error={error}/>{error&&<button onClick={()=>setRetry(n=>n+1)}>Повторить загрузку матчей</button>}{data.next_cursor&&<button className="center-more" disabled={busy} onClick={()=>setCursor(data.next_cursor!)}>{busy?'Загружаем…':'Ещё матчи'}</button>}
+  {!data.items.length?<Empty>{new Date(day+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} матчей нет. Выберите другой день или измените фильтры.</Empty>:[...groups.values()].map(g=><TournamentMatchGroup key={g.tournament.id} {...g} total={data.tournament_totals[g.tournament.id]??g.items.length} closed={closed.includes(g.tournament.id)} onToggle={()=>update({closed:(closed.includes(g.tournament.id)?closed.filter(id=>id!==g.tournament.id):[...closed,g.tournament.id]).join(',')||null},{replace:true})} onOpen={()=>{try{sessionStorage.setItem(`aifootball:calendar-scroll:${query}`,String(window.scrollY));sessionStorage.setItem(`aifootball:calendar-pages:${query}`,String(pages.current))}catch{}}}/>)}
+  <ErrorBox error={error}/>{error&&<button onClick={()=>setRetry(n=>n+1)}>Повторить загрузку матчей</button>}{data.next_cursor&&<button className="center-more" disabled={busy} onClick={()=>void more()}>{busy?'Загружаем…':'Ещё матчи'}</button>}
  </>;
 }

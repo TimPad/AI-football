@@ -205,6 +205,8 @@ def build_preview(db, session, data):
             issues.append(str(exc) if not isinstance(exc, ValidationError) else 'Проверьте ФИО, номер, амплуа, дату рождения, рост и вес')
         if any(index in source.get('formulas', []) and field not in edits for field, index in data.mapping.items()):
             issues.append('В выбранных столбцах есть формула. Замените её значением')
+        if any(index in source.get('errors', []) and field not in edits for field, index in data.mapping.items()):
+            issues.append('В выбранных столбцах есть ошибка Excel. Исправьте значение или исключите строку')
         rows.append({'id': source['id'], 'source_row': source['source_row'], 'name': name,
             'team_name': team_name, 'shirt_number': number, 'player_id': player_id, 'team_id': team_id,
             'is_new_player': is_new, 'is_new_team': team is None, 'details': details,

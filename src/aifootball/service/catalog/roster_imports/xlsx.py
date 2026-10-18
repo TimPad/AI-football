@@ -38,11 +38,13 @@ def read_workbook(content: bytes, filename: str) -> dict:
                 sheet.reset_dimensions()
                 rows = []
                 for source_row, cells in enumerate(sheet.iter_rows(max_row=PHYSICAL_ROW_LIMIT, max_col=COLUMN_LIMIT), 1):
-                    values, formulas = [], []
+                    values, formulas, errors = [], [], []
                     for column, cell in enumerate(cells):
                         value = cell.value
                         if cell.data_type == 'f':
                             formulas.append(column)
+                        if cell.data_type == 'e':
+                            errors.append(column)
                         if isinstance(value, datetime):
                             value = value.date().isoformat()
                         elif isinstance(value, date):
@@ -60,7 +62,7 @@ def read_workbook(content: bytes, filename: str) -> dict:
                     if count > ROW_LIMIT:
                         raise DomainError('xlsx_rows', 'В книге разрешено не более 1 000 непустых строк состава')
                     rows.append({'id': f'{sheet_index}:{source_row}', 'source_row': source_row,
-                                 'cells': values, 'formulas': formulas})
+                                 'cells': values, 'formulas': formulas, 'errors': errors})
                 if rows:
                     result.append({'name': sheet.title, 'rows': rows})
             if not result:

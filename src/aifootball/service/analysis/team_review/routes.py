@@ -18,7 +18,7 @@ from aifootball.service.analysis.context import build_context,context_hash
 from aifootball.service.analysis.storage import read_file
 from .models import TeamIdentityReviewTask
 from .schemas import TeamTaskCreate,TeamTaskView,TeamTaskList,TeamTaskDraft,TeamTaskCommand,AdminSideConfirmation,TeamSideStatuses
-from .queries import side_material,assignment_fingerprint,task_status,task_view,scoped_task
+from .queries import side_material,assignment_fingerprint,task_status,task_view,scoped_task,latest_run_id
 from .confirmations import save_draft,confirm_team,corrections,admin_confirm_side,side_statuses
 
 router=APIRouter()
@@ -38,7 +38,7 @@ def admin_side_confirm(mid:UUID,rid:UUID,data:AdminSideConfirmation,admin=Depend
         return remember(db,mid,admin.id,data.request_id,digest,result)
 
 def captain_mutation(db,captain,task_id,data,kind,execute):
-    scoped_task(db,captain,task_id)  # Recheck current access before even replaying a committed command.
+    scoped_task(db,captain,task_id,current=True)  # Recheck current access before even replaying a committed command.
     return captain_command(db,captain.id,data.request_id,'identity_'+kind,{'task_id':str(task_id),**data.model_dump(mode='json',exclude={'request_id'})},lambda:execute(db,captain,task_id,data))
 
 @router.put('/captain/identity-tasks/{task_id}/draft',response_model=TeamTaskView)
@@ -61,6 +61,7 @@ def create_task(mid:UUID,rid:UUID,data:TeamTaskCreate,admin=Depends(require_anal
         get_entity(db,Match,mid,lock=True);run=get_entity(db,AnalysisRun,rid,lock=True)
         if run.match_id!=mid:raise DomainError('not_found','Отчёт не найден',status=404)
         if run.revision!=data.expected_run_revision:raise DomainError('revision_conflict','Проверка изменилась. Обновите страницу.',status=409)
+        if latest_run_id(db,mid)!=run.id:raise DomainError('obsolete_run','Есть новый результат. Выдайте задание из актуальной версии.',status=409)
         if run.status!='review':raise DomainError('immutable_analysis','Создайте новую версию проверки',status=409)
         if not run.side_map_verified:raise DomainError('sides_unverified','Сначала подтвердите соответствие команд A/B',status=409)
         job=get_entity(db,AnalysisJob,run.job_id)

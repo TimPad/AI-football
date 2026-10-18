@@ -64,3 +64,23 @@ def test_encrypted_outbox_retries_with_stable_message_id_then_erases_payload(cli
     client.app.state.mail_sender=sender;assert deliver_pending(client.app)==1
     assert sender.messages[0]['key']==identifier
     with Session(client.app.state.engine) as db:assert db.query(MailOutbox).one().encrypted_payload is None
+
+
+def test_verification_uses_its_registration_credentials_and_invalidates_siblings(client):
+    from fastapi.testclient import TestClient
+    configure_mail(client.app)
+    c=TestClient(client.app);c.headers['Origin']=client.app.state.settings.allowed_origin
+    email='registration-owner@example.test'
+    tokens=[]
+    for name,password in [('Первый чужой','attacker-chosen-password'),('Владелец','owner-chosen-password'),('Поздний чужой','later-attacker-password')]:
+        assert c.post(AUTH+'/register',json={'request_id':str(uuid4()),'email':email,'display_name':name,'password':password}).status_code==202
+        tokens.append(delivered_token(client.app))
+    body={'request_id':str(uuid4()),'token':tokens[1]}
+    assert c.post(AUTH+'/verify',json=body).status_code==200
+    assert c.post(AUTH+'/login',json={'email':email,'password':'attacker-chosen-password'}).status_code==401
+    assert c.post(AUTH+'/login',json={'email':email,'password':'later-attacker-password'}).status_code==401
+    login=c.post(AUTH+'/login',json={'email':email,'password':'owner-chosen-password'});assert login.status_code==200,login.text
+    assert login.json()['display_name']=='Владелец'
+    for token in (tokens[0],tokens[2]):assert c.post(AUTH+'/verify',json={'request_id':str(uuid4()),'token':token}).status_code==422
+    assert c.post(AUTH+'/verify',json=body).status_code==200
+    assert c.post(AUTH+'/login',json={'email':email,'password':'owner-chosen-password'}).status_code==200
