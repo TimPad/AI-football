@@ -1,5 +1,6 @@
+import {publicForward} from '../navigation/publicContext';
 import type {ReactNode} from 'react';
-import {Link} from 'react-router-dom';
+import {Link,useLocation} from 'react-router-dom';
 import type {MatchRatingsView,PublicMatch,PublicProtocol} from '../../api/domain';
 import {PitchMap} from '../../components/pitch/PitchMap';
 import {sharedHeatmapMax} from '../../components/pitch/heatmap';
@@ -47,6 +48,7 @@ function Readiness({model}:{model:ReportModel}){
 
 function Inspector({row,origin,model,match,onSelect,onClose,onCurrentEdition,historyHref,audience}:{row:RosterRow|null;origin:PlayerSelection['origin'];
  model:ReportModel;match:PublicMatch;onSelect:(s:PlayerSelection)=>void;onClose:()=>void;onCurrentEdition:()=>void;historyHref:(id:string)=>string;audience:'public'|'cabinet'}){
+ const location=useLocation();
  if(!row)return <PlayerInspector title="Игрок" onClose={onClose}><p className="muted">Этого игрока нет в опубликованных данных матча.</p></PlayerInspector>;
  const cv=ready(model.cv);const ratings=ready(model.ratings);
  const rows=ratings?.items.filter(r=>r.player_id===row.playerId)??[];
@@ -74,7 +76,7 @@ function Inspector({row,origin,model,match,onSelect,onClose,onCurrentEdition,his
      {cvPlayer&&<button className="btn-link" onClick={()=>onSelect({playerId:row.playerId,origin:'cv'})}>Открыть карту по видео</button>}</div>
    :<p className="muted">Нет наблюдений этого игрока в опубликованном видеоанализе.</p>}
   </section>
-  <Link className="history-link" to={historyHref(row.playerId)}>История турнира →</Link>
+  <Link className="history-link" to={historyHref(row.playerId)} state={audience==='public'?publicForward(location.state,'match',location.pathname+location.search):undefined}>{audience==='public'?'Карточка игрока и история →':'История турнира →'}</Link>
  </PlayerInspector>;
 }
 

@@ -100,3 +100,11 @@ it('draws slot heights proportional to time and keeps overlaps side by side',()=
  // Высота задаётся ячейкам: строка с display:contents её не передаёт.
  expect(parseFloat(container.querySelector<HTMLElement>('.time-column')!.style.height)).toBe(180*1.6);
 });
+
+it('filters teams by stable identity and provides public profile links',()=>{
+ const items=matches.map((m,i)=>({...m,home_team_id:`home-${i}`,away_team_id:`away-${i}`}));
+ render(<MemoryRouter initialEntries={['/t?team_id=home-1']}><Schedule matches={items} timezone="Europe/Moscow" teamHref={id=>`/teams/${id}`}/></MemoryRouter>);
+ expect(screen.getByLabelText('Фильтр по команде')).toHaveValue('home-1');
+ expect(screen.queryByRole('link',{name:/Север — Юг/})).toBeNull();
+ expect(screen.getByRole('link',{name:'Восток'})).toHaveAttribute('href','/teams/home-1');
+});

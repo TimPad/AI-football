@@ -2220,6 +2220,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/tournaments/{tid}/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Teams */
+        get: operations["public_teams_api_v1_public_tournaments__tid__teams_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/tournaments/{tid}/teams/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Team */
+        get: operations["public_team_api_v1_public_tournaments__tid__teams__team_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/players/{player_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Player */
+        get: operations["public_player_api_v1_public_players__player_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -4815,10 +4866,38 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[PublicAppearance] */
+        Page_PublicAppearance_: {
+            /** Items */
+            items: components["schemas"]["PublicAppearance"][];
+            /** Total */
+            total: number;
+        };
         /** Page[PublicMatch] */
         Page_PublicMatch_: {
             /** Items */
             items: components["schemas"]["PublicMatch"][];
+            /** Total */
+            total: number;
+        };
+        /** Page[PublicPlayerTeam] */
+        Page_PublicPlayerTeam_: {
+            /** Items */
+            items: components["schemas"]["PublicPlayerTeam"][];
+            /** Total */
+            total: number;
+        };
+        /** Page[PublicRosterPlayer] */
+        Page_PublicRosterPlayer_: {
+            /** Items */
+            items: components["schemas"]["PublicRosterPlayer"][];
+            /** Total */
+            total: number;
+        };
+        /** Page[PublicTeamSummary] */
+        Page_PublicTeamSummary_: {
+            /** Items */
+            items: components["schemas"]["PublicTeamSummary"][];
             /** Total */
             total: number;
         };
@@ -5727,6 +5806,49 @@ export interface components {
             /** Players */
             players: components["schemas"]["PublicPlayer"][];
         };
+        /** PublicAppearance */
+        PublicAppearance: {
+            /**
+             * Match Id
+             * Format: uuid
+             */
+            match_id: string;
+            /**
+             * Protocol Public Id
+             * Format: uuid
+             */
+            protocol_public_id: string;
+            /**
+             * Tournament Id
+             * Format: uuid
+             */
+            tournament_id: string;
+            /** Tournament Name */
+            tournament_name: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Team Id
+             * Format: uuid
+             */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /** Display Name */
+            display_name: string;
+            /** Shirt Number */
+            shirt_number?: string | null;
+            /**
+             * Scheduled At
+             * Format: date-time
+             */
+            scheduled_at: string;
+            /**
+             * Published At
+             * Format: date-time
+             */
+            published_at: string;
+        };
         /** PublicCard */
         PublicCard: {
             /**
@@ -6056,6 +6178,37 @@ export interface components {
             side: "home" | "away";
             metrics: components["schemas"]["PublicMetrics"];
         };
+        /** PublicPlayerProfile */
+        PublicPlayerProfile: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Display Name */
+            display_name: string;
+            /** Tournament Id */
+            tournament_id?: string | null;
+            teams: components["schemas"]["Page_PublicPlayerTeam_"];
+            appearances: components["schemas"]["Page_PublicAppearance_"];
+        };
+        /** PublicPlayerTeam */
+        PublicPlayerTeam: {
+            /**
+             * Team Id
+             * Format: uuid
+             */
+            team_id: string;
+            /** Team Name */
+            team_name: string;
+            /**
+             * Tournament Id
+             * Format: uuid
+             */
+            tournament_id: string;
+            /** Tournament Name */
+            tournament_name: string;
+        };
         /** PublicProtocol */
         PublicProtocol: {
             /** Number */
@@ -6093,6 +6246,28 @@ export interface components {
             rules: components["schemas"]["Regulation-Output"];
             /** Total S */
             total_s: number;
+        };
+        /** PublicRosterPlayer */
+        PublicRosterPlayer: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Shirt Number */
+            shirt_number?: string | null;
+            /**
+             * Last Match Id
+             * Format: uuid
+             */
+            last_match_id: string;
+            /**
+             * Last Published At
+             * Format: date-time
+             */
+            last_published_at: string;
         };
         /** PublicScore */
         PublicScore: {
@@ -6177,6 +6352,32 @@ export interface components {
             player_out_id: string | null;
             /** Player In Id */
             player_in_id: string | null;
+        };
+        /** PublicTeamSummary */
+        PublicTeamSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Logo Id */
+            logo_id?: string | null;
+        };
+        /** PublicTeamView */
+        PublicTeamView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Logo Id */
+            logo_id?: string | null;
+            tournament: components["schemas"]["PublicTournament"];
+            players: components["schemas"]["Page_PublicRosterPlayer_"];
         };
         /** PublicTimeout */
         PublicTimeout: {
@@ -13179,6 +13380,7 @@ export interface operations {
         parameters: {
             query?: {
                 day?: string | null;
+                team_id?: string | null;
                 limit?: number;
                 offset?: number;
             };
@@ -13330,6 +13532,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_teams_api_v1_public_tournaments__tid__teams_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PublicTeamSummary_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_team_api_v1_public_tournaments__tid__teams__team_id__get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                tid: string;
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicTeamView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_player_api_v1_public_players__player_id__get: {
+        parameters: {
+            query?: {
+                tournament_id?: string | null;
+                limit?: number;
+                offset?: number;
+                teams_offset?: number;
+            };
+            header?: never;
+            path: {
+                player_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPlayerProfile"];
                 };
             };
             /** @description Validation Error */

@@ -59,6 +59,8 @@ def create_app(settings=None, *, web_dist=None):
     app.include_router(storage_router, prefix='/api/v1')
     from aifootball.service.public import router as public_router
     app.include_router(public_router, prefix='/api/v1')
+    from aifootball.service.public_profiles import router as public_profiles_router
+    app.include_router(public_profiles_router,prefix='/api/v1')
 
     @app.exception_handler(DomainError)
     async def domain_error(request, error):

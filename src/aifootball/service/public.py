@@ -69,7 +69,7 @@ def tournament(tid: UUID, db: Session = Depends(get_session)):
 
 
 @router.get('/tournaments/{tid}/matches', response_model=Page[PublicMatch])
-def calendar(tid: UUID, day: date | None = None, db: Session = Depends(get_session),
+def calendar(tid: UUID, day: date | None = None, team_id:UUID|None=None,db: Session = Depends(get_session),
              limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0)):
     tournament = visible_tournament(db, tid)
     where = [Match.tournament_id == tid]
@@ -77,9 +77,10 @@ def calendar(tid: UUID, day: date | None = None, db: Session = Depends(get_sessi
         zone = ZoneInfo(tournament.timezone)
         where += [Match.scheduled_at >= datetime.combine(day, time.min, tzinfo=zone),
                   Match.scheduled_at < datetime.combine(day + timedelta(days=1), time.min, tzinfo=zone)]
-    rows = db.execute(match_query().where(*where).order_by(Match.scheduled_at, Match.id).limit(limit).offset(offset))
+    query=match_query(team_id=team_id).where(*where)
+    rows = db.execute(query.order_by(Match.scheduled_at, Match.id).limit(limit).offset(offset))
     return {'items': [match_view(row) for row in rows],
-            'total': db.scalar(select(func.count()).select_from(Match).where(*where))}
+            'total': db.scalar(select(func.count()).select_from(query.subquery()))}
 
 
 from aifootball.service.public_match_center import register
