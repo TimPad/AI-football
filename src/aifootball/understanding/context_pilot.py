@@ -66,7 +66,8 @@ open_questions — до 4 коротких нерешённых вопросов
 Все списки могут быть пустыми; не заполняй их ради полноты. Описания/limitations по-русски.
 Только указанные поля, без markdown. Корневые schema_version/time_basis обязательны.'''
     payload.pop('previous_unverified_observations',None)
-    payload.update(match_passport=passport,match_memory=memory)
+    compact_memory=deepcopy(memory);compact_memory.pop('confirmed_facts',None)
+    payload.update(match_passport=passport,match_memory=compact_memory)
     payload['enums']['visual_signal']=sorted(SIGNALS)
     payload['enums']['question_kind']=['ball_location','restart_type','action_outcome','identity']
     payload['fields'].pop('commentary');payload['response'].pop('commentary')
