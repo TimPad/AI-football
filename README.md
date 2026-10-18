@@ -28,6 +28,8 @@
 
 Для писем заполните `CAPTAIN_MAIL_KEY` (Fernet key), `CAPTAIN_SMTP_HOST/PORT/USER/PASSWORD` и `CAPTAIN_MAIL_FROM` из `.env.example`; `ALLOWED_ORIGIN` должен указывать на адрес сайта. Ключ создаётся локально командой `.venv/bin/python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` и хранится как секрет. Доставку выполняет `.venv/bin/python -m aifootball.service.captains.mail`: запускайте её регулярно внешним планировщиком. Письма находятся в зашифрованной очереди, содержимое удаляется после доставки или истечения срока; при недоступной почте UI объясняет проблему.
 
+Очистку истёкших предпросмотров Excel запускайте регулярно: `.venv/bin/python -m aifootball.service.catalog.roster_imports.cleanup`. Срок — семь дней; результат уже применённой команды сохраняется для повторов.
+
 Для адресных подсказок подключите оба ключа Яндекса, `ADDRESS_SIGNING_SECRET` и включите `YANDEX_ADDRESS_ENABLED` после проверки условий использования. Без провайдера адрес можно ввести вручную. Живые SMTP и Яндекс требуют проверки в конкретной установке.
 
 [Приёмка полной UX-поставки](docs/2026-10-18-tournament-captain-ux-acceptance.md) содержит сценарии, проверки и ограничения.
