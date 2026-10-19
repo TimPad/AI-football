@@ -8,6 +8,7 @@
 import numpy as np
 import polars as pl
 
+from aifootball.analytics.stoppage_model import stoppage_spans
 from aifootball.perception.ball import MAX_PASS_FLIGHT_S, ball_owners
 
 TEAMS = ("A", "B")
@@ -50,7 +51,18 @@ def owner_runs(owners: pl.DataFrame, players: pl.DataFrame) -> list[dict]:
     return runs
 
 
-def stoppages(players: pl.DataFrame, length_m: float, width_m: float) -> list[tuple[float, float]]:
+def stoppages(players: pl.DataFrame, length_m: float, width_m: float,
+              ball: pl.DataFrame | None = None) -> list[tuple[float, float]]:
+    """Отрезки остановок игры [начало, конец]: посекундный классификатор (analytics.stoppage_model) поверх Витерби.
+
+    Один Витерби на двух залах: верно 0.70 и 0.66 секунд, остановок ловит 41–56%; классификатор — см. stoppage_model.
+    """
+    if "speed" not in players.columns:
+        return []
+    return stoppage_spans(players, ball, length_m, width_m, viterbi_stoppages(players, length_m, width_m))
+
+
+def viterbi_stoppages(players: pl.DataFrame, length_m: float, width_m: float) -> list[tuple[float, float]]:
     """Отрезки остановок игры [начало, конец] по темпу полевых и игрокам у линии; Витерби на два состояния."""
     from aifootball.processor.candidates import restart_candidates
 
@@ -189,7 +201,7 @@ def extract_events(ball: pl.DataFrame, players: pl.DataFrame, length_m: float, w
         events.append({"kind": "recovery", "track_id": nxt["track_id"], "team": nxt["team"], "start_s": nxt["ts_start"],
                        "start_xy": nxt["xy_start"], "confidence": 0.6})
     if skip_stoppages:
-        spans = stoppages(players, length_m, width_m)
+        spans = stoppages(players, length_m, width_m, ball)
         stopped = lambda t: t is not None and any(a <= t <= b for a, b in spans)
         events = [e for e in events if not stopped(e["start_s"]) and not stopped(e.get("end_s"))]
     return sorted(events, key=lambda e: (e["start_s"], e["kind"]))
