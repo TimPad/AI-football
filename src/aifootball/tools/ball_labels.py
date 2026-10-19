@@ -106,7 +106,9 @@ def _draw_loupe(shown: np.ndarray, frame: np.ndarray, cursor: tuple[int, int]) -
     """Увеличенный участок кадра в правом верхнем углу: там стены зала, поле не закрывает."""
     r = LOUPE_HALF_PX
     padded = cv2.copyMakeBorder(frame, r, r, r, r, cv2.BORDER_CONSTANT)
-    x, y = cursor
+    # Окно OpenCV сообщает курсор и за своим краем — лупа показывает ближайший край кадра.
+    x = min(max(cursor[0], 0), frame.shape[1] - 1)
+    y = min(max(cursor[1], 0), frame.shape[0] - 1)
     crop = padded[y:y + 2 * r, x:x + 2 * r]
     zoomed = cv2.resize(crop, None, fx=LOUPE_ZOOM, fy=LOUPE_ZOOM, interpolation=cv2.INTER_CUBIC)
     size = zoomed.shape[0]

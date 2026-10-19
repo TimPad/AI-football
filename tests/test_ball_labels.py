@@ -88,3 +88,14 @@ def test_render_view_keeps_frame_size_and_marks_label():
 
     assert shown.shape == (720, 1280, 3)
     assert not np.array_equal(shown, frame)
+
+
+@pytest.mark.parametrize("cursor", [(-40, 300), (300, -40), (1400, 300), (300, 900), (-40, -40)])
+def test_render_view_survives_cursor_outside_frame(cursor):
+    # На macOS окно OpenCV сообщает курсор и за своим краем: точка у края кадра (ближние ворота)
+    # роняла разметку поля вместе со всеми поставленными точками.
+    frame = np.full((720, 1280, 3), 90, np.uint8)
+
+    shown = render_view(frame, scale=1.0, label=None, cursor=cursor, header="14/17")
+
+    assert shown.shape == (720, 1280, 3)
