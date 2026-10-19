@@ -5,6 +5,8 @@ import {login,createTournament} from './helpers';
 test('calendar groups, preserved return, empty day and responsive layout',async({page,browser})=>{
  await login(page);const first=await createTournament(page);await page.goto('/tournaments');const second=await createTournament(page);
  const guest=await browser.newContext();const p=await guest.newPage();await p.goto('/?day=2026-10-20');
+ // «Найдено» рисуется вместе со списком: без ожидания count() видит пустую страницу, а «Ещё матчи» есть лишь при >50 матчах дня.
+ await expect(p.getByText(/^Найдено: \d+ ·/)).toBeVisible();
  for(let n=0;n<100&&(!await p.getByRole('link',{name:`Открыть матч ${first.home} — ${first.away}`}).count()||!await p.getByRole('link',{name:`Открыть матч ${second.home} — ${second.away}`}).count());n++){await p.getByRole('button',{name:'Ещё матчи',exact:true}).click();await expect(p.getByRole('button',{name:'Загружаем…',exact:true})).toHaveCount(0)}
  await expect(p.getByRole('link',{name:`Открыть матч ${first.home} — ${first.away}`})).toBeVisible();await expect(p.getByRole('link',{name:`Открыть матч ${second.home} — ${second.away}`})).toBeVisible();
  await p.getByRole('link',{name:`Открыть матч ${first.home} — ${first.away}`} ).click();await p.getByRole('link',{name:'← К календарю матчей'}).click();await expect(p.getByLabel('Дата матчей')).toHaveValue('2026-10-20');
