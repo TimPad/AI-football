@@ -39,6 +39,8 @@ def cover_tiles(box: tuple[int, int, int, int], tile: int, width: int, height: i
     x1, y1, x2, y2 = box
 
     def origins(lo: int, hi: int, size: int) -> list[int]:
+        if size <= tile:  # кадр меньше вырезки: одна вырезка от края, детектор дополнит её сам
+            return [0]
         n = max(1, int(np.ceil((hi - lo) / tile)))
         start, stop = max(0, lo), min(size - tile, hi - tile)
         if n == 1 or stop <= start:
