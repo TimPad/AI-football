@@ -9,7 +9,7 @@ import numpy as np
 import polars as pl
 
 from aifootball.analytics.stoppage_model import stoppage_spans
-from aifootball.perception.ball import MAX_PASS_FLIGHT_S, ball_owners
+from aifootball.perception.ball import MAX_PASS_FLIGHT_S, MIN_RUN_S, ball_owners
 
 TEAMS = ("A", "B")
 GOAL_HALF_M = 1.5           # ворота футзала 3 м
@@ -20,7 +20,6 @@ SHOT_WINDOW_S = 1.2         # полёт мяча после удара, кот�
 CARRY_MIN_M = 3.0
 DUEL_RADIUS_M = 1.5
 BLOCK_MAX_S = 1.0
-MIN_RUN_S = 0.3             # владение короче — мигание ближайшего игрока (по разметке касаний: точность передач 0.70 → 0.78)
 # Остановки: полевые ходят медленнее обычного для этого матча, кто-то стоит у линии (ввод мяча).
 # Пороги — доли медианной скорости матча, чтобы не зависеть от уровня игры. По двум журналам
 # Ярославля: найдено ~половина времени остановок при точности ~0.88, точность передач 0.69 → 0.78;

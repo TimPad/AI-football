@@ -369,8 +369,8 @@ def ball_summary(ball_state: pl.DataFrame, state: pl.DataFrame) -> dict:
     return {
         "possession": compute_possession(ball_state, state),
         "passes": detect_passes(ball_state, state),
-        "caveat": "Приблизительно: по ручным журналам двух отрезков находится около половины передач, "
-                  "из найденных верны около 60%.",
+        "caveat": "Приблизительно: по ручным журналам двух залов находится около двух третей передач, "
+                  "из найденных верны от трети до 60%.",
     }
 
 def build_report(state: pl.DataFrame, tracks: pl.DataFrame, venue, spans, team_names: dict,

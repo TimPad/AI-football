@@ -10,12 +10,15 @@ MAX_BALL_SPEED_MS = 25.0  # ~90 км/ч — максимальная скоро�
 MAX_BALL_GAP_S = 1.5  # максимальный пропуск детекции мяча для интерполяции
 # Владение с гистерезисом: захватить мяч может игрок ближе TAKE_RADIUS_M, ближайший к мячу
 # OWNER_CONFIRM_S подряд; дальше владелец держит мяч, пока он не дальше KEEP_RADIUS_M, даже если
-# соперник подошёл ближе — иначе каждое единоборство даёт пару ложных перехватов. Выбрано по двум
-# журналам владения Ярославля (1:00–4:00 и 10:00–13:00) по худшему из двух F1 передач; захват 1.0 м
-# выигрывал на первом и проваливался на втором (мяч там чаще интерполирован).
+# соперник подошёл ближе — иначе каждое единоборство даёт пару ложных перехватов. Выбрано по четырём
+# журналам владения двух залов Ярославля по худшему F1 передач; захват 1.0 м выигрывал на одном
+# журнале и проваливался на другом (мяч там чаще интерполирован).
 KEEP_RADIUS_M = 2.5
 TAKE_RADIUS_M = 1.8
-OWNER_CONFIRM_S = 0.33  # 5 кадров при 15 fps; заодно отсекает мигание ближайшего между соседями
+# 2 кадра при 15 fps, 3 при 25. При 0.33 с принявший короткий пас не успевал стать владельцем:
+# худший F1 передач 0.41 → 0.53; 0.07–0.17 с дают 0.50–0.53. Мигание отсекает MIN_RUN_S.
+OWNER_CONFIRM_S = 0.13
+MIN_RUN_S = 0.3  # владение короче — мигание ближайшего игрока (по разметке касаний: точность передач 0.70 → 0.78)
 MAX_PASS_FLIGHT_S = 3.0  # дольше пас в футзале не летит; за больший разрыв владельцев не связываем
 
 
@@ -182,6 +185,7 @@ def pass_events(
 
     Передача сопернику — неточный пас (сюда же попадает отбор). Если между владениями
     прошло больше max_flight_s, это не пас: мяч мог выйти из игры или потеряться детектором.
+    Владение короче MIN_RUN_S не считается, как в analytics.events.owner_runs.
     """
     owners = ball_owners(ball_state, player_state)
     if owners.is_empty():
@@ -192,11 +196,12 @@ def pass_events(
         owners.with_columns(run=(pl.col("track_id") != pl.col("track_id").shift(1)).fill_null(True).cum_sum())
         .group_by("run", maintain_order=True)
         .agg(pl.col("track_id").first(), pl.col("team").first(), ts_start=pl.col("ts").min(), ts_end=pl.col("ts").max())
+        .filter(pl.col("ts_end") - pl.col("ts_start") >= MIN_RUN_S)
         .to_dicts()
     )
     events = []
     for prev, current in zip(rows, rows[1:]):
-        if current["ts_start"] - prev["ts_end"] > max_flight_s:
+        if current["ts_start"] - prev["ts_end"] > max_flight_s or current["track_id"] == prev["track_id"]:
             continue
         events.append({"team": prev["team"], "completed": current["team"] == prev["team"],
                        "ts_pass": prev["ts_end"], "ts_receive": current["ts_start"]})
