@@ -15,6 +15,11 @@ def test_dead_intervals_merge_repeated_marks_and_drop_trailing_dead_without_resu
     assert dead_intervals(log) == [(5.0, 9.0)]
 
 
+def test_dead_interval_ends_at_next_player_touch_not_at_pass_or_shot_mark():
+    log = touches((1.0, 'A'), (5.0, 'dead'), (7.0, 'pass'), (8.0, 'shot'), (9.0, 'B'))
+    assert dead_intervals(log) == [(5.0, 9.0)]
+
+
 def test_reference_labels_only_pure_seconds_inside_labelled_span():
     log = touches((0.5, 'A'), (5.4, 'dead'), (8.0, 'B'), (12.0, 'A'))
     labels, mixed = reference_seconds(log, start_s=0.0, end_s=100.0)

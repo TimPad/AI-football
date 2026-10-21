@@ -304,16 +304,59 @@ PASS_MATCH_TOL_S = 1.0  # приём мяча по журналу и по пай
 def truth_from_touches(touches: pl.DataFrame) -> tuple[list[tuple[float, float, str | None]], list[dict]]:
     """Эталон из ручного журнала владения: интервалы (начало, конец, команда | None) и передачи.
 
-    Мяч принадлежит команде от момента, когда его получил её игрок, до следующей отметки —
-    полёт паса засчитывается отдающим. Передача — две отметки игроков подряд: своему — точная,
-    сопернику — неточная (сюда же попадает отбор). После dead мяч ничей до следующей отметки.
+    Мяч принадлежит команде от момента, когда его получил её игрок, до следующей отметки A/B/dead —
+    полёт паса засчитывается отдающим. После dead мяч ничей до следующей отметки игрока.
+    Если в журнале есть отметки pass (удар отдающего), передача — pass владельца и следующая отметка:
+    свой — точная, соперник — перехват, dead — пас в аут; смена команды без pass — отбор, не передача.
+    Иначе передача — две отметки игроков подряд: своему — точная, сопернику — «lost» (пас или отбор).
+    Отметка shot (удар по воротам) владение не меняет, и смена команды после неё — не передача.
     """
     ev = touches.sort("ts").to_dicts()
     teams = ("A", "B")
-    intervals = [(a["ts"], b["ts"], a["event"] if a["event"] in teams else None) for a, b in zip(ev, ev[1:])]
-    passes = [{"team": a["event"], "completed": b["event"] == a["event"], "ts_receive": b["ts"]}
-              for a, b in zip(ev, ev[1:]) if a["event"] in teams and b["event"] in teams]
+    owned = [e for e in ev if e["event"] in (*teams, "dead")]
+    intervals = [(a["ts"], b["ts"], a["event"] if a["event"] in teams else None) for a, b in zip(owned, owned[1:])]
+    if any(e["event"] == "pass" for e in ev):
+        return intervals, _passes_from_pass_marks(ev)
+    passes = []
+    for a, b in zip(ev, ev[1:]):
+        if a["event"] in teams and b["event"] in teams:
+            completed = b["event"] == a["event"]
+            passes.append({"team": a["event"], "completed": completed, "outcome": "completed" if completed else "lost",
+                           "ts_pass": None, "ts_receive": b["ts"]})
     return intervals, passes
+
+
+def _passes_from_pass_marks(ev: list[dict]) -> list[dict]:
+    passes, owner, pending = [], None, None
+    for e in ev:
+        if e["event"] in ("A", "B", "dead") and pending is not None:
+            outcome = "out" if e["event"] == "dead" else "completed" if e["event"] == pending["team"] else "intercepted"
+            passes.append({**pending, "completed": outcome == "completed", "outcome": outcome, "ts_receive": e["ts"]})
+            pending = None
+        if e["event"] in ("A", "B"):
+            owner = e["event"]
+        elif e["event"] == "dead":
+            owner = None
+        elif e["event"] == "pass":
+            # повторный pass без приёма: кто принял первый, неизвестно — его не считаем
+            pending = {"team": owner, "ts_pass": e["ts"]} if owner is not None else None
+        elif e["event"] == "shot":
+            pending = None
+    return [{"team": p["team"], "completed": p["completed"], "outcome": p["outcome"], "ts_pass": p["ts_pass"],
+             "ts_receive": p["ts_receive"]} for p in passes]
+
+
+def shots_from_touches(touches: pl.DataFrame) -> list[dict]:
+    """Удары по воротам из журнала: команда владельца на момент отметки shot и время."""
+    shots, owner = [], None
+    for e in touches.sort("ts").to_dicts():
+        if e["event"] in ("A", "B"):
+            owner = e["event"]
+        elif e["event"] == "dead":
+            owner = None
+        elif e["event"] == "shot" and owner is not None:
+            shots.append({"team": owner, "ts": e["ts"]})
+    return shots
 
 
 def evaluate_possession(ball_state: pl.DataFrame, player_state: pl.DataFrame, touches: pl.DataFrame,

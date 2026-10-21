@@ -70,7 +70,7 @@ BALL_LABELS = {
 TOUCHES = {
     "frame_id": pl.Int32,
     "ts": pl.Float64,
-    "event": pl.Utf8,  # A | B | dead
+    "event": pl.Utf8,  # A | B | dead | pass (удар отдающего) | shot (удар по воротам)
 }
 
 SCHEMAS = {"detections": DETECTIONS, "tracks": TRACKS, "state": STATE, "ball_labels": BALL_LABELS,

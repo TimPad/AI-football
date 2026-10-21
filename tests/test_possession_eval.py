@@ -45,8 +45,37 @@ def test_truth_from_touches_passes_and_dead_ball():
     intervals, passes = truth_from_touches(_touches([(0.0, "A"), (2.5, "A"), (5.5, "B"), (8.0, "dead"), (9.0, "B")]))
     assert intervals == [(0.0, 2.5, "A"), (2.5, 5.5, "A"), (5.5, 8.0, "B"), (8.0, 9.0, None)]
     # после dead пас не связывается: B в 9.0 — новое владение, а не передача
-    assert passes == [{"team": "A", "completed": True, "ts_receive": 2.5},
-                      {"team": "A", "completed": False, "ts_receive": 5.5}]
+    # без отметок «пас» передача сопернику и отбор неразличимы
+    assert passes == [{"team": "A", "completed": True, "outcome": "completed", "ts_pass": None, "ts_receive": 2.5},
+                      {"team": "A", "completed": False, "outcome": "lost", "ts_pass": None, "ts_receive": 5.5}]
+
+
+def test_pass_marks_separate_interception_out_and_tackle():
+    marks = [(0.0, "A"), (1.0, "pass"), (2.0, "A"), (3.0, "pass"), (4.0, "B"),
+             (6.0, "A"), (7.0, "pass"), (8.0, "dead"), (9.0, "B")]
+    intervals, passes = truth_from_touches(_touches(marks))
+    # отметка «пас» не меняет владение: полёт засчитан отдающему, как раньше
+    assert intervals == [(0.0, 2.0, "A"), (2.0, 4.0, "A"), (4.0, 6.0, "B"), (6.0, 8.0, "A"), (8.0, 9.0, None)]
+    # B → A в 6.0 без «пас» — отбор, а не передача; пас в аут — неточная передача, приём — момент выхода мяча
+    assert passes == [{"team": "A", "completed": True, "outcome": "completed", "ts_pass": 1.0, "ts_receive": 2.0},
+                      {"team": "A", "completed": False, "outcome": "intercepted", "ts_pass": 3.0, "ts_receive": 4.0},
+                      {"team": "A", "completed": False, "outcome": "out", "ts_pass": 7.0, "ts_receive": 8.0}]
+
+
+def test_pass_after_stoppage_without_owner_mark_is_ignored():
+    # ввод мяча после остановки: владельца до «пас» не отмечено — передачу не к кому отнести
+    _, passes = truth_from_touches(_touches([(0.0, "A"), (1.0, "dead"), (3.0, "pass"), (4.0, "B"), (5.0, "pass"), (6.0, "B")]))
+    assert passes == [{"team": "B", "completed": True, "outcome": "completed", "ts_pass": 5.0, "ts_receive": 6.0}]
+
+
+def test_shot_is_neither_a_pass_nor_a_possession_change():
+    from aifootball.analytics.validation import shots_from_touches
+
+    marks = _touches([(0.0, "A"), (1.0, "shot"), (2.0, "B"), (3.0, "B")])
+    intervals, passes = truth_from_touches(marks)
+    assert intervals == [(0.0, 2.0, "A"), (2.0, 3.0, "B")]
+    assert passes == [{"team": "B", "completed": True, "outcome": "completed", "ts_pass": None, "ts_receive": 3.0}]
+    assert shots_from_touches(marks) == [{"team": "A", "ts": 1.0}]
 
 
 def test_evaluate_possession_matches_pipeline_on_clean_match():
@@ -84,3 +113,32 @@ def test_touches_journal_saves_and_undoes(tmp_path):
     assert j.pop_before(5) is None
     df = schemas.read(path, "touches")
     assert df.to_dicts() == [{"frame_id": 30, "ts": 3.0, "event": "dead"}]
+
+
+def test_labelling_resumes_near_last_mark_or_from_start_when_adding_passes(tmp_path):
+    from aifootball.tools.label_touches import KEY_EVENT, start_frame
+
+    j = Touches(tmp_path / "touches.parquet", fps=FPS)
+    assert start_frame(j, FPS, from_start=False) == 0
+    j.set(100, "A")
+    assert start_frame(j, FPS, from_start=False) == 70  # 3 с до последней отметки
+    assert start_frame(j, FPS, from_start=True) == 0  # дополнить готовый журнал отметками «пас» и «удар»
+    assert KEY_EVENT[ord("8")] == "pass" and KEY_EVENT[ord("0")] == "shot"
+
+
+def test_adding_to_ready_journal_accepts_only_pass_and_shot_keys():
+    from aifootball.tools.label_touches import event_for_key
+
+    assert [event_for_key(ord(k), adding=False) for k in "12380"] == ["A", "B", "dead", "pass", "shot"]
+    assert [event_for_key(ord(k), adding=True) for k in "12380"] == [None, None, None, "pass", "shot"]
+    assert event_for_key(ord("x"), adding=False) is None
+
+
+def test_undo_while_adding_removes_only_pass_or_shot(tmp_path):
+    j = Touches(tmp_path / "touches.parquet", fps=FPS)
+    j.set(10, "A")
+    j.set(20, "pass")
+    j.set(30, "B")
+    assert j.pop_before(35, kinds=("pass", "shot")) == 20
+    assert j.pop_before(35, kinds=("pass", "shot")) is None
+    assert j.events == {10: "A", 30: "B"}
