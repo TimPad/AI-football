@@ -14,17 +14,29 @@ from aifootball.service.auth.models import Admin
 from aifootball.service.auth.cli import create_admin
 
 base=Settings()
-url=make_url(base.database_url).set(database='aifootball_e2e')
-assert url.database=='aifootball_e2e'
+database=os.environ.get('AIF_E2E_DATABASE_NAME','aifootball_e2e')
+assert database.startswith('aifootball_') and database.endswith('_e2e') and database.replace('_','').isalnum()
+port=int(os.environ.get('AIF_E2E_PORT','8181'))
+url=make_url(base.database_url).set(database=database)
 engine=create_engine(base.database_url,isolation_level='AUTOCOMMIT')
 with engine.connect() as db:
-    if not db.scalar(text("SELECT 1 FROM pg_database WHERE datname='aifootball_e2e'")):
-        db.execute(text('CREATE DATABASE aifootball_e2e'))
+    if not db.scalar(text("SELECT 1 FROM pg_database WHERE datname=:name"),{'name':database}):
+        db.execute(text(f'CREATE DATABASE {database}'))
 engine.dispose()
-settings=Settings(database_url=url.render_as_string(hide_password=False),allowed_origin='http://127.0.0.1:8181',attachment_root=Path('data/service/e2e-attachments'))
+settings=Settings(database_url=url.render_as_string(hide_password=False),allowed_origin=f'http://127.0.0.1:{port}',attachment_root=Path(f'data/service/{database}-attachments'))
 cfg=Config('alembic.ini');cfg.attributes['database_url']=settings.database_url;command.upgrade(cfg,'head')
 # AIF_WEB_DIST — отдельная сборка интерфейса ветки: общая web/dist остаётся у сервиса организатора.
 app=create_app(settings,web_dist=os.environ.get('AIF_WEB_DIST') or None)
+if os.environ.get('AIF_E2E_FAKE_MAIL')=='1':
+    from captain_e2e_mail import MemoryMailSender,E2E_MAIL_KEY
+    settings.captain_mail_key=E2E_MAIL_KEY
+    app.state.mail_sender=MemoryMailSender()
+if os.environ.get('AIF_E2E_FAKE_ADDRESS')=='1':
+    settings.address_signing_secret='e2e-only-address-selection-secret-123456'
+    class SyntheticAddressProvider:
+        def suggest(self,query):return [{'uri':'ymapsbm1://geo?data=e2e','title':'Тестовая арена','subtitle':'Тестовый город','address':'Тестовый город, Спортивная, 1'}]
+        def resolve(self,uri):return {'address':'Тестовый город, Спортивная, 1','latitude':57.62,'longitude':39.88}
+    app.state.address_provider=SyntheticAddressProvider()
 with Session(app.state.engine) as db:
     if not db.scalar(select(Admin).where(Admin.login=='e2e-admin')):
         create_admin(db,'e2e-admin','e2e-only-password')
@@ -32,4 +44,4 @@ with Session(app.state.engine) as db:
     if not analyst:analyst=create_admin(db,'e2e-analyst','e2e-only-password')
     analyst.can_manage_analytics=True
     db.commit()
-uvicorn.run(app,host='127.0.0.1',port=8181,log_level='warning')
+uvicorn.run(app,host='127.0.0.1',port=port,log_level='warning')

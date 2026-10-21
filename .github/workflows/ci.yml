@@ -74,4 +74,8 @@ jobs:
       - name: Frontend tests
         run: npm --prefix web run test
       - name: Browser tests
+        # Сценарии капитана и адресов используют синтетические почту и подсказки (см. CONTRIBUTING.md).
+        env:
+          AIF_E2E_FAKE_MAIL: '1'
+          AIF_E2E_FAKE_ADDRESS: '1'
         run: npm --prefix web run test:e2e

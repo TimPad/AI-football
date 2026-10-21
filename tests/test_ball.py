@@ -220,6 +220,26 @@ def test_tackle_counts_once_owner_loses_contact():
     assert passes["passes_completed"] == {"A": 0, "B": 0}
 
 
+def test_receiver_owns_the_ball_after_two_frames_at_15_fps():
+    # Короткий пас: принявший держит мяч доли секунды, поэтому владелец подтверждается за 2 кадра, а не за 5
+    from aifootball.perception.ball import ball_owners
+
+    frames = [[(A1, 10.1), (A2, 20.1)]] * 10
+    owners = ball_owners(_ball([10] * 5 + [20] * 5, dt=1 / 15), _crowd(frames, dt=1 / 15))
+
+    assert owners.filter(pl.col("track_id") == A2[0])["frame_id"].min() == 7
+
+
+def test_one_touch_owner_between_two_owners_is_not_a_pass():
+    # Мяч на 3 кадра у соперника и обратно: владение короче 0,3 с — мигание, а не две передачи
+    from aifootball.perception.ball import detect_passes
+
+    frames = [[(A1, 10.1), (B1, 15.1)]] * 17
+    passes = detect_passes(_ball([10] * 7 + [15] * 3 + [10] * 7, dt=1 / 15), _crowd(frames, dt=1 / 15))
+
+    assert passes["passes_total"] == {"A": 0, "B": 0}
+
+
 def test_owner_needs_to_be_close_to_take_the_ball():
     # Мяч катится в 2 м от игрока: в радиусе удержания, но не захвата — владельца нет
     from aifootball.perception.ball import ball_owners

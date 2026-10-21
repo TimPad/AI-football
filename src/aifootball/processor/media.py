@@ -51,13 +51,46 @@ def _save_frame(frame,*,frame_id,video_ms,out,crop=None):
     return FrameAsset(identity,frame_id,video_ms,path,digest,crop)
 
 
-def make_window(video:Path,*,start_ms:int,end_ms:int,out:Path,mode:str,fps=1,track_ids=())->Window:
+def _follow_expr(keys,axis):
+    """Кусочно-линейная координата угла области по времени клипа t, с; запятые экранированы для -vf."""
+    points=[(float(k[0]),int(k[1+axis])) for k in keys];expr=str(points[-1][1])
+    for (t0,v0),(t1,v1) in reversed(list(zip(points,points[1:]))):
+        expr=f'if(lt(t\\,{t1:.3f})\\,{v0}+({v1-v0})*(t-{t0:.3f})/{t1-t0:.3f}\\,{expr})'
+    return f'if(lt(t\\,{points[0][0]:.3f})\\,{points[0][1]}\\,{expr})'
+
+
+def _clip_view(crop,width,height):
+    """Фильтр области клипа: (x,y,w,h) — неподвижная, {'size':[w,h],'keys':[[t,x,y],...]} — следящая."""
+    if crop is None:return 'scale=w=min(960\\,iw):h=-2'
+    follow=type(crop) is dict
+    if follow:
+        if set(crop)!={'size','keys'} or len(crop['size'])!=2 or not 0<len(crop['keys'])<=200:raise ValueError('Недопустимая область клипа')
+        w,h=crop['size'];keys=crop['keys']
+        if (any(type(k) not in (list,tuple) or len(k)!=3 or type(k[0]) not in (int,float) or not math.isfinite(k[0]) or k[0]<0
+                or type(w) is not int or type(h) is not int
+                or any(type(v) is not int or not 0<=v<=limit for v,limit in ((k[1],width-w),(k[2],height-h))) for k in keys)
+            or any(b[0]<=a[0] for a,b in zip(keys,keys[1:]))):raise ValueError('Недопустимая область клипа')
+        box=(0,0,w,h)
+    else:
+        if len(crop)!=4:raise ValueError('Недопустимая область клипа')
+        box=tuple(crop)
+    if (any(type(v) is not int or v<0 or v%2 for v in box) or not box[2] or not box[3] or
+        box[0]+box[2]>width or box[1]+box[3]>height):raise ValueError('Недопустимая область клипа')
+    w,h=box[2],box[3];scale=min(960/w,720/h);size=f'scale={round(w*scale/2)*2}:{round(h*scale/2)*2}'
+    if follow:return f"setpts=PTS-STARTPTS,crop=w={w}:h={h}:x={_follow_expr(keys,0)}:y={_follow_expr(keys,1)},{size}"
+    return f'crop={w}:{h}:{box[0]}:{box[1]},{size}'
+
+
+def make_window(video:Path,*,start_ms:int,end_ms:int,out:Path,mode:str,fps=1,track_ids=(),crop=None)->Window:
+    """crop — область исходника (см. _clip_view), вписанная в 960×720; без неё — весь кадр."""
     if (type(start_ms) is not int or type(end_ms) is not int or not 0<=start_ms<end_ms or
         end_ms-start_ms>20000 or type(fps) not in (int,float) or not math.isfinite(fps) or not 0<fps<=4 or
         mode not in ('native','frames') or math.ceil((end_ms-start_ms)*fps/1000)>32):
         raise ValueError('Неподдерживаемый диапазон/частота окна')
     info=video_info(video);src_fps=video_fps(video)
     if end_ms>round(info['duration_s']*1000):raise ValueError('Окно выходит за исходник')
+    if crop is not None and mode!='native':raise ValueError('Область клипа только для native')
+    view=_clip_view(crop,info['width'],info['height'])
     # Align to actual source-frame boundaries instead of inventing sub-frame precision.
     start_frame=math.ceil(start_ms*src_fps/1000-1e-6)
     end_frame=math.floor(end_ms*src_fps/1000+1e-6)
@@ -74,7 +107,7 @@ def make_window(video:Path,*,start_ms:int,end_ms:int,out:Path,mode:str,fps=1,tra
               '-t',f'{(end_frame-start_frame)/src_fps:.9f}','-map','0:v:0']
         if has_audio:args+=['-map','0:a:0','-c:a','aac','-b:a','64k','-af','asetpts=PTS-STARTPTS']
         else:args+=['-an']
-        args+=['-vf','scale=w=min(960\\,iw):h=-2,setpts=PTS-STARTPTS','-r','12','-c:v','libx264',
+        args+=['-vf',view+',setpts=PTS-STARTPTS','-r','12','-c:v','libx264',
                '-preset','veryfast','-crf','28','-maxrate','1M','-bufsize','2M','-pix_fmt','yuv420p',
                # Один поток и bitexact: повторная сборка окна даёт тот же файл, и --resume находит оплаченные ответы.
                '-threads','1','-fflags','+bitexact','-flags:v','+bitexact','-flags:a','+bitexact','-map_metadata','-1',

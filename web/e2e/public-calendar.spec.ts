@@ -15,7 +15,7 @@ test('guest calendar, timetable and VK broadcasts from organizer input',async({p
  viewer.on('request',r=>{if(r.url().includes('/api/'))apiRequests.push(r.url())});
  // A controlled external response verifies iframe wiring; it is not a real broadcast.
  await viewer.route('https://vk.com/video_ext.php**',route=>route.fulfill({contentType:'text/html',body:'<h1>Test player</h1>'}));
- await viewer.goto('/');await expect(viewer.getByRole('heading',{name:'Футбол, который нас объединяет'})).toBeVisible();
+ await viewer.goto('/');await expect(viewer.getByRole('heading',{name:'Матчи',exact:true})).toBeVisible();
  await viewer.goto(`/watch/tournaments/${data.tid}`);
  await expect(viewer.getByRole('link',{name:new RegExp(`${data.home}.*${data.away}`)})).toBeVisible();
  // Один матч в одном зале: фильтры ничего не меняют и не показываются.

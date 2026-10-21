@@ -54,9 +54,9 @@ def test_evaluate_possession_matches_pipeline_on_clean_match():
     r = evaluate_possession(ball, players, _touches([(0.0, "A"), (2.5, "A"), (5.5, "B"), (8.0, "dead")]))
     assert r["possession"]["truth_s"] == {"A": 5.5, "B": 2.5, "dead": 0.0}
     # полёт мяча эталон отдаёт отдающему, пайплайн — никому; владелец пайплайна подтверждается
-    # за 0.33 с (3 кадра при 10 fps), поэтому каждое владение начинается на 2 кадра позже
-    assert r["possession_by_time_s"]["A"] == pytest.approx({"A": 4.1, "B": 0.0, "none": 1.4})
-    assert r["possession_by_time_s"]["B"] == pytest.approx({"A": 0.0, "B": 2.3, "none": 0.2})
+    # за 0.13 с — при 10 fps это 1 кадр, поэтому владение начинается с первого кадра у игрока
+    assert r["possession_by_time_s"]["A"] == pytest.approx({"A": 4.5, "B": 0.0, "none": 1.0})
+    assert r["possession_by_time_s"]["B"] == pytest.approx({"A": 0.0, "B": 2.5, "none": 0.0})
     p = r["passes"]
     assert p["truth"] == p["pipeline"] == {"A": {"total": 2, "completed": 1}, "B": {"total": 0, "completed": 0}}
     assert (p["matched"], p["recall"], p["precision"], p["completed_agree"]) == (2, 1.0, 1.0, 2)
@@ -70,7 +70,7 @@ def test_evaluate_possession_reports_late_and_missing_passes():
     p = r["passes"]
     assert p["matched"] == 1
     assert p["missed_ts"] == [4.1, 7.0]
-    assert p["false_ts"] == [2.7]
+    assert p["false_ts"] == [2.5]
 
 
 def test_touches_journal_saves_and_undoes(tmp_path):

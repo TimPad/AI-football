@@ -2,7 +2,7 @@ from datetime import datetime,date,time,timedelta,timezone
 from uuid import UUID
 from zoneinfo import ZoneInfo
 from fastapi import APIRouter,Depends,Query
-from sqlalchemy import select
+from sqlalchemy import select,func
 from sqlalchemy.orm import Session
 from aifootball.service.auth.security import require_admin,require_csrf
 from aifootball.service.common import get_entity,list_entities,as_dict
@@ -34,7 +34,11 @@ def calendar(tid:UUID,day:date|None=None,db:Session=Depends(get_session),limit:i
         start=datetime.combine(day,time.min,tzinfo=zone); end=datetime.combine(day+timedelta(days=1),time.min,tzinfo=zone)
         where += [Match.scheduled_at>=start,Match.scheduled_at<end]
     result=list_entities(db,Match,where=where,order=Match.scheduled_at,limit=limit,offset=offset)
-    result['items']=[get_match_view(db,row['id']) for row in result['items']]
+    from aifootball.service.protocol.models import ProtocolVersion
+    ids=[row['id'] for row in result['items']]
+    ranked=select(ProtocolVersion.match_id,ProtocolVersion.id,func.row_number().over(partition_by=ProtocolVersion.match_id,order_by=ProtocolVersion.number.desc()).label('rank')).where(ProtocolVersion.match_id.in_(ids)).subquery()
+    latest=dict(db.execute(select(ranked.c.match_id,ranked.c.id).where(ranked.c.rank==1)).all()) if ids else {}
+    result['items']=[get_match_view(db,row['id'],latest_protocol_id=latest.get(row['id'])) for row in result['items']]
     return result
 
 

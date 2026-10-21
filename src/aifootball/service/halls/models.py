@@ -1,4 +1,4 @@
-from sqlalchemy import Column,String,Boolean,Integer,Float,Uuid,ForeignKey,UniqueConstraint,CheckConstraint
+from sqlalchemy import Column,String,Boolean,Integer,BigInteger,Float,Uuid,ForeignKey,UniqueConstraint,CheckConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from aifootball.service.db import Base,Entity
 
@@ -7,6 +7,7 @@ class Hall(Entity,Base):
     __tablename__='halls'
     name=Column(String(200),nullable=False)
     address=Column(String(1000),nullable=False)
+    address_source=Column(String(10),nullable=False,default='manual',server_default='manual')
     pitch_length_m=Column(Float,nullable=False)
     pitch_width_m=Column(Float,nullable=False)
     ceiling_height_m=Column(Float)
@@ -26,6 +27,12 @@ class HallCommand(Entity,Base):
     request_id=Column(Uuid,nullable=False,unique=True)
     request_hash=Column(String(64),nullable=False)
     response=Column(JSONB,nullable=False)
+
+class HallAddressLimit(Base):
+    __tablename__='hall_address_limits'
+    actor_id=Column(Uuid,ForeignKey('admins.id',name='fk_hall_address_actor'),primary_key=True)
+    window=Column(BigInteger,nullable=False)
+    count=Column(Integer,nullable=False)
 
 
 class CameraProfile(Entity,Base):

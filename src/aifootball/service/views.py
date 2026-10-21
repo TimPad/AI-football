@@ -20,6 +20,7 @@ class NamedView(EntityView):
 class HallView(NamedView):
     revision: int
     address: str
+    address_source: str = 'manual'
     pitch_length_m: float
     pitch_width_m: float
     ceiling_height_m: float | None = None
@@ -74,11 +75,14 @@ class TeamProfile(TeamView):
 class CatalogImageView(EntityView):
     size: int
 class TournamentView(NamedView):
+    visibility: Literal['draft','public']
     season: str
     starts_on: date
     ends_on: date
     timezone: str
     revision: int
+    applications_open: bool = True
+    applications_deadline: datetime | None = None
 class RegulationView(EntityView):
     tournament_id: UUID
     variant_name: str
@@ -130,6 +134,7 @@ class MatchView(EntityView):
     protocol: ProtocolDocument
     clock: ClockState
     published_version_id: UUID | None
+    latest_confirmed_version_id: UUID | None = None
     published_analysis_run_id: UUID | None = None
     lineup: list[LineupView]
     projection: Projection

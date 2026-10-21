@@ -118,6 +118,59 @@ def test_native_clip_size_is_checked_before_probe_or_api(tmp_path,monkeypatch):
 
 
 @pytest.mark.skipif(not shutil.which('ffmpeg'),reason='ffmpeg required')
+def test_native_clip_crop_keeps_only_the_region_and_fits_960x720(tmp_path):
+    from aifootball.processor.media import make_window
+    path=tmp_path/'halves.mp4';frame=np.zeros((960,1280,3),dtype=np.uint8);frame[:,:640]=255
+    writer=cv2.VideoWriter(str(path),cv2.VideoWriter.fourcc(*'mp4v'),10,(1280,960))
+    for _ in range(30):writer.write(frame)
+    writer.release()
+    window=make_window(path,start_ms=0,end_ms=2000,out=tmp_path/'w',mode='native',crop=(640,0,640,480))
+    capture=cv2.VideoCapture(str(window.media.path));ok,clip=capture.read();capture.release()
+    assert ok and clip.shape==(720,960,3) and clip.mean()<40
+    full=make_window(path,start_ms=0,end_ms=2000,out=tmp_path/'f',mode='native')
+    assert full.media.sha256!=window.media.sha256
+
+
+@pytest.mark.skipif(not shutil.which('ffmpeg'),reason='ffmpeg required')
+def test_native_clip_follow_crop_pans_along_keyframes(tmp_path):
+    from aifootball.processor.media import make_window
+    path=tmp_path/'moving.mp4';fps=10
+    writer=cv2.VideoWriter(str(path),cv2.VideoWriter.fourcc(*'mp4v'),fps,(1280,960))
+    for i in range(30):
+        frame=np.zeros((960,1280,3),dtype=np.uint8);x=400+i*15;frame[400:480,x:x+80]=255;writer.write(frame)
+    writer.release()
+    # Центр квадрата 440+150·t px; окно 640×480 с углом 120+150·t держит его в центре (480 из 960 после ×1,5).
+    follow={'size':[640,480],'keys':[[0.0,120,200],[2.9,555,200]]}
+    window=make_window(path,start_ms=0,end_ms=3000,out=tmp_path/'w',mode='native',crop=follow)
+    capture=cv2.VideoCapture(str(window.media.path));frames=[]
+    while True:
+        ok,frame=capture.read()
+        if not ok:break
+        frames.append(frame)
+    capture.release()
+    assert frames[0].shape==(720,960,3)
+    for frame in (frames[3],frames[-3]):
+        columns=np.where(frame[:,:,0].max(axis=0)>128)[0]
+        assert 420<columns.mean()<540
+
+
+@pytest.mark.parametrize('crop',[{'size':[640,480],'keys':[]},{'size':[640,480],'keys':[[0.0,700,0]]},
+                                 {'size':[640,480],'keys':[[1.0,0,0],[0.5,0,0]]},{'size':[641,480],'keys':[[0.0,0,0]]}])
+def test_invalid_follow_crop_fails_before_ffmpeg(tmp_path,crop):
+    from aifootball.processor.media import make_window
+    video=write_video(tmp_path/'v.mp4',n_frames=20,fps=10,size=(1280,960))
+    with pytest.raises(ValueError):make_window(video,start_ms=0,end_ms=1000,out=tmp_path/'w',mode='native',crop=crop)
+
+
+@pytest.mark.parametrize('crop',[(0,0,1300,480),(-2,0,640,480),(1,0,640,480),(0,0,0,480),(0,0,640.0,480)])
+def test_invalid_clip_crop_fails_before_ffmpeg(tmp_path,crop):
+    from aifootball.processor.media import make_window
+    # Кадр 1280×960: вне кадра, отрицательно, нечётно, пусто, не целое.
+    video=write_video(tmp_path/'v.mp4',n_frames=20,fps=10,size=(1280,960))
+    with pytest.raises(ValueError):make_window(video,start_ms=0,end_ms=1000,out=tmp_path/'w',mode='native',crop=crop)
+
+
+@pytest.mark.skipif(not shutil.which('ffmpeg'),reason='ffmpeg required')
 def test_native_clip_is_byte_identical_on_rebuild_so_resume_finds_paid_answers(tmp_path):
     from aifootball.processor.media import make_window
     rng=np.random.default_rng(7);path=tmp_path/'noise.mp4'

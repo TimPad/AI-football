@@ -5,7 +5,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import FileResponse
-from sqlalchemy import select, func, exists
+from sqlalchemy import select, func, exists, or_
 from sqlalchemy.orm import Session, aliased
 from aifootball.service.db import get_session
 from aifootball.service.common import get_entity, as_dict, list_entities
@@ -16,28 +16,32 @@ from aifootball.service.tournaments.models import Tournament, RegulationVersion
 from aifootball.service.tournaments.rules import resolve_rules
 from aifootball.service.protocol.models import ProtocolVersion
 from aifootball.service.views import Page, PublicTournament, PublicMatch
+from aifootball.service.public_visibility import require_public_tournament
 
 router = APIRouter(prefix='/public')
 
 
 def visible_tournament(db, tid):
-    tournament = get_entity(db, Tournament, tid)
-    if tournament.archived:
-        raise DomainError('not_found', 'Турнир не найден', status=404)
-    return tournament
+    return require_public_tournament(db, tid)
 
 
-def match_query():
+def match_query(tournament_id=None,team_id=None,q=''):
     home_entry, away_entry = aliased(Entry), aliased(Entry)
     home, away = aliased(Team), aliased(Team)
-    return (select(Match, Tournament, home.name, away.name, RegulationVersion, ProtocolVersion,
+    query = (select(Match, Tournament, home.name, away.name, RegulationVersion, ProtocolVersion,
                    home.id, away.id, home.logo_id, away.logo_id)
             .join(Tournament, Match.tournament_id == Tournament.id)
             .join(home_entry, Match.home_entry_id == home_entry.id).join(home, home_entry.team_id == home.id)
             .join(away_entry, Match.away_entry_id == away_entry.id).join(away, away_entry.team_id == away.id)
             .join(RegulationVersion, Match.regulation_id == RegulationVersion.id)
             .outerjoin(ProtocolVersion, Match.published_version_id == ProtocolVersion.id)
-            .where(Tournament.archived.is_(False)))
+            .where(Tournament.archived.is_(False), Tournament.visibility == 'public'))
+    if tournament_id:query=query.where(Tournament.id==tournament_id)
+    if team_id:query=query.where(or_(home.id==team_id,away.id==team_id))
+    if q.strip():
+        pattern='%'+q.strip().replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
+        query=query.where(or_(Tournament.name.ilike(pattern),home.name.ilike(pattern),away.name.ilike(pattern)))
+    return query
 
 
 def match_view(row):
@@ -52,8 +56,10 @@ def match_view(row):
 
 
 @router.get('/tournaments', response_model=Page[PublicTournament])
-def tournaments(db: Session = Depends(get_session), limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0)):
-    return list_entities(db, Tournament, where=[Tournament.archived.is_(False)], limit=limit, offset=offset,
+def tournaments(db: Session = Depends(get_session), limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0),q:str=Query('',max_length=200)):
+    where=[Tournament.archived.is_(False),Tournament.visibility=='public']
+    if q.strip():where.append(Tournament.name.ilike('%'+q.strip().replace('%','\\%').replace('_','\\_')+'%'))
+    return list_entities(db, Tournament, where=where, limit=limit, offset=offset,
                          order=Tournament.starts_on.desc())
 
 
@@ -63,7 +69,7 @@ def tournament(tid: UUID, db: Session = Depends(get_session)):
 
 
 @router.get('/tournaments/{tid}/matches', response_model=Page[PublicMatch])
-def calendar(tid: UUID, day: date | None = None, db: Session = Depends(get_session),
+def calendar(tid: UUID, day: date | None = None, team_id:UUID|None=None,db: Session = Depends(get_session),
              limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0)):
     tournament = visible_tournament(db, tid)
     where = [Match.tournament_id == tid]
@@ -71,9 +77,14 @@ def calendar(tid: UUID, day: date | None = None, db: Session = Depends(get_sessi
         zone = ZoneInfo(tournament.timezone)
         where += [Match.scheduled_at >= datetime.combine(day, time.min, tzinfo=zone),
                   Match.scheduled_at < datetime.combine(day + timedelta(days=1), time.min, tzinfo=zone)]
-    rows = db.execute(match_query().where(*where).order_by(Match.scheduled_at, Match.id).limit(limit).offset(offset))
+    query=match_query(team_id=team_id).where(*where)
+    rows = db.execute(query.order_by(Match.scheduled_at, Match.id).limit(limit).offset(offset))
     return {'items': [match_view(row) for row in rows],
-            'total': db.scalar(select(func.count()).select_from(Match).where(*where))}
+            'total': db.scalar(select(func.count()).select_from(query.subquery()))}
+
+
+from aifootball.service.public_match_center import register
+register(router,match_query,match_view)
 
 
 @router.get('/matches/{mid}', response_model=PublicMatch)
@@ -88,7 +99,7 @@ def match(mid: UUID, db: Session = Depends(get_session)):
 def team_logo(image_id: UUID, request: Request, db: Session = Depends(get_session)):
     # Только логотип команды неархивного турнира; общий файл с фото игрока остаётся закрытым.
     linked = (select(Team.id).join(Entry, Entry.team_id == Team.id).join(Tournament, Entry.tournament_id == Tournament.id)
-              .where(Team.logo_id == image_id, Team.archived.is_(False), Tournament.archived.is_(False)))
+              .where(Team.logo_id == image_id, Team.archived.is_(False), Tournament.archived.is_(False), Tournament.visibility == 'public'))
     visible = db.scalar(select(exists().where(CatalogImage.id == image_id)
                                .where(exists(linked)).where(~exists().where(Player.photo_id == image_id))))
     path = Path(request.app.state.settings.attachment_root) / 'catalog' / (str(image_id) + '.png')

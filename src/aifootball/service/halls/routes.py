@@ -2,7 +2,7 @@ from io import BytesIO
 from zipfile import ZipFile,ZipInfo,ZIP_DEFLATED
 import json
 from uuid import UUID
-from fastapi import APIRouter,Depends,Query
+from fastapi import APIRouter,Depends,Query,Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from aifootball.service.db import get_session
@@ -27,14 +27,14 @@ def halls(db:Session=Depends(get_session),limit:int=Query(50,ge=1,le=100),offset
 def hall(hid:UUID,db:Session=Depends(get_session)): return as_dict(get_entity(db,Hall,hid))
 
 
-@router.post('/halls',response_model=HallView,status_code=201,dependencies=[Depends(require_csrf)])
-def create(data:HallCreate,db:Session=Depends(get_session)):
-    with db.begin(): return save_hall(db,data)
+@router.post('/halls',response_model=HallView,status_code=201)
+def create(data:HallCreate,request:Request,actor=Depends(require_csrf),db:Session=Depends(get_session)):
+    with db.begin(): return save_hall(db,data,settings=request.app.state.settings,actor=actor.id)
 
 
-@router.put('/halls/{hid}',response_model=HallView,dependencies=[Depends(require_csrf)])
-def update(hid:UUID,data:HallUpdate,db:Session=Depends(get_session)):
-    with db.begin(): return save_hall(db,data,hid)
+@router.put('/halls/{hid}',response_model=HallView)
+def update(hid:UUID,data:HallUpdate,request:Request,actor=Depends(require_csrf),db:Session=Depends(get_session)):
+    with db.begin(): return save_hall(db,data,hid,settings=request.app.state.settings,actor=actor.id)
 
 
 @router.get('/halls/{hid}/camera-profiles',response_model=Page[CameraProfileView],dependencies=[Depends(require_admin)])

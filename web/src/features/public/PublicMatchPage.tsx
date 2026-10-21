@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {useParams} from 'react-router-dom';
+import {Link,useLocation,useParams} from 'react-router-dom';
 import {useQueryPatch} from '../navigation/useQueryPatch';
 import {api} from '../../api/client';
 import type {PublicMatch} from '../../api/domain';
@@ -12,6 +12,7 @@ import type {PlayerOrigin,ReportModel} from '../match-report/model';
 import {STAT_GROUPS,type StatGroup} from '../match-report/facts';
 import {resultNote} from '../protocol/PublicProtocolContent';
 import {loadPublicSection,SECTION_SOURCES} from './matchLoader';
+import {publicBack} from '../navigation/publicContext';
 import {Broadcast} from './Broadcast';
 import {MatchAside} from './MatchAside';
 import {goalScorers} from '../match-report/MatchTimeline';
@@ -30,6 +31,7 @@ export function PublicMatchPage(){
 }
 
 function MatchContent({id}:{id:string}){
+ const location=useLocation();const href=location.pathname+location.search;const back=publicBack(location.state,href,['team','tournament','calendar'],{href:'/',label:'← К календарю матчей'});
  const [params,update]=useQueryPatch();
  const [match,setMatch]=useState<PublicMatch>();const [error,setError]=useState<unknown>();const [tick,setTick]=useState(0);
  const requested=readMatchTab(params,'public');
@@ -73,6 +75,7 @@ function MatchContent({id}:{id:string}){
   historicalRating:snapshotParam!==null,periodKey:period}};
  const note=sources.protocol.status==='ready'?resultNote(sources.protocol.value):null;
  return <>
+  <Link className="breadcrumb" to={back.href} state={back.state}>{back.label}</Link>
   <MatchHeader match={match} resultNote={note} scorers={sources.protocol.status==='ready'?goalScorers(sources.protocol.value):null}>
    <SectionNavigation label="Разделы матча" items={SECTIONS.filter(s=>hasSection(match,s.id))} selected={tab} onSelect={value=>navigate({tab:value})}
     href={value=>`?${patchQuery(params,{tab:value})}`}/>

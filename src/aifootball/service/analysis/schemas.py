@@ -64,6 +64,7 @@ class AnalysisContext(BaseModel):
     units: dict[str, str]
 
 class RunSummary(BaseModel):
+    identity_workflow: Literal['admin','team'] = 'admin'
     has_understanding: bool = False
     has_events: bool = False
     id: UUID
@@ -113,6 +114,7 @@ class AutoSources(BaseModel):
     note: str | None = None
 
 class RunView(RunSummary):
+    side_map_verified: bool = False
     match_id: UUID
     analysis_revision: int
     active_run_id: UUID | None

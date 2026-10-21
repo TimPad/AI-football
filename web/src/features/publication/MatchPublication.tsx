@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type ReactNode} from 'react';
-import {Link} from 'react-router-dom';
+import {Link,useLocation,useSearchParams} from 'react-router-dom';
 import {FileText,Video,Users,ChartColumn,Upload,RefreshCw,Lock,CircleAlert,Check} from 'lucide-react';
 import {all,api} from '../../api/client';
 import type {AnalysisOverview,Match,Version} from '../../api/domain';
@@ -32,13 +32,14 @@ export function MatchPublication({matchId,tournamentId,actorId,canManage}:{match
 }
 
 function Row({icon,title,description,block,children,tag}:{icon:ReactNode;title:string;description:string;block:PublicationBlock;children:ReactNode;tag?:string}){
+ const location=useLocation();
  return <article className="publication-row">
   <div className="row-icon" aria-hidden="true">{icon}</div>
   <div>{tag&&<div className="row-tag">{tag}</div>}<h3>{title}</h3><p className="muted">{description}</p>
    <dl className="versions num"><dt>На сайте</dt><dd>{block.currentLabel==='Не опубликован'||block.currentLabel==='Источники не разрешены'?<span className="chip">{block.currentLabel}</span>:<span className="chip ok"><Check/>{block.currentLabel}</span>}</dd>
-    {block.selectedLabel&&<><dt>Выбрано</dt><dd>{block.selectedLabel}</dd></>}</dl></div>
+    {block.selectedLabel&&<><dt>Выбрано</dt><dd>{block.selectedLabel}</dd></>}<dt>Что изменится</dt><dd>{block.changeSummary}</dd></dl></div>
   <div className="row-actions">{children}
-   {block.blockers.map(b=><p key={b.text} className="blocker"><CircleAlert/><span>{b.text}. <Link to={b.href}>Исправить →</Link></span></p>)}</div>
+   {block.blockers.map(b=><p key={b.text} className="blocker"><CircleAlert/><span>{b.text}. <Link state={location.state} to={b.href}>Исправить →</Link></span></p>)}</div>
  </article>;
 }
 
@@ -76,12 +77,13 @@ function PublishAction({versionId,onDone}:{versionId:string;onDone:(ok:boolean)=
 }
 
 function CvRow({matchId,actorId,tick,onChanged}:{matchId:string;actorId:string;tick:number;onChanged:()=>void}){
+ const [params]=useSearchParams();
  const overview=useLoad(()=>api<AnalysisOverview>(`/matches/${matchId}/analysis`),`${matchId}:${tick}`);
  const command=useRatingCommand(`aifootball:analysis-command:v1:${actorId}:${matchId}`,()=>{overview.reload();onChanged()});
  const [selected,setSelected]=useState('');
  if(!overview.data)return <Loading error={overview.error} retry={overview.reload}/>;
  const o=overview.data;const confirmed=o.runs.filter(r=>r.status==='confirmed');
- const chosen=selected||o.active_run_id||confirmed[0]?.id||o.runs[0]?.id||'';const run=o.runs.find(r=>r.id===chosen);
+ const requested=params.get('run_id');const chosen=selected||(requested&&o.runs.some(r=>r.id===requested)?requested:'')||o.active_run_id||confirmed[0]?.id||o.runs[0]?.id||'';const run=o.runs.find(r=>r.id===chosen);
  const block=cvBlock(o,chosen||null);
  const can=!!run&&run.status==='confirmed'&&run.passed&&run.id!==o.published_run_id;
  return <Row icon={<Video/>} title="Видеоанализ" description="Карты, физические показатели и передачи по записи матча." block={block}>
@@ -103,7 +105,7 @@ function PerformanceRow({match,actorId,tick,onChanged}:{match:Match;actorId:stri
  const partId=pendingBody?.participation_version_id??edit.part??saved.participation_version_id??'';
  const actionId=pendingBody?.action_version_id??edit.action??saved.action_version_id??'';
  const approve=pendingBody?.approve_policy??edit.approve??saved.policy_approved;
- const block=performanceBlock(match,part,actions,saved);
+ const block=performanceBlock(match,part,actions,saved,{participation_version_id:partId||null,action_version_id:actionId||null,policy_approved:approve});
  return <Row icon={<Users/>} title="Данные для оценок и статистики" description="Какие проверенные версии участия и действий идут в оценки игроков и командную статистику на сайте. При публикации видеоанализа сюда сами ставятся версии из видео, если вы не выбрали свои." block={block}>
   <label className="field"><span>Участие</span><select aria-label="Публикуемая версия участия" disabled={command.locked} value={partId} onChange={e=>setEdit({...edit,part:e.target.value})}><option value="">Не выбрано</option>{part.versions.filter(v=>v.status==='confirmed').map(v=><option key={v.id} value={v.id}>Участие №{v.revision}{v.auto?' · авто по видео':''}</option>)}</select></label>
   <label className="field"><span>Действия</span><select aria-label="Публикуемая версия действий" disabled={command.locked} value={actionId} onChange={e=>setEdit({...edit,action:e.target.value})}><option value="">Не выбрано</option>{actions.versions.filter(v=>v.status==='confirmed').map(v=><option key={v.id} value={v.id}>Действия №{v.revision}{v.auto?' · авто по видео':''}</option>)}</select></label>

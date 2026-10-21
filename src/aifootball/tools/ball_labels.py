@@ -11,6 +11,7 @@ from aifootball import schemas
 STATUSES = ("visible", "absent", "hidden")
 LOUPE_HALF_PX = 24  # лупа показывает 48x48 пикселей кадра вокруг курсора
 LOUPE_ZOOM = 5
+HINT_BGR = (0, 255, 255)
 
 
 def sampled_frame_ids(total_frames: int, src_fps: float, target_fps: float) -> list[int]:
@@ -77,6 +78,17 @@ class BallLabels:
         schemas.write(df, self.path, "ball_labels")
 
 
+def load_hints(path: Path) -> dict[int, tuple[float, float]]:
+    """Догадки модели: центр мяча по кадрам (parquet с колонками frame_id, x, y)."""
+    df = pl.read_parquet(path, columns=["frame_id", "x", "y"])
+    return {f: (float(x), float(y)) for f, x, y in df.iter_rows()}
+
+
+def point_on_enter(label: dict | None, hint: tuple[float, float] | None) -> tuple[float, float] | None:
+    """Enter на неразмеченном кадре принимает догадку модели; на размеченном только листает."""
+    return hint if label is None else None
+
+
 def render_view(
     frame: np.ndarray,
     scale: float,
@@ -84,8 +96,9 @@ def render_view(
     cursor: tuple[int, int] | None,
     header: str,
     border_bgr: tuple[int, int, int] | None = None,
+    hint: tuple[float, float] | None = None,
 ) -> np.ndarray:
-    """Кадр для окна разметки: метка, строка состояния и лупа вокруг курсора.
+    """Кадр для окна разметки: метка (или догадка модели, пока метки нет), строка состояния и лупа.
 
     cursor — в пикселях исходного кадра. Текст только ASCII: кириллицу OpenCV не рисует.
     """
@@ -93,6 +106,9 @@ def render_view(
     if label is not None and label["status"] == "visible":
         center = (int(label["x"] * scale), int(label["y"] * scale))
         cv2.circle(shown, center, int(12 * scale), (0, 0, 255), 2)
+    elif label is None and hint is not None:
+        center = (int(hint[0] * scale), int(hint[1] * scale))
+        cv2.circle(shown, center, int(18 * scale), HINT_BGR, 1)
     status = f"  [{label['status']}]" if label is not None else ""
     _text(shown, header + status, (10, 30))
     if cursor is not None:
@@ -106,7 +122,9 @@ def _draw_loupe(shown: np.ndarray, frame: np.ndarray, cursor: tuple[int, int]) -
     """Увеличенный участок кадра в правом верхнем углу: там стены зала, поле не закрывает."""
     r = LOUPE_HALF_PX
     padded = cv2.copyMakeBorder(frame, r, r, r, r, cv2.BORDER_CONSTANT)
-    x, y = cursor
+    # Окно OpenCV сообщает курсор и за своим краем — лупа показывает ближайший край кадра.
+    x = min(max(cursor[0], 0), frame.shape[1] - 1)
+    y = min(max(cursor[1], 0), frame.shape[0] - 1)
     crop = padded[y:y + 2 * r, x:x + 2 * r]
     zoomed = cv2.resize(crop, None, fx=LOUPE_ZOOM, fy=LOUPE_ZOOM, interpolation=cv2.INTER_CUBIC)
     size = zoomed.shape[0]

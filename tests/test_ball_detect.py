@@ -32,6 +32,13 @@ def test_cover_tiles_cover_box_with_overlap():
     assert covered[230:1944, 48:2425].all()
 
 
+def test_cover_tiles_start_at_frame_edge_when_frame_is_smaller_than_tile():
+    # Кадр 1280x720 и вырезка 1280: начало вырезки уходило в y = -560, срез брал только низ кадра,
+    # а рамки мяча сдвигались на 560 px вверх — за поле — и отбрасывались. Мяч не находился вовсе.
+    assert cover_tiles((0, 347, 1197, 719), tile=1280, width=1280, height=720) == [(0, 0)]
+    assert cover_tiles((10, 20, 900, 1000), tile=1280, width=960, height=1080) == [(0, 0)]
+
+
 def test_merge_tile_boxes_joins_same_ball_from_two_tiles():
     boxes = np.array([[100, 100, 120, 120], [101, 99, 121, 119], [500, 500, 520, 520]], float)
     confs = np.array([0.4, 0.9, 0.7])

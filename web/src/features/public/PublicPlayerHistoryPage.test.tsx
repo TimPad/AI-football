@@ -26,6 +26,7 @@ describe('public rating history',()=>{
   const paths:string[]=[];let search='';
   vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL)=>{
    const path=String(input);paths.push(path);
+   if(path.includes('/public/players/')&&!path.includes('/ratings'))return new Response('{}',{status:404});
    if(path.includes('/public/tournaments'))return new Response(JSON.stringify({items:[{id:T,name:'Кубок',season:'2026'}],total:1}));
    return new Response(JSON.stringify({snapshot_id:S,summary:[{player_id:P,display_name:'Игрок из издания',rank:1}],matches:[]}));
   }));

@@ -26,17 +26,17 @@ it('marks points by clicking the frame and uploads that frame as the reference',
  fireEvent.click(await screen.findByRole('button',{name:'Добавить профиль камеры'}));
  const input=screen.getByText('Загрузить картинку').querySelector('input')!;
  fireEvent.change(input,{target:{files:[new File(['png'],'frame.png',{type:'image/png'})]}});
- expect(await screen.findByRole('status')).toHaveTextContent('Отметьте точку 1: Угол · 0 × 0 м');
+ expect(await screen.findByRole('status',{name:'Разметка камеры'})).toHaveTextContent('Отметьте точку 1: Угол · 0 × 0 м');
  // Кадр 1000×500 показан в 500×250: клик в пикселях экрана переводится в пиксели кадра.
  const stage=screen.getByRole('img',{name:'Разметка точек на кадре'});
  stage.getBoundingClientRect=()=>({left:0,top:0,width:500,height:250,right:500,bottom:250,x:0,y:0,toJSON:()=>null});
  for(const [x,y] of [[0,0],[500,0],[500,250],[0,250]])fireEvent.click(stage,{clientX:x,clientY:y});
- expect(screen.getByRole('status')).toHaveTextContent('Все точки отмечены');
+ expect(screen.getByRole('status',{name:'Разметка камеры'})).toHaveTextContent('Все точки отмечены');
  // Клик, когда все точки отмечены, ничего не перезаписывает.
  fireEvent.click(stage,{clientX:100,clientY:100});
  const centre=landmarks(40,20).findIndex(l=>l.label.startsWith('Центр поля'));
  fireEvent.change(screen.getByLabelText('Добавить точку разметки'),{target:{value:String(centre)}});
- expect(screen.getByRole('status')).toHaveTextContent('Отметьте точку 5: Центр поля · 20 × 10 м');
+ expect(screen.getByRole('status',{name:'Разметка камеры'})).toHaveTextContent('Отметьте точку 5: Центр поля · 20 × 10 м');
  fireEvent.click(stage,{clientX:250,clientY:125});
  fireEvent.click(screen.getByRole('button',{name:'Сохранить профиль камеры'}));
  await waitFor(()=>expect(puts).toHaveLength(1),{timeout:5000});

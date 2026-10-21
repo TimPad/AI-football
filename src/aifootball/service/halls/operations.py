@@ -11,7 +11,7 @@ from aifootball.service.halls.schemas import HallFields
 
 
 def digest(data,identifier):
-    return sha256(json.dumps({'id':str(identifier),'data':data.model_dump(mode='json')},
+    return sha256(json.dumps({'id':str(identifier),'data':data.model_dump(mode='json',exclude={'address_selection_token'} if getattr(data,'address_selection_token',None) is None else set())},
         sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
@@ -19,7 +19,7 @@ def lock_request(db,identifier):
     db.execute(select(func.pg_advisory_xact_lock(int.from_bytes(identifier.bytes[:8],signed=True))))
 
 
-def save_hall(db,data,hall_id=None):
+def save_hall(db,data,hall_id=None,*,settings=None,actor=None):
     lock_request(db,data.request_id)
     hashed=digest(data,hall_id)
     prior=db.scalar(select(HallCommand).where(HallCommand.request_id==data.request_id))
@@ -34,7 +34,18 @@ def save_hall(db,data,hall_id=None):
     else:
         hall=Hall(id=uuid5(NAMESPACE_URL,'aifootball:hall:'+str(data.request_id)))
         db.add(hall)
+    old=(hall.address,hall.latitude,hall.longitude,hall.address_source) if hall_id else None
+    if data.address_selection_token:
+        from aifootball.service.halls.address_provider import validate_selection
+        if settings is None or actor is None:raise DomainError('address_selection','Выберите адрес заново.',status=422)
+        validate_selection(settings,actor,data)
     for field in HallFields.model_fields: setattr(hall,field,getattr(data,field))
+    if data.address_selection_token:hall.address_source='yandex'
+    elif old and old[0]==data.address and (not {'latitude','longitude'}&data.model_fields_set or (data.latitude,data.longitude)==old[1:3]):
+        hall.latitude,hall.longitude,hall.address_source=old[1:]
+    else:
+        hall.address_source='manual'
+        if old and old[0]!=data.address:hall.latitude=None;hall.longitude=None
     hall.revision=(hall.revision or 0)+1
     db.flush()
     response=jsonable_encoder(as_dict(hall))

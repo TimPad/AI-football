@@ -1,6 +1,6 @@
 import {createContext,useContext,useEffect,type ReactNode} from 'react';
 import {Link} from 'react-router-dom';
-import {Calendar,ChartColumn,Users,Settings,Trophy} from 'lucide-react';
+import {Calendar,ChartColumn,Users,Settings,Trophy,Video} from 'lucide-react';
 
 // Страница задаёт контекст рейла (турнир), оболочка его показывает.
 export const RailContext=createContext<(node:ReactNode)=>void>(()=>{});
@@ -9,7 +9,7 @@ export function useCabinetRail(node:ReactNode,deps:unknown[]){
  useEffect(()=>{set(node);return()=>set(null)},deps);
 }
 
-export const TOURNAMENT_TABS=['matches','teams','ratings','rules','info'] as const;
+export const TOURNAMENT_TABS=['matches','teams','analysis','ratings','rules','info'] as const;
 export type TournamentTab=typeof TOURNAMENT_TABS[number];
 // Прежние ссылки разделов, которые вошли в другие: публикация видна в списке матчей, игроки — в заявках команд.
 export const LEGACY_TOURNAMENT_TABS:Record<string,TournamentTab>={publication:'matches',players:'teams',halls:'matches'};
@@ -21,7 +21,7 @@ export function readTournamentTab(raw:string|null):TournamentTab{
 // Четыре раздела турнира; «Настройки» — регламент и сведения о турнире.
 const ITEMS:{tab:TournamentTab;label:string;icon:ReactNode;analytics?:boolean;also?:TournamentTab[]}[]=[
  {tab:'matches',label:'Матчи',icon:<Calendar/>},{tab:'teams',label:'Команды',icon:<Users/>},
- {tab:'ratings',label:'Рейтинги',icon:<ChartColumn/>,analytics:true},{tab:'rules',label:'Настройки',icon:<Settings/>,also:['info']}];
+ {tab:'analysis',label:'Обработка',icon:<Video/>,analytics:true},{tab:'ratings',label:'Рейтинги',icon:<ChartColumn/>,analytics:true},{tab:'rules',label:'Настройки',icon:<Settings/>,also:['info']}];
 
 export function TournamentRail({id,name,active,analytics}:{id:string;name:string;active:TournamentTab|null;analytics:boolean}){
  return <>

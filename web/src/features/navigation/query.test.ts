@@ -1,7 +1,15 @@
 import {describe,expect,it} from 'vitest';
-import {isUuid,patchQuery,readMatchTab} from './query';
+import {isUuid,patchQuery,readMatchTab,scheduleReturn,analysisQueueReturn} from './query';
 
 describe('match URL context',()=>{
+ it('restores only the same local tournament schedule',()=>{
+  expect(scheduleReturn('/tournaments/t1?tab=matches&day=2026-10-20&hall_id=h1&status=ended&view=grid','t1')).toBe('/tournaments/t1?tab=matches&day=2026-10-20&hall_id=h1&status=ended&view=grid');
+  for(const target of ['https://other.test/tournaments/t1','//other.test','/tournaments/t2?tab=matches','javascript:alert(1)'])expect(scheduleReturn(target,'t1')).toBe('/tournaments/t1?tab=matches');
+ });
+ it('returns to a filtered local analysis queue and rejects external or foreign context',()=>{
+  expect(analysisQueueReturn('/tournaments/t1?tab=analysis&status=review&offset=25','t1')).toBe('/tournaments/t1?tab=analysis&status=review&offset=25');
+  for(const v of [null,'https://other.test/tournaments/t1?tab=analysis','/tournaments/t2?tab=analysis','/tournaments/t1?tab=matches'])expect(analysisQueueReturn(v,'t1')).toBeNull();
+ });
  it('changes a section without discarding edition, player and tournament context',()=>{
   const next=patchQuery(new URLSearchParams('snapshot_id=A&player_id=P&tab=stats'),{tab:'players'});
   expect(next.get('snapshot_id')).toBe('A');

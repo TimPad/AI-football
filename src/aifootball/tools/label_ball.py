@@ -2,13 +2,14 @@
 
     python -m aifootball.tools.label_ball --video V --venue DIR --out data/gt/<матч>/ball.parquet [--count 200] [--scale 1]
         [--frames кадры.txt]   — вместо равномерной выборки: номера кадров, по одному в строке
+        [--hints догадки.parquet] — догадки модели (frame_id, x, y): жёлтый круг на неразмеченном кадре
 
 Мышь: левый клик — центр мяча (по лупе в углу удобнее целиться).
 Клавиши (не зависят от раскладки):
     1          мяча нет в кадре (вне обзора камеры, ушёл за поле)
     2          мяч в кадре, но не видно (закрыт игроком, не разобрать)
     пробел     проиграть соседние кадры, чтобы найти мяч по движению; ещё раз — стоп
-    Enter      следующий кадр без изменений
+    Enter      на неразмеченном кадре с жёлтым кругом — принять догадку модели; иначе следующий кадр без изменений
     Backspace  предыдущий кадр
     Esc        выйти (всё уже сохранено)
 Каждая метка сохраняется сразу; повторный запуск продолжает с первого неразмеченного кадра.
@@ -21,7 +22,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from aifootball.tools.ball_labels import BallLabels, render_view, sampled_frame_ids, spread
+from aifootball.tools.ball_labels import BallLabels, load_hints, point_on_enter, render_view, sampled_frame_ids, spread
 from aifootball.venue import load_venue
 
 KEY_ESC = 27
@@ -65,7 +66,9 @@ class Clip:
         return next(frame for offset, frame in self.around(frame_id) if offset == 0)
 
 
-def run(clip: Clip, labels: BallLabels, frame_ids: list[int], scale: float) -> None:
+def run(clip: Clip, labels: BallLabels, frame_ids: list[int], scale: float,
+        hints: dict[int, tuple[float, float]] | None = None) -> None:
+    hints = hints or {}
     idx = labels.first_unlabeled(frame_ids)
     if idx == len(frame_ids):
         print("все кадры уже размечены — открываю с начала для проверки")
@@ -92,7 +95,7 @@ def run(clip: Clip, labels: BallLabels, frame_ids: list[int], scale: float) -> N
                                 border_bgr=TARGET_BGR if offset == 0 else CONTEXT_BGR)
         else:
             shown = render_view(clip.target(frame_id), scale, labels.get(frame_id), ui["cursor"], header,
-                                border_bgr=TARGET_BGR)
+                                border_bgr=TARGET_BGR, hint=hints.get(frame_id))
         cv2.imshow(WINDOW, shown)
         key = cv2.waitKey(PLAY_DELAY_MS if playing else 30) & 0xFF
 
@@ -113,6 +116,9 @@ def run(clip: Clip, labels: BallLabels, frame_ids: list[int], scale: float) -> N
             idx += 1
         elif key in KEY_ENTER:
             playing = False
+            point = point_on_enter(labels.get(frame_id), hints.get(frame_id))
+            if point is not None:
+                labels.set(frame_id, "visible", point)
             idx += 1
         elif key in KEY_BACKSPACE:
             playing = False
@@ -129,6 +135,7 @@ def main(argv=None) -> None:
     parser.add_argument("--scale", type=float, default=1.0, help="масштаб окна")
     parser.add_argument("--frames", type=Path, default=None,
                         help="файл с номерами кадров (по одному в строке) вместо равномерной выборки")
+    parser.add_argument("--hints", type=Path, default=None, help="догадки модели: parquet с frame_id, x, y")
     args = parser.parse_args(argv)
 
     venue = load_venue(args.venue)
@@ -139,7 +146,7 @@ def main(argv=None) -> None:
         frame_ids = spread(sampled_frame_ids(clip.total, clip.fps, venue.target_fps), args.count)
     labels = BallLabels(args.out, src_fps=clip.fps)
     print(__doc__.split("\n\n", 2)[2])
-    run(clip, labels, frame_ids, args.scale)
+    run(clip, labels, frame_ids, args.scale, load_hints(args.hints) if args.hints else None)
     c = labels.counts()
     done = sum(labels.get(i) is not None for i in frame_ids)
     print(f"размечено {done}/{len(frame_ids)}: мяч виден {c['visible']}, нет в кадре {c['absent']}, "

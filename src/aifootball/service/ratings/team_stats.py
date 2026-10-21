@@ -181,6 +181,8 @@ def _run_with_events(db,run_id):
 
 def public_action_stats(db,match_id,period='all'):
     from aifootball.service.matches.models import Match
+    from aifootball.service.public_visibility import require_public_match
+    require_public_match(db, match_id)
     pub=db.scalar(select(RatingMatchPublication).where(RatingMatchPublication.match_id==match_id))
     version=db.get(ActionVersion,pub.action_version_id) if pub and pub.action_version_id else None
     # Автоматическая версия действий — те же события прогона: сводка строится из него напрямую.

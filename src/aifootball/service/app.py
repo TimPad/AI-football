@@ -21,18 +21,34 @@ def create_app(settings=None, *, web_dist=None):
     app.state.engine = make_engine(settings.database_url)
     expected_schema = ScriptDirectory(str(Path(__file__).resolve().parents[3] / 'migrations')).get_current_head()
     app.include_router(auth_router, prefix='/api/v1')
+    from aifootball.service.captains.auth import router as captain_auth_router
+    from aifootball.service.captains.routes import router as captain_router
+    app.include_router(captain_auth_router,prefix='/api/v1')
+    app.include_router(captain_router,prefix='/api/v1')
+    from aifootball.service.captains.team_routes import router as captain_team_router
+    from aifootball.service.captains.import_routes import router as captain_import_router
+    app.include_router(captain_team_router,prefix='/api/v1')
+    app.include_router(captain_import_router,prefix='/api/v1')
+    from aifootball.service.captains.entry_routes import router as captain_entry_router
+    app.include_router(captain_entry_router,prefix='/api/v1')
     from aifootball.service.tournaments.routes import router as tournament_router
     app.include_router(tournament_router, prefix='/api/v1')
     from aifootball.service.catalog.routes import router as catalog_router
     from aifootball.service.matches.routes import router as match_router
     app.include_router(catalog_router, prefix='/api/v1')
+    from aifootball.service.catalog.roster_imports.routes import router as roster_import_router
+    app.include_router(roster_import_router, prefix='/api/v1')
     from aifootball.service.catalog.images import router as catalog_images_router
     app.include_router(catalog_images_router, prefix='/api/v1')
+    from aifootball.service.halls.address_routes import router as address_router
+    app.include_router(address_router,prefix='/api/v1')
     from aifootball.service.halls.routes import router as halls_router
     app.include_router(halls_router, prefix='/api/v1')
     from aifootball.service.halls.frames import router as camera_frames_router
     app.include_router(camera_frames_router, prefix='/api/v1')
     from aifootball.service.analysis.routes import router as analysis_router
+    from aifootball.service.analysis.team_review.routes import router as team_review_router
+    app.include_router(team_review_router,prefix='/api/v1')
     app.include_router(analysis_router, prefix='/api/v1')
     from aifootball.service.ratings.routes import router as ratings_router
     app.include_router(ratings_router, prefix='/api/v1')
@@ -43,6 +59,8 @@ def create_app(settings=None, *, web_dist=None):
     app.include_router(storage_router, prefix='/api/v1')
     from aifootball.service.public import router as public_router
     app.include_router(public_router, prefix='/api/v1')
+    from aifootball.service.public_profiles import router as public_profiles_router
+    app.include_router(public_profiles_router,prefix='/api/v1')
 
     @app.exception_handler(DomainError)
     async def domain_error(request, error):

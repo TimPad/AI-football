@@ -16,6 +16,13 @@ const show=(entry:string,items=matches,href?:(id:string)=>string)=>render(<Memor
  <Route path="/elsewhere" element={<Back/>}/></Routes></MemoryRouter>);
 const open=(name:RegExp)=>screen.getByRole('link',{name});
 
+it('carries schedule context through a grid match link',()=>{
+ let received:unknown;const saved={scheduleReturn:'/t?tab=matches&view=grid&day=2026-10-20'};
+ function Target(){received=useLocation().state;return null}
+ render(<MemoryRouter initialEntries={['/t?view=grid&day=2026-10-20']}><Routes><Route path="/t" element={<Schedule matches={matches} timezone="Europe/Moscow" matchHref={id=>`/m/${id}`} matchState={saved}/>}/><Route path="/m/:id" element={<Target/>}/></Routes></MemoryRouter>);
+ fireEvent.click(open(/Север — Юг/));expect(received).toEqual(saved);
+});
+
 it('switches timetable/list, filters a hall and links to match details',()=>{
  show('/t');
  // Оба матча в один местный день: выбирать дату не из чего.
@@ -92,4 +99,12 @@ it('draws slot heights proportional to time and keeps overlaps side by side',()=
  expect(container.querySelector('.time-axis')).toHaveTextContent('18:0018:3019:0019:3020:0020:3021:00');
  // Высота задаётся ячейкам: строка с display:contents её не передаёт.
  expect(parseFloat(container.querySelector<HTMLElement>('.time-column')!.style.height)).toBe(180*1.6);
+});
+
+it('filters teams by stable identity and provides public profile links',()=>{
+ const items=matches.map((m,i)=>({...m,home_team_id:`home-${i}`,away_team_id:`away-${i}`}));
+ render(<MemoryRouter initialEntries={['/t?team_id=home-1']}><Schedule matches={items} timezone="Europe/Moscow" teamHref={id=>`/teams/${id}`}/></MemoryRouter>);
+ expect(screen.getByLabelText('Фильтр по команде')).toHaveValue('home-1');
+ expect(screen.queryByRole('link',{name:/Север — Юг/})).toBeNull();
+ expect(screen.getByRole('link',{name:'Восток'})).toHaveAttribute('href','/teams/home-1');
 });

@@ -40,14 +40,19 @@ def create_match(db,tid,data,actor):
     return get_match_view(db,match.id)
 
 
-def get_match_view(db,match_id):
+_LATEST_UNSET=object()
+
+def get_match_view(db,match_id,*,latest_protocol_id=_LATEST_UNSET):
     match=get_entity(db,Match,match_id)
+    if latest_protocol_id is _LATEST_UNSET:
+        from aifootball.service.protocol.models import ProtocolVersion
+        latest_protocol_id=db.scalar(select(ProtocolVersion.id).where(ProtocolVersion.match_id==match_id).order_by(ProtocolVersion.number.desc()).limit(1))
     version=get_entity(db,RegulationVersion,match.regulation_id)
     rules=resolve_rules(match,version)
     lineup=[as_dict(item) for item in db.scalars(select(LineupMember).where(LineupMember.match_id==match.id).order_by(LineupMember.side.desc(),LineupMember.created_at,LineupMember.id))]
     from aifootball.service.protocol.projection import project_protocol
     projection=project_protocol(ProtocolDocument.model_validate(match.protocol),rules).model_dump(mode='json')
-    result={**as_dict(match),'match_id':match.id,'lineup':lineup,'projection':projection,
+    result={**as_dict(match),'latest_confirmed_version_id':latest_protocol_id,'match_id':match.id,'lineup':lineup,'projection':projection,
             'regulation':{**as_dict(version),'rules':rules.model_dump(),'total_s':rules.total_s},
             'home':entry_view(db,get_entity(db,Entry,match.home_entry_id)),
             'away':entry_view(db,get_entity(db,Entry,match.away_entry_id)),

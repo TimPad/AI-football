@@ -17,8 +17,8 @@ def context_hash(context):
     return sha256(canonical_json(context)).hexdigest()
 
 
-def build_context(db, match_id):
-    match = get_entity(db, Match, match_id, lock=True)
+def build_context(db, match_id, *, lock=True):
+    match = get_entity(db, Match, match_id, lock=lock)
     if not match.camera_profile_id or not match.hall_snapshot:
         raise DomainError('camera_required', 'Выберите калиброванную камеру в информации о матче')
     camera = get_entity(db, CameraProfile, match.camera_profile_id)

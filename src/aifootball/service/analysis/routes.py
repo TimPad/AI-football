@@ -1,6 +1,6 @@
 from uuid import UUID
 from typing import Literal
-from fastapi import APIRouter, Depends, Request, UploadFile, File, Header
+from fastapi import APIRouter, Depends, Request, UploadFile, File, Header,Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from aifootball.service.db import get_session
@@ -17,6 +17,13 @@ from aifootball.service.analysis.imports import import_result
 from aifootball.analytics.exchange import validate_result, ExchangeError
 
 router = APIRouter()
+
+from aifootball.service.analysis.queue import AnalysisQueueItem,QueueStage,analysis_queue
+from aifootball.service.views import Page
+
+@router.get('/tournaments/{tid}/analysis-queue',response_model=Page[AnalysisQueueItem],dependencies=[Depends(require_analytics_reader)])
+def tournament_queue(tid:UUID,status:QueueStage|None=None,offset:int=Query(default=0,ge=0),limit:int=Query(default=25,ge=1,le=100),db:Session=Depends(get_session)):
+    return analysis_queue(db,tid,status,offset,limit)
 
 
 @router.post('/matches/{mid}/analysis/jobs', response_model=JobView)

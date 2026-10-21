@@ -35,6 +35,8 @@ def mutate(db, match_id, run_id, actor_id, data, kind):
         if run.status != 'review': raise DomainError('already_confirmed', 'Эта версия уже подтверждена', status=409)
         if context_hash(build_context(db, match_id)) != job.context_hash:
             raise DomainError('analysis_context', 'Состав или камера изменились после импорта. Создайте новое задание.')
+        from aifootball.service.analysis.team_review.confirmations import require_confirmed_sides
+        require_confirmed_sides(db,run,job)
         create_metrics(db, run, job)
         run.status = 'confirmed'; run.confirmed_by = actor_id; run.revision += 1
         match.active_analysis_run_id = run.id; match.analysis_revision += 1
@@ -55,9 +57,12 @@ def mutate(db, match_id, run_id, actor_id, data, kind):
                           content_hash=source.content_hash, storage_key=source.storage_key, manifest=source.manifest,
                           report=source.report, tracks=source.tracks, checks=source.checks, side_map=source.side_map,
                           side_map_verified=source.side_map_verified, understanding=deepcopy(source.understanding),
+                          identity_workflow=source.identity_workflow,
                           events=deepcopy(source.events),
                           understanding_reviews=deepcopy(source.understanding_reviews))
         db.add(run); db.flush()
+        from aifootball.service.analysis.team_review.queries import obsolete_prior_tasks
+        obsolete_prior_tasks(db,run)
         for assignment in db.scalars(select(AnalysisAssignment).where(AnalysisAssignment.run_id == source.id)):
             db.add(AnalysisAssignment(run_id=run.id, track_id=assignment.track_id,
                                       player_id=assignment.player_id, excluded_reason=assignment.excluded_reason))

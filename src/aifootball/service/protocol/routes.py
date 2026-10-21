@@ -8,6 +8,7 @@ from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match,MatchCommand
 from aifootball.service.protocol.models import ProtocolVersion
+from aifootball.service.public_visibility import require_public_match
 
 from aifootball.service.views import Page,VersionView,PublicProtocol
 
@@ -33,6 +34,7 @@ def versions(mid:UUID,db:Session=Depends(get_session),limit:int=Query(50,ge=1,le
 def public_protocol(public_id:UUID,db:Session=Depends(get_session)):
     version=db.scalar(select(ProtocolVersion).join(Match,Match.published_version_id==ProtocolVersion.id).where(ProtocolVersion.public_id==public_id))
     if version is None: raise DomainError('not_found','Опубликованный протокол не найден',status=404)
+    require_public_match(db, version.match_id)
     source=version.snapshot
     events=[]
     for event in source['protocol']['events']:

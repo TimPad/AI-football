@@ -33,6 +33,9 @@ def overview(db,tid):
 
 
 def resolve_snapshot(db,tid,snapshot_id,scope):
+    if scope == 'public':
+        from aifootball.service.public_visibility import require_public_tournament
+        require_public_tournament(db, tid)
     get_entity(db,Tournament,tid);state=rating_state(db,tid)
     if snapshot_id is None:snapshot_id=(state.public_snapshot_id if scope=='public' else state.private_snapshot_id) if state else None
     if snapshot_id is None:return None
