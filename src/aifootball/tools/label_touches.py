@@ -63,6 +63,13 @@ class Touches:
         self.events[frame_id] = event
         self._save()
 
+    def add(self, frame_id: int, event: str) -> bool:
+        """Дополнение: отметка ставится, если кадр свободен или на нём пас/удар; старые 1/2/3 не затираются."""
+        if self.events.get(frame_id, "pass") not in ("pass", "shot"):
+            return False
+        self.set(frame_id, event)
+        return True
+
     def pop_before(self, frame_id: int, kinds: tuple[str, ...] | None = None) -> int | None:
         """Удаляет последнюю отметку не позже frame_id (только из kinds, если заданы); возвращает её кадр."""
         earlier = [f for f, e in self.events.items() if f <= frame_id and (kinds is None or e in kinds)]
@@ -154,7 +161,11 @@ def run(player: Player, touches: Touches, scale: float, start: int, adding: bool
             if event is None:
                 print("   дополнение журнала: 1/2/3 уже стоят, ставьте только 8 (пас) и 0 (удар)")
                 continue
-            touches.set(pos, event)
+            if adding and not touches.add(pos, event):
+                print(f"   на этом кадре уже {touches.events[pos]} — сдвиньтесь на кадр (6) и нажмите снова")
+                continue
+            if not adding:
+                touches.set(pos, event)
             flash_until, flash_event = time.monotonic() + 0.4, event
             print(f"   {pos / player.fps:6.1f} с  {event}")
         elif key == KEY_SPACE:

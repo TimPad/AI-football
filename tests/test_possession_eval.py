@@ -142,3 +142,11 @@ def test_undo_while_adding_removes_only_pass_or_shot(tmp_path):
     assert j.pop_before(35, kinds=("pass", "shot")) == 20
     assert j.pop_before(35, kinds=("pass", "shot")) is None
     assert j.events == {10: "A", 30: "B"}
+
+
+def test_adding_does_not_overwrite_an_old_mark_on_the_same_frame(tmp_path):
+    j = Touches(tmp_path / "touches.parquet", fps=FPS)
+    j.set(10, "B")
+    assert not j.add(10, "pass")  # приём B на этом кадре остаётся
+    assert j.add(11, "pass") and j.add(11, "shot")  # свою новую отметку заменить можно
+    assert j.events == {10: "B", 11: "shot"}
