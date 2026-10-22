@@ -90,3 +90,22 @@ def test_long_gap_cannot_complete_sprint():
     state = _state(1, 'A', np.array([0., .2, 10., 10.2]), np.array([0., 1., 2., 3.]), speed=6.)
     result = compute_metrics(state, 40., 20.)
     assert result['tracks']['1']['sprints_count'] == 0
+
+
+def _shot_saved_by_keeper():
+    """A1 бьёт с 30 м по центру ворот x=40 на 15 м/с, мяч забирает вратарь B."""
+    ts = np.round(np.arange(76) * 0.04, 2)
+    ball_x = np.where(ts <= 1.0, 30.2, np.minimum(30.2 + (ts - 1.0) * 15, 39.4))
+    ball = pl.DataFrame({"frame_id": (ts * 25).round().astype(np.int32), "ts": ts, "x_m": ball_x, "y_m": np.full(len(ts), 10.0),
+                         "speed": np.zeros(len(ts)), "interpolated": [False] * len(ts)})
+    keeper = _state(9, "B", ts, np.full(len(ts), 39.6), y=10.0, speed=0.5).with_columns(role=pl.lit("goalkeeper"))
+    return ball, pl.concat([_state(1, "A", ts, np.full(len(ts), 30.0), y=10.0), keeper])
+
+
+def test_saved_shot_is_not_a_pass_in_metrics_or_report():
+    # передачи отчёта — те же события, что публикует сервис: удар, который взял вратарь, — не неточный пас
+    from aifootball.analytics.report_data import ball_summary
+
+    ball, state = _shot_saved_by_keeper()
+    assert compute_metrics(state, 40.0, 20.0, ball_state=ball)["passes"]["passes_total"] == {"A": 0, "B": 0}
+    assert ball_summary(ball, state, 40.0, 20.0)["passes"]["passes_total"] == {"A": 0, "B": 0}

@@ -255,6 +255,7 @@ def cmd_missed(args) -> None:
     """Звенья по порядку: мяч у приёма → игрок рядом → владелец подтверждён → команда владельца →
     смена владельца → что пайплайн из смены сделал (передача другой команды, удар, остановка, долгий полёт)."""
     from aifootball.analytics.events import MAX_PASS_FLIGHT_S, extract_events, owner_runs, stoppages
+    from aifootball.analytics.validation import truth_from_touches
     from aifootball.perception.ball import TAKE_RADIUS_M, ball_owners, process_ball_trajectory
 
     total, examples = Counter(), {}
@@ -269,14 +270,16 @@ def cmd_missed(args) -> None:
         passes = [e for e in extract_events(ball, state, venue.length_m, venue.width_m, attack) if e['kind'] == 'pass']
         players = state.filter(pl.col('team').is_in(['A', 'B']))
         b_ts, b_x, b_y, b_int = (ball[c].to_numpy() for c in ('ts', 'x_m', 'y_m', 'interpolated'))
-        rows = pl.read_parquet(touches_path).sort('ts').to_dicts()
         cats = Counter()
-        for a, b in zip(rows, rows[1:]):
-            if a['event'] not in ('A', 'B') or b['event'] not in ('A', 'B'):
-                continue
-            tr, passer, receiver = b['ts'], a['event'], b['event']
+        for truth in truth_from_touches(pl.read_parquet(touches_path))[1]:
+            tr, passer = truth['ts_receive'], truth['team']
+            receiver = passer if truth['completed'] else None if truth['outcome'] == 'out' else ('B' if passer == 'A' else 'A')
             if any(p['team'] == passer and abs(p['end_s'] - tr) <= PASS_TOL_S for p in passes):
                 cats['найдена'] += 1
+                continue
+            if receiver is None:
+                cats['пас в аут'] += 1
+                examples.setdefault('пас в аут', []).append(f'{Path(match).name} {tr:.1f} с')
                 continue
             near_ball = np.abs(b_ts - tr) <= MISS_WINDOW_S
             run = min((r for r in runs if abs(r['ts_start'] - tr) <= PASS_TOL_S), key=lambda r: abs(r['ts_start'] - tr), default=None)

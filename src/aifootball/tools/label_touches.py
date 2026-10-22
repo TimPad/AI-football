@@ -1,13 +1,17 @@
 """Ручной журнал владения мячом: эталон для сверки владения и передач (cli eval-passes).
 
     python -m aifootball.tools.label_touches --video V --out data/gt/<матч>/touches.parquet
-        [--scale 0.5] [--team-a "зелёные"] [--team-b "оранжевые"]
+        [--scale 0.5] [--team-a "зелёные"] [--team-b "оранжевые"] [--from-start]
 
 Смотрите видео и жмите клавишу, когда мяч ПОЛУЧАЕТ НОВЫЙ игрок (приём паса, перехват, отбор).
 Пока мяч ведёт тот же игрок — ничего не жмите. Клавиши (не зависят от раскладки):
     1          мяч получил игрок команды A
     2          мяч получил игрок команды B
     3          мяч вне игры: аут, гол, фол, остановка (до следующей 1/2 мяч ничей)
+    8          пас: игрок с мячом ударил по мячу, отдавая его; исход — по следующей отметке
+               (свой — точная, соперник — перехват, 3 — в аут). Отбор без паса — без 8.
+               Ввод мяча после остановки — как раньше, 1/2 за принявшего, без 8.
+    0          удар по воротам
     пробел     пауза / пуск
     4 / 6      кадр назад / вперёд (стрелки тоже работают)
     5          назад на 2 секунды
@@ -15,7 +19,9 @@
     Backspace  удалить последнюю отметку до текущего кадра и встать на неё
     Esc        выйти (всё уже сохранено)
 Отметка ставится на показанный кадр: на паузе можно отмотать к моменту приёма и нажать там.
-Повторный запуск продолжает с последней отметки.
+Повторный запуск продолжает с последней отметки; --from-start — с начала видео, чтобы дополнить
+готовый журнал отметками 8 и 0: 1/2/3 тогда не ставятся, Backspace удаляет только 8 и 0.
+Два 8 подряд без 1/2 между ними — первый пас не засчитается; если 1/2 за принявшего нет, запишите время.
 """
 
 import argparse
@@ -31,7 +37,7 @@ from aifootball import schemas
 
 KEY_ESC, KEY_SPACE = 27, 32
 KEY_BACKSPACE = {8, 127}
-KEY_EVENT = {ord("1"): "A", ord("2"): "B", ord("3"): "dead"}
+KEY_EVENT = {ord("1"): "A", ord("2"): "B", ord("3"): "dead", ord("8"): "pass", ord("0"): "shot"}
 KEY_FRAME_BACK = {ord("4"), 63234, 2424832, 65361}  # 4 и стрелка влево (macOS / Windows / Linux)
 KEY_FRAME_FWD = {ord("6"), 63235, 2555904, 65363}
 KEY_JUMP_BACK = ord("5")
@@ -39,7 +45,7 @@ KEY_SLOWER, KEY_FASTER = ord("7"), ord("9")
 SPEEDS = (0.25, 0.5, 1.0, 1.5, 2.0)
 JUMP_BACK_S = 2.0
 RESUME_BACK_S = 3.0
-EVENT_BGR = {"A": (60, 200, 60), "B": (0, 140, 255), "dead": (200, 200, 200)}
+EVENT_BGR = {"A": (60, 200, 60), "B": (0, 140, 255), "dead": (200, 200, 200), "pass": (255, 220, 0), "shot": (255, 0, 255)}
 WINDOW = "label_touches"
 
 
@@ -57,9 +63,16 @@ class Touches:
         self.events[frame_id] = event
         self._save()
 
-    def pop_before(self, frame_id: int) -> int | None:
-        """Удаляет последнюю отметку не позже frame_id; возвращает её кадр."""
-        earlier = [f for f in self.events if f <= frame_id]
+    def add(self, frame_id: int, event: str) -> bool:
+        """Дополнение: отметка ставится, если кадр свободен или на нём пас/удар; старые 1/2/3 не затираются."""
+        if self.events.get(frame_id, "pass") not in ("pass", "shot"):
+            return False
+        self.set(frame_id, event)
+        return True
+
+    def pop_before(self, frame_id: int, kinds: tuple[str, ...] | None = None) -> int | None:
+        """Удаляет последнюю отметку не позже frame_id (только из kinds, если заданы); возвращает её кадр."""
+        earlier = [f for f, e in self.events.items() if f <= frame_id and (kinds is None or e in kinds)]
         if not earlier:
             return None
         last = max(earlier)
@@ -106,7 +119,7 @@ def render(img: np.ndarray, scale: float, pos: int, total: int, fps: float, spee
     h, w = shown.shape[:2]
     t = pos / fps
     state = "PLAY" if playing else "PAUSE"
-    header = f"{int(t // 60)}:{t % 60:04.1f}  x{speed}  {state}   1=A  2=B  3=dead  space  4/6 frame  5 -2s  7/9 speed"
+    header = f"{int(t // 60)}:{t % 60:04.1f}  x{speed}  {state}   1=A  2=B  3=dead  8=pass  0=shot  space  4/6 frame  5 -2s  7/9 speed"
     cv2.putText(shown, header, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 4, cv2.LINE_AA)
     cv2.putText(shown, header, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
     # последние отметки до текущего кадра
@@ -128,7 +141,7 @@ def render(img: np.ndarray, scale: float, pos: int, total: int, fps: float, spee
     return shown
 
 
-def run(player: Player, touches: Touches, scale: float, start: int) -> None:
+def run(player: Player, touches: Touches, scale: float, start: int, adding: bool = False) -> None:
     pos, playing, speed_idx = start, False, SPEEDS.index(0.5)
     flash_until, flash_event = 0.0, None
     cv2.namedWindow(WINDOW, cv2.WINDOW_AUTOSIZE)
@@ -144,8 +157,15 @@ def run(player: Player, touches: Touches, scale: float, start: int) -> None:
         if key == KEY_ESC:
             break
         if key in KEY_EVENT:
-            event = KEY_EVENT[key]
-            touches.set(pos, event)
+            event = event_for_key(key, adding)
+            if event is None:
+                print("   дополнение журнала: 1/2/3 уже стоят, ставьте только 8 (пас) и 0 (удар)")
+                continue
+            if adding and not touches.add(pos, event):
+                print(f"   на этом кадре уже {touches.events[pos]} — сдвиньтесь на кадр (6) и нажмите снова")
+                continue
+            if not adding:
+                touches.set(pos, event)
             flash_until, flash_event = time.monotonic() + 0.4, event
             print(f"   {pos / player.fps:6.1f} с  {event}")
         elif key == KEY_SPACE:
@@ -161,7 +181,7 @@ def run(player: Player, touches: Touches, scale: float, start: int) -> None:
         elif key == KEY_FASTER:
             speed_idx = min(len(SPEEDS) - 1, speed_idx + 1)
         elif key in KEY_BACKSPACE:
-            removed = touches.pop_before(pos)
+            removed = touches.pop_before(pos, ADD_EVENTS if adding else None)
             if removed is not None:
                 playing, pos = False, removed
                 print(f"   удалена отметка {removed / player.fps:.1f} с")
@@ -174,6 +194,22 @@ def run(player: Player, touches: Touches, scale: float, start: int) -> None:
     cv2.destroyAllWindows()
 
 
+ADD_EVENTS = ("pass", "shot")
+
+
+def event_for_key(key: int, adding: bool) -> str | None:
+    """Отметка по клавише. При дополнении готового журнала — только пас и удар: повторные 1/2/3 его портят."""
+    event = KEY_EVENT.get(key)
+    return event if event is not None and (not adding or event in ADD_EVENTS) else None
+
+
+def start_frame(touches: Touches, fps: float, from_start: bool) -> int:
+    """С начала видео — для нового журнала и для дополнения готового; иначе за 3 с до последней отметки."""
+    if from_start or not touches.events:
+        return 0
+    return max(0, max(touches.events) - int(RESUME_BACK_S * fps))
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--video", type=Path, required=True)
@@ -181,17 +217,20 @@ def main(argv=None) -> None:
     parser.add_argument("--scale", type=float, default=0.5, help="масштаб окна")
     parser.add_argument("--team-a", default="команда A", help="как узнать команду A (для подсказки)")
     parser.add_argument("--team-b", default="команда B", help="как узнать команду B (для подсказки)")
+    parser.add_argument("--from-start", action="store_true", help="с начала видео: дополнить готовый журнал")
     args = parser.parse_args(argv)
 
     player = Player(args.video)
     touches = Touches(args.out, player.fps)
     print(__doc__.split("\n\n", 2)[2].replace("команды A", f"команды A ({args.team_a})")
           .replace("команды B", f"команды B ({args.team_b})"))
-    start = 0
+    start = start_frame(touches, player.fps, args.from_start)
     if touches.events:
-        start = max(0, max(touches.events) - int(RESUME_BACK_S * player.fps))
-        print(f"в журнале {len(touches.events)} отметок — продолжаю с {start / player.fps:.1f} с")
-    run(player, touches, args.scale, start)
+        print(f"в журнале {len(touches.events)} отметок — начинаю с {start / player.fps:.1f} с")
+    adding = args.from_start and bool(touches.events)
+    if adding:
+        print("дополнение журнала: принимаются только 8 и 0, Backspace удаляет только их")
+    run(player, touches, args.scale, start, adding)
     print(f"отметок: {len(touches.events)} -> {args.out}")
 
 

@@ -145,6 +145,24 @@ def _shot(ball, run, next_run, length_m, width_m, attack_x):
     return None
 
 
+def pass_counts(ball: pl.DataFrame, players: pl.DataFrame, length_m: float, width_m: float) -> dict:
+    """Передачи по командам из тех же событий, что публикует сервис: без остановок, ударов и единоборств.
+
+    Формат — как у perception.ball.detect_passes: passes_total, passes_completed, pass_accuracy_pct.
+    """
+    from aifootball.perception.teams import defending_sides
+
+    sides = defending_sides(players)
+    attack = {sides[0]: length_m, sides[1]: 0.0} if sides else None
+    total, completed = {t: 0 for t in TEAMS}, {t: 0 for t in TEAMS}
+    for e in extract_events(ball, players, length_m, width_m, attack):
+        if e["kind"] == "pass" and e["team"] in TEAMS:
+            total[e["team"]] += 1
+            completed[e["team"]] += bool(e["success"])
+    return {"passes_total": total, "passes_completed": completed,
+            "pass_accuracy_pct": {t: round(completed[t] / total[t] * 100, 1) if total[t] else 0.0 for t in TEAMS}}
+
+
 def extract_events(ball: pl.DataFrame, players: pl.DataFrame, length_m: float, width_m: float,
                    attack_x: dict[str, float] | None = None, skip_stoppages: bool = True) -> list[dict]:
     """Список событий по времени. attack_x — x атакуемых ворот для команд A/B, если известен.

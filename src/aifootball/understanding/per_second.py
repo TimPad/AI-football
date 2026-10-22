@@ -23,7 +23,7 @@ def dead_intervals(touches) -> list[tuple[float, float]]:
     for i, mark in enumerate(log):
         if mark['event'] != 'dead':
             continue
-        end = next((t['ts'] for t in log[i + 1:] if t['event'] != 'dead'), None)
+        end = next((t['ts'] for t in log[i + 1:] if t['event'] in ('A', 'B')), None)
         if end is None:
             continue
         if merged and mark['ts'] <= merged[-1][1]:

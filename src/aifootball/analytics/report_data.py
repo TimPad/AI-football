@@ -362,15 +362,16 @@ def team_colors(tracks: pl.DataFrame) -> dict[str, str]:
         out[team] = "#{:02x}{:02x}{:02x}".format(int(bgr[2]), int(bgr[1]), int(bgr[0]))
     return out
 
-def ball_summary(ball_state: pl.DataFrame, state: pl.DataFrame) -> dict:
-    """Владение и передачи за период — только по --with-ball, с замеренной точностью."""
-    from aifootball.perception.ball import compute_possession, detect_passes
+def ball_summary(ball_state: pl.DataFrame, state: pl.DataFrame, length_m: float, width_m: float) -> dict:
+    """Владение и передачи за период — только по --with-ball, с замеренной точностью. Передачи — как в events.json."""
+    from aifootball.analytics.events import pass_counts
+    from aifootball.perception.ball import compute_possession
 
     return {
         "possession": compute_possession(ball_state, state),
-        "passes": detect_passes(ball_state, state),
+        "passes": pass_counts(ball_state, state, length_m, width_m),
         "caveat": "Приблизительно: по ручным журналам двух залов находится около двух третей передач, "
-                  "из найденных верны от трети до 60%.",
+                  "из найденных верна примерно половина.",
     }
 
 def build_report(state: pl.DataFrame, tracks: pl.DataFrame, venue, spans, team_names: dict,
@@ -398,7 +399,7 @@ def build_report(state: pl.DataFrame, tracks: pl.DataFrame, venue, spans, team_n
             "input_quality": input_quality(part, cap),
         }
         if ball_state is not None:
-            entry["ball"] = ball_summary(in_period(ball_state, p.spans), part)
+            entry["ball"] = ball_summary(in_period(ball_state, p.spans), part, length_m, width_m)
         periods.append(entry)
 
     return {
