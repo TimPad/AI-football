@@ -53,9 +53,10 @@ def compute_metrics(
     }
 
     if ball_state is not None and not ball_state.is_empty():
-        from aifootball.perception.ball import compute_possession, detect_passes
+        from aifootball.analytics.events import pass_counts
+        from aifootball.perception.ball import compute_possession
         result["possession"] = compute_possession(ball_state, state)
-        result["passes"] = detect_passes(ball_state, state)
+        result["passes"] = pass_counts(ball_state, state, length_m, width_m)
 
     return result
 
