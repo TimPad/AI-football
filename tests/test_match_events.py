@@ -61,6 +61,17 @@ def test_flicker_shorter_than_minimum_run_is_not_a_turnover():
     assert all(e['kind'] not in ('turnover', 'recovery') for e in found)
 
 
+def test_instant_owner_change_is_not_a_pass():
+    # Трек владельца пропал в толкучке, и мяч сразу у соседа: мяч не летел — это не передача
+    a1 = player(1, 'A', still(0, 1.0, 10, 10))
+    path = still(0, 3.0, 10.3, 10)
+    teammate = extract_events(ball(path), pl.concat([a1, player(2, 'A', still(0, 3.0, 10.8, 10))]), L, W, {'A': L, 'B': 0.0})
+    assert all(e['kind'] != 'pass' for e in teammate)
+    # у соперника — единоборство, а не неточная передача
+    opponent = extract_events(ball(path), pl.concat([a1, player(9, 'B', still(0, 3.0, 10.8, 10))]), L, W, {'A': L, 'B': 0.0})
+    assert all(e['kind'] != 'pass' for e in opponent) and any(e['kind'] == 'duel' for e in opponent)
+
+
 def moving(track_id, team, t0, t1, x0, y, speed, role='player'):
     """Игрок ходит туда-обратно со скоростью speed; колонка speed как в state."""
     ts = frames(round((t1 - t0) / DT) + 1, t0)

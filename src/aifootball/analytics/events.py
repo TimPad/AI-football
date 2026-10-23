@@ -20,6 +20,9 @@ SHOT_WINDOW_S = 1.2         # полёт мяча после удара, кот�
 CARRY_MIN_M = 3.0
 DUEL_RADIUS_M = 1.5
 BLOCK_MAX_S = 1.0
+# Смена владельца быстрее — мяч не успел пролететь между игроками: трек пропал в толкучке или борьба за мяч,
+# а не передача. По пяти журналам с отметкой паса: так выглядят 25 из 55 ложных передач и 3 из 61 верной.
+MIN_PASS_FLIGHT_S = 0.3
 # Остановки: полевые ходят медленнее обычного для этого матча, кто-то стоит у линии (ввод мяча).
 # Пороги — доли медианной скорости матча, чтобы не зависеть от уровня игры. По двум журналам
 # Ярославля: найдено ~половина времени остановок при точности ~0.88, точность передач 0.69 → 0.78;
@@ -195,15 +198,16 @@ def extract_events(ball: pl.DataFrame, players: pl.DataFrame, length_m: float, w
             continue
         if nxt is None or nxt["ts_start"] - run["ts_end"] > MAX_PASS_FLIGHT_S:
             continue
+        instant = nxt["ts_start"] - run["ts_end"] < MIN_PASS_FLIGHT_S
         if nxt["team"] == run["team"]:
-            if nxt["track_id"] != run["track_id"]:
+            if nxt["track_id"] != run["track_id"] and not instant:
                 events.append({"kind": "pass", **base, "end_s": nxt["ts_start"], "end_xy": nxt["xy_start"],
                                "recipient_track_id": nxt["track_id"], "success": True, "confidence": 0.7})
             continue
-        # Мяч перешёл сопернику: близкий контакт — единоборство, иначе неточная передача.
+        # Мяч перешёл сопернику: мгновенно или при близком контакте — единоборство, иначе неточная передача.
         frame = nxt["frame_start"]; bxy = ball_at.get(frame)
-        duel = False
-        if bxy is not None:
+        duel = instant
+        if bxy is not None and not duel:
             close = near.filter((pl.col("frame_id") == frame) & (pl.col("track_id") == run["track_id"]))
             if close.height:
                 duel = float(np.hypot(close["x_m"][0] - bxy[0], close["y_m"][0] - bxy[1])) <= DUEL_RADIUS_M

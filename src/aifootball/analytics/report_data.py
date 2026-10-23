@@ -371,7 +371,7 @@ def ball_summary(ball_state: pl.DataFrame, state: pl.DataFrame, length_m: float,
         "possession": compute_possession(ball_state, state),
         "passes": pass_counts(ball_state, state, length_m, width_m),
         "caveat": "Приблизительно: по ручным журналам двух залов находится около двух третей передач, "
-                  "из найденных верна примерно половина.",
+                  "из найденных верны около двух третей.",
     }
 
 def build_report(state: pl.DataFrame, tracks: pl.DataFrame, venue, spans, team_names: dict,
