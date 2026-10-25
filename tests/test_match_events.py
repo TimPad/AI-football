@@ -52,6 +52,32 @@ def test_slow_ball_or_ball_away_from_goal_is_not_a_shot():
         assert all(e['kind'] != 'shot' for e in extract_events(ball(path), a1, L, W, {'A': L, 'B': 0.0}))
 
 
+def test_close_shot_rebounding_off_the_keeper_is_a_shot():
+    # Удар с 5 м: мяч у ворот через 0,3 с, а потом отскакивает от вратаря в сторону и дальше точки удара
+    a1 = player(1, 'A', still(0, 2.5, 34.8, 10))
+    path = still(0, 1.0, 35.0, 10) + [(1.1, 36.7, 10.05), (1.2, 38.4, 10.1), (1.3, 39.6, 10.2)] + \
+        [(t, 39.6 - (t - 1.3) * 8, 10.2 + (t - 1.3) * 5) for t in frames(10, 1.4)]
+    shot = next(e for e in extract_events(ball(path), a1, L, W, {'A': L, 'B': 0.0}) if e['kind'] == 'shot')
+    assert shot['team'] == 'A' and shot['on_target'] is True
+
+
+def test_shot_just_wide_of_the_post_is_an_off_target_shot():
+    # Мимо штанги на 2,5 м — удар мимо створа, а не передача
+    a1 = player(1, 'A', still(0, 2.5, 30, 10))
+    path = still(0, 1.0, 30.2, 10) + [(t, 30.2 + (t - 1.0) * 15, 10 + (t - 1.0) * 6.3) for t in frames(7, 1.1)]
+    shot = next(e for e in extract_events(ball(path), a1, L, W, {'A': L, 'B': 0.0}) if e['kind'] == 'shot')
+    assert shot['on_target'] is False and shot['outcome'] == 'off_target'
+
+
+def test_shot_inside_a_found_stoppage_is_kept(monkeypatch):
+    # Классификатор остановок смотрит на секунду вперёд и помечает остановкой сам удар, после которого игра встала
+    import aifootball.analytics.events as events
+    a1 = player(1, 'A', still(0, 2.0, 30, 10))
+    path = still(0, 1.0, 30.2, 10) + [(t, 30.2 + (t - 1.0) * 15, 10.2) for t in frames(6, 1.1)]
+    monkeypatch.setattr(events, 'stoppages', lambda *a, **k: [(0.5, 5.0)])
+    assert any(e['kind'] == 'shot' for e in events.extract_events(ball(path), a1, L, W, {'A': L, 'B': 0.0}))
+
+
 def test_flicker_shorter_than_minimum_run_is_not_a_turnover():
     a1 = player(1, 'A', still(0, 3.0, 10, 10))
     b1 = player(9, 'B', still(0, 3.0, 12.5, 10))
