@@ -4,6 +4,7 @@
 мяч летит: своему — передача, сопернику — потеря и возврат, к воротам с большой скоростью — удар.
 События ссылаются на трек и время видео; личность игрока здесь неизвестна.
 В остановках игры (аут, фол, гол) игроки перекатывают мяч — такие «передачи» отбрасываются (stoppages).
+Удары не отбрасываются: после удара игра часто встаёт, и остановка, найденная по секундам, накрывает сам удар.
 """
 import numpy as np
 import polars as pl
@@ -13,8 +14,14 @@ from aifootball.perception.ball import MAX_PASS_FLIGHT_S, MIN_RUN_S, ball_owners
 
 TEAMS = ("A", "B")
 GOAL_HALF_M = 1.5           # ворота футзала 3 м
-SHOT_MARGIN_M = 1.5         # «рядом с воротами» — до 1.5 м за штангой
+# Удар — мяч после удара подходит к створу ближе SHOT_APPROACH_M и приближается к нему хотя бы на SHOT_CLOSER_M
+# (мяч вдоль линии ворот — не удар). По пяти журналам с отметкой удара: найдено 9 из 26 ударов, верных 9 из 14;
+# прежнее правило (продолжение полёта до линии ворот, 1,5 м за штангой) — 3 из 26: мяч в воздухе сбивает
+# поперечную координату на метры, а после удара с 1–4 м дальше всего мяч улетает отскоком от вратаря.
+SHOT_APPROACH_M = 3.0
+SHOT_CLOSER_M = 2.0
 SHOT_SPEED_MS = 9.0         # пас в футзале обычно медленнее; удар — быстрее
+SHOT_KINDS = ("shot", "shot_block", "save")
 SHOT_MAX_DIST_M = 20.0      # дальше удары почти не наносят
 SHOT_WINDOW_S = 1.2         # полёт мяча после удара, который анализируем
 CARRY_MIN_M = 3.0
@@ -113,29 +120,30 @@ def _flight(ball: pl.DataFrame, t0: float, t1: float) -> tuple[np.ndarray, np.nd
 
 
 def _shot(ball, run, next_run, length_m, width_m, attack_x):
-    """Удар: быстрый полёт после отрезка владения в сторону атакуемых ворот, в створ или рядом."""
+    """Удар: быстрый полёт после отрезка владения, мяч подходит к створу атакуемых ворот."""
     t, x, y = _flight(ball, run["ts_end"], run["ts_end"] + SHOT_WINDOW_S)
     if len(t) < 3:
         return None
     dt = np.diff(t); step = np.hypot(np.diff(x), np.diff(y)) / np.maximum(dt, 1e-3)
-    peak = float(np.max(step[: max(1, min(len(step), 8))]))
+    head = step[: max(1, min(len(step), 8))]
+    kick = int(np.argmax(head))
+    peak = float(head[kick])
     if peak < SHOT_SPEED_MS:
         return None
+    x, y = x[kick:], y[kick:]
     goals = [attack_x] if attack_x is not None else [0.0, length_m]
     for gx in goals:
         dx = gx - x[0]
         if abs(dx) > SHOT_MAX_DIST_M:
             continue
-        # Направление по самой дальней точке полёта, чтобы шум первых кадров не решал.
-        far = int(np.argmax(np.abs(x - x[0])))
-        vx, vy = x[far] - x[0], y[far] - y[0]
-        if vx == 0 or np.sign(vx) != np.sign(dx):
+        to_mouth = np.hypot(x - gx, np.maximum(0.0, np.abs(y - width_m / 2) - GOAL_HALF_M))
+        near = int(np.argmin(to_mouth))
+        if to_mouth[near] > SHOT_APPROACH_M or to_mouth[near] > to_mouth[0] - SHOT_CLOSER_M:
             continue
-        y_goal = y[0] + vy * dx / vx
-        miss = abs(y_goal - width_m / 2) - GOAL_HALF_M
-        if miss > SHOT_MARGIN_M:
-            continue
-        on_target = bool(miss <= 0)
+        # Створ — по направлению от удара к точке наибольшего сближения, а не к самой дальней (там бывает отскок).
+        vx, vy = x[near] - x[0], y[near] - y[0]
+        y_goal = y[0] + vy * dx / vx if vx else y[near]
+        on_target = bool(abs(y_goal - width_m / 2) <= GOAL_HALF_M)
         outcome = "unknown"
         if next_run and next_run["team"] != run["team"] and next_run["ts_start"] - run["ts_end"] <= BLOCK_MAX_S:
             outcome = "saved" if next_run.get("role") == "goalkeeper" and on_target else "failure" if next_run.get("role") != "goalkeeper" else "unknown"
@@ -224,5 +232,7 @@ def extract_events(ball: pl.DataFrame, players: pl.DataFrame, length_m: float, w
     if skip_stoppages:
         spans = stoppages(players, length_m, width_m, ball)
         stopped = lambda t: t is not None and any(a <= t <= b for a, b in spans)
-        events = [e for e in events if not stopped(e["start_s"]) and not stopped(e.get("end_s"))]
+        # Удар остаётся: по пяти журналам фильтр срезал 4 удара из 9 найденных — классификатор, который смотрит
+        # на секунду вперёд, помечает остановкой и сам удар, после которого мяч ушёл за линию или к вратарю.
+        events = [e for e in events if e["kind"] in SHOT_KINDS or (not stopped(e["start_s"]) and not stopped(e.get("end_s")))]
     return sorted(events, key=lambda e: (e["start_s"], e["kind"]))
