@@ -2271,6 +2271,227 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tid}/stages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stages */
+        get: operations["stages_api_v1_tournaments__tid__stages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tid}/standings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cabinet Standings */
+        get: operations["cabinet_standings_api_v1_tournaments__tid__standings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tid}/format": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Format */
+        post: operations["create_format_api_v1_tournaments__tid__format_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stages/{sid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Stage */
+        patch: operations["patch_stage_api_v1_stages__sid__patch"];
+        trace?: never;
+    };
+    "/api/v1/stages/{sid}/draw/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview */
+        post: operations["preview_api_v1_stages__sid__draw_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stages/{sid}/draw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm */
+        post: operations["confirm_api_v1_stages__sid__draw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stages/{sid}/lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lots */
+        post: operations["lots_api_v1_stages__sid__lots_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stages/{sid}/next-round": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Next Round */
+        post: operations["next_round_api_v1_stages__sid__next_round_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tid}/fixtures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fixtures */
+        get: operations["fixtures_api_v1_tournaments__tid__fixtures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fixtures/{fid}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Schedule */
+        post: operations["schedule_api_v1_fixtures__fid__schedule_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fixtures/{fid}/replace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace */
+        post: operations["replace_api_v1_fixtures__fid__replace_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/tournaments/{tid}/standings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Standings */
+        get: operations["standings_api_v1_public_tournaments__tid__standings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/tournaments/{tid}/fixtures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fixtures */
+        get: operations["fixtures_api_v1_public_tournaments__tid__fixtures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -2744,6 +2965,16 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** Advance */
+        Advance: {
+            /**
+             * Per Group
+             * @default 0
+             */
+            per_group?: number;
+            /** Best */
+            best?: components["schemas"]["Best"][];
+        };
         /** AnalysisContext */
         AnalysisContext: {
             /**
@@ -3059,6 +3290,13 @@ export interface components {
             passes?: number;
             /** Note */
             note?: string | null;
+        };
+        /** Best */
+        Best: {
+            /** Place */
+            place: number;
+            /** Count */
+            count: number;
         };
         /** Body_upload_api_v1_captain_roster_imports_post */
         Body_upload_api_v1_captain_roster_imports_post: {
@@ -3615,6 +3853,101 @@ export interface components {
             expected_tournament_revision: number;
             team: components["schemas"]["TeamCreate"];
         };
+        /** DrawConfirm */
+        DrawConfirm: {
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "pots" | "snake" | "seeded" | "random" | "scheme" | "manual";
+            /**
+             * Seed
+             * @default 0
+             */
+            seed?: number;
+            /** Seeding */
+            seeding?: string[];
+            /** Placement */
+            placement?: unknown[] | null;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+            /** Expected Revision */
+            expected_revision: number;
+        };
+        /** DrawInput */
+        DrawInput: {
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "pots" | "snake" | "seeded" | "random" | "scheme" | "manual";
+            /**
+             * Seed
+             * @default 0
+             */
+            seed?: number;
+            /** Seeding */
+            seeding?: string[];
+            /** Placement */
+            placement?: unknown[] | null;
+        };
+        /** DrawPreview */
+        DrawPreview: {
+            /** Method */
+            method: string;
+            /** Seed */
+            seed: number;
+            /** Seeding */
+            seeding: unknown[];
+            /** Placement */
+            placement: unknown[];
+            /** Groups */
+            groups?: (components["schemas"]["TeamRef"] | components["schemas"]["Side"])[][];
+            /** Pairs */
+            pairs?: components["schemas"]["PairView"][];
+            /** Pots */
+            pots?: {
+                [key: string]: number;
+            };
+            /**
+             * Kept
+             * @default 0
+             */
+            kept?: number;
+            /**
+             * Cancelled
+             * @default 0
+             */
+            cancelled?: number;
+            /** Error */
+            error?: string | null;
+        };
+        /** DrawView */
+        DrawView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Version */
+            version: number;
+            /** Method */
+            method: string;
+            /** Seed */
+            seed: number;
+            /** Seeding */
+            seeding: unknown[];
+            /** Placement */
+            placement: unknown[];
+            /**
+             * Confirmed At
+             * Format: date-time
+             */
+            confirmed_at: string;
+        };
         /** EmailInput */
         EmailInput: {
             /** Email */
@@ -3750,6 +4083,148 @@ export interface components {
             clock_mode: "clean" | "running" | "mixed";
             /** Mixed Stop Last S */
             mixed_stop_last_s: number | null;
+        };
+        /** FixtureReplace */
+        FixtureReplace: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
+        };
+        /** FixtureSchedule */
+        FixtureSchedule: {
+            /** Stage Label */
+            stage_label?: string | null;
+            /** Broadcast Url */
+            broadcast_url?: string | null;
+            /** Broadcast Embed Url */
+            broadcast_embed_url?: string | null;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+            /**
+             * Scheduled At
+             * Format: date-time
+             */
+            scheduled_at: string;
+            /**
+             * Hall Id
+             * Format: uuid
+             */
+            hall_id: string;
+            /** Camera Profile Id */
+            camera_profile_id?: string | null;
+            /**
+             * Venue Label
+             * @default
+             */
+            venue_label?: string;
+            /** Referees */
+            referees?: string[];
+        };
+        /** FixtureView */
+        FixtureView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Stage Id
+             * Format: uuid
+             */
+            stage_id: string;
+            /** Stage Name */
+            stage_name: string;
+            /** Key */
+            key: string;
+            /** Leg */
+            leg: number;
+            /** Round No */
+            round_no: number;
+            /** Group No */
+            group_no?: number | null;
+            /** Bracket */
+            bracket?: string | null;
+            /** Label */
+            label: string;
+            home: components["schemas"]["Side"];
+            away: components["schemas"]["Side"];
+            /** Match Id */
+            match_id?: string | null;
+            /**
+             * Can Schedule
+             * @default false
+             */
+            can_schedule?: boolean;
+        };
+        /** FormatCreate */
+        FormatCreate: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+            /**
+             * Template
+             * @enum {string}
+             */
+            template: "league" | "groups_playoff" | "playoff" | "double_elim" | "swiss";
+            /**
+             * Regulation Id
+             * Format: uuid
+             */
+            regulation_id: string;
+            /** Playoff Regulation Id */
+            playoff_regulation_id?: string | null;
+            /**
+             * Group Count
+             * @default 2
+             */
+            group_count?: number;
+            /**
+             * Per Group
+             * @default 2
+             */
+            per_group?: number;
+            /**
+             * Best Thirds
+             * @default 0
+             */
+            best_thirds?: number;
+            /**
+             * Legs
+             * @default 1
+             * @enum {integer}
+             */
+            legs?: 1 | 2;
+            /** Playoff Teams */
+            playoff_teams?: number | null;
+            /**
+             * Third Place
+             * @default false
+             */
+            third_place?: boolean;
+            /**
+             * Grand Final Reset
+             * @default false
+             */
+            grand_final_reset?: boolean;
+            /** Rounds */
+            rounds?: number | null;
         };
         /** Foul */
         "Foul-Input": {
@@ -4020,6 +4495,20 @@ export interface components {
             team_id: string;
             /** Active */
             active: boolean;
+        };
+        /** GroupView */
+        GroupView: {
+            /** Group No */
+            group_no: number;
+            /** Name */
+            name: string;
+            /** Rows */
+            rows: components["schemas"]["RowView"][];
+            /**
+             * Needs Lot
+             * @default false
+             */
+            needs_lot?: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4422,6 +4911,27 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** LegView */
+        LegView: {
+            /** Match Id */
+            match_id?: string | null;
+            /** Fixture Id */
+            fixture_id?: string | null;
+            /** Leg */
+            leg: number;
+            /** Scheduled At */
+            scheduled_at?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Score */
+            score?: {
+                [key: string]: number | null;
+            } | null;
+            /** Shootout */
+            shootout?: {
+                [key: string]: number | null;
+            } | null;
+        };
         /** LensCalibration */
         LensCalibration: {
             /** K */
@@ -4499,6 +5009,18 @@ export interface components {
             shirt_number: string | null;
             /** Display Name */
             display_name: string;
+        };
+        /** LotInput */
+        LotInput: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+            /** Group */
+            group: string;
+            /** Order */
+            order: string[];
         };
         /** Manpower */
         "Manpower-Input": {
@@ -4746,6 +5268,16 @@ export interface components {
             /** Missing Track Ids */
             missing_track_ids?: number[];
         };
+        /** NextRound */
+        NextRound: {
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+            /** Expected Revision */
+            expected_revision: number;
+        };
         /** Notes */
         Notes: {
             /** Notes */
@@ -4835,6 +5367,13 @@ export interface components {
         Page_EntryView_: {
             /** Items */
             items: components["schemas"]["EntryView"][];
+            /** Total */
+            total: number;
+        };
+        /** Page[FixtureView] */
+        Page_FixtureView_: {
+            /** Items */
+            items: components["schemas"]["FixtureView"][];
             /** Total */
             total: number;
         };
@@ -4935,6 +5474,44 @@ export interface components {
             items: components["schemas"]["VersionView"][];
             /** Total */
             total: number;
+        };
+        /** PairView */
+        PairView: {
+            /** Key */
+            key: string;
+            /** Round No */
+            round_no: number;
+            /** Slot */
+            slot: number;
+            /** Bracket */
+            bracket?: string | null;
+            /** Group No */
+            group_no?: number | null;
+            /** Label */
+            label: string;
+            home: components["schemas"]["Side"];
+            away: components["schemas"]["Side"];
+            /**
+             * Bye
+             * @default false
+             */
+            bye?: boolean;
+            /** Legs */
+            legs: components["schemas"]["LegView"][];
+            /** Winner */
+            winner?: ("home" | "away") | null;
+            /** Note */
+            note?: string | null;
+            /**
+             * Can Schedule
+             * @default false
+             */
+            can_schedule?: boolean;
+            /**
+             * Changed
+             * @default false
+             */
+            changed?: boolean;
         };
         /** ParticipationDocument */
         "ParticipationDocument-Input": {
@@ -6423,6 +7000,11 @@ export interface components {
             ends_on: string;
             /** Timezone */
             timezone: string;
+            /**
+             * Standings Public
+             * @default true
+             */
+            standings_public?: boolean;
         };
         /** PublicUpcomingMatches */
         PublicUpcomingMatches: {
@@ -7130,6 +7712,44 @@ export interface components {
             /** Players */
             players: components["schemas"]["RosterPlayer-Output"][];
         };
+        /** RoundView */
+        RoundView: {
+            /** Round No */
+            round_no: number;
+            /** Name */
+            name: string;
+            /** Pairs */
+            pairs: components["schemas"]["PairView"][];
+        };
+        /** RowView */
+        RowView: {
+            /** Place */
+            place: number;
+            team: components["schemas"]["TeamRef"];
+            /** Played */
+            played: number;
+            /** Won */
+            won: number;
+            /** Drawn */
+            drawn: number;
+            /** Lost */
+            lost: number;
+            /** Goals For */
+            goals_for: number;
+            /** Goals Against */
+            goals_against: number;
+            /** Goal Diff */
+            goal_diff: number;
+            /** Points */
+            points: number;
+            /** Zone */
+            zone?: ("advance" | "best") | null;
+            /**
+             * Tied
+             * @default false
+             */
+            tied?: boolean;
+        };
         /** RunSummary */
         RunSummary: {
             /**
@@ -7268,6 +7888,18 @@ export interface components {
             /** Players */
             players: components["schemas"]["PlayerMetric"][];
             auto_sources?: components["schemas"]["AutoSources"] | null;
+        };
+        /** SectionView */
+        SectionView: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "upper" | "lower" | "final" | "rounds";
+            /** Name */
+            name: string;
+            /** Rounds */
+            rounds: components["schemas"]["RoundView"][];
         };
         /** SessionView */
         SessionView: {
@@ -7516,6 +8148,113 @@ export interface components {
             period: string | null;
             /** Start Ms */
             start_ms: number | null;
+        };
+        /** Side */
+        Side: {
+            team?: components["schemas"]["TeamRef"] | null;
+            /** Label */
+            label: string;
+        };
+        /** StageConfig */
+        StageConfig: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "round_robin" | "groups" | "single_elim" | "double_elim" | "swiss";
+            /**
+             * Legs
+             * @default 1
+             * @enum {integer}
+             */
+            legs?: 1 | 2;
+            /** Criteria */
+            criteria?: ("points" | "h2h_points" | "h2h_goal_diff" | "h2h_goals" | "goal_diff" | "goals_for" | "wins" | "buchholz" | "lot")[] | null;
+            /** Source */
+            source?: {
+                [key: string]: unknown;
+            };
+            /** Group Count */
+            group_count?: number | null;
+            advance?: components["schemas"]["Advance"];
+            /** Playoff Teams */
+            playoff_teams?: number | null;
+            /**
+             * Third Place
+             * @default false
+             */
+            third_place?: boolean;
+            /** Two Leg Rounds */
+            two_leg_rounds?: number[];
+            /**
+             * Grand Final Reset
+             * @default false
+             */
+            grand_final_reset?: boolean;
+            /** Rounds */
+            rounds?: number | null;
+        };
+        /** StagePatch */
+        StagePatch: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Name */
+            name?: string | null;
+            /** Regulation Id */
+            regulation_id?: string | null;
+            config?: components["schemas"]["StageConfig"] | null;
+        };
+        /** StageView */
+        StageView: {
+            /** Id */
+            id?: string | null;
+            /** Position */
+            position: number;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "round_robin" | "groups" | "single_elim" | "double_elim" | "swiss";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "drawn" | "started" | "completed";
+            /** Criteria */
+            criteria: string[];
+            /** Config */
+            config?: {
+                [key: string]: unknown;
+            } | null;
+            /** Regulation Id */
+            regulation_id?: string | null;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision?: number;
+            draw?: components["schemas"]["DrawView"] | null;
+            /** Groups */
+            groups?: components["schemas"]["GroupView"][];
+            /** Sections */
+            sections?: components["schemas"]["SectionView"][];
+            /**
+             * Can Next Round
+             * @default false
+             */
+            can_next_round?: boolean;
+        };
+        /** StandingsView */
+        StandingsView: {
+            /**
+             * Implicit
+             * @default false
+             */
+            implicit?: boolean;
+            /** Stages */
+            stages: components["schemas"]["StageView"][];
         };
         /** StatValue */
         StatValue: {
@@ -7874,6 +8613,23 @@ export interface components {
             players?: components["schemas"]["ProfilePlayer"][];
             /** Expected Revision */
             expected_revision: number;
+        };
+        /** TeamRef */
+        TeamRef: {
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
+            /**
+             * Team Id
+             * Format: uuid
+             */
+            team_id: string;
+            /** Name */
+            name: string;
+            /** Logo Id */
+            logo_id?: string | null;
         };
         /** TeamSideStatus */
         TeamSideStatus: {
@@ -8296,6 +9052,8 @@ export interface components {
             archived?: boolean | null;
             /** Visibility */
             visibility?: ("draft" | "public") | null;
+            /** Standings Public */
+            standings_public?: boolean | null;
         };
         /** TournamentView */
         TournamentView: {
@@ -8341,6 +9099,11 @@ export interface components {
             applications_open?: boolean;
             /** Applications Deadline */
             applications_deadline?: string | null;
+            /**
+             * Standings Public
+             * @default true
+             */
+            standings_public?: boolean;
         };
         /** TrackView */
         TrackView: {
@@ -13637,6 +14400,443 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicPlayerProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stages_api_v1_tournaments__tid__stages_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cabinet_standings_api_v1_tournaments__tid__standings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_format_api_v1_tournaments__tid__format_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FormatCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_stage_api_v1_stages__sid__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StagePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_v1_stages__sid__draw_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DrawInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_api_v1_stages__sid__draw_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DrawConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lots_api_v1_stages__sid__lots_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LotInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    next_round_api_v1_stages__sid__next_round_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NextRound"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fixtures_api_v1_tournaments__tid__fixtures_get: {
+        parameters: {
+            query?: {
+                unscheduled?: boolean;
+            };
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_FixtureView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    schedule_api_v1_fixtures__fid__schedule_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FixtureSchedule"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replace_api_v1_fixtures__fid__replace_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FixtureReplace"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    standings_api_v1_public_tournaments__tid__standings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fixtures_api_v1_public_tournaments__tid__fixtures_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_FixtureView_"];
                 };
             };
             /** @description Validation Error */
