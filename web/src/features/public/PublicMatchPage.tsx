@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {useDocumentTitle} from '../../components/useDocumentTitle';
 import {Link,useLocation,useParams} from 'react-router-dom';
 import {useQueryPatch} from '../navigation/useQueryPatch';
 import {api} from '../../api/client';
@@ -42,6 +43,7 @@ function MatchContent({id}:{id:string}){
  const group=(STAT_GROUPS.find(g=>g.id===params.get('group'))?.id??null) as StatGroup|null;
  const period=/^(all|[1-9][0-9]?)$/.test(params.get('period')??'')?params.get('period')!:'all';
  const tab=match&&!hasSection(match,requested)?'overview':requested;
+ useDocumentTitle(match?`${match.home_name} — ${match.away_name}`:null);
  // Командная сводка действий зависит от периода только во вкладке «Статистика»; обзор — всегда весь матч.
  const actionsPeriod=tab==='stats'?period:'all';
  const [sources,setSources]=useState<Sources>(EMPTY);

@@ -11,7 +11,9 @@ test('published team and player preserve the viewer path and calendar filters wi
  await command('set_totals',{reported_totals:{home:{score:0},away:{score:0}}});await command('set_status',{status:'ended'});await command('confirm',{acknowledge_incomplete:true});const version=(await call(data.path+'/versions')).items[0];await command('publish',{version_id:version.id});
  const team=match.home.team_id;const guest=await browser.newContext();const viewer=await guest.newPage();
  const initial=`/watch/tournaments/${data.tid}?day=2026-10-20&hall_id=${data.hallId}&team_id=${team}`;
- await viewer.goto(initial);await expect(viewer.getByLabel('Счёт 0 : 0')).toBeVisible();await viewer.locator('.schedule-row').getByRole('link',{name:data.home,exact:true}).click();
+ await viewer.goto(initial);await expect(viewer.getByLabel('Счёт 0 : 0')).toBeVisible();
+ // Строка расписания у зрителя целиком открывает матч; команда открывается из шапки матча.
+ await viewer.locator('.schedule-row').getByRole('link',{name:new RegExp(`^Открыть матч ${data.home}`)}).click();await viewer.locator('.match-team.home').getByRole('link',{name:data.home,exact:true}).click();
  await expect(viewer.getByRole('heading',{name:data.home,exact:true})).toBeVisible();await viewer.getByRole('link',{name:new RegExp('Открыть матч')}).click();await viewer.getByRole('link',{name:'Составы',exact:true}).click();await viewer.getByRole('button',{name:new RegExp(name)}).click();await viewer.getByRole('link',{name:'Карточка игрока и история →',exact:true}).click();
  await expect(viewer.getByRole('heading',{name,exact:true})).toBeVisible();await expect(viewer.getByRole('heading',{name:'Опубликованные выступления'})).toBeVisible();
  for(const width of [1440,1024,390]){await viewer.setViewportSize({width,height:900});expect(await viewer.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await viewer.screenshot({path:`test-results/public-player-${width}.png`,fullPage:true,animations:'disabled'})}

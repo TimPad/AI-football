@@ -1,4 +1,5 @@
 import {useState,type FormEvent} from 'react';
+import {useDocumentTitle} from '../../components/useDocumentTitle';
 import {Link,useNavigate,useParams} from 'react-router-dom';
 import {api,post} from '../../api/client';
 import type {components} from '../../api/types';
@@ -9,7 +10,7 @@ import type {ImportView} from '../roster-import/types';
 import {useCaptainAuth} from './CaptainAuth';
 import {useRatingCommand,CommandStatus} from '../ratings/commands';
 type CaptainTeam=components['schemas']['CaptainTeamView'];
-export function CaptainHome(){const teams=useLoad(()=>api<{items:CaptainTeam[]}>('/captain/teams'),'captain-teams');return <><div className="page-head"><div><h1>Мои команды</h1><p className="muted">Составы, турнирные заявки и проверка игроков</p></div><Link className="button" to="/captain/identity-tasks">Проверка игроков</Link><Link className="button primary" to="/captain/teams/new">Создать команду</Link></div>{!teams.data?<Loading error={teams.error} retry={teams.reload}/>:!teams.data.items.length?<section className="surface"><Empty>Создайте команду или примите приглашение организатора. Совпадение названия не даёт доступ к чужой команде.</Empty></section>:<div className="captain-team-cards">{teams.data.items.map(t=><Link key={t.id} className="surface" to={`/captain/teams/${t.id}`}><h2>{t.name}</h2><p className="muted">Игроков: {t.players.length}</p><b>{t.players.length?'Открыть команду →':'Добавить игроков →'}</b></Link>)}</div>}</>}
+export function CaptainHome(){useDocumentTitle('Мои команды');const teams=useLoad(()=>api<{items:CaptainTeam[]}>('/captain/teams'),'captain-teams');return <><div className="page-head"><div><h1>Мои команды</h1><p className="muted">Составы, турнирные заявки и проверка игроков</p></div><Link className="button" to="/captain/identity-tasks">Проверка игроков</Link><Link className="button primary" to="/captain/teams/new">Создать команду</Link></div>{!teams.data?<Loading error={teams.error} retry={teams.reload}/>:!teams.data.items.length?<section className="surface"><Empty>Создайте команду или примите приглашение организатора. Совпадение названия не даёт доступ к чужой команде.</Empty></section>:<div className="captain-team-cards">{teams.data.items.map(t=><Link key={t.id} className="surface" to={`/captain/teams/${t.id}`}><h2>{t.name}</h2><p className="muted">Игроков: {t.players.length}</p><b>{t.players.length?'Открыть команду →':'Добавить игроков →'}</b></Link>)}</div>}</>}
 export function CaptainTeamPage(){const {id}=useParams();return <TeamContent key={id??'new'} id={id}/>}
 function TeamContent({id}:{id?:string}){const {session}=useCaptainAuth();const navigate=useNavigate();const state=useLoad(()=>id?api<CaptainTeam>(`/captain/teams/${id}`):Promise.resolve(null),id??'new');
  if(state.data===undefined)return <Loading error={state.error} retry={state.reload}/>;const team=state.data??undefined;
