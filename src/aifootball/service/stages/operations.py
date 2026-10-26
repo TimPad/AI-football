@@ -73,6 +73,7 @@ class StageEval:
     prior: Outcome | None = None
     status: str = 'draft'
     rounds_total: int = 0
+    group_done: list = field(default_factory=list)   # группа доиграна — только тогда равенство требует жребия
 
 
 def evaluate(db, tournament, scope, stages=None):
@@ -111,6 +112,7 @@ def _evaluate_stage(ev, win_points):
             results[g] = [_result(ev.legs[f.id]) for f in items if f.id in ev.legs]
         per_group = ev.config.advance.per_group if kind == 'groups' else 0
         best = [b.model_dump() for b in ev.config.advance.best] if kind == 'groups' else []
+        ev.group_done = [len(results[g]) >= expected[g - 1] for g in range(1, len(groups) + 1)]
         ev.tables, ev.outcome = group_outcome(groups, results, criteria, {int(k) if k.isdigit() else k: v for k, v in lots.items()},
                                               per_group, best, expected)
         ev.rounds_total = max((f.round_no for f in ev.fixtures), default=0)
@@ -125,6 +127,7 @@ def _evaluate_stage(ev, win_points):
         done = all(f.bye or f.id in ev.legs for f in ev.fixtures)
         ev.outcome = Outcome(complete=done and played_rounds >= ev.rounds_total)
         if ev.outcome.complete: ev.outcome.final = {r.place: r.team for r in rows if not r.tied}
+        ev.group_done = [ev.outcome.complete]
     else:
         specs = [spec_of(f) for f in ev.fixtures]
         legs_by_key = {}
@@ -211,10 +214,11 @@ def _group_views(ev, refs):
             best_rows.update({r.team: 'best' for r in ordered[:item.count]})
     for g, rows in enumerate(ev.tables, 1):
         name = group_name(g) if config.kind == 'groups' else 'Таблица'
-        groups.append({'group_no': g, 'name': name, 'needs_lot': any(r.tied for r in rows), 'rows': [
+        done = ev.group_done[g - 1] if g <= len(ev.group_done) else False
+        groups.append({'group_no': g, 'name': name, 'needs_lot': done and any(r.tied for r in rows), 'rows': [
             {'place': r.place, 'team': refs[r.team], 'played': r.played, 'won': r.won, 'drawn': r.drawn, 'lost': r.lost,
              'goals_for': r.goals_for, 'goals_against': r.goals_against, 'goal_diff': r.goal_diff, 'points': r.points,
-             'tied': r.tied, 'zone': 'advance' if r.place <= advance else best_rows.get(r.team)}
+             'tied': done and r.tied, 'zone': 'advance' if r.place <= advance else best_rows.get(r.team)}
             for r in rows if r.team in refs]})
     return groups
 
@@ -306,10 +310,12 @@ def _matches(db, evaluated):
     return {m.id: m for m in db.scalars(select(Match).where(Match.id.in_(ids)))} if ids else {}
 
 
-def standings(db, tournament, scope):
+def standings(db, tournament, scope, implicit=True):
+    """implicit=False — только настоящие этапы (кабинетный список этапов без общей таблицы)."""
     stages = stages_of(db, tournament.id)
     refs = team_refs(db, tournament.id)
-    if not stages: return implicit_standings(db, tournament, scope, refs)
+    if not stages:
+        return implicit_standings(db, tournament, scope, refs) if implicit else {'implicit': False, 'stages': []}
     evaluated = evaluate(db, tournament, scope, stages)
     matches = _matches(db, evaluated)
     views = [stage_view(ev, refs, matches, scope) for ev in evaluated]

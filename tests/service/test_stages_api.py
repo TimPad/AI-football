@@ -197,3 +197,10 @@ def test_format_locked_after_draw_and_double_elim(admin_client, format_env, send
     assert stage['status'] == 'completed'
     assert [s['key'] for s in stage['sections']] == ['upper', 'lower', 'final']
     assert [p['label'] for r in stage['sections'][2]['rounds'] for p in r['pairs']] == ['Гранд-финал', 'Переигровка финала']
+
+
+def test_lot_is_asked_only_when_group_finished(admin_client, format_env, send_command):
+    env = format_env(template='league', teams=3)
+    draw(admin_client, env['stages'][0], method='seeded', seeding=env['entries'])
+    group = stage_list(admin_client, env)[0]['groups'][0]
+    assert not group['needs_lot'] and not any(row['tied'] for row in group['rows'])   # никто не играл — жребий не нужен

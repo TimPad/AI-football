@@ -1,5 +1,5 @@
 import type {StageView} from './api';
-const CRITERIA:Record<string,string>={points:'очки',h2h_points:'личные встречи',h2h_goal_diff:'разница в личных встречах',h2h_goals:'голы в личных встречах',
+export const CRITERIA:Record<string,string>={points:'очки',h2h_points:'личные встречи',h2h_goal_diff:'разница в личных встречах',h2h_goals:'голы в личных встречах',
  goal_diff:'разница мячей',goals_for:'забитые',wins:'победы',buchholz:'очки соперников',lot:'жребий'};
 // Личные встречи в подписи одной фразой: очки, разница и голы в них идут подряд.
 export function criteriaText(criteria:string[]){

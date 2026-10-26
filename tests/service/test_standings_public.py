@@ -37,6 +37,9 @@ def test_formatless_tournament_has_implicit_table_and_can_hide(admin_client, mat
         body = guest.get(url).json()
         assert body['implicit'] and body['stages'][0]['groups'][0]['rows'][0]['points'] == 3
         assert body['stages'][0]['groups'][0]['rows'][0]['team']['name'] == 'Север'
+        # Кабинетный список этапов не выдаёт общую таблицу за этап: формат ещё можно выбрать.
+        assert admin_client.get(f"/api/v1/tournaments/{m['tournament_id']}/stages").json() == {'implicit': False, 'stages': []}
+        assert admin_client.get(f"/api/v1/tournaments/{m['tournament_id']}/standings").json()['implicit']
         t = admin_client.get(f"/api/v1/tournaments/{m['tournament_id']}").json()
         r = admin_client.patch(f"/api/v1/tournaments/{t['id']}", json={'expected_revision': t['revision'], 'standings_public': False})
         assert r.status_code == 200, r.text

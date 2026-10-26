@@ -74,3 +74,4 @@
 .group-table .warning,.pair-meta .warning,.stage-block .warning,.draw-step .warning{margin:var(--space-2) 0 0;padding:6px 10px}
 .pair-meta .warning{margin:0}
 .format-scheme i.gap{flex:.3;background:transparent}
+.criteria-editor summary{min-height:44px;display:flex;align-items:center;cursor:pointer}

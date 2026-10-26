@@ -6,7 +6,7 @@ import type {GroupView,PairView,StageView,Standings} from './api';
 import {DrawStep} from './DrawStep';
 import {FormatStep} from './FormatStep';
 import {StageBlock} from './StandingsView';
-import {STATUS} from './labels';
+import {CRITERIA,STATUS} from './labels';
 import './stages.css';
 
 export function useCabinetStandings(tid:string){return useLoad(()=>api<Standings>(`/tournaments/${tid}/stages`),`stages-${tid}`)}
@@ -31,6 +31,18 @@ function ReplaceDialog({pair,entries,onSaved}:{pair:PairView;entries:Entry[];onS
   <ErrorBox error={error}/><button className="primary" disabled={!entry} onClick={save}>Заменить команду</button></>;
 }
 
+// Порядок мест меняется до жеребьёвки; очки всегда первые, жребий — последний.
+function CriteriaEditor({stage,onSaved}:{stage:StageView;onSaved:()=>void}){
+ const [order,setOrder]=useState(stage.criteria);const [error,setError]=useState<unknown>();
+ const move=(i:number,d:number)=>{const next=[...order];[next[i],next[i+d]]=[next[i+d],next[i]];setOrder(next)};
+ const fixed=(i:number)=>order[i]==='points'||order[i]==='lot';
+ async function save(){setError(undefined);try{await api(`/stages/${stage.id}`,{method:'PATCH',body:JSON.stringify({expected_revision:stage.revision,config:{...(stage.config??{}),criteria:order}})});onSaved()}catch(e){setError(e)}}
+ return <details className="criteria-editor"><summary>Порядок мест при равенстве очков</summary><ol className="seeding">{order.map((c,i)=><li key={c}><b>{i+1}</b><span>{CRITERIA[c]??c}</span>
+  <button type="button" aria-label={`${CRITERIA[c]} выше`} disabled={fixed(i)||fixed(i-1)||i<=1} onClick={()=>move(i,-1)}>↑</button>
+  <button type="button" aria-label={`${CRITERIA[c]} ниже`} disabled={fixed(i)||fixed(i+1)||i>=order.length-1} onClick={()=>move(i,1)}>↓</button></li>)}</ol>
+  <ErrorBox error={error}/><button type="button" disabled={JSON.stringify(order)===JSON.stringify(stage.criteria)} onClick={save}>Сохранить порядок</button></details>;
+}
+
 // Вкладка «Таблица» кабинета: формат, жеребьёвка, таблицы и сетка по подтверждённым протоколам.
 export function StageWorkspace({tournament,entries,regulations}:{tournament:Tournament;entries:Entry[];regulations:RegVersion[]}){
  const state=useCabinetStandings(tournament.id);
@@ -45,13 +57,14 @@ export function StageWorkspace({tournament,entries,regulations}:{tournament:Tour
  return <div className="standings">
   {!locked&&<div className="setup-actions"><button type="button" onClick={()=>setEditFormat(true)}>Изменить формат</button></div>}
   <ErrorBox error={error}/>
-  {data.stages.map((stage,i)=><section key={stage.id} className="stage-block">
+  {data.stages.map((stage,i)=><section key={stage.id} className="stage-block" aria-label={stage.name}>
    <div className="page-head"><div><h2>{stage.name}</h2><p className="muted">{STATUS[stage.status]}</p></div>
     <div className="row">{stage.status!=='completed'&&stage.status!=='started'&&<button type="button" className={stage.draw?'':'primary'} onClick={()=>setDrawing(stage)}>{stage.draw?'Изменить жеребьёвку':'Провести жеребьёвку'}</button>}
      {stage.can_next_round&&<button type="button" className="primary" onClick={()=>nextRound(stage)}>Следующий тур</button>}
      {stage.groups.filter(g=>g.needs_lot).map(g=><button type="button" key={g.group_no} onClick={()=>setLot([stage,g])}>Ввести жребий · {g.name}</button>)}</div></div>
    {stage.draw?<StageBlock stage={stage} next={data.stages[i+1]} timezone={tournament.timezone} matchHref={id=>`/matches/${id}`}
-    action={p=>p.changed?<button type="button" onClick={()=>setReplacing(p)}>Заменить команду</button>:null}/>:<p className="muted">Пары появятся после жеребьёвки.</p>}
+    action={p=>p.changed?<button type="button" onClick={()=>setReplacing(p)}>Заменить команду</button>:null}/>:<><p className="muted">Пары появятся после жеребьёвки.</p>
+    {stage.kind!=='single_elim'&&stage.kind!=='double_elim'&&<CriteriaEditor stage={stage} onSaved={done}/>}</>}
   </section>)}
   {drawing&&<Modal title="Жеребьёвка" onClose={()=>setDrawing(null)}><DrawStep stage={drawing} entries={entries} timezone={tournament.timezone} onSaved={done}/></Modal>}
   {lot&&<Modal title={`Жребий · ${lot[1].name}`} onClose={()=>setLot(null)}><LotDialog stage={lot[0]} group={lot[1]} onSaved={done}/></Modal>}

@@ -22,7 +22,7 @@ def stage_scope(db, sid, lock=False):
 
 @router.get('/tournaments/{tid}/stages', response_model=StandingsView, dependencies=[Depends(require_admin)])
 def stages(tid: UUID, db: Session = Depends(get_session)):
-    return ops.standings(db, get_entity(db, Tournament, tid), 'cabinet')
+    return ops.standings(db, get_entity(db, Tournament, tid), 'cabinet', implicit=False)
 
 
 @router.get('/tournaments/{tid}/standings', response_model=StandingsView, dependencies=[Depends(require_admin)])
