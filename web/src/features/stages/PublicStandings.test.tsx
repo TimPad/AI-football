@@ -5,9 +5,9 @@ import {PublicTournamentPage} from '../public/PublicPages';
 import {group,groupsStage,pair,side} from './fixtures.test-data';
 
 const tournament={id:'t1',name:'Кубок Ярославля',season:'2026',starts_on:'2026-10-01',ends_on:'2026-12-31',timezone:'Europe/Moscow',standings_public:true};
-function stub(stages:unknown[],fixtures:unknown[]=[]){
+function stub(stages:unknown[],fixtures:unknown[]=[],implicit=false){
  vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL)=>{const path=String(input);const page=(items:unknown[])=>({items,total:items.length});
-  const body=path.includes('/standings')?{implicit:false,stages}:path.includes('/fixtures')?page(fixtures):path.includes('/matches')?page([]):tournament;
+  const body=path.includes('/standings')?{implicit,stages}:path.includes('/fixtures')?page(fixtures):path.includes('/matches')?page([]):tournament;
   return new Response(JSON.stringify(body))}));
 }
 const view=(path='/watch/tournaments/t1')=>render(<MemoryRouter initialEntries={[path]}><Routes><Route path="/watch/tournaments/:id" element={<PublicTournamentPage/>}/></Routes></MemoryRouter>);
@@ -34,5 +34,16 @@ describe('раздел «Таблица» у зрителя',()=>{
   stub([playoff]);view();
   expect(await screen.findByRole('tab',{name:'Финал'})).toBeInTheDocument();
   expect(screen.getByRole('article',{name:'Финал: A1 — B1'})).toHaveTextContent('Дата не назначена');
+ });
+ it('турнир без формата открывается на матчах, общая таблица — отдельный раздел',async()=>{
+  stub([{...groupsStage,name:'Турнирная таблица',kind:'round_robin',status:'started',groups:[{...group,name:'Турнирная таблица'}],sections:[]}],[],true);view();
+  const nav=await screen.findByRole('navigation',{name:'Разделы турнира'});
+  expect(within(nav).getByRole('link',{name:'Матчи'})).toHaveAttribute('aria-current','page');
+  expect(within(nav).getByRole('link',{name:'Таблица'})).toBeInTheDocument();
+ });
+ it('ссылка с фильтром дня ведёт на матчи даже при формате',async()=>{
+  stub([{...groupsStage,status:'drawn',groups:[group],sections:[]}]);view('/watch/tournaments/t1?day=2026-11-01');
+  const nav=await screen.findByRole('navigation',{name:'Разделы турнира'});
+  expect(within(nav).getByRole('link',{name:'Матчи'})).toHaveAttribute('aria-current','page');
  });
 });

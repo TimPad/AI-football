@@ -26,8 +26,9 @@ function TournamentContent({id}:{id:string}){
  const state=useLoad(async()=>{const [tournament,matches,standings,fixtures]=await Promise.all([api<PublicTournament>(`/public/tournaments/${id}`),all<PublicMatch>(`/public/tournaments/${id}/matches`),
   api<Standings>(`/public/tournaments/${id}/standings`),all<FixtureView>(`/public/tournaments/${id}/fixtures`)]);return {tournament,matches,standings,fixtures}},id);
  if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const {tournament:t,matches,standings,fixtures}=state.data;
- // «Таблица» открывается первой, когда она есть; иначе первыми остаются матчи.
- const first=standings.stages.length?'table':'matches';const raw=params.get('tab')??first;
+ // «Таблица» открывается первой у турнира с форматом; общая таблица старых турниров и ссылки с фильтрами расписания ведут на матчи.
+ const scheduleLink=['day','hall_id','team_id'].some(k=>params.has(k));
+ const first=standings.stages.length&&!standings.implicit&&!scheduleLink?'table':'matches';const raw=params.get('tab')??first;
  const tab=['ratings','teams','matches'].includes(raw)||(raw==='table'&&standings.stages.length)?raw:first;
  const items=[...(standings.stages.length?[{id:'table',label:'Таблица'}]:[]),{id:'matches',label:'Матчи'},{id:'teams',label:'Команды'},{id:'ratings',label:'Рейтинги'}];
  return <><Link className="breadcrumb" to={back.href} state={back.state}>{back.label}</Link><div className="page-head"><div><p className="muted">Сезон {t.season} · {dateRange(t.starts_on,t.ends_on)}</p><h1>{t.name}</h1></div></div>

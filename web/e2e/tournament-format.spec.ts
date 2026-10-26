@@ -81,6 +81,7 @@ test('турнир без формата показывает общую таб�
  await env.finish(match.id,1,1);
  const guest=await browser.newContext({viewport:{width:375,height:812}});const p=await guest.newPage();
  await p.goto(`/watch/tournaments/${env.t.id}`);
+ await p.getByRole('navigation',{name:'Разделы турнира'}).getByRole('link',{name:'Таблица',exact:true}).click();
  const table=p.getByRole('region',{name:'Турнирная таблица'});
  await expect(table.getByRole('row')).toHaveCount(3);
  await expect(table.getByRole('row').nth(1)).toContainText('1');
