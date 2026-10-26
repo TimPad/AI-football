@@ -17,9 +17,13 @@ import {MatchCreateForm} from '../matches/MatchForms';
 import {TournamentSettings} from './TournamentList';
 import {Entries,Rules} from './TournamentPage';
 import {TournamentOverview} from './TournamentOverview';
+import {StageWorkspace} from '../stages/StageWorkspace';
+import {UnscheduledFixtures} from '../stages/UnscheduledFixtures';
+import {ScheduleFixtureForm} from '../stages/ScheduleFixtureForm';
+import type {FixtureView} from '../stages/api';
 import './workspace.css';
 
-const TITLES:Record<TournamentTab,string>={analysis:'Обработка',matches:'Матчи',ratings:'Рейтинги',teams:'Команды',rules:'Настройки',info:'Настройки'};
+const TITLES:Record<TournamentTab,string>={table:'Таблица',analysis:'Обработка',matches:'Матчи',ratings:'Рейтинги',teams:'Команды',rules:'Настройки',info:'Настройки'};
 
 // Кабинетный календарь показывает текущий частный счёт протокола; шапка помечает это как кабинет.
 export function scheduleFromPrivate(m:Match):ScheduleItem{
@@ -47,10 +51,10 @@ export function TournamentWorkspace({tournamentId:id}:{tournamentId:string}){
  const {session}=useAuth();const [params,update]=useQueryPatch();
  const tab=readTournamentTab(params.get('tab'));
  const state=useLoad(async()=>{const [t,entries,rules,matches]=await Promise.all([api<Tournament>(`/tournaments/${id}`),all<Entry>(`/tournaments/${id}/entries`),
-  all<RegVersion>(`/tournaments/${id}/regulations`),all<Match>(`/tournaments/${id}/matches`)]);return {t,entries,rules,matches}},id);
+  all<RegVersion>(`/tournaments/${id}/regulations`),all<Match>(`/tournaments/${id}/matches`)]);const fixtures=await all<FixtureView>(`/tournaments/${id}/fixtures?unscheduled=true`);return {t,entries,rules,matches,fixtures}},id);
  const analytics=Boolean(session?.can_manage_analytics);
  useCabinetRail(state.data?<TournamentRail id={id} name={state.data.t.name} active={tab} analytics={analytics}/>:null,[id,tab,analytics,state.data?.t.name]);
- const [create,setCreate]=useState(false);const [error,setError]=useState<unknown>();
+ const [create,setCreate]=useState(false);const [scheduling,setScheduling]=useState<FixtureView|null>(null);const [error,setError]=useState<unknown>();
  if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const d=state.data;
  async function archive(){try{await api(`/tournaments/${id}`,{method:'PATCH',body:JSON.stringify({archived:!d.t.archived,expected_revision:d.t.revision})});state.reload()}catch(e){setError(e)}}
  const canCreate=!d.t.archived&&d.rules.length>0&&d.entries.length>=2;
@@ -62,6 +66,8 @@ export function TournamentWorkspace({tournamentId:id}:{tournamentId:string}){
   <TournamentOverview data={d} onSaved={state.reload}/>
   {tab==='matches'&&(!canCreate&&!d.matches.length?<Empty>Для первого матча добавьте регламент и минимум две команды.</Empty>
    :<Schedule matches={d.matches.map(scheduleFromPrivate)} timezone={d.t.timezone} matchHref={mid=>`/matches/${mid}`} matchState={{scheduleReturn:`/tournaments/${id}?${params.toString()}`}} extra={mid=>onSite(d.matches.find(m=>m.id===mid)!,`/tournaments/${id}?${params.toString()}`)}/>)}
+  {tab==='matches'&&<UnscheduledFixtures items={d.fixtures} title="Без даты" onSchedule={d.t.archived?undefined:setScheduling}/>}
+  {tab==='table'&&<StageWorkspace tournament={d.t} entries={d.entries} regulations={d.rules}/>}
   {tab==='analysis'&&(analytics?<TournamentAnalysisQueue tournamentId={id} timezone={d.t.timezone}/>:<Empty>Очередь обработки доступна Админ+.</Empty>)}
   {tab==='ratings'&&(analytics?<TournamentRatings tournamentId={id} actorId={session!.id}/>:<Empty>Рейтинги доступны Админ+.</Empty>)}
   {tab==='teams'&&<Entries tid={id} data={d} onSaved={state.reload}/>}
@@ -70,6 +76,7 @@ export function TournamentWorkspace({tournamentId:id}:{tournamentId:string}){
   {tab==='rules'&&<Rules key={d.rules.map(r=>r.id).join()} tid={id} data={d} onSaved={state.reload}/>}
   {tab==='info'&&<><section className="surface"><h2>Сведения о турнире</h2><TournamentSettings value={d.t} onSaved={state.reload}/><hr/>
    <button className="quiet" onClick={archive}>{d.t.archived?'Вернуть из архива':'Архивировать турнир'}</button></section><ApplicationSettings key={d.t.revision} tournament={d.t} onSaved={state.reload}/></>}
+  {scheduling&&<Modal title="Назначить матч" onClose={()=>setScheduling(null)}><ScheduleFixtureForm fixture={scheduling} tournament={d.t} onSaved={()=>{setScheduling(null);state.reload()}}/></Modal>}
   {create&&<Modal title="Новый матч" onClose={()=>setCreate(false)}><MatchCreateForm tournament={d.t} entries={d.entries} rules={d.rules} onSaved={()=>{setCreate(false);state.reload()}}/></Modal>}
  </div>;
 }

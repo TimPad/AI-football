@@ -1,0 +1,13 @@
+import type {components} from '../../api/types';
+type S=components['schemas'];
+export type Standings=S['StandingsView'];
+export type StageView=S['StageView'];
+export type GroupView=S['GroupView'];
+export type RowView=S['RowView'];
+export type SectionView=S['SectionView'];
+export type PairView=S['PairView'];
+export type SideView=S['Side'];
+export type FixtureView=S['FixtureView'];
+export type DrawPreview=S['DrawPreview'];
+export type TeamRef=S['TeamRef'];
+export type Template=S['FormatCreate']['template'];

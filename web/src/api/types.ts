@@ -3905,25 +3905,25 @@ export interface components {
             /** Placement */
             placement: unknown[];
             /** Groups */
-            groups?: (components["schemas"]["TeamRef"] | components["schemas"]["Side"])[][];
+            groups: (components["schemas"]["TeamRef"] | components["schemas"]["Side"])[][];
             /** Pairs */
-            pairs?: components["schemas"]["PairView"][];
+            pairs: components["schemas"]["PairView"][];
             /** Pots */
-            pots?: {
+            pots: {
                 [key: string]: number;
             };
             /**
              * Kept
              * @default 0
              */
-            kept?: number;
+            kept: number;
             /**
              * Cancelled
              * @default 0
              */
-            cancelled?: number;
+            cancelled: number;
             /** Error */
-            error?: string | null;
+            error: string | null;
         };
         /** DrawView */
         DrawView: {
@@ -4156,20 +4156,20 @@ export interface components {
             /** Round No */
             round_no: number;
             /** Group No */
-            group_no?: number | null;
+            group_no: number | null;
             /** Bracket */
-            bracket?: string | null;
+            bracket: string | null;
             /** Label */
             label: string;
             home: components["schemas"]["Side"];
             away: components["schemas"]["Side"];
             /** Match Id */
-            match_id?: string | null;
+            match_id: string | null;
             /**
              * Can Schedule
              * @default false
              */
-            can_schedule?: boolean;
+            can_schedule: boolean;
         };
         /** FormatCreate */
         FormatCreate: {
@@ -4508,7 +4508,7 @@ export interface components {
              * Needs Lot
              * @default false
              */
-            needs_lot?: boolean;
+            needs_lot: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4914,21 +4914,21 @@ export interface components {
         /** LegView */
         LegView: {
             /** Match Id */
-            match_id?: string | null;
+            match_id: string | null;
             /** Fixture Id */
-            fixture_id?: string | null;
+            fixture_id: string | null;
             /** Leg */
             leg: number;
             /** Scheduled At */
-            scheduled_at?: string | null;
+            scheduled_at: string | null;
             /** Status */
-            status?: string | null;
+            status: string | null;
             /** Score */
-            score?: {
+            score: {
                 [key: string]: number | null;
             } | null;
             /** Shootout */
-            shootout?: {
+            shootout: {
                 [key: string]: number | null;
             } | null;
         };
@@ -5484,9 +5484,9 @@ export interface components {
             /** Slot */
             slot: number;
             /** Bracket */
-            bracket?: string | null;
+            bracket: string | null;
             /** Group No */
-            group_no?: number | null;
+            group_no: number | null;
             /** Label */
             label: string;
             home: components["schemas"]["Side"];
@@ -5495,23 +5495,23 @@ export interface components {
              * Bye
              * @default false
              */
-            bye?: boolean;
+            bye: boolean;
             /** Legs */
             legs: components["schemas"]["LegView"][];
             /** Winner */
-            winner?: ("home" | "away") | null;
+            winner: ("home" | "away") | null;
             /** Note */
-            note?: string | null;
+            note: string | null;
             /**
              * Can Schedule
              * @default false
              */
-            can_schedule?: boolean;
+            can_schedule: boolean;
             /**
              * Changed
              * @default false
              */
-            changed?: boolean;
+            changed: boolean;
         };
         /** ParticipationDocument */
         "ParticipationDocument-Input": {
@@ -7743,12 +7743,12 @@ export interface components {
             /** Points */
             points: number;
             /** Zone */
-            zone?: ("advance" | "best") | null;
+            zone: ("advance" | "best") | null;
             /**
              * Tied
              * @default false
              */
-            tied?: boolean;
+            tied: boolean;
         };
         /** RunSummary */
         RunSummary: {
@@ -8151,7 +8151,7 @@ export interface components {
         };
         /** Side */
         Side: {
-            team?: components["schemas"]["TeamRef"] | null;
+            team: components["schemas"]["TeamRef"] | null;
             /** Label */
             label: string;
         };
@@ -8207,7 +8207,7 @@ export interface components {
         /** StageView */
         StageView: {
             /** Id */
-            id?: string | null;
+            id: string | null;
             /** Position */
             position: number;
             /** Name */
@@ -8225,26 +8225,26 @@ export interface components {
             /** Criteria */
             criteria: string[];
             /** Config */
-            config?: {
+            config: {
                 [key: string]: unknown;
             } | null;
             /** Regulation Id */
-            regulation_id?: string | null;
+            regulation_id: string | null;
             /**
              * Revision
              * @default 0
              */
-            revision?: number;
-            draw?: components["schemas"]["DrawView"] | null;
+            revision: number;
+            draw: components["schemas"]["DrawView"] | null;
             /** Groups */
-            groups?: components["schemas"]["GroupView"][];
+            groups: components["schemas"]["GroupView"][];
             /** Sections */
-            sections?: components["schemas"]["SectionView"][];
+            sections: components["schemas"]["SectionView"][];
             /**
              * Can Next Round
              * @default false
              */
-            can_next_round?: boolean;
+            can_next_round: boolean;
         };
         /** StandingsView */
         StandingsView: {
@@ -8252,7 +8252,7 @@ export interface components {
              * Implicit
              * @default false
              */
-            implicit?: boolean;
+            implicit: boolean;
             /** Stages */
             stages: components["schemas"]["StageView"][];
         };
@@ -8629,7 +8629,7 @@ export interface components {
             /** Name */
             name: string;
             /** Logo Id */
-            logo_id?: string | null;
+            logo_id: string | null;
         };
         /** TeamSideStatus */
         TeamSideStatus: {

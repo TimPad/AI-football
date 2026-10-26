@@ -1,0 +1,76 @@
+/* Таблицы групп и сетка: сначала телефон 375 px, полные колонки и колонки раундов на широком экране. */
+.standings{display:grid;gap:var(--space-6)}
+.stage-block{display:grid;gap:var(--space-4);min-width:0}
+.groups-grid{display:grid;gap:var(--space-4);grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.group-table{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space-3);min-width:0}
+.group-table h3{margin:0 0 var(--space-2);font-size:var(--font-body)}
+.group-table table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.group-table th{font-size:var(--font-caption);color:var(--text-muted);font-weight:500;text-align:left;padding:var(--space-1) var(--space-2)}
+.group-table td{padding:0 var(--space-2);border-top:1px solid var(--border);height:44px}
+.group-table .num{text-align:center;width:2.5em}
+.group-table .points{font-weight:600}
+.group-table .wide{display:none}
+.group-table tr[data-zone] td:first-child{box-shadow:inset 3px 0 0 var(--accent-line)}
+.group-table tr[data-zone="best"] td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.group-table .row-toggle{all:unset;cursor:pointer;display:block;min-height:44px;line-height:44px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.group-table .row-toggle:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.group-table .row-more td{height:auto;padding-bottom:var(--space-2);border-top:0;color:var(--text-muted);font-size:var(--font-control)}
+.group-table p{margin:var(--space-2) 0 0}
+.sr-link{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.sr-link:focus{position:static;width:auto;height:auto;clip-path:none}
+@media (min-width:600px){.group-table .wide{display:table-cell}.group-table .row-more{display:none}}
+
+.bracket{display:grid;gap:var(--space-3);min-width:0}
+.round-tabs{display:flex;gap:var(--space-2);overflow-x:auto;scrollbar-width:none}
+.round-tabs button{min-height:44px;white-space:nowrap;border-radius:999px}
+.round-tabs button[aria-selected="true"]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}
+.bracket-round{display:none;gap:var(--space-2)}
+.bracket-round[data-active]{display:grid}
+.bracket-round h4{display:none;margin:0;font-size:var(--font-control);color:var(--text-muted)}
+.pair-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space-2) var(--space-3);display:grid;gap:2px}
+.pair-team{display:flex;justify-content:space-between;gap:var(--space-2);min-height:28px;align-items:center}
+.pair-team span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pair-team.unknown span{color:var(--text-muted)}
+.pair-team.won{font-weight:600}
+.pair-meta{display:flex;flex-wrap:wrap;gap:var(--space-1) var(--space-3);font-size:var(--font-caption);color:var(--text-muted);align-items:center}
+.pair-meta button{min-height:36px}
+@media (min-width:900px){
+ .round-tabs{display:none}
+ .bracket-rounds{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,1fr);gap:var(--space-4);overflow-x:auto;padding-bottom:var(--space-2)}
+ .bracket-round{display:grid;align-content:space-around}
+ .bracket-round h4{display:block}
+}
+.stage-rounds summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:500}
+.stage-rounds .tour{display:grid;gap:var(--space-2);margin-bottom:var(--space-4)}
+.stage-rounds h4{margin:var(--space-2) 0 0;font-size:var(--font-control);color:var(--text-muted)}
+
+/* Кабинет: формат и жеребьёвка. */
+.format-cards{display:grid;gap:var(--space-2);grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+.format-card{all:unset;box-sizing:border-box;cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space-3);display:grid;gap:var(--space-1);min-height:88px}
+.format-card[aria-checked="true"]{border-color:var(--accent-line);box-shadow:0 0 0 1px var(--accent-line);background:var(--accent-soft)}
+.format-card:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.format-card[aria-disabled="true"]{cursor:default;opacity:.6}
+.format-card strong{font-size:var(--font-body)}
+.format-card span{font-size:var(--font-control);color:var(--text-muted)}
+.format-scheme{display:flex;gap:3px;height:6px;margin-top:var(--space-1)}
+.format-scheme i{flex:1;border-radius:3px;background:var(--border)}
+.format-scheme i.accent{background:var(--accent-line)}
+.stage-cards{display:grid;gap:var(--space-2)}
+.seeding{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-1)}
+.seeding li{display:flex;align-items:center;gap:var(--space-2);min-height:44px;border-bottom:1px solid var(--border)}
+.seeding li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seeding li b{width:2em;text-align:center;color:var(--text-muted);font-weight:500}
+.seeding button{min-width:44px;min-height:44px;padding:0}
+.draw-groups{display:grid;gap:var(--space-3);grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+.draw-group{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space-3);display:grid;gap:var(--space-1)}
+.draw-group h3{margin:0;font-size:var(--font-control)}
+.draw-team{min-height:44px;text-align:left;border-inline-start:4px solid var(--pot,var(--border))}
+.draw-team[aria-pressed="true"]{outline:2px solid var(--focus);outline-offset:1px}
+.draw-team[data-pot="1"]{--pot:var(--accent-line)}.draw-team[data-pot="2"]{--pot:var(--home)}.draw-team[data-pot="3"]{--pot:var(--away)}.draw-team[data-pot="4"]{--pot:var(--text-muted)}
+.unscheduled{display:grid;gap:var(--space-3)}
+.unscheduled h3{margin:0;font-size:var(--font-control);color:var(--text-muted)}
+.unscheduled-row{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);min-height:44px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.unscheduled-row span{min-width:0;overflow-wrap:anywhere}
+.group-table .warning,.pair-meta .warning,.stage-block .warning,.draw-step .warning{margin:var(--space-2) 0 0;padding:6px 10px}
+.pair-meta .warning{margin:0}
+.format-scheme i.gap{flex:.3;background:transparent}

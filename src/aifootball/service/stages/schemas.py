@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from aifootball.service.tournaments.schemas import Input
 from aifootball.service.matches.schemas import BroadcastFields, MatchCreate
 
@@ -153,21 +153,25 @@ class FixtureReplace(Input):
     entry_id: UUID
 
 
-# Представления.
+# Представления: поля со значением по умолчанию в ответе всегда есть.
 
-class TeamRef(BaseModel):
+class View(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
+class TeamRef(View):
     entry_id: UUID
     team_id: UUID
     name: str
     logo_id: UUID | None = None
 
 
-class Side(BaseModel):
+class Side(View):
     team: TeamRef | None = None
     label: str
 
 
-class LegView(BaseModel):
+class LegView(View):
     match_id: UUID | None = None
     fixture_id: UUID | None = None
     leg: int
@@ -177,7 +181,7 @@ class LegView(BaseModel):
     shootout: dict[str, int | None] | None = None
 
 
-class PairView(BaseModel):
+class PairView(View):
     key: str
     round_no: int
     slot: int
@@ -194,7 +198,7 @@ class PairView(BaseModel):
     changed: bool = False
 
 
-class RowView(BaseModel):
+class RowView(View):
     place: int
     team: TeamRef
     played: int
@@ -209,26 +213,26 @@ class RowView(BaseModel):
     tied: bool = False
 
 
-class GroupView(BaseModel):
+class GroupView(View):
     group_no: int
     name: str
     rows: list[RowView]
     needs_lot: bool = False
 
 
-class RoundView(BaseModel):
+class RoundView(View):
     round_no: int
     name: str
     pairs: list[PairView]
 
 
-class SectionView(BaseModel):
+class SectionView(View):
     key: Literal['upper', 'lower', 'final', 'rounds']
     name: str
     rounds: list[RoundView]
 
 
-class DrawView(BaseModel):
+class DrawView(View):
     id: UUID
     version: int
     method: str
@@ -238,7 +242,7 @@ class DrawView(BaseModel):
     confirmed_at: datetime
 
 
-class StageView(BaseModel):
+class StageView(View):
     id: UUID | None = None
     position: int
     name: str
@@ -254,12 +258,12 @@ class StageView(BaseModel):
     can_next_round: bool = False
 
 
-class StandingsView(BaseModel):
+class StandingsView(View):
     implicit: bool = False
     stages: list[StageView]
 
 
-class DrawPreview(BaseModel):
+class DrawPreview(View):
     method: str
     seed: int
     seeding: list[Any]
@@ -272,7 +276,7 @@ class DrawPreview(BaseModel):
     error: str | None = None
 
 
-class FixtureView(BaseModel):
+class FixtureView(View):
     id: UUID
     stage_id: UUID
     stage_name: str
