@@ -108,3 +108,10 @@ it('filters teams by stable identity and provides public profile links',()=>{
  expect(screen.queryByRole('link',{name:/Север — Юг/})).toBeNull();
  expect(screen.getByRole('link',{name:'Восток'})).toHaveAttribute('href','/teams/home-1');
 });
+
+it('lets a guest open the match from the whole row without separate team links',()=>{
+ const items=matches.map((m,i)=>({...m,home_team_id:`home-${i}`,away_team_id:`away-${i}`}));
+ render(<MemoryRouter initialEntries={['/t?team_id=home-1']}><Schedule wholeRow matches={items} timezone="Europe/Moscow" teamHref={id=>`/teams/${id}`}/></MemoryRouter>);
+ expect(screen.queryByRole('link',{name:'Восток'})).toBeNull();
+ const row=open(/Открыть матч Восток/).closest('article');expect(row).toHaveClass('whole-row');
+});

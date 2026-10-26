@@ -2186,6 +2186,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/matches/recent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recent */
+        get: operations["recent_api_v1_public_matches_recent_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/matches/{mid}": {
         parameters: {
             query?: never;
@@ -6069,6 +6086,10 @@ export interface components {
             tournament_totals: {
                 [key: string]: number;
             };
+            /** Previous Day */
+            previous_day?: string | null;
+            /** Next Day */
+            next_day?: string | null;
         };
         /** PublicMetrics */
         PublicMetrics: {
@@ -13450,6 +13471,40 @@ export interface operations {
         };
     };
     upcoming_api_v1_public_matches_upcoming_get: {
+        parameters: {
+            query?: {
+                tournament_id?: string | null;
+                team_id?: string | null;
+                q?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicUpcomingMatches"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recent_api_v1_public_matches_recent_get: {
         parameters: {
             query?: {
                 tournament_id?: string | null;

@@ -1,6 +1,6 @@
 import {afterEach,it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
-import {MemoryRouter,Routes,Route,useNavigate} from 'react-router-dom';
+import {MemoryRouter,Routes,Route,useNavigate,useLocation} from 'react-router-dom';
 import {PublicMatchCenter} from './PublicMatchCenter';
 const t={id:'a',name:'Кубок',season:'2026'},u={...t,id:'b'};
 const match=(id:string,tournament=t)=>({id,tournament,home_name:'Север '+id,away_name:'Юг',scheduled_at:'2026-10-20T18:00:00Z',status:'scheduled',score:{home:null,away:null}});
@@ -27,6 +27,30 @@ it('restores loaded pages when returning from a match and refreshes them togethe
  await screen.findByRole('button',{name:'Ещё матчи'});fireEvent.click(screen.getByRole('button',{name:'Ещё матчи'}));
  fireEvent.click(await screen.findByRole('link',{name:'Открыть матч Север 2 — Юг'}));fireEvent.click(screen.getByRole('button',{name:'Вернуться'}));
  await screen.findByRole('link',{name:'Открыть матч Север 2 — Юг'});
- fireEvent.click(screen.getByRole('button',{name:'Обновить матчи'}));await waitFor(()=>expect(screen.queryByText('Загружаем…')).toBeNull());
+ // Returning to the tab refreshes in place: the loaded rows stay on screen instead of «Загружаем…».
+ await screen.findByText('Рейтинг ещё не опубликован.');
+ Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});fireEvent(document,new Event('visibilitychange'));expect(screen.queryByText('Загружаем…')).toBeNull();
+ await waitFor(()=>expect(vi.mocked(fetch).mock.calls.filter(([p])=>String(p).includes('cursor=next')).length).toBe(2));
  expect(screen.getAllByRole('link',{name:/Открыть матч Север/})).toHaveLength(2);
 });
+
+it('opens a match from the whole row and keeps the guess of leaders out of the link',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async input=>{const path=String(input);return new Response(JSON.stringify(path.includes('/ratings')?{items:[],snapshot_id:null}:path.includes('/upcoming')?{items:[]}:path.includes('/tournaments?')?{items:[t],total:1}:day([match('1')])))}));
+ render(<MemoryRouter initialEntries={['/?day=2026-10-20']}><Routes><Route path="/" element={<><PublicMatchCenter/><Where/></>}/></Routes></MemoryRouter>);
+ const row=await screen.findByRole('link',{name:'Открыть матч Север 1 — Юг'});
+ expect(row).toHaveAttribute('href','/watch/matches/1');expect(row).toHaveTextContent('Север 1');
+ expect(screen.queryByRole('link',{name:'Север 1'})).toBeNull();expect(row.textContent).not.toMatch(/Запланирован/);
+ expect(screen.getByTestId('where').textContent).not.toContain('leaders_tournament_id');expect(document.title).toBe('Матчи — AI Football');
+});
+it('fills an empty day with neighbouring game days, recent results and the nearest games',async()=>{
+ const finished={...match('old'),status:'ended',scheduled_at:'2026-10-17T16:00:00Z',score:{home:2,away:1}};
+ vi.stubGlobal('fetch',vi.fn(async input=>{const path=String(input);return new Response(JSON.stringify(path.includes('/ratings')?{items:[],snapshot_id:null}:path.includes('/recent')?{items:[finished]}:path.includes('/upcoming')?{items:[match('next')]}:path.includes('/tournaments?')?{items:[t],total:1}:path.includes('day=2026-10-17')?{...day([finished]),day:'2026-10-17'}:{...day([]),total:0,previous_day:'2026-10-17',next_day:'2026-10-25'}))}));
+ render(<MemoryRouter initialEntries={['/?day=2026-10-20']}><Routes><Route path="/" element={<><PublicMatchCenter/><Where/></>}/></Routes></MemoryRouter>);
+ await screen.findByText('20 октября матчей нет');
+ expect(await screen.findByRole('heading',{name:'Последние результаты'})).toBeInTheDocument();expect(screen.getByRole('link',{name:'Открыть матч Север old — Юг, 2 : 1'})).toBeInTheDocument();
+ expect(screen.getByRole('heading',{name:'Ближайшие матчи'})).toBeInTheDocument();expect(screen.getByRole('link',{name:'Открыть матч Север next — Юг'})).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:/Предыдущий игровой день/}));
+ await waitFor(()=>expect(screen.getByTestId('where').textContent).toContain('day=2026-10-17'));
+ expect(await screen.findByRole('link',{name:'Открыть матч Север old — Юг, 2 : 1'})).toBeInTheDocument();expect(screen.queryByText(/матчей нет/)).toBeNull();
+});
+function Where(){const location=useLocation();return <output data-testid="where">{location.search}</output>}
