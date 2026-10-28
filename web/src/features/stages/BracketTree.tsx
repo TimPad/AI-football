@@ -33,7 +33,7 @@ export function BracketTree({section,timezone,matchHref,action,path,onTeam}:{sec
   return()=>observer?.disconnect();
  },[section]);
  const onPath=(key:string)=>Boolean(path&&[byKey[key]?.home.team?.entry_id,byKey[key]?.away.team?.entry_id].includes(path));
- return <div className="bracket-tree" ref={box} style={{gridTemplateColumns:`repeat(${section.rounds.length},minmax(220px,1fr))`,gridTemplateRows:`auto repeat(${total},minmax(40px,auto))`}}>
+ return <div className="bracket-tree" ref={box} style={{gridTemplateColumns:`repeat(${section.rounds.length},minmax(220px,300px))`,gridTemplateRows:`auto repeat(${total},minmax(40px,auto))`}}>
   <svg className="bracket-lines" aria-hidden="true" width={size.w} height={size.h}>{lines.map(l=><path key={l.from+l.to} d={l.d} data-path={onPath(l.from)&&onPath(l.to)||undefined}/>)}</svg>
   {section.rounds.map((r,ri)=>[<h4 key={'h'+r.round_no+r.name} style={{gridColumn:ri+1,gridRow:1}}>{r.name}</h4>,
    ...r.pairs.filter(p=>p.bracket!=='third').sort((a,b)=>a.slot-b.slot).map((p,i)=>{const {start,span}=place(ri,i);

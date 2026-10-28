@@ -36,6 +36,7 @@
 .pair-team.won{font-weight:600}
 .won-mark{width:16px;height:16px;color:var(--accent-line);flex:none}
 .team-logo{width:20px;height:20px;border-radius:4px;flex:none;object-fit:contain}
+.team-logo.initials{display:grid;place-items:center;border-radius:50%;background:var(--hover);color:var(--text-muted);font-size:9px;font-weight:600;letter-spacing:-.2px}
 img.team-logo{background:var(--logo-plate)}
 .team-path{all:unset;cursor:pointer;min-height:32px;line-height:32px;border-radius:4px}
 .team-path:focus-visible{outline:2px solid var(--focus);outline-offset:2px}

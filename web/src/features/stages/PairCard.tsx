@@ -3,11 +3,15 @@ import {Link} from 'react-router-dom';
 import type {PairView,SideView} from './api';
 import {legStatus,pairSpeech,pairTotals,shortDate} from './labels';
 
+// Две буквы названия — вместо пустого места, когда эмблемы нет.
+const initials=(name:string)=>name.split(/\s+/).filter(w=>/^[\p{L}\d]/u.test(w)).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+
 function Team({side,score,won,path,onTeam}:{side:SideView;score?:string;won:boolean;path?:string|null;onTeam?:(id:string)=>void}){
  const id=side.team?.entry_id;
  const name=onTeam&&id?<button type="button" className="team-path" aria-pressed={path===id} onClick={()=>onTeam(id)}>{side.label}</button>:<span>{side.label}</span>;
  return <div className={`pair-team${won?' won':''}${side.team?'':' unknown'}`}>
-  {side.team?.logo_id?<img className="team-logo" src={`/api/v1/public/catalog/team-logos/${side.team.logo_id}`} alt="" width={20} height={20}/>:<span className="team-logo" aria-hidden="true"/>}
+  {side.team?.logo_id?<img className="team-logo" src={`/api/v1/public/catalog/team-logos/${side.team.logo_id}`} alt="" width={20} height={20}/>
+   :<span className="team-logo initials" aria-hidden="true">{side.team?initials(side.team.name):''}</span>}
   {name}{won&&<Check className="won-mark" aria-hidden="true"/>}{score!==undefined&&<b>{score}</b>}</div>;
 }
 

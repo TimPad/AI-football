@@ -16,9 +16,13 @@ const reduced=()=>typeof window!=='undefined'&&Boolean(window.matchMedia?.('(pre
 function Rounds({section,timezone,matchHref,action,path,onTeam}:{section:SectionView;timezone:string;matchHref?:(id:string)=>string;action?:(p:PairView)=>React.ReactNode;path:string|null;onTeam:(id:string)=>void}){
  const start=Math.max(0,section.rounds.findIndex(r=>r.round_no===section.current_round));
  const [index,setIndex]=useState(start);const strip=useRef<HTMLDivElement>(null);const tabs=useRef<(HTMLButtonElement|null)[]>([]);
- const show=(i:number,focus=false)=>{setIndex(i);const el=strip.current;if(el?.scrollTo)el.scrollTo({left:i*el.clientWidth,behavior:reduced()?'auto':'smooth'});if(focus)tabs.current[i]?.focus()};
+ // Пока идёт прокрутка от нажатия на вкладку, промежуточные позиции не переключают раунд.
+ const target=useRef<number|null>(null);
+ const show=(i:number,focus=false)=>{setIndex(i);const el=strip.current;if(el?.scrollTo){target.current=i;el.scrollTo({left:i*el.clientWidth,behavior:reduced()?'auto':'smooth'})}if(focus)tabs.current[i]?.focus()};
  useEffect(()=>{const el=strip.current;if(el?.scrollTo)el.scrollTo({left:start*el.clientWidth})},[start]);
- const onScroll=()=>{const el=strip.current;if(!el||!el.clientWidth)return;const i=Math.round(el.scrollLeft/el.clientWidth);if(i!==index)setIndex(i)};
+ const onScroll=()=>{const el=strip.current;if(!el||!el.clientWidth)return;const i=Math.round(el.scrollLeft/el.clientWidth);
+  if(target.current!==null){if(Math.abs(el.scrollLeft-target.current*el.clientWidth)<2)target.current=null;return}
+  if(i!==index)setIndex(i)};
  const onKey=(e:KeyboardEvent)=>{if(e.key==='ArrowRight')show(Math.min(index+1,section.rounds.length-1),true);if(e.key==='ArrowLeft')show(Math.max(index-1,0),true)};
  return <>
   <div role="tablist" aria-label="Раунды" className="round-tabs" onKeyDown={onKey}>{section.rounds.map((r,i)=><button key={r.round_no+r.name} ref={el=>{tabs.current[i]=el}} role="tab" type="button" id={`tab-${section.key}-${i}`}
