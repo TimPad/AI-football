@@ -6,6 +6,9 @@ import {Field,ErrorBox,useLoad,Loading} from '../../components/ui';
 import {useAuth} from '../auth/Auth';
 import {useDraft} from '../protocol/drafts';
 import {Rules,Entries} from './TournamentPage';
+import {FormatStep} from '../stages/FormatStep';
+import {StageWorkspace} from '../stages/StageWorkspace';
+import type {Standings} from '../stages/api';
 import './setup.css';
 
 type Draft={request_id:string,name:string,season:string,starts_on:string,ends_on:string,timezone:string,mode:'quick'|'full'|null};
@@ -33,16 +36,18 @@ export function TournamentCreate(){
   </form></div>;
 }
 
-const STEPS=[['rules','1. Регламент'],['teams','2. Команды и игроки'],['review','3. Проверка']];
+const STEPS=[['rules','1. Регламент'],['teams','2. Команды и игроки'],['format','3. Формат'],['draw','4. Жеребьёвка'],['review','5. Проверка']];
 export function TournamentSetup(){const {id=''}=useParams();const [params,setParams]=useSearchParams();const step=STEPS.some(([key])=>key===params.get('step'))?params.get('step')!:'rules';
- const state=useLoad(async()=>{const [t,entries,rules,matches]=await Promise.all([api<Tournament>(`/tournaments/${id}`),all<Entry>(`/tournaments/${id}/entries`),all<RegVersion>(`/tournaments/${id}/regulations`),all<Match>(`/tournaments/${id}/matches`)]);return {t,entries,rules,matches}},id);
+ const state=useLoad(async()=>{const [t,entries,rules,matches]=await Promise.all([api<Tournament>(`/tournaments/${id}`),all<Entry>(`/tournaments/${id}/entries`),all<RegVersion>(`/tournaments/${id}/regulations`),all<Match>(`/tournaments/${id}/matches`)]);const stages=await api<Standings>(`/tournaments/${id}/stages`);return {t,entries,rules,matches,stages}},id);
  if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const d=state.data;const index=STEPS.findIndex(([key])=>key===step);
  return <div className="setup-page"><Link className="breadcrumb" to={`/tournaments/${id}`}>← {d.t.name}</Link><div className="page-head"><div><h1>Настройка турнира</h1><p className="muted">{d.t.name} · Черновик сохранён на сервере</p></div><Link className="button" to={`/tournaments/${id}`}>Сохранить и выйти</Link></div>
   <nav className="setup-steps" aria-label="Шаги настройки">{STEPS.map(([key,label])=><Link key={key} aria-current={key===step?'step':undefined} to={`?step=${key}`}>{label}</Link>)}</nav>
   {step==='rules'&&<Rules key={d.rules.map(r=>r.id).join()} tid={id} data={d} onSaved={state.reload}/>}
   {step==='teams'&&<Entries tid={id} data={d} onSaved={state.reload}/>}
-  {step==='review'&&<section className="surface"><h2>Готовность турнира</h2><p>{d.rules.length?'✓ Регламент сохранён':'Добавьте регламент'}</p><p>{d.entries.length>=2?'✓ Команды добавлены':`Команд: ${d.entries.length}. Для первого матча нужны две.`}</p><p>Страница турнира: {d.t.visibility==='public'?'опубликована':'черновик'}</p>
+  {step==='format'&&(d.rules.length?<FormatStep key={d.stages.stages.map(s=>s.id).join()} tid={id} regulations={d.rules} standings={d.stages} entries={d.entries} onSaved={state.reload}/>:<p className="warning">Сначала сохраните регламент.</p>)}
+  {step==='draw'&&(d.stages.stages.length?<StageWorkspace tournament={d.t} entries={d.entries} regulations={d.rules}/>:<p className="muted">Сначала выберите формат турнира.</p>)}
+  {step==='review'&&<section className="surface"><h2>Готовность турнира</h2><p>{d.rules.length?'✓ Регламент сохранён':'Добавьте регламент'}</p><p>{d.entries.length>=2?'✓ Команды добавлены':`Команд: ${d.entries.length}. Для первого матча нужны две.`}</p><p>{d.stages.stages.length?`✓ Формат: ${d.stages.stages.map(s=>s.name).join(' → ')}`:'Формат не выбран — матчи можно создавать вручную'}</p><p>{d.stages.stages.length&&d.stages.stages.every(s=>s.draw||s.status!=='draft')?'✓ Жеребьёвка проведена':d.stages.stages.length?'Жеребьёвка ещё не проведена':''}</p><p>Страница турнира: {d.t.visibility==='public'?'опубликована':'черновик'}</p>
    <Link className="button primary" to={`/tournaments/${id}`}>Перейти к матчам</Link><p className="muted">В кабинете можно составить расписание и отдельно опубликовать страницу турнира.</p></section>}
-  <div className="setup-actions">{index>0&&<button onClick={()=>setParams({step:STEPS[index-1][0]})}>Назад</button>}{index<2&&<button className="primary" disabled={step==='rules'&&!d.rules.length} onClick={()=>setParams({step:STEPS[index+1][0]})}>Продолжить</button>}</div>
+  <div className="setup-actions">{index>0&&<button onClick={()=>setParams({step:STEPS[index-1][0]})}>Назад</button>}{index<STEPS.length-1&&<button className="primary" disabled={step==='rules'&&!d.rules.length} onClick={()=>setParams({step:STEPS[index+1][0]})}>Продолжить</button>}</div>
  </div>;
 }

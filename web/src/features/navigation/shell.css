@@ -14,7 +14,7 @@
 .cabinet-rail h4{margin:16px 8px 4px;font-size:12px;line-height:18px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);font-weight:600}
 .cabinet-rail h4:first-child{margin-top:0}
 .cabinet-rail a{display:flex;align-items:center;gap:12px;padding:8px;border-radius:var(--radius);color:var(--text);font-size:14px}
-.cabinet-rail a:hover{background:#f1f4f6;text-decoration:none;color:var(--text)}
+.cabinet-rail a:hover{background:var(--hover);text-decoration:none;color:var(--text)}
 .cabinet-rail a.active,.cabinet-rail a[aria-current=page]{background:var(--accent-soft);font-weight:620}
 .cabinet-rail svg{width:20px;height:20px}
 .cabinet-main{padding:24px 32px 48px;min-width:0}
@@ -23,16 +23,16 @@
 .cabinet.no-rail .cabinet-rail{display:none}
 .cabinet-global{display:flex;align-items:center;gap:4px;margin-left:8px}
 .cabinet-global a{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius);color:var(--text-muted);font-size:14px;font-weight:520}
-.cabinet-global a:hover{color:var(--text);background:#f1f4f6;text-decoration:none}
+.cabinet-global a:hover{color:var(--text);background:var(--hover);text-decoration:none}
 .cabinet-global a.active{color:var(--text);background:var(--accent-soft);font-weight:620}
 .cabinet-global svg{width:16px;height:16px}
 .catalog-menu{position:relative}
 .catalog-toggle{border:0;background:none;min-height:0;padding:6px 10px;gap:8px;color:var(--text-muted);font-weight:520}
-.catalog-toggle:hover{color:var(--text);background:#f1f4f6}
+.catalog-toggle:hover{color:var(--text);background:var(--hover)}
 .catalog-toggle.active,.catalog-toggle[aria-expanded=true]{color:var(--text);background:var(--accent-soft);font-weight:620}
 .catalog-list{position:absolute;top:calc(100% + 6px);left:0;min-width:180px;display:flex;flex-direction:column;gap:2px;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 24px #10212b1f;z-index:30}
 .catalog-list a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);color:var(--text);font-size:14px}
-.catalog-list a:hover{background:#f1f4f6;text-decoration:none}
+.catalog-list a:hover{background:var(--hover);text-decoration:none}
 .catalog-list a.active{background:var(--accent-soft);font-weight:620}
 .catalog-list svg{width:16px;height:16px}
 .rail-global{display:none}

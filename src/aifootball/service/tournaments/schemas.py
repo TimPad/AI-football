@@ -115,6 +115,7 @@ class TournamentPatch(Input):
     timezone: str|None=None
     archived: bool|None=None
     visibility: Literal['draft','public']|None=None
+    standings_public: bool|None=None
 
 
 class RegulationCreate(Input):

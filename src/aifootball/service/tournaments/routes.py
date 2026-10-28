@@ -52,7 +52,7 @@ def update(tid:UUID,data:TournamentPatch,db:Session=Depends(get_session)):
             raise DomainError('validation','Не очищайте обязательные поля')
         current={key:getattr(row,key) for key in TournamentCreate.model_fields if key!='request_id'}
         try:
-            TournamentCreate.model_validate({**current,**{k:v for k,v in values.items() if k!='archived'}})
+            TournamentCreate.model_validate({**current,**{k:v for k,v in values.items() if k not in ('archived','standings_public')}})
         except ValidationError as error:
             raise DomainError('validation','Проверьте настройки турнира',
                 {'.'.join(map(str,e['loc'])):e['msg'] for e in error.errors()}) from error

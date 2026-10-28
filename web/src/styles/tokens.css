@@ -1,10 +1,22 @@
-/* Design lock 15.10.2026: docs/design/2026-10-15-ui-system.md */
+/* Design lock 15.10.2026: docs/design/2026-10-15-ui-system.md; тёмная тема сайта зрителя — 28.10.2026. */
 :root{
- --app-bg:#f4f6f8;--surface:#fff;--text:#19221f;--text-muted:#697487;--border:#e2e7ec;
- --accent:#b8ec64;--accent-strong:#9fd94a;--accent-ink:#22361a;--accent-soft:#eef8dc;--accent-line:#6fae1c;
+ --app-bg:#f4f6f8;--surface:#fff;--surface-2:#f8fafb;--hover:#edf1f4;--text:#19221f;--text-muted:#636e7f;--border:#e2e7ec;--line-strong:#7d8893;
+ --accent:#b8ec64;--accent-strong:#9fd94a;--accent-ink:#22361a;--accent-soft:#eef8dc;--accent-soft-ink:#22361a;--accent-line:#5a9316;
  --pitch:#172620;--home:#488ee6;--away:#e9aa49;
- --ok:#2f7d32;--ok-soft:#e8f4e8;--warn:#9a5b00;--warn-soft:#fff4e0;--danger:#b42318;--danger-soft:#fdecea;--info-soft:#eaf2fc;
+ --ok:#2f7d32;--ok-soft:#e8f4e8;--warn:#9a5b00;--warn-soft:#fff4e0;--danger:#b42318;--danger-soft:#fdecea;--on-danger:#fff;--info-soft:#eaf2fc;
+ --live:#c62828;--logo-plate:transparent;--selected-bg:#12212b;--selected-ink:#fff;
  --link:#2f6db8;--focus:#3479ce;--radius:8px;--rail:224px;--public-max:1440px;
  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;
  --font-body:16px;--font-control:14px;--font-caption:12px;--font-h2:20px;--font-h1:28px;
+}
+/* Тёмная тема — только сайт зрителя и только по системной настройке; кабинет остаётся светлым. */
+:root:has(.public-shell){color-scheme:light dark}
+@media (prefers-color-scheme:dark){
+ :root:has(.public-shell){
+  --app-bg:#0f1412;--surface:#171d1a;--surface-2:#1c2420;--hover:#232c28;--text:#e8eeea;--text-muted:#a3aea8;--border:#2b3530;--line-strong:#6b7a73;
+  --accent:#b8ec64;--accent-strong:#9fd94a;--accent-ink:#1a2a12;--accent-soft:#24331a;--accent-soft-ink:#d7f5a8;--accent-line:#8fcf45;
+  --ok:#7fd283;--ok-soft:#173020;--warn:#f0b75a;--warn-soft:#33270f;--danger:#ff8a80;--danger-soft:#3a1714;--on-danger:#1a0f0e;--info-soft:#16263a;
+  --live:#ff6b5e;--logo-plate:#f2f5f3;--selected-bg:#e8eeea;--selected-ink:#0f1412;
+  --link:#7fb2ef;--focus:#7fb2ef;
+ }
 }
