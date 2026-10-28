@@ -132,6 +132,7 @@ class DrawInput(Input):
     method: DrawMethod
     seed: Annotated[int, Field(ge=0, le=2**31 - 1)] = 0
     seeding: list[UUID] = Field(default_factory=list, max_length=128)
+    participants: list[UUID] | None = Field(default=None, max_length=128)
     # Ручная правка: составы групп (списки заявок) или порядок источников сетки/туров.
     placement: list[Any] | None = Field(default=None, max_length=128)
 
@@ -139,6 +140,14 @@ class DrawInput(Input):
 class DrawConfirm(DrawInput):
     request_id: UUID = Field(default_factory=uuid4)
     expected_revision: int = Field(ge=0)
+
+
+class AdjustInput(Input):
+    op: Literal['remove', 'add', 'move']
+    entry_id: UUID
+    group_no: Annotated[int, Field(ge=1, le=16)] | None = None
+    expected_revision: int = Field(ge=0)
+    request_id: UUID = Field(default_factory=uuid4)
 
 
 class LotInput(Input):
@@ -254,6 +263,7 @@ class DrawView(View):
     seed: int
     seeding: list[Any]
     placement: list[Any]
+    participants: list[Any] | None = None
     confirmed_at: datetime
 
 

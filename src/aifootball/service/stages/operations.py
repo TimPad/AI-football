@@ -192,7 +192,8 @@ def stage_view(ev, refs, matches, scope):
     if scope == 'cabinet':
         view.update(config=stage.config, regulation_id=stage.regulation_id, revision=stage.revision,
                     draw={'id': ev.draw.id, 'version': ev.draw.version, 'method': ev.draw.method, 'seed': ev.draw.seed,
-                          'seeding': ev.draw.seeding, 'placement': ev.draw.placement, 'confirmed_at': ev.draw.confirmed_at}
+                          'seeding': ev.draw.seeding, 'placement': ev.draw.placement, 'participants': ev.draw.participants,
+                          'confirmed_at': ev.draw.confirmed_at}
                     if ev.draw else None)
     if ev.draw is None: return view
     view['groups'] = _group_views(ev, refs)
@@ -418,10 +419,17 @@ def _previous(db, tournament, stage):
     return (stages[index - 1] if index else None), stages
 
 
-def _participants(db, tournament, stage, config):
-    """Заявки, которые разыгрываются в этапе, в порядке посева по умолчанию; None — участники пока неизвестны."""
+def _participants(db, tournament, stage, config, chosen=None):
+    """Заявки, которые разыгрываются в этапе, в порядке посева по умолчанию; None — участники пока неизвестны.
+    chosen — «Кто играет»: подмножество заявок турнира для первого этапа."""
     refs = team_refs(db, tournament.id)
-    if not config.source.get('previous'): return list(refs)
+    if not config.source.get('previous'):
+        if chosen is None: return list(refs)
+        chosen = [str(c) for c in chosen]
+        if len(set(chosen)) != len(chosen) or not set(chosen) <= set(refs):
+            raise DomainError('validation', 'Выберите команды из заявок турнира без повторов')
+        if len(chosen) < 2: raise DomainError('validation', 'Для жеребьёвки нужны минимум две команды')
+        return chosen
     prior_stage, stages = _previous(db, tournament, stage)
     if prior_stage is None: raise DomainError('validation', 'У первого этапа нет предыдущего')
     ev = next(e for e in evaluate(db, tournament, 'cabinet', stages) if e.stage.id == prior_stage.id)
@@ -443,7 +451,7 @@ def _placement(db, tournament, stage, data):
             raise DomainError('validation', 'Схема доступна для этапа после групп или лиги')
         base = scheme_for(config, config_of(prior_stage))
         return config, base, [], base if data.placement is None else _same_items(data.placement, base)
-    participants = _participants(db, tournament, stage, config)
+    participants = _participants(db, tournament, stage, config, data.participants)
     if participants is None: raise DomainError('previous_incomplete', 'Предыдущий этап ещё не завершён', status=409)
     seeding = [str(s) for s in data.seeding] or participants
     if sorted(seeding) != sorted(participants) or len(set(seeding)) != len(seeding):
@@ -457,10 +465,23 @@ def _placement(db, tournament, stage, data):
                     sorted(t for g in groups for t in g) != sorted(seeding):
                 raise DomainError('validation', 'Каждая команда должна попасть ровно в одну группу, в группе минимум две команды')
             return config, groups, seeding, groups
+        if config.kind in ELIMINATION:
+            return config, None, seeding, _bracket_placement(data.placement, seeding)
         base = participants_placement(config, 'seeded', seeding, 0)
         return config, base, seeding, _same_items(data.placement, base)
     placement = participants_placement(config, data.method, seeding, data.seed)
     return config, placement, seeding, placement
+
+
+def _bracket_placement(given, seeding):
+    """Ручная сетка: каждая команда этапа ровно один раз, пустые места — пропуск хода, размер — степень двойки."""
+    placement = [None if item is None else {'entry': str(item['entry'] if isinstance(item, dict) else item)} for item in given]
+    teams = [item['entry'] for item in placement if item]
+    if sorted(teams) != sorted(seeding) or len(set(teams)) != len(teams):
+        raise DomainError('validation', 'В сетке должна быть каждая команда этапа ровно один раз')
+    if len(placement) != bracket_size(len(placement)) or len(placement) < len(seeding):
+        raise DomainError('validation', 'Число мест в сетке должно быть степенью двойки')
+    return placement
 
 
 def _same_items(given, base):
@@ -529,7 +550,7 @@ def confirm_draw(db, actor, tournament, stage, data):
     kept, cancelled = _consequences(db, stage, specs)
     version = (db.scalar(select(func.max(StageDraw.version)).where(StageDraw.stage_id == stage.id)) or 0) + 1
     draw = StageDraw(stage_id=stage.id, version=version, method=data.method, seed=data.seed, seeding=seeding,
-                     placement=placement, confirmed_by=actor.id)
+                     placement=placement, participants=seeding or None, confirmed_by=actor.id)
     db.add(draw); db.flush()
     moved = {(f.key, f.leg): (f, m) for f, m in kept}
     for f, _ in kept: f.match_id = None

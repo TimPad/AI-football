@@ -15,7 +15,10 @@ def participants_placement(config, method, seeding, seed, placement=None):
     seeding = [str(item) for item in seeding]
     if method == 'manual': return placement
     if config.kind == 'groups':
-        if len(seeding) < 2 * config.group_count: raise DomainError('validation', 'В каждой группе нужно минимум две команды')
+        if len(seeding) < 2 * config.group_count:
+            from aifootball.service.stages.estimate import fix_for
+            raise DomainError('not_enough_teams', f'Для {config.group_count} групп нужно минимум {2 * config.group_count} команд',
+                              fields={'group_count': str(fix_for(len(seeding))['group_count'])})
         return pots_draw(seeding, config.group_count, seed) if method == 'pots' else snake_draw(seeding, config.group_count)
     order = random_order(seeding, seed) if method == 'random' else seeding
     return [entry(team) for team in order] if config.kind in ELIMINATION else order

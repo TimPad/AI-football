@@ -26,6 +26,7 @@ class StageDraw(Entity,Base):
     seed=Column(Integer,nullable=False)
     seeding=Column(JSONB,nullable=False)
     placement=Column(JSONB,nullable=False)
+    participants=Column(JSONB)
     confirmed_by=Column(Uuid,ForeignKey('admins.id',name='fk_draw_admin'),nullable=False)
     confirmed_at=Column(DateTime(timezone=True),nullable=False,default=utcnow)
     __table_args__=(UniqueConstraint('stage_id','version',name='uq_stage_draw_version'),)
@@ -47,5 +48,19 @@ class Fixture(Entity,Base):
     away_source=Column(JSONB)
     bye=Column(Boolean,nullable=False,default=False)
     match_id=Column(Uuid,ForeignKey('matches.id',name='fk_fixture_match'),unique=True)
+    # Решение организатора: {'kind':'walkover','winner':'home'|'away','score':[5,0]} или {'kind':'annulled'}.
+    outcome=Column(JSONB)
     __table_args__=(UniqueConstraint('draw_id','key','leg',name='uq_fixture_key'),
         CheckConstraint('home_entry_id is null or away_entry_id is null or home_entry_id != away_entry_id',name='ck_fixture_teams'))
+
+
+class StageWithdrawal(Entity,Base):
+    __tablename__='stage_withdrawals'
+    stage_id=Column(Uuid,ForeignKey('stages.id',name='fk_withdrawal_stage'),nullable=False)
+    entry_id=Column(Uuid,ForeignKey('entries.id',name='fk_withdrawal_entry'),nullable=False)
+    rule=Column(String(20),nullable=False)
+    played=Column(Integer,nullable=False)
+    total=Column(Integer,nullable=False)
+    actor_id=Column(Uuid,ForeignKey('admins.id',name='fk_withdrawal_admin'),nullable=False)
+    __table_args__=(UniqueConstraint('stage_id','entry_id',name='uq_stage_withdrawal'),
+        CheckConstraint("rule in ('annul','walkover','elimination','swiss')",name='ck_withdrawal_rule'))

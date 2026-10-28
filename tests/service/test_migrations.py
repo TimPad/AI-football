@@ -59,6 +59,8 @@ def test_stage_tables_and_standings_flag(client):
     from sqlalchemy import inspect
     engine = client.app.state.engine
     names = inspect(engine).get_table_names()
-    assert {'stages', 'stage_draws', 'fixtures'} <= set(names)
+    assert {'stages', 'stage_draws', 'fixtures', 'stage_withdrawals'} <= set(names)
+    assert 'outcome' in {c['name'] for c in inspect(engine).get_columns('fixtures')}
+    assert 'participants' in {c['name'] for c in inspect(engine).get_columns('stage_draws')}
     column = next(c for c in inspect(engine).get_columns('tournaments') if c['name'] == 'standings_public')
     assert not column['nullable'] and 'true' in str(column['default'])

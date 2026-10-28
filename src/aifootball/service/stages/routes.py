@@ -9,7 +9,7 @@ from aifootball.service.tournaments.commands import setup_command
 from aifootball.service.views import MatchView, Page
 from aifootball.service.stages import operations as ops
 from aifootball.service.stages.models import Stage, Fixture
-from aifootball.service.stages.schemas import (EstimateInput, EstimateView, FormatCreate, StagePatch, DrawInput, DrawConfirm, LotInput, NextRound,
+from aifootball.service.stages.schemas import (AdjustInput, EstimateInput, EstimateView, FormatCreate, StagePatch, DrawInput, DrawConfirm, LotInput, NextRound,
     FixtureSchedule, FixtureReplace, StandingsView, DrawPreview, FixtureView)
 
 router = APIRouter()
@@ -71,6 +71,22 @@ def confirm(sid: UUID, data: DrawConfirm, admin=Depends(require_csrf), db: Sessi
         tournament, stage = stage_scope(db, sid)
         return setup_command(db, admin.id, data.request_id, 'stage-draw', {'stage_id': sid, **data.model_dump(mode='json')},
                              lambda: ops.confirm_draw(db, admin, tournament, stage, data))
+
+
+@router.post('/stages/{sid}/draw/adjust/preview', response_model=DrawPreview, dependencies=[Depends(require_csrf)])
+def adjust_preview(sid: UUID, data: AdjustInput, db: Session = Depends(get_session)):
+    from aifootball.service.stages.adjust import preview_adjust
+    tournament, stage = stage_scope(db, sid)
+    return preview_adjust(db, tournament, stage, data)
+
+
+@router.post('/stages/{sid}/draw/adjust', response_model=StandingsView)
+def adjust(sid: UUID, data: AdjustInput, admin=Depends(require_csrf), db: Session = Depends(get_session)):
+    from aifootball.service.stages.adjust import apply_adjust
+    with db.begin():
+        tournament, stage = stage_scope(db, sid)
+        return setup_command(db, admin.id, data.request_id, 'stage-adjust', {'stage_id': sid, **data.model_dump(mode='json')},
+                             lambda: apply_adjust(db, admin, tournament, stage, data))
 
 
 @router.post('/stages/{sid}/lots', response_model=StandingsView)

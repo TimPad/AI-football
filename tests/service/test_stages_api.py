@@ -24,6 +24,7 @@ def format_env(admin_client, tournament_factory, regulation_data, hall_factory):
 
 
 def draw(client, stage, **body):
+    # participants передаётся как есть: «Кто играет» в жеребьёвке.
     body = {'method': 'seeded', 'seed': 0, 'seeding': [], 'expected_revision': stage['revision'], 'request_id': str(uuid4()), **body}
     return client.post(f"/api/v1/stages/{stage['id']}/draw", json=body)
 
