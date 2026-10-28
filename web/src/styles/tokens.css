@@ -3,7 +3,7 @@
  --app-bg:#f4f6f8;--surface:#fff;--text:#19221f;--text-muted:#697487;--border:#e2e7ec;
  --accent:#b8ec64;--accent-strong:#9fd94a;--accent-ink:#22361a;--accent-soft:#eef8dc;--accent-line:#6fae1c;
  --pitch:#172620;--home:#488ee6;--away:#e9aa49;
- --ok:#2f7d32;--ok-soft:#e8f4e8;--warn:#9a5b00;--warn-soft:#fff4e0;--danger:#b42318;--danger-soft:#fdecea;--info-soft:#eaf2fc;
+ --on-danger:#fff;--ok:#2f7d32;--ok-soft:#e8f4e8;--warn:#9a5b00;--warn-soft:#fff4e0;--danger:#b42318;--danger-soft:#fdecea;--info-soft:#eaf2fc;
  --link:#2f6db8;--focus:#3479ce;--radius:8px;--rail:224px;--public-max:1440px;
  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;
  --font-body:16px;--font-control:14px;--font-caption:12px;--font-h2:20px;--font-h1:28px;

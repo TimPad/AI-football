@@ -1,8 +1,10 @@
 import {useState} from 'react';
-import {ApiError,post} from '../../api/client';
+import {ApiError,api,post} from '../../api/client';
 import type {Entry} from '../../api/domain';
 import {ErrorBox} from '../../components/ui';
-import type {DrawPreview,StageView} from './api';
+import type {DrawPreview,StageView,Standings} from './api';
+import {ParticipantsPicker,storeParticipants,storedParticipants} from './ParticipantsPicker';
+import {plural} from './labels';
 import {PairCard} from './Bracket';
 import './stages.css';
 
@@ -28,17 +30,29 @@ export function sourceName(source:Source|string,names:Record<string,string>){
  return 'Соперник определится';
 }
 
-export function DrawStep({stage,entries,timezone,onSaved}:{stage:StageView;entries:Entry[];timezone:string;onSaved:()=>void}){
+export function DrawStep({stage:initial,entries,timezone,tid,onSaved}:{stage:StageView;entries:Entry[];timezone:string;tid:string;onSaved:()=>void}){
+ const [stage,setStage]=useState(initial);
  const names=Object.fromEntries(entries.map(e=>[e.id,e.team.name]));
  const methods=methodsFor(stage);const previous=methods[0][0]==='scheme';
- const [seeding,setSeeding]=useState<string[]>(()=>previous?[]:((stage.draw?.seeding as string[]|undefined)??entries.map(e=>e.id)));
+ const [participants,setParticipants]=useState<string[]>(()=>previous?[]:((stage.draw?.participants as string[]|null|undefined)??storedParticipants(tid,entries)));
+ const [seeding,setSeeding]=useState<string[]>(()=>previous?[]:((stage.draw?.seeding as string[]|undefined)?.filter(id=>participants.includes(id))??participants));
+ const [fix,setFix]=useState<number|null>(null);
  const [method,setMethod]=useState<Method>(methods[0][0]);
  const [seed,setSeed]=useState(()=>Math.floor(Math.random()*1e9));
  const [preview,setPreview]=useState<DrawPreview|null>(null);const [picked,setPicked]=useState<string|null>(null);
  const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
  const move=(i:number,d:number)=>{const next=[...seeding];[next[i],next[i+d]]=[next[i+d],next[i]];setSeeding(next);setPreview(null)};
  async function run(body:{method:Method;seed:number;placement?:unknown[]}){setBusy(true);setError(undefined);
-  try{setPreview(await post<DrawPreview>(`/stages/${stage.id}/draw/preview`,{...body,seeding}));setRequestId(crypto.randomUUID())}catch(e){setError(e)}finally{setBusy(false)}}
+  setFix(null);
+  try{setPreview(await post<DrawPreview>(`/stages/${stage.id}/draw/preview`,{...body,seeding,participants:previous?null:participants}));setRequestId(crypto.randomUUID())}
+  catch(e){if(e instanceof ApiError&&e.code==='not_enough_teams')setFix(Number(e.fields.group_count));setError(e)}finally{setBusy(false)}}
+ // «Сделать 3 группы»: меняем настройки этапа до жеребьёвки и сразу повторяем предпросмотр.
+ async function applyFix(){if(fix===null)return;setBusy(true);setError(undefined);
+  try{const r=await api<Standings>(`/stages/${stage.id}`,{method:'PATCH',body:JSON.stringify({expected_revision:stage.revision,config:{...(stage.config??{}),group_count:fix}})});
+   const next=r.stages.find(s=>s.id===stage.id);if(next)setStage(next);setFix(null);setBusy(false);
+   if(next)await post<DrawPreview>(`/stages/${stage.id}/draw/preview`,{method,seed,seeding,participants}).then(setPreview,setError)}
+  catch(e){setError(e);setBusy(false)}}
+ function choose(ids:string[]){setParticipants(ids);setSeeding(old=>[...old.filter(id=>ids.includes(id)),...ids.filter(id=>!old.includes(id))]);setPreview(null);storeParticipants(tid,ids)}
  // Касание двух команд меняет их местами; жеребьёвка становится ручной.
  function tap(id:string){
   if(!preview)return;if(picked===null){setPicked(id);return}
@@ -53,11 +67,13 @@ export function DrawStep({stage,entries,timezone,onSaved}:{stage:StageView;entri
   void run({method:'manual',seed,placement});
  }
  async function confirm(){if(!preview)return;setBusy(true);setError(undefined);
-  try{await post(`/stages/${stage.id}/draw`,{request_id:requestId,expected_revision:stage.revision,method:preview.method,seed:preview.seed,seeding,placement:preview.method==='manual'?preview.placement:null});onSaved()}
+  try{await post(`/stages/${stage.id}/draw`,{request_id:requestId,expected_revision:stage.revision,method:preview.method,seed:preview.seed,seeding,
+   participants:previous?null:participants,placement:preview.method==='manual'?preview.placement:null});onSaved()}
   catch(e){setError(e instanceof ApiError&&e.status===409&&e.code==='draw_locked'?'Жеребьёвку нельзя изменить: в этапе уже есть подтверждённый результат':e)}finally{setBusy(false)}}
  const pot=(id:string)=>preview?.pots?.[id];
  return <section className="draw-step surface" aria-label={`Жеребьёвка: ${stage.name}`}>
   <h2>Жеребьёвка · {stage.name}</h2>
+  {!previous&&!stage.draw&&<details><summary>Кто играет · {participants.length} из {entries.length}</summary><ParticipantsPicker entries={entries} value={participants} onChange={choose}/></details>}
   {!previous&&<details open={!stage.draw}><summary>Посев · сильнейшие сверху</summary><ol className="seeding">{seeding.map((id,i)=><li key={id}><b>{i+1}</b><span>{names[id]}</span>
    <button type="button" aria-label={`${names[id]} выше`} disabled={!i} onClick={()=>move(i,-1)}>↑</button>
    <button type="button" aria-label={`${names[id]} ниже`} disabled={i===seeding.length-1} onClick={()=>move(i,1)}>↓</button></li>)}</ol></details>}
@@ -76,5 +92,6 @@ export function DrawStep({stage,entries,timezone,onSaved}:{stage:StageView;entri
    {(preview.kept>0||preview.cancelled>0)&&<p className="warning" role="status">Сохранятся назначенных матчей: {preview.kept}. Будут отменены: {preview.cancelled}.</p>}
    <div className="setup-actions"><button type="button" className="primary" disabled={busy} onClick={confirm}>Подтвердить жеребьёвку</button></div></>}
   <ErrorBox error={error}/>
+  {fix!==null&&<button type="button" onClick={applyFix} disabled={busy}>Сделать {fix} {plural(fix,'группу','группы','групп')}</button>}
  </section>;
 }

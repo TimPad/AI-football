@@ -5,6 +5,8 @@ import {Empty,ErrorBox,Loading,Modal,useLoad} from '../../components/ui';
 import type {GroupView,PairView,StageView,Standings} from './api';
 import {DrawStep} from './DrawStep';
 import {FormatStep} from './FormatStep';
+import {RosterPanel} from './RosterPanel';
+import {WithdrawDialog} from './WithdrawDialog';
 import {StageBlock} from './StandingsView';
 import {CRITERIA,STATUS} from './labels';
 import './stages.css';
@@ -47,12 +49,16 @@ function CriteriaEditor({stage,onSaved}:{stage:StageView;onSaved:()=>void}){
 export function StageWorkspace({tournament,entries,regulations}:{tournament:Tournament;entries:Entry[];regulations:RegVersion[]}){
  const state=useCabinetStandings(tournament.id);
  const [drawing,setDrawing]=useState<StageView|null>(null);const [lot,setLot]=useState<[StageView,GroupView]|null>(null);
- const [replacing,setReplacing]=useState<PairView|null>(null);const [editFormat,setEditFormat]=useState(false);const [error,setError]=useState<unknown>();
+ const [replacing,setReplacing]=useState<PairView|null>(null);const [editFormat,setEditFormat]=useState(false);const [withdrawing,setWithdrawing]=useState<StageView|null>(null);const [notice,setNotice]=useState('');const [error,setError]=useState<unknown>();
  if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const data=state.data;
- const done=()=>{setDrawing(null);setLot(null);setReplacing(null);setEditFormat(false);state.reload()};
+ const done=()=>{setDrawing(null);setLot(null);setReplacing(null);setEditFormat(false);setWithdrawing(null);state.reload()};
+ const previousSource=(stage:StageView)=>Boolean((stage.config as {source?:{previous?:boolean}}|null)?.source?.previous);
+ const stageTeams=(stage:StageView)=>{const ids=(stage.draw?.participants as string[]|null)??entries.map(e=>e.id);const gone=new Set(stage.withdrawn.map(w=>w.team.entry_id));
+  const fromPairs=new Set(stage.sections.flatMap(s=>s.rounds.flatMap(r=>r.pairs.flatMap(p=>[p.home.team?.entry_id,p.away.team?.entry_id]))).filter(Boolean) as string[]);
+  return entries.filter(e=>(previousSource(stage)?fromPairs.has(e.id):ids.includes(e.id))&&!gone.has(e.id)).map(e=>({entry_id:e.id,team_id:e.team_id,name:e.team.name,logo_id:null}))};
  async function nextRound(stage:StageView){setError(undefined);try{await post(`/stages/${stage.id}/next-round`,{request_id:crypto.randomUUID(),expected_revision:stage.revision});state.reload()}catch(e){setError(e)}}
  if(!regulations.length)return <Empty>Сначала добавьте регламент турнира.</Empty>;
- if(!data.stages.length||editFormat)return <FormatStep tid={tournament.id} regulations={regulations} standings={data} onSaved={done}/>;
+ if(!data.stages.length||editFormat)return <FormatStep tid={tournament.id} regulations={regulations} standings={data} entries={entries} onSaved={done}/>;
  const locked=data.stages.some(s=>s.draw);
  return <div className="standings">
   {!locked&&<div className="setup-actions"><button type="button" onClick={()=>setEditFormat(true)}>Изменить формат</button></div>}
@@ -61,12 +67,17 @@ export function StageWorkspace({tournament,entries,regulations}:{tournament:Tour
    <div className="page-head"><div><h2>{stage.name}</h2><p className="muted">{STATUS[stage.status]}</p></div>
     <div className="row">{stage.status!=='completed'&&stage.status!=='started'&&<button type="button" className={stage.draw?'':'primary'} onClick={()=>setDrawing(stage)}>{stage.draw?'Изменить жеребьёвку':'Провести жеребьёвку'}</button>}
      {stage.can_next_round&&<button type="button" className="primary" onClick={()=>nextRound(stage)}>Следующий тур</button>}
+     {stage.status==='started'&&<button type="button" onClick={()=>setWithdrawing(stage)}>Снять команду</button>}
      {stage.groups.filter(g=>g.needs_lot).map(g=><button type="button" key={g.group_no} onClick={()=>setLot([stage,g])}>Ввести жребий · {g.name}</button>)}</div></div>
+   {stage.status==='drawn'&&!previousSource(stage)&&<RosterPanel stage={stage} entries={entries} onSaved={done}/>}
+   {stage.status==='started'&&<p className="muted small">Этап уже начался: новую команду можно добавить в следующий этап.</p>}
    {stage.draw?<StageBlock stage={stage} next={data.stages[i+1]} timezone={tournament.timezone} matchHref={id=>`/matches/${id}`}
     action={p=>p.changed?<button type="button" onClick={()=>setReplacing(p)}>Заменить команду</button>:null}/>:<><p className="muted">Пары появятся после жеребьёвки.</p>
     {stage.kind!=='single_elim'&&stage.kind!=='double_elim'&&<CriteriaEditor stage={stage} onSaved={done}/>}</>}
   </section>)}
-  {drawing&&<Modal title="Жеребьёвка" onClose={()=>setDrawing(null)}><DrawStep stage={drawing} entries={entries} timezone={tournament.timezone} onSaved={done}/></Modal>}
+  {drawing&&<Modal title="Жеребьёвка" onClose={()=>setDrawing(null)}><DrawStep stage={drawing} entries={entries} timezone={tournament.timezone} tid={tournament.id} onSaved={done}/></Modal>}
+  {withdrawing&&<WithdrawDialog stage={withdrawing} teams={stageTeams(withdrawing)} onClose={()=>setWithdrawing(null)} onDone={()=>{done();setNotice('Команда снята')}}/>}
+  {notice&&<div className="snackbar" role="status" onAnimationEnd={()=>setNotice('')}>{notice}</div>}
   {lot&&<Modal title={`Жребий · ${lot[1].name}`} onClose={()=>setLot(null)}><LotDialog stage={lot[0]} group={lot[1]} onSaved={done}/></Modal>}
   {replacing&&<Modal title="Заменить команду" onClose={()=>setReplacing(null)}><ReplaceDialog pair={replacing} entries={entries} onSaved={done}/></Modal>}
  </div>;

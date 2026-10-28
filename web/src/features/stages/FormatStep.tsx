@@ -1,55 +1,100 @@
-import {useState,type FormEvent} from 'react';
+import {useEffect,useRef,useState,type FormEvent} from 'react';
+import {AlertTriangle,Check as CheckIcon} from 'lucide-react';
 import {post} from '../../api/client';
-import type {RegVersion} from '../../api/domain';
-import {Check,ErrorBox,Field} from '../../components/ui';
+import type {Entry,RegVersion} from '../../api/domain';
+import {Check,ErrorBox,Field,Modal} from '../../components/ui';
 import type {Standings,Template} from './api';
+import type {components} from '../../api/types';
+import {FormatHelp} from './FormatHelp';
+import {ParticipantsPicker,storeParticipants,storedParticipants} from './ParticipantsPicker';
+import {Stepper} from './Stepper';
+import {TEMPLATE_HINT,TEMPLATE_NAME,plural} from './labels';
 import './stages.css';
 
-// Числа хранятся строками, пока их вводят; ограничения применяются при сохранении.
-type Params={template:Template;group_count:string;per_group:string;best_thirds:string;legs:1|2;third_place:boolean;grand_final_reset:boolean;rounds:string;with_playoff:boolean;playoff_teams:string;regulation_id:string;playoff_regulation_id:string};
-const TEMPLATES:{id:Template;name:string;hint:string;scheme:string}[]=[
- {id:'league',name:'Лига',hint:'Каждый с каждым, места по очкам',scheme:'aaaa'},
- {id:'groups_playoff',name:'Группы и плей-офф',hint:'Группы, затем сетка на выбывание',scheme:'aa-b'},
- {id:'playoff',name:'Плей-офф',hint:'Сетка на выбывание с первого матча',scheme:'bbbb'},
- {id:'double_elim',name:'Двойное выбывание',hint:'Выбывают после двух поражений',scheme:'bb-bb'},
- {id:'swiss',name:'Швейцарская система',hint:'Соперники по очкам, без повторов',scheme:'a-a-a'},
-];
-const num=(value:string,min:number,max:number)=>Math.max(min,Math.min(max,Number(value)||min));
+type Card=components['schemas']['EstimateCard'];
+type Params={group_count:number;per_group:number;best_thirds:number;legs:1|2;third_place:boolean;grand_final_reset:boolean;rounds:number;with_playoff:boolean;playoff_teams:number};
+const TEMPLATES:Template[]=['league','groups_playoff','playoff','double_elim','swiss'];
+const DEFAULTS:Params={group_count:2,per_group:2,best_thirds:0,legs:1,third_place:false,grand_final_reset:false,rounds:4,with_playoff:false,playoff_teams:4};
 
-export function FormatStep({tid,regulations,standings,onSaved}:{tid:string;regulations:RegVersion[];standings:Standings;onSaved:()=>void}){
+// Параметры шаблона для расчёта и сохранения: только те, что относятся к выбранному формату.
+function paramsFor(template:Template,p:Params){
+ if(template==='groups_playoff')return {group_count:p.group_count,per_group:p.per_group,best_thirds:p.best_thirds,legs:p.legs,third_place:p.third_place};
+ if(template==='league')return {legs:p.legs,...(p.with_playoff?{playoff_teams:p.playoff_teams,third_place:p.third_place}:{})};
+ if(template==='swiss')return {rounds:p.rounds,...(p.with_playoff?{playoff_teams:p.playoff_teams,third_place:p.third_place}:{})};
+ if(template==='playoff')return {third_place:p.third_place};
+ return {grand_final_reset:p.grand_final_reset};
+}
+const facts=(c:Card)=>[`${c.matches} ${plural(c.matches,'матч','матча','матчей')}`,
+ c.per_team[0]===c.per_team[1]?`${c.per_team[0]} на команду`:`${c.per_team[0]}–${c.per_team[1]} на команду`,`${c.days} ${plural(c.days,'игровой день','игровых дня','игровых дней')}`];
+
+export function FormatStep({tid,regulations,standings,entries,onSaved}:{tid:string;regulations:RegVersion[];standings:Standings;entries:Entry[];onSaved:()=>void}){
  const locked=standings.stages.some(s=>s.draw);
- const [p,setP]=useState<Params>({template:'groups_playoff',group_count:'2',per_group:'2',best_thirds:'0',legs:1,third_place:false,grand_final_reset:false,rounds:'4',with_playoff:false,playoff_teams:'4',
-  regulation_id:regulations[0]?.id??'',playoff_regulation_id:''});
+ const [template,setTemplate]=useState<Template>('groups_playoff');
+ const [p,setP]=useState<Params>(DEFAULTS);const touched=useRef(false);
+ const [days,setDays]=useState<number|null>(null);const [perDay,setPerDay]=useState<number|null>(null);
+ const [participants,setParticipants]=useState(()=>storedParticipants(tid,entries));const [picking,setPicking]=useState(false);
+ const [cards,setCards]=useState<Card[]>([]);const [estimateError,setEstimateError]=useState(false);const [retry,setRetry]=useState(0);
+ const [regulation,setRegulation]=useState(regulations[0]?.id??'');const [playoffRegulation,setPlayoffRegulation]=useState('');
  const [requestId,setRequestId]=useState(()=>crypto.randomUUID());const [busy,setBusy]=useState(false);const [error,setError]=useState<unknown>();
- const change=(next:Partial<Params>)=>{setP({...p,...next});setRequestId(crypto.randomUUID())};
+ const teams=participants.length;
+ const change=(next:Partial<Params>)=>{touched.current=true;setP(old=>({...old,...next}));setRequestId(crypto.randomUUID())};
+ const choose=(t:Template)=>{setTemplate(t);setRequestId(crypto.randomUUID())};
+ // Расчёт с задержкой 300 мс; прошлые карточки остаются на экране, пока не придёт новый ответ.
+ useEffect(()=>{
+  if(teams<2)return;
+  const controller=new AbortController();
+  const timer=setTimeout(async()=>{
+   try{const r=await post<{cards:Card[]}>(`/tournaments/${tid}/format/estimate`,{teams,days,per_day:perDay,template,params:touched.current?paramsFor(template,p):{}});
+    if(controller.signal.aborted)return;setCards(r.cards);setEstimateError(false);
+    if(!touched.current){const auto=r.cards.find(c=>c.template===template)?.params as Partial<Params>|undefined;if(auto)setP(old=>({...old,...auto}))}}
+   catch{if(!controller.signal.aborted)setEstimateError(true)}
+  },300);
+  return()=>{controller.abort();clearTimeout(timer)};
+ },[tid,teams,days,perDay,template,JSON.stringify(paramsFor(template,p)),retry]);
  async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError(undefined);
-  const body={request_id:requestId,template:p.template,regulation_id:p.regulation_id,playoff_regulation_id:p.playoff_regulation_id||null,group_count:num(p.group_count,2,16),per_group:num(p.per_group,1,16),
-   best_thirds:num(p.best_thirds,0,16),legs:p.legs,third_place:p.third_place,grand_final_reset:p.grand_final_reset,rounds:p.template==='swiss'?num(p.rounds,1,15):null,
-   playoff_teams:p.with_playoff&&(p.template==='league'||p.template==='swiss')?num(p.playoff_teams,2,64):null};
-  try{await post(`/tournaments/${tid}/format`,body);onSaved()}catch(e){setError(e)}finally{setBusy(false)}}
- const playoff=p.template==='groups_playoff'||p.template==='playoff'||p.with_playoff;
+  const params=paramsFor(template,p) as Record<string,unknown>;
+  try{await post(`/tournaments/${tid}/format`,{request_id:requestId,template,regulation_id:regulation,playoff_regulation_id:playoffRegulation||null,...params});storeParticipants(tid,participants);onSaved()}
+  catch(e){setError(e)}finally{setBusy(false)}}
+ const card=(t:Template)=>cards.find(c=>c.template===t);
+ const selected=card(template);
+ const withPlayoff=template==='groups_playoff'||((template==='league'||template==='swiss')&&p.with_playoff);
  return <form className="surface format-step" onSubmit={submit}>
-  <h2>Формат турнира</h2>
+  <div className="page-head"><h2>Формат турнира</h2><FormatHelp/></div>
   {locked&&<p className="muted">Формат закреплён жеребьёвкой.</p>}
-  <div className="format-cards" role="radiogroup" aria-label="Формат">{TEMPLATES.map(t=><button key={t.id} type="button" role="radio" className="format-card" aria-checked={p.template===t.id}
-   aria-disabled={locked} disabled={locked} onClick={()=>change({template:t.id})}><strong>{t.name}</strong><span>{t.hint}</span>
-   <span className="format-scheme" aria-hidden="true">{[...t.scheme].map((c,i)=><i key={i} className={c==='b'?'accent':c==='-'?'gap':undefined}/>)}</span></button>)}</div>
-  <fieldset className="team-fieldset" disabled={locked||busy}><div className="form-grid">
-   {p.template==='groups_playoff'&&<><Field label="Групп"><input type="number" min={2} max={16} value={p.group_count} onChange={e=>change({group_count:e.target.value})}/></Field>
-    <Field label="Выходят из группы"><input type="number" min={1} max={16} value={p.per_group} onChange={e=>change({per_group:e.target.value})}/></Field>
-    <Field label={`Лучшие ${num(p.per_group,1,16)+1}-и места`}><input type="number" min={0} max={16} value={p.best_thirds} onChange={e=>change({best_thirds:e.target.value})}/></Field></>}
-   {(p.template==='league'||p.template==='groups_playoff')&&<Field label="Круги"><select value={p.legs} onChange={e=>change({legs:Number(e.target.value) as 1|2})}><option value={1}>Один круг</option><option value={2}>Два круга</option></select></Field>}
-   {p.template==='swiss'&&<Field label="Туров"><input type="number" min={1} max={15} value={p.rounds} onChange={e=>change({rounds:e.target.value})}/></Field>}
-   {(p.template==='league'||p.template==='swiss')&&<><Check label="Добавить плей-офф" checked={p.with_playoff} onChange={v=>change({with_playoff:v})}/>
-    {p.with_playoff&&<Field label="В плей-офф выходят"><input type="number" min={2} max={64} value={p.playoff_teams} onChange={e=>change({playoff_teams:e.target.value})}/></Field>}</>}
-   {playoff&&<Check label="Матч за 3-е место" checked={p.third_place} onChange={v=>change({third_place:v})}/>}
-   {p.template==='double_elim'&&<Check label="Переигровка финала, если победит команда из нижней сетки" checked={p.grand_final_reset} onChange={v=>change({grand_final_reset:v})}/>}
-   <Field label="Регламент матчей"><select required value={p.regulation_id} onChange={e=>change({regulation_id:e.target.value})}>{regulations.map(r=><option key={r.id} value={r.id}>{r.variant_name} · версия {r.version}</option>)}</select></Field>
-   {(p.template==='groups_playoff'||p.with_playoff&&(p.template==='league'||p.template==='swiss'))&&<Field label="Регламент плей-офф"><select value={p.playoff_regulation_id} onChange={e=>change({playoff_regulation_id:e.target.value})}>
+  <div className="format-inputs">
+   <div className="team-count"><span>Команд: <b>{teams}</b></span><button type="button" className="quiet" disabled={locked} onClick={()=>setPicking(true)}>Изменить</button></div>
+   <Stepper label="Игровых дней" value={days} min={1} max={365} optional onChange={setDays}/>
+   <Stepper label="Матчей за день" value={perDay} min={1} max={50} optional onChange={setPerDay}/>
+  </div>
+  {estimateError&&<p className="warning" role="status">Не удалось пересчитать. <button type="button" className="quiet" onClick={()=>setRetry(n=>n+1)}>Повторить</button></p>}
+  <div className="format-cards" role="radiogroup" aria-label="Формат">{TEMPLATES.map(t=>{const c=card(t);return <button key={t} type="button" role="radio" className="format-card" aria-checked={template===t}
+   aria-disabled={locked} disabled={locked} onClick={()=>choose(t)}>
+   <span className="format-card-head"><strong>{TEMPLATE_NAME[t]}</strong>{c?.recommended&&<span className="badge">Рекомендуем</span>}</span>
+   <span>{TEMPLATE_HINT[t]}</span>
+   {c&&<span className="format-facts">{facts(c).join(' · ')}</span>}
+   {c?.fits===false&&<span className="format-misfit">Не уложится в {days} {plural(days??0,'день','дня','дней')}</span>}
+   {c?.recommended&&c.reason&&<span className="format-reason"><CheckIcon aria-hidden="true"/>{c.reason}</span>}
+  </button>})}</div>
+  {selected&&(selected.warnings.length>0||selected.fix)&&<div className="format-warnings" role="status">{selected.warnings.map(w=><p key={w} className="warning"><AlertTriangle aria-hidden="true"/>{w}</p>)}
+   {selected.fix&&'group_count' in selected.fix&&<button type="button" onClick={()=>change({group_count:Number(selected.fix!.group_count)})}>Сделать {String(selected.fix.group_count)} {plural(Number(selected.fix.group_count),'группу','группы','групп')}</button>}</div>}
+  <fieldset className="team-fieldset" disabled={locked||busy}><div className="form-grid format-params">
+   {template==='groups_playoff'&&<><Stepper label="Групп" value={p.group_count} min={2} max={16} onChange={v=>change({group_count:v??2})}/>
+    <Stepper label="Выходят из группы" value={p.per_group} min={1} max={16} onChange={v=>change({per_group:v??1})}/>
+    <Stepper label={`Лучшие ${p.per_group+1}-и места`} value={p.best_thirds} min={0} max={16} onChange={v=>change({best_thirds:v??0})}/></>}
+   {(template==='league'||template==='groups_playoff')&&<div className="segmented" role="group" aria-label="Круги">{([1,2] as const).map(n=><button key={n} type="button" className={p.legs===n?'active':''} aria-pressed={p.legs===n} onClick={()=>change({legs:n})}>{n===1?'Один круг':'Два круга'}</button>)}</div>}
+   {template==='swiss'&&<Stepper label="Туров" value={p.rounds} min={1} max={15} onChange={v=>change({rounds:v??1})}/>}
+   {(template==='league'||template==='swiss')&&<><Check label="Добавить плей-офф" checked={p.with_playoff} onChange={v=>change({with_playoff:v})}/>
+    {p.with_playoff&&<Stepper label="В плей-офф выходят" value={p.playoff_teams} min={2} max={64} onChange={v=>change({playoff_teams:v??2})}/>}</>}
+   {(withPlayoff||template==='playoff')&&<Check label="Матч за 3-е место" checked={p.third_place} onChange={v=>change({third_place:v})}/>}
+   {template==='double_elim'&&<Check label="Переигровка финала, если победит команда из нижней сетки" checked={p.grand_final_reset} onChange={v=>change({grand_final_reset:v})}/>}
+   <Field label="Регламент матчей"><select required value={regulation} onChange={e=>{setRegulation(e.target.value);setRequestId(crypto.randomUUID())}}>{regulations.map(r=><option key={r.id} value={r.id}>{r.variant_name} · версия {r.version}</option>)}</select></Field>
+   {withPlayoff&&<Field label="Регламент плей-офф"><select value={playoffRegulation} onChange={e=>{setPlayoffRegulation(e.target.value);setRequestId(crypto.randomUUID())}}>
     <option value="">Тот же</option>{regulations.map(r=><option key={r.id} value={r.id}>{r.variant_name} · версия {r.version}</option>)}</select></Field>}
-  </div></fieldset>
+  </div>{selected&&<p className="format-summary">{selected.summary}</p>}</fieldset>
   <ErrorBox error={error}/>
-  {!locked&&<div className="setup-actions"><button className="primary" disabled={busy||!p.regulation_id}>{busy?'Сохраняем…':standings.stages.length?'Заменить формат':'Сохранить формат'}</button>
+  {!locked&&<div className="setup-actions"><button className="primary" disabled={busy||!regulation||teams<2}>{busy?'Сохраняем…':standings.stages.length?'Заменить формат':'Сохранить формат'}</button>
    {standings.stages.length>0&&<span className="muted small">Сейчас: {standings.stages.map(s=>s.name).join(' → ')}</span>}</div>}
+  {picking&&<Modal title="Кто играет" sheet onClose={()=>setPicking(false)}><ParticipantsPicker entries={entries} value={participants} onChange={setParticipants}/>
+   <button type="button" className="primary" disabled={participants.length<2} onClick={()=>{storeParticipants(tid,participants);setPicking(false)}}>Готово</button></Modal>}
  </form>;
 }
