@@ -215,3 +215,21 @@ def test_resolver_plays_whole_bracket(n, kind):
     final = 'F2' if pairs.get('F2') and pairs['F2'].home else ('F' if kind == 'double' else f'U{bracket_size(n).bit_length() - 1}-1')
     assert pairs[final].winner in teams
     assert all(p.winner or not (p.home and p.away) for p in pairs.values())
+
+
+def test_group_outcome_removes_annulled_and_sinks_withdrawn():
+    groups = [['A', 'B', 'C', 'D']]
+    tables, _ = group_outcome(groups, {1: [R('A', 'B', 0, 3), R('C', 'D', 1, 0)]}, removed={'D'}, expected=[3])
+    assert tables[0][0].team == 'B'
+    assert 'D' not in [r.team for r in tables[0]]
+    full = [R('A', 'B', 3, 0), R('A', 'C', 3, 0), R('A', 'D', 3, 0), R('B', 'C', 1, 0), R('B', 'D', 1, 0), R('C', 'D', 1, 0)]
+    tables, outcome = group_outcome(groups, {1: full}, per_group=2, withdrawn={'A'}, expected=[6])
+    assert [(r.team, r.place) for r in tables[0]] == [('B', 1), ('C', 2), ('D', 3), ('A', 4)]
+    assert outcome.places[(1, 1)] == 'B' and outcome.places[(1, 2)] == 'C' and (1, 4) not in outcome.places
+
+
+def test_bracket_walkover_for_withdrawn():
+    specs = single_elim([entry(t) for t in 'ABCD'])
+    pairs = resolve_bracket(specs, {'U1-1': [Leg('A', 'D', 1, 0)]}, withdrawn={'C'})
+    assert pairs['U1-2'].winner == 'B' and pairs['U1-2'].walkover == 'home'
+    assert (pairs['U2-1'].home, pairs['U2-1'].away) == ('A', 'B')

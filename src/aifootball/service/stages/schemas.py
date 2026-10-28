@@ -36,6 +36,8 @@ class StageConfig(Input):
     two_leg_rounds: list[Annotated[int, Field(ge=1, le=8)]] = Field(default_factory=list, max_length=8)
     grand_final_reset: bool = False
     rounds: Annotated[int, Field(ge=1, le=15)] | None = None
+    # Счёт технической победы: победитель, проигравший.
+    walkover_score: list[Annotated[int, Field(ge=0, le=50)]] = Field(default_factory=lambda: [5, 0], min_length=2, max_length=2)
 
     @field_validator('source')
     @classmethod
@@ -150,6 +152,13 @@ class AdjustInput(Input):
     request_id: UUID = Field(default_factory=uuid4)
 
 
+class WithdrawalInput(Input):
+    entry_id: UUID
+    rule: Literal['annul', 'walkover'] | None = None
+    expected_revision: int | None = Field(default=None, ge=0)
+    request_id: UUID = Field(default_factory=uuid4)
+
+
 class LotInput(Input):
     request_id: UUID = Field(default_factory=uuid4)
     group: str = Field(min_length=1, max_length=20)
@@ -203,6 +212,8 @@ class LegView(View):
     status: str | None = None
     score: dict[str, int | None] | None = None
     shootout: dict[str, int | None] | None = None
+    technical: bool = False
+    annulled: bool = False
 
 
 class PairView(View):
@@ -220,6 +231,9 @@ class PairView(View):
     note: str | None = None
     can_schedule: bool = False
     changed: bool = False
+    walkover: Literal['home', 'away'] | None = None
+    home_from: str | None = None
+    away_from: str | None = None
 
 
 class RowView(View):
@@ -254,6 +268,12 @@ class SectionView(View):
     key: Literal['upper', 'lower', 'final', 'rounds']
     name: str
     rounds: list[RoundView]
+    current_round: int | None = None
+
+
+class WithdrawnView(View):
+    team: TeamRef
+    rule: Literal['annul', 'walkover', 'elimination', 'swiss']
 
 
 class DrawView(View):
@@ -281,6 +301,7 @@ class StageView(View):
     groups: list[GroupView] = Field(default_factory=list)
     sections: list[SectionView] = Field(default_factory=list)
     can_next_round: bool = False
+    withdrawn: list[WithdrawnView] = Field(default_factory=list)
 
 
 class StandingsView(View):
@@ -335,3 +356,14 @@ class EstimateCard(View):
 class EstimateView(View):
     teams: int
     cards: list[EstimateCard]
+
+
+class WithdrawalPreview(View):
+    entry_id: UUID
+    rule: str
+    default_rule: str
+    played: int
+    total: int
+    annulled: int
+    walkovers: int
+    cancelled_matches: int

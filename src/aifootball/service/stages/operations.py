@@ -6,13 +6,13 @@ from aifootball.service.errors import DomainError
 from aifootball.service.catalog.models import Entry, Team
 from aifootball.service.matches.models import Match, LineupMember
 from aifootball.service.tournaments.models import RegulationVersion
-from aifootball.service.stages.models import Stage, StageDraw, Fixture
+from aifootball.service.stages.models import Stage, StageDraw, Fixture, StageWithdrawal
 from aifootball.service.stages.schemas import StageConfig, ELIMINATION, template_stages
 from aifootball.service.stages.generate import participants_placement, fixtures_for, scheme_for, qualifier_count
 from aifootball.service.stages.results import load_results, confirmed_match_ids
 from aifootball.service.stages.labels import group_name, pair_label, source_label, round_name
 from aifootball.service.stages.rules.brackets import FixtureSpec, bracket_size
-from aifootball.service.stages.rules.progress import Outcome, resolve_bracket, resolve_source, group_outcome, _stage_order
+from aifootball.service.stages.rules.progress import Outcome, Leg, resolve_bracket, resolve_source, group_outcome, _stage_order
 from aifootball.service.stages.rules.standings import Result, rank, rank_across
 from aifootball.service.stages.rules.swiss import swiss_pairs
 from aifootball.service.stages.rules.draws import group_sizes
@@ -74,6 +74,7 @@ class StageEval:
     status: str = 'draft'
     rounds_total: int = 0
     group_done: list = field(default_factory=list)   # группа доиграна — только тогда равенство требует жребия
+    withdrawals: dict = field(default_factory=dict)  # entry_id -> правило снятия
 
 
 def evaluate(db, tournament, scope, stages=None):
@@ -83,20 +84,40 @@ def evaluate(db, tournament, scope, stages=None):
     match_ids = [f.match_id for items in fixtures.values() for f in items if f.match_id]
     results = load_results(db, match_ids, scope)
     confirmed = confirmed_match_ids(db, match_ids)
-    win_points = {}
+    points = {}
     for s in stages:
         rules = get_entity(db, RegulationVersion, s.regulation_id).rules
-        win_points[s.id] = rules['points']['win']
+        points[s.id] = (rules['points']['win'], rules['points']['draw'], rules['points']['loss'])
+    withdrawals = {}
+    if stages:
+        for w in db.scalars(select(StageWithdrawal).where(StageWithdrawal.stage_id.in_([s.id for s in stages]))):
+            withdrawals.setdefault(w.stage_id, {})[str(w.entry_id)] = w.rule
     evaluated = []; prior = None
     for stage in stages:
         ev = StageEval(stage, config_of(stage), draws[stage.id], fixtures[stage.id])
         ev.prior = prior if ev.config.source.get('previous') else None
+        ev.withdrawals = withdrawals.get(stage.id, {})
         ev.legs = {f.id: results[f.match_id] for f in ev.fixtures if f.match_id in results}
+        for f in ev.fixtures:
+            # Решение организатора сильнее протокола: аннулированная пара не считается, техническая — считается.
+            kind = (f.outcome or {}).get('kind')
+            if kind == 'annulled': ev.legs.pop(f.id, None)
+            elif kind == 'walkover': ev.legs[f.id] = _walkover_leg(f, points[stage.id])
         if ev.draw is not None:
-            _evaluate_stage(ev, win_points[stage.id])
+            _evaluate_stage(ev, points[stage.id][0])
         ev.status = _status(ev, confirmed)
         evaluated.append(ev); prior = ev.outcome
     return evaluated
+
+
+def _walkover_leg(fixture, points):
+    home = str(fixture.home_entry_id or _entry(fixture.home_source)); away = str(fixture.away_entry_id or _entry(fixture.away_source))
+    win, lose = fixture.outcome['score']
+    goals = (win, lose) if fixture.outcome['winner'] == 'home' else (lose, win)
+    return Leg(home, away, *goals, points=points)
+
+
+def _annulled(f): return (f.outcome or {}).get('kind') == 'annulled'
 
 
 def _evaluate_stage(ev, win_points):
@@ -106,15 +127,17 @@ def _evaluate_stage(ev, win_points):
         groups = ev.draw.placement if kind == 'groups' else [ev.draw.placement]
         results = {}; expected = []
         for g in range(1, len(groups) + 1):
-            items = [f for f in ev.fixtures if (f.group_no or 1) == g and not f.bye] if kind == 'groups' else \
-                [f for f in ev.fixtures if not f.bye]
+            items = [f for f in ev.fixtures if (f.group_no or 1) == g and not f.bye and not _annulled(f)] if kind == 'groups' else \
+                [f for f in ev.fixtures if not f.bye and not _annulled(f)]
             expected.append(len(items))
             results[g] = [_result(ev.legs[f.id]) for f in items if f.id in ev.legs]
         per_group = ev.config.advance.per_group if kind == 'groups' else 0
         best = [b.model_dump() for b in ev.config.advance.best] if kind == 'groups' else []
         ev.group_done = [len(results[g]) >= expected[g - 1] for g in range(1, len(groups) + 1)]
+        removed = {t for t, rule in ev.withdrawals.items() if rule == 'annul'}
+        sunk = {t for t, rule in ev.withdrawals.items() if rule == 'walkover'}
         ev.tables, ev.outcome = group_outcome(groups, results, criteria, {int(k) if k.isdigit() else k: v for k, v in lots.items()},
-                                              per_group, best, expected)
+                                              per_group, best, expected, removed=removed, withdrawn=sunk)
         ev.rounds_total = max((f.round_no for f in ev.fixtures), default=0)
     elif kind == 'swiss':
         teams = [str(t) for t in ev.draw.placement]
@@ -124,7 +147,7 @@ def _evaluate_stage(ev, win_points):
         rows = rank(teams, results, criteria, lots.get('1', ()), byes)
         ev.tables = [rows]
         played_rounds = max((f.round_no for f in ev.fixtures), default=0)
-        done = all(f.bye or f.id in ev.legs for f in ev.fixtures)
+        done = all(f.bye or f.id in ev.legs or _annulled(f) for f in ev.fixtures)
         ev.outcome = Outcome(complete=done and played_rounds >= ev.rounds_total)
         if ev.outcome.complete: ev.outcome.final = {r.place: r.team for r in rows if not r.tied}
         ev.group_done = [ev.outcome.complete]
@@ -133,7 +156,8 @@ def _evaluate_stage(ev, win_points):
         legs_by_key = {}
         for f in sorted(ev.fixtures, key=lambda f: f.leg):
             if f.id in ev.legs: legs_by_key.setdefault(f.key, []).append(ev.legs[f.id])
-        ev.pairs = resolve_bracket(specs, legs_by_key, ev.prior)
+        out = {t for t, rule in ev.withdrawals.items() if rule == 'elimination'}
+        ev.pairs = resolve_bracket(specs, legs_by_key, ev.prior, withdrawn=out)
         final_key = 'F' if kind == 'double_elim' else f'U{max((f.round_no for f in ev.fixtures if f.bracket == "upper"), default=1)}-1'
         final = ev.pairs.get(final_key)
         reset = ev.pairs.get('F2')
@@ -196,6 +220,7 @@ def stage_view(ev, refs, matches, scope):
                           'confirmed_at': ev.draw.confirmed_at}
                     if ev.draw else None)
     if ev.draw is None: return view
+    view['withdrawn'] = [{'team': refs[t], 'rule': rule} for t, rule in ev.withdrawals.items() if t in refs]
     view['groups'] = _group_views(ev, refs)
     view['sections'] = _sections(ev, refs, matches, scope)
     if config.kind == 'swiss' and scope == 'cabinet':
@@ -250,11 +275,14 @@ def _pair_views(ev, refs, matches, scope):
                 score = {'home': leg.away_goals if flip else leg.home_goals, 'away': leg.home_goals if flip else leg.away_goals}
                 if leg.home_pens is not None:
                     shootout = {'home': leg.away_pens if flip else leg.home_pens, 'away': leg.home_pens if flip else leg.away_pens}
-            elif not f.bye: complete = False
+            elif not f.bye and not _annulled(f): complete = False
+            outcome = (f.outcome or {}).get('kind')
             legs.append({'match_id': f.match_id, 'fixture_id': f.id if scope == 'cabinet' else None, 'leg': f.leg,
                          'scheduled_at': match.scheduled_at if match else None, 'status': match.status if match else None,
-                         'score': score, 'shootout': shootout})
-        winner = None; note = None
+                         'score': score, 'shootout': shootout, 'technical': outcome == 'walkover', 'annulled': outcome == 'annulled'})
+        winner = None; note = None; walkover = None
+        if config.kind in ELIMINATION and state: walkover = state.walkover
+        elif main.outcome and main.outcome.get('kind') == 'walkover': walkover = main.outcome['winner']; winner = walkover
         if config.kind in ELIMINATION and state:
             if state.winner and state.winner == home: winner = 'home'
             elif state.winner and state.winner == away: winner = 'away'
@@ -265,8 +293,23 @@ def _pair_views(ev, refs, matches, scope):
         views.append({'key': key, 'round_no': main.round_no, 'slot': main.slot, 'bracket': main.bracket, 'group_no': main.group_no,
                       'label': pair_label(config.kind, main, upper_total), 'bye': main.bye,
                       'home': _side(refs, home, main.home_source, numbers), 'away': _side(refs, away, main.away_source, numbers),
-                      'legs': legs, 'winner': winner, 'note': note, 'can_schedule': can_schedule, 'changed': changed})
+                      'legs': legs, 'winner': winner, 'note': note, 'can_schedule': can_schedule, 'changed': changed,
+                      'walkover': walkover, 'home_from': _link(main.home_source), 'away_from': _link(main.away_source)})
     return views
+
+
+def _link(source):
+    """Ключ пары, из которой приходит команда, — для линий сетки."""
+    return (source.get('winner') or source.get('loser')) if source else None
+
+
+def _current(rounds):
+    """Текущий раунд: первый, где есть пара без итога; если всё сыграно — последний."""
+    for r in rounds:
+        if any(not p['bye'] and (p['winner'] is None if p['bracket'] else any(l['score'] is None and not l['annulled'] for l in p['legs']))
+               for p in r['pairs']):
+            return r['round_no']
+    return rounds[-1]['round_no'] if rounds else None
 
 
 def _changed(ev, f):
@@ -274,8 +317,14 @@ def _changed(ev, f):
     return (str(f.home_entry_id) if f.home_entry_id else None, str(f.away_entry_id) if f.away_entry_id else None) != (home, away)
 
 
+def _settled(ev, f):
+    """Пара решена без матча: техническая победа или аннулирование."""
+    state = ev.pairs.get(f.key)
+    return bool(f.outcome) or bool(state and state.walkover)
+
+
 def _can_schedule(ev, f):
-    if f.match_id or f.bye: return False
+    if f.match_id or f.bye or _settled(ev, f): return False
     home, away = ev.computed.get(f.id, (None, None))
     if f.key == 'F2':
         state = ev.pairs.get('F2')
@@ -291,7 +340,8 @@ def _sections(ev, refs, matches, scope):
         return [{'round_no': r, 'name': namer(r, by_round[r]), 'pairs': sorted(by_round[r], key=lambda p: (p['group_no'] or 0, p['slot']))}
                 for r in sorted(by_round)]
     if kind not in ELIMINATION:
-        return [{'key': 'rounds', 'name': 'Туры', 'rounds': rounds(pairs, lambda r, _: f'Тур {r}')}]
+        tours = rounds(pairs, lambda r, _: f'Тур {r}')
+        return [{'key': 'rounds', 'name': 'Туры', 'rounds': tours, 'current_round': _current(tours)}]
     upper_total = max((p['round_no'] for p in pairs if p['bracket'] == 'upper'), default=0)
     upper = [p for p in pairs if p['bracket'] in ('upper', 'third')]
     def upper_name(r, items):
@@ -303,6 +353,7 @@ def _sections(ev, refs, matches, scope):
         finals = [p for p in pairs if p['bracket'] in ('final', 'final_reset')]
         sections.append({'key': 'final', 'name': 'Финал', 'rounds': [
             {'round_no': p['round_no'], 'name': p['label'], 'pairs': [p]} for p in sorted(finals, key=lambda p: p['round_no'])]})
+    for section in sections: section['current_round'] = _current(section['rounds'])
     return sections
 
 
@@ -350,7 +401,7 @@ def fixture_list(db, tournament, scope, unscheduled=False):
         legs_of = {}
         for f in ev.fixtures: legs_of[f.key] = max(legs_of.get(f.key, 1), f.leg)
         for f in ev.fixtures:
-            if f.bye or (unscheduled and f.match_id): continue
+            if f.bye or (unscheduled and (f.match_id or _settled(ev, f))): continue
             if f.key == 'F2' and not (ev.pairs.get('F2') and ev.pairs['F2'].home): continue
             home, away = ev.computed.get(f.id, (None, None))
             if f.home_entry_id: home = str(f.home_entry_id)
@@ -604,7 +655,7 @@ def next_swiss_round(db, actor, tournament, stage, data):
     if last >= ev.rounds_total: raise DomainError('swiss_done', 'Все туры уже составлены', status=409)
     if not all(f.bye or f.id in ev.legs for f in ev.fixtures):
         raise DomainError('round_incomplete', 'Сначала подтвердите результаты всех матчей тура', status=409)
-    ranked = [r.team for r in ev.tables[0]]
+    ranked = [r.team for r in ev.tables[0] if ev.withdrawals.get(r.team) != 'swiss']
     played = {frozenset((str(f.home_entry_id or _entry(f.home_source)), str(f.away_entry_id or _entry(f.away_source))))
               for f in ev.fixtures if not f.bye}
     had_bye = {str(f.home_entry_id or _entry(f.home_source)) for f in ev.fixtures if f.bye}

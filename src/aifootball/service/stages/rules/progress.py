@@ -46,6 +46,7 @@ class PairState:
     winner: str | None = None
     loser: str | None = None
     legs: list = field(default_factory=list)
+    walkover: str | None = None   # 'home' | 'away' — техническая победа из-за снятия соперника
 
 
 def resolve_source(source, pairs, prior):
@@ -62,7 +63,7 @@ def resolve_source(source, pairs, prior):
     return None
 
 
-def resolve_bracket(fixtures, legs_by_key, prior=None):
+def resolve_bracket(fixtures, legs_by_key, prior=None, withdrawn=frozenset()):
     """fixtures — пары этапа (ключ, источники, bye, номер матча). legs_by_key[key] — сыгранные матчи пары по порядку.
     Пары обходятся в порядке раундов, поэтому источники «победитель/проигравший» уже вычислены."""
     prior = _separate_best(fixtures, prior)
@@ -81,6 +82,10 @@ def resolve_bracket(fixtures, legs_by_key, prior=None):
             legs = [l for l in legs_by_key.get(key, []) if {l.home, l.away} == {home, away}]
             state.legs = legs
             state.winner = pair_winner((home, away), legs, len(group))
+            if state.winner is None and (home in withdrawn) != (away in withdrawn):
+                # Снявшаяся команда проигрывает пару без результата технически.
+                state.winner = away if home in withdrawn else home
+                state.walkover = 'away' if home in withdrawn else 'home'
             if state.winner: state.loser = away if state.winner == home else home
         pairs[key] = state
     if 'F2' in pairs and pairs.get('F') and pairs['F'].winner and pairs['F'].winner == pairs['F'].home:
@@ -114,20 +119,38 @@ def _separate_best(fixtures, prior):
     return Outcome(prior.places, best, prior.group_of, prior.final, prior.complete)
 
 
-def group_outcome(groups, results, criteria=DEFAULT_CRITERIA, lots=None, per_group=0, best=(), expected=None):
+def _sink(rows, withdrawn):
+    """Снявшиеся — в конец таблицы; места остальных сжимаются с сохранением общих мест."""
+    stay = [r for r in rows if r.team not in withdrawn]; gone = [r for r in rows if r.team in withdrawn]
+    previous = None
+    for i, row in enumerate(stay, 1):
+        original = row.place
+        row.place = stay[i - 2].place if previous == original else i
+        previous = original
+    for i, row in enumerate(gone, len(stay) + 1): row.place = i; row.tied = False
+    return stay + gone
+
+
+def group_outcome(groups, results, criteria=DEFAULT_CRITERIA, lots=None, per_group=0, best=(), expected=None,
+                  removed=frozenset(), withdrawn=frozenset()):
     """groups — составы групп; results[g] — результаты группы; expected[g] — число пар группы.
+    removed — снятые с аннулированием (их нет в таблице), withdrawn — снятые с техническими поражениями (внизу, дальше не выходят).
     Возвращает (таблицы, Outcome). Места группы известны, когда сыграны все её пары и нет равенства без жребия."""
     lots = lots or {}; tables = []; outcome = Outcome()
-    for g, teams in enumerate(groups, 1):
-        rows = rank(teams, results.get(g, []), criteria, lots.get(g, ()))
+    for g, members in enumerate(groups, 1):
+        teams = [t for t in members if t not in removed]
+        rows = rank(teams, [r for r in results.get(g, []) if r.home not in removed and r.away not in removed],
+                    criteria, lots.get(g, ()))
+        if withdrawn & set(teams):
+            rows = _sink(rows, withdrawn)
         tables.append(rows)
         done = expected is None or len(results.get(g, [])) >= expected[g - 1]
         for row in rows:
             outcome.group_of[row.team] = g
-            if done and not row.tied: outcome.places[(g, row.place)] = row.team
+            if done and not row.tied and row.team not in withdrawn: outcome.places[(g, row.place)] = row.team
     all_done = all(expected is None or len(results.get(g, [])) >= expected[g - 1] for g in range(1, len(groups) + 1))
     for item in best:
-        candidates = [r for rows in tables for r in rows if r.place == item['place'] and not r.tied]
+        candidates = [r for rows in tables for r in rows if r.place == item['place'] and not r.tied and r.team not in withdrawn]
         ordered, cutoff_tied = rank_across(candidates, lots.get(f"best-{item['place']}", ()))
         if all_done and len(candidates) == len(groups) and not cutoff_tied(item['count']):
             for i, row in enumerate(ordered[:item['count']], 1): outcome.best[(item['place'], i)] = row.team

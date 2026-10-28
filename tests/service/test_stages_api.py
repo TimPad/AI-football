@@ -205,3 +205,15 @@ def test_lot_is_asked_only_when_group_finished(admin_client, format_env, send_co
     draw(admin_client, env['stages'][0], method='seeded', seeding=env['entries'])
     group = stage_list(admin_client, env)[0]['groups'][0]
     assert not group['needs_lot'] and not any(row['tied'] for row in group['rows'])   # никто не играл — жребий не нужен
+
+
+def test_bracket_links_and_current_round(admin_client, format_env, send_command):
+    env = format_env(template='playoff', teams=4)
+    draw(admin_client, env['stages'][0], method='seeded', seeding=env['entries'])
+    section = stage_list(admin_client, env)[0]['sections'][0]
+    assert section['current_round'] == 1
+    final = section['rounds'][1]['pairs'][0]
+    assert (final['home_from'], final['away_from']) == ('U1-1', 'U1-2')
+    for key in ('U1-1', 'U1-2'):
+        result(send_command, schedule(admin_client, env, next(f for f in fixtures(admin_client, env) if f['key'] == key)), 1, 0)
+    assert stage_list(admin_client, env)[0]['sections'][0]['current_round'] == 2

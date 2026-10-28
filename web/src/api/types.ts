@@ -2322,6 +2322,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tid}/format/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Estimate */
+        post: operations["estimate_api_v1_tournaments__tid__format_estimate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stages/{sid}": {
         parameters: {
             query?: never;
@@ -2367,6 +2384,74 @@ export interface paths {
         put?: never;
         /** Confirm */
         post: operations["confirm_api_v1_stages__sid__draw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stages/{sid}/draw/adjust/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adjust Preview */
+        post: operations["adjust_preview_api_v1_stages__sid__draw_adjust_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stages/{sid}/draw/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adjust */
+        post: operations["adjust_api_v1_stages__sid__draw_adjust_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stages/{sid}/withdrawals/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdrawal Preview */
+        post: operations["withdrawal_preview_api_v1_stages__sid__withdrawals_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stages/{sid}/withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdrawal */
+        post: operations["withdrawal_api_v1_stages__sid__withdrawals_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2947,6 +3032,28 @@ export interface components {
             available: boolean;
             /** Items */
             items: components["schemas"]["AddressSuggestion"][];
+        };
+        /** AdjustInput */
+        AdjustInput: {
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "remove" | "add" | "move";
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
+            /** Group No */
+            group_no?: number | null;
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
         };
         /** AdminSideConfirmation */
         AdminSideConfirmation: {
@@ -3867,6 +3974,8 @@ export interface components {
             seed?: number;
             /** Seeding */
             seeding?: string[];
+            /** Participants */
+            participants?: string[] | null;
             /** Placement */
             placement?: unknown[] | null;
             /**
@@ -3891,6 +4000,8 @@ export interface components {
             seed?: number;
             /** Seeding */
             seeding?: string[];
+            /** Participants */
+            participants?: string[] | null;
             /** Placement */
             placement?: unknown[] | null;
         };
@@ -3942,6 +4053,8 @@ export interface components {
             seeding: unknown[];
             /** Placement */
             placement: unknown[];
+            /** Participants */
+            participants: unknown[] | null;
             /**
              * Confirmed At
              * Format: date-time
@@ -4028,6 +4141,62 @@ export interface components {
             /** Revision */
             revision: number;
             team: components["schemas"]["TeamView"];
+        };
+        /** EstimateCard */
+        EstimateCard: {
+            /**
+             * Template
+             * @enum {string}
+             */
+            template: "league" | "groups_playoff" | "playoff" | "double_elim" | "swiss";
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
+            /** Summary */
+            summary: string;
+            /** Matches */
+            matches: number;
+            /** Per Team */
+            per_team: number[];
+            /** Rounds */
+            rounds: number;
+            /** Days */
+            days: number;
+            /** Fits */
+            fits: boolean | null;
+            /** Warnings */
+            warnings: string[];
+            /** Fix */
+            fix: {
+                [key: string]: unknown;
+            } | null;
+            /** Recommended */
+            recommended: boolean;
+            /** Reason */
+            reason: string | null;
+        };
+        /** EstimateInput */
+        EstimateInput: {
+            /** Teams */
+            teams?: number | null;
+            /** Days */
+            days?: number | null;
+            /** Per Day */
+            per_day?: number | null;
+            /** Template */
+            template?: ("league" | "groups_playoff" | "playoff" | "double_elim" | "swiss") | null;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            };
+        };
+        /** EstimateView */
+        EstimateView: {
+            /** Teams */
+            teams: number;
+            /** Cards */
+            cards: components["schemas"]["EstimateCard"][];
         };
         /** EventChange */
         EventChange: {
@@ -4931,6 +5100,16 @@ export interface components {
             shootout: {
                 [key: string]: number | null;
             } | null;
+            /**
+             * Technical
+             * @default false
+             */
+            technical: boolean;
+            /**
+             * Annulled
+             * @default false
+             */
+            annulled: boolean;
         };
         /** LensCalibration */
         LensCalibration: {
@@ -5512,6 +5691,12 @@ export interface components {
              * @default false
              */
             changed: boolean;
+            /** Walkover */
+            walkover: ("home" | "away") | null;
+            /** Home From */
+            home_from: string | null;
+            /** Away From */
+            away_from: string | null;
         };
         /** ParticipationDocument */
         "ParticipationDocument-Input": {
@@ -7900,6 +8085,8 @@ export interface components {
             name: string;
             /** Rounds */
             rounds: components["schemas"]["RoundView"][];
+            /** Current Round */
+            current_round: number | null;
         };
         /** SessionView */
         SessionView: {
@@ -8193,6 +8380,8 @@ export interface components {
             grand_final_reset?: boolean;
             /** Rounds */
             rounds?: number | null;
+            /** Walkover Score */
+            walkover_score?: number[];
         };
         /** StagePatch */
         StagePatch: {
@@ -8245,6 +8434,8 @@ export interface components {
              * @default false
              */
             can_next_round: boolean;
+            /** Withdrawn */
+            withdrawn: components["schemas"]["WithdrawnView"][];
         };
         /** StandingsView */
         StandingsView: {
@@ -9273,6 +9464,54 @@ export interface components {
             published_at: string | null;
             /** Public Id */
             public_id: string | null;
+        };
+        /** WithdrawalInput */
+        WithdrawalInput: {
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
+            /** Rule */
+            rule?: ("annul" | "walkover") | null;
+            /** Expected Revision */
+            expected_revision?: number | null;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id?: string;
+        };
+        /** WithdrawalPreview */
+        WithdrawalPreview: {
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
+            /** Rule */
+            rule: string;
+            /** Default Rule */
+            default_rule: string;
+            /** Played */
+            played: number;
+            /** Total */
+            total: number;
+            /** Annulled */
+            annulled: number;
+            /** Walkovers */
+            walkovers: number;
+            /** Cancelled Matches */
+            cancelled_matches: number;
+        };
+        /** WithdrawnView */
+        WithdrawnView: {
+            team: components["schemas"]["TeamRef"];
+            /**
+             * Rule
+             * @enum {string}
+             */
+            rule: "annul" | "walkover" | "elimination" | "swiss";
         };
         /** Login */
         aifootball__service__auth__schemas__Login: {
@@ -14510,6 +14749,41 @@ export interface operations {
             };
         };
     };
+    estimate_api_v1_tournaments__tid__format_estimate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstimateInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstimateView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     patch_stage_api_v1_stages__sid__patch: {
         parameters: {
             query?: never;
@@ -14592,6 +14866,146 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DrawConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adjust_preview_api_v1_stages__sid__draw_adjust_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adjust_api_v1_stages__sid__draw_adjust_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    withdrawal_preview_api_v1_stages__sid__withdrawals_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawalInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WithdrawalPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    withdrawal_api_v1_stages__sid__withdrawals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawalInput"];
             };
         };
         responses: {

@@ -9,7 +9,7 @@ from aifootball.service.tournaments.commands import setup_command
 from aifootball.service.views import MatchView, Page
 from aifootball.service.stages import operations as ops
 from aifootball.service.stages.models import Stage, Fixture
-from aifootball.service.stages.schemas import (AdjustInput, EstimateInput, EstimateView, FormatCreate, StagePatch, DrawInput, DrawConfirm, LotInput, NextRound,
+from aifootball.service.stages.schemas import (WithdrawalInput, WithdrawalPreview, AdjustInput, EstimateInput, EstimateView, FormatCreate, StagePatch, DrawInput, DrawConfirm, LotInput, NextRound,
     FixtureSchedule, FixtureReplace, StandingsView, DrawPreview, FixtureView)
 
 router = APIRouter()
@@ -87,6 +87,22 @@ def adjust(sid: UUID, data: AdjustInput, admin=Depends(require_csrf), db: Sessio
         tournament, stage = stage_scope(db, sid)
         return setup_command(db, admin.id, data.request_id, 'stage-adjust', {'stage_id': sid, **data.model_dump(mode='json')},
                              lambda: apply_adjust(db, admin, tournament, stage, data))
+
+
+@router.post('/stages/{sid}/withdrawals/preview', response_model=WithdrawalPreview, dependencies=[Depends(require_csrf)])
+def withdrawal_preview(sid: UUID, data: WithdrawalInput, db: Session = Depends(get_session)):
+    from aifootball.service.stages.withdrawals import preview
+    tournament, stage = stage_scope(db, sid)
+    return preview(db, tournament, stage, data)
+
+
+@router.post('/stages/{sid}/withdrawals', response_model=StandingsView)
+def withdrawal(sid: UUID, data: WithdrawalInput, admin=Depends(require_csrf), db: Session = Depends(get_session)):
+    from aifootball.service.stages.withdrawals import withdraw
+    with db.begin():
+        tournament, stage = stage_scope(db, sid)
+        return setup_command(db, admin.id, data.request_id, 'stage-withdrawal', {'stage_id': sid, **data.model_dump(mode='json')},
+                             lambda: withdraw(db, admin, tournament, stage, data))
 
 
 @router.post('/stages/{sid}/lots', response_model=StandingsView)
