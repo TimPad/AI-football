@@ -23,7 +23,7 @@
 .bracket{display:grid;gap:var(--space-3);min-width:0}
 .round-tabs{display:flex;gap:var(--space-2);overflow-x:auto;scrollbar-width:none;padding:2px}
 .round-tabs button{min-height:48px;white-space:nowrap;border-radius:999px;padding:0 var(--space-4)}
-.round-tabs button[aria-selected="true"]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink);font-weight:600}
+.round-tabs button[aria-selected="true"]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-soft-ink);font-weight:600}
 .bracket-strip{display:grid;grid-auto-flow:column;grid-auto-columns:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;gap:0}
 .bracket-strip::-webkit-scrollbar{display:none}
 .bracket-round{scroll-snap-align:start;display:grid;gap:var(--space-2);align-content:start;padding-right:2px}
@@ -108,10 +108,10 @@ a.pair-leg:hover span:first-child{text-decoration:underline}
 .stepper-controls output{min-width:3ch;text-align:center;font-variant-numeric:tabular-nums;font-weight:600}
 .stepper-note{min-height:1.2em;font-size:var(--font-caption);color:var(--text-muted)}
 .format-card-head{display:flex;justify-content:space-between;align-items:center;gap:var(--space-2)}
-.badge{background:var(--accent-soft);color:var(--accent-ink);font-size:var(--font-caption);font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.badge{background:var(--accent-soft);color:var(--accent-soft-ink);font-size:var(--font-caption);font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
 .format-facts{color:var(--text);font-size:var(--font-control)}
 .format-misfit{color:var(--warn);font-size:var(--font-control)}
-.format-reason{display:flex;gap:6px;align-items:flex-start;color:var(--accent-ink);font-size:var(--font-control)}
+.format-reason{display:flex;gap:6px;align-items:flex-start;color:var(--accent-soft-ink);font-size:var(--font-control)}
 .format-reason svg{width:16px;height:16px;flex:none;margin-top:2px}
 .format-warnings{display:grid;gap:var(--space-2);margin:var(--space-3) 0}
 .format-warnings .warning{display:flex;gap:8px;align-items:flex-start;margin:0}
