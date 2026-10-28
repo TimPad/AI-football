@@ -113,6 +113,21 @@ def template_stages(template, params):
     return stages
 
 
+class EstimateInput(Input):
+    teams: Annotated[int, Field(ge=2, le=128)] | None = None
+    days: Annotated[int, Field(ge=1, le=365)] | None = None
+    per_day: Annotated[int, Field(ge=1, le=50)] | None = None
+    template: Template | None = None
+    params: dict = Field(default_factory=dict)
+
+    @field_validator('params')
+    @classmethod
+    def known_params(cls, value):
+        allowed = {'group_count', 'per_group', 'best_thirds', 'legs', 'playoff_teams', 'third_place', 'grand_final_reset', 'rounds'}
+        if not set(value) <= allowed: raise ValueError('Неизвестный параметр формата')
+        return value
+
+
 class DrawInput(Input):
     method: DrawMethod
     seed: Annotated[int, Field(ge=0, le=2**31 - 1)] = 0
@@ -290,3 +305,23 @@ class FixtureView(View):
     away: Side
     match_id: UUID | None = None
     can_schedule: bool = False
+
+
+class EstimateCard(View):
+    template: Template
+    params: dict
+    summary: str
+    matches: int
+    per_team: list[int]
+    rounds: int
+    days: int
+    fits: bool | None = None
+    warnings: list[str]
+    fix: dict | None = None
+    recommended: bool
+    reason: str | None = None
+
+
+class EstimateView(View):
+    teams: int
+    cards: list[EstimateCard]

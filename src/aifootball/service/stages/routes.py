@@ -9,7 +9,7 @@ from aifootball.service.tournaments.commands import setup_command
 from aifootball.service.views import MatchView, Page
 from aifootball.service.stages import operations as ops
 from aifootball.service.stages.models import Stage, Fixture
-from aifootball.service.stages.schemas import (FormatCreate, StagePatch, DrawInput, DrawConfirm, LotInput, NextRound,
+from aifootball.service.stages.schemas import (EstimateInput, EstimateView, FormatCreate, StagePatch, DrawInput, DrawConfirm, LotInput, NextRound,
     FixtureSchedule, FixtureReplace, StandingsView, DrawPreview, FixtureView)
 
 router = APIRouter()
@@ -36,6 +36,20 @@ def create_format(tid: UUID, data: FormatCreate, admin=Depends(require_csrf), db
         tournament = get_entity(db, Tournament, tid, lock=True)
         return setup_command(db, admin.id, data.request_id, 'stage-format', {'tournament_id': tid, **data.model_dump(mode='json')},
                              lambda: ops.create_format(db, tournament, data))
+
+
+@router.post('/tournaments/{tid}/format/estimate', response_model=EstimateView, dependencies=[Depends(require_csrf)])
+def estimate(tid: UUID, data: EstimateInput, db: Session = Depends(get_session)):
+    from pydantic import ValidationError
+    from aifootball.service.errors import DomainError
+    from aifootball.service.stages.estimate import estimate_all
+    tournament = get_entity(db, Tournament, tid)
+    teams = data.teams or len(ops.team_refs(db, tournament.id))
+    if teams < 2: raise DomainError('validation', 'Для формата нужны минимум две команды')
+    try:
+        return {'teams': teams, 'cards': estimate_all(teams, data.days, data.per_day, data.template, data.params)}
+    except ValidationError as error:
+        raise DomainError('validation', 'Проверьте параметры формата') from error
 
 
 @router.patch('/stages/{sid}', response_model=StandingsView, dependencies=[Depends(require_csrf)])
