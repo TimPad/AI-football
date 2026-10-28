@@ -15,7 +15,7 @@ afterEach(()=>vi.unstubAllGlobals());
 
 describe('раздел «Таблица» у зрителя',()=>{
  it('открывается первым, когда у турнира есть таблица',async()=>{
-  stub([{...groupsStage,status:'drawn',groups:[group],sections:[{key:'rounds',name:'Туры',rounds:[]}]}]);view();
+  stub([{...groupsStage,status:'drawn',groups:[group],sections:[{key:'rounds',name:'Туры',rounds:[],current_round:null}]}]);view();
   expect(await screen.findByRole('region',{name:'Группа A'})).toBeInTheDocument();
   const nav=screen.getByRole('navigation',{name:'Разделы турнира'});
   expect(within(nav).getAllByRole('link').map(a=>a.textContent)).toEqual(['Таблица','Матчи','Команды','Рейтинги']);
@@ -30,10 +30,10 @@ describe('раздел «Таблица» у зрителя',()=>{
   expect(within(screen.getByRole('navigation',{name:'Разделы турнира'})).queryByText('Таблица')).not.toBeInTheDocument();
  });
  it('показывает сетку плей-офф',async()=>{
-  const playoff={...groupsStage,kind:'single_elim',name:'Плей-офф',status:'drawn',groups:[],sections:[{key:'upper',name:'Сетка',rounds:[{round_no:1,name:'Финал',pairs:[pair('U1-1','Финал',side('A1',false),side('B1',false))]}]}]};
+  const playoff={...groupsStage,kind:'single_elim',name:'Плей-офф',status:'drawn',groups:[],sections:[{key:'upper',name:'Сетка',current_round:1,rounds:[{round_no:1,name:'Финал',pairs:[pair('U1-1','Финал',side('A1',false),side('B1',false))]}]}]};
   stub([playoff]);view();
   expect(await screen.findByRole('tab',{name:'Финал'})).toBeInTheDocument();
-  expect(screen.getByRole('article',{name:'Финал: A1 — B1'})).toHaveTextContent('Дата не назначена');
+  expect(screen.getByRole('article',{name:/^Финал\. A1 — B1/})).toHaveTextContent('Дата не назначена');
  });
  it('турнир без формата открывается на матчах, общая таблица — отдельный раздел',async()=>{
   stub([{...groupsStage,name:'Турнирная таблица',kind:'round_robin',status:'started',groups:[{...group,name:'Турнирная таблица'}],sections:[]}],[],true);view();

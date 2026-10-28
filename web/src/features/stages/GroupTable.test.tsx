@@ -23,13 +23,14 @@ describe('таблица и сетка',()=>{
   render(<MemoryRouter><GroupTable group={{...group,needs_lot:true,rows:[row('Север',1,null,true),row('Юг',1,null,true)]}} criteria={['points','lot']}/></MemoryRouter>);
   expect(screen.getByRole('status')).toHaveTextContent('Нужен жребий');
  });
- it('переключает раунды сетки и показывает пары без даты',async()=>{
-  render(<MemoryRouter><Bracket sections={sections} timezone="Europe/Moscow" matchHref={id=>`/watch/matches/${id}`}/></MemoryRouter>);
+ it('открывает текущий раунд, переключает раунды стрелками и показывает пары без даты',async()=>{
+  render(<MemoryRouter><Bracket sections={sections} timezone="Europe/Moscow" matchHref={id=>`/watch/matches/${id}`} wide={false}/></MemoryRouter>);
+  const final=screen.getByRole('tab',{name:'Финал'});
+  expect(final).toHaveAttribute('aria-selected','true');
+  expect(screen.getByRole('article',{name:/^Финал\. Север — Победитель пары 2\. Матч: дата не назначена$/})).toHaveTextContent('Дата не назначена');
+  final.focus();await userEvent.keyboard('{ArrowLeft}');
   expect(screen.getByRole('tab',{name:'Полуфинал'})).toHaveAttribute('aria-selected','true');
-  expect(screen.getByRole('article',{name:'Полуфинал: Север — Юг'})).toHaveTextContent('3');
-  await userEvent.click(screen.getByRole('tab',{name:'Финал'}));
-  expect(screen.getByRole('tab',{name:'Финал'})).toHaveAttribute('aria-selected','true');
-  expect(screen.getByRole('article',{name:'Финал: Север — Победитель пары 2'})).toHaveTextContent('Дата не назначена');
+  expect(screen.getByRole('tab',{name:'Полуфинал'})).toHaveFocus();
  });
  it('пишет швейцарские критерии понятными словами',()=>{
   expect(criteriaText(['points','buchholz','goal_diff'])).toBe('Места: очки → очки соперников → разница мячей');

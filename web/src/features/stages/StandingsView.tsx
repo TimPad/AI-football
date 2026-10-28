@@ -1,19 +1,26 @@
 import type {PairView,Standings,StageView} from './api';
 import {GroupTable} from './GroupTable';
-import {Bracket,PairCard} from './Bracket';
+import {Bracket} from './Bracket';
+import {GroupMatches} from './GroupMatches';
 
-function advanceNote(stage:StageView,next?:StageView){
+function advanceNote(next?:StageView){
  if(!next)return undefined;
  return next.kind==='single_elim'||next.kind==='double_elim'?'Отмеченные команды выходят в плей-офф':`Отмеченные команды выходят в этап «${next.name}»`;
 }
 
 export function StageBlock({stage,next,timezone,teamHref,matchHref,action}:{stage:StageView;next?:StageView;timezone:string;teamHref?:(id:string)=>string;matchHref?:(id:string)=>string;action?:(pair:PairView)=>React.ReactNode}){
  const elimination=stage.kind==='single_elim'||stage.kind==='double_elim';
+ const rounds=stage.sections[0]?.rounds??[];
+ const sunk=new Set(stage.withdrawn.filter(w=>w.rule==='walkover').map(w=>w.team.entry_id));
+ const annulled=stage.withdrawn.filter(w=>w.rule==='annul');
  return <div className="stage-block">
-  <div className="groups-grid">{stage.groups.map(g=><GroupTable key={g.group_no} group={g} criteria={stage.criteria} teamHref={teamHref} advanceNote={advanceNote(stage,next)}/>)}</div>
-  {elimination?<Bracket sections={stage.sections} timezone={timezone} matchHref={matchHref} action={action}/>
-   :stage.sections[0]?.rounds.length?<details className="stage-rounds"><summary>Туры</summary>{stage.sections[0].rounds.map(r=><div key={r.round_no} className="tour"><h4>{r.name}</h4>
-    {r.pairs.filter(p=>!p.bye).map(p=><PairCard key={p.key} pair={p} timezone={timezone} matchHref={matchHref} action={action}/>)}</div>)}</details>:null}
+  {stage.groups.length>0&&<div className="groups-grid">{stage.groups.map(g=><div key={g.group_no} className="group-column">
+   <GroupTable group={g} criteria={stage.criteria} teamHref={teamHref} advanceNote={advanceNote(next)} withdrawn={sunk}/>
+   {!elimination&&<GroupMatches rounds={rounds} group={stage.kind==='groups'?g.group_no:null} timezone={timezone} matchHref={matchHref}/>}</div>)}</div>}
+  {annulled.map(w=><p key={w.team.entry_id} className="muted small">{w.team.name} снялась, её результаты аннулированы.</p>)}
+  {elimination&&<Bracket sections={stage.sections} timezone={timezone} matchHref={matchHref} action={action}/>}
+  {elimination&&stage.withdrawn.map(w=><p key={w.team.entry_id} className="muted small">{w.team.name} снялась: соперник прошёл дальше технической победой.</p>)}
+  {action&&!elimination&&rounds.some(r=>r.pairs.some(p=>p.changed))&&<div className="pair-actions">{rounds.flatMap(r=>r.pairs.filter(p=>p.changed)).map(p=><div key={p.key}>{p.label}: {action(p)}</div>)}</div>}
  </div>;
 }
 

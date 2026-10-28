@@ -1,4 +1,4 @@
-import type {StageView} from './api';
+import type {PairView,StageView} from './api';
 export const CRITERIA:Record<string,string>={points:'очки',h2h_points:'личные встречи',h2h_goal_diff:'разница в личных встречах',h2h_goals:'голы в личных встречах',
  goal_diff:'разница мячей',goals_for:'забитые',wins:'победы',buchholz:'очки соперников',lot:'жребий'};
 // Личные встречи в подписи одной фразой: очки, разница и голы в них идут подряд.
@@ -21,3 +21,30 @@ export const FORMAT_GUIDE:Record<string,{fits:string;pros:string;cons:string}>={
  double_elim:{fits:'От 4 до 16 команд',pros:'Одна неудача не выбивает из турнира',cons:'Сложнее понять зрителям'},
  swiss:{fits:'Много команд и мало дней',pros:'Соперники равной силы, все играют одинаково',cons:'Незнакомо многим игрокам'},
 };
+
+type Leg=PairView['legs'][number];
+export const shortDate=(iso:string,timezone:string)=>new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:timezone}).format(new Date(iso));
+const longDate=(iso:string,timezone:string)=>new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit',timeZone:timezone}).format(new Date(iso));
+
+export function legStatus(leg:Leg){
+ if(leg.annulled)return 'Аннулирован';
+ if(leg.technical)return 'Тех. поражение';
+ return leg.status==='live'?'Идёт':leg.status==='postponed'?'Перенесён':leg.status==='cancelled'?'Отменён':null;
+}
+export function pairTotals(pair:PairView){
+ const scored=pair.legs.filter(l=>l.score&&!l.annulled);
+ if(!scored.length)return null;
+ return {home:scored.reduce((s,l)=>s+(l.score!.home??0),0),away:scored.reduce((s,l)=>s+(l.score!.away??0),0)};
+}
+// Одна фраза для экранного диктора: раунд, счёт, кто прошёл, ближайший матч.
+export function pairSpeech(pair:PairView,timezone:string){
+ const parts=[pair.label];const t=pairTotals(pair);
+ parts.push(pair.bye?`${pair.home.label} проходит без матча`:t?`${pair.home.label} ${t.home}, ${pair.away.label} ${t.away}`:`${pair.home.label} — ${pair.away.label}`);
+ const pens=pair.legs.at(-1)?.shootout;if(pens&&pens.home!=null)parts.push(`Пенальти ${pens.home}:${pens.away}`);
+ if(pair.walkover)parts.push('Техническая победа');
+ const winner=pair.winner?pair[pair.winner].label:null;
+ if(winner&&pair.bracket)parts.push(`${winner} прошёл дальше`);
+ const next=pair.legs.find(l=>!l.score&&!l.annulled);
+ if(next&&!pair.bye){const name=pair.legs.length>1?`Матч ${next.leg}`:'Матч';parts.push(next.scheduled_at?`${name} — ${longDate(next.scheduled_at,timezone)}`:`${name}: дата не назначена`)}
+ return parts.join('. ');
+}

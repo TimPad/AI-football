@@ -11,3 +11,4 @@ export type FixtureView=S['FixtureView'];
 export type DrawPreview=S['DrawPreview'];
 export type TeamRef=S['TeamRef'];
 export type Template=S['FormatCreate']['template'];
+export type RoundView=S['RoundView'];
