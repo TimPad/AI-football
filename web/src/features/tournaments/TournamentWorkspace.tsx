@@ -1,4 +1,5 @@
 import {TournamentAnalysisQueue} from '../analysis/TournamentAnalysisQueue';
+import {useDocumentTitle} from '../../components/useDocumentTitle';
 import {protocolPublicationState} from './readiness';
 import {ApplicationSettings} from '../captain/TournamentApplications';
 import {useState} from 'react';
@@ -50,6 +51,7 @@ export function TournamentWorkspace({tournamentId:id}:{tournamentId:string}){
   all<RegVersion>(`/tournaments/${id}/regulations`),all<Match>(`/tournaments/${id}/matches`)]);return {t,entries,rules,matches}},id);
  const analytics=Boolean(session?.can_manage_analytics);
  useCabinetRail(state.data?<TournamentRail id={id} name={state.data.t.name} active={tab} analytics={analytics}/>:null,[id,tab,analytics,state.data?.t.name]);
+ useDocumentTitle(state.data?`${TITLES[tab]} · ${state.data.t.name}`:null);
  const [create,setCreate]=useState(false);const [error,setError]=useState<unknown>();
  if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const d=state.data;
  async function archive(){try{await api(`/tournaments/${id}`,{method:'PATCH',body:JSON.stringify({archived:!d.t.archived,expected_revision:d.t.revision})});state.reload()}catch(e){setError(e)}}

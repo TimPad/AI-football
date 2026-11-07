@@ -1,4 +1,5 @@
 import {AddressField} from './AddressField';
+import {useDocumentTitle} from '../../components/useDocumentTitle';
 import {useState,type FormEvent} from 'react';
 import {Link,useNavigate,useParams} from 'react-router-dom';
 import {MapPin,Plus} from 'lucide-react';
@@ -10,6 +11,7 @@ import {useDraft} from '../protocol/drafts';
 import {FramePicker,frameFromVideo,landmarks,pointLabel,readImageSize,type Frame} from './FramePicker';
 
 export function HallList(){
+ useDocumentTitle('Залы');
  const state=useLoad(()=>all<Hall>('/halls'),'halls');
  return <><div className="page-head"><div><h1>Залы</h1><p className="muted">Площадки для расписания и видеоаналитики</p></div><Link className="primary button" to="/halls/new"><Plus/>Создать зал</Link></div>{!state.data?<Loading error={state.error} retry={state.reload}/>:!state.data.length?<Empty>Добавьте первый зал, чтобы назначать его матчам.</Empty>:<div className="hall-cards">{state.data.map(h=><Link className="surface hall-card" key={h.id} to={`/halls/${h.id}`}><div className="row"><h2>{h.name}</h2>{h.archived&&<span className="muted">В архиве</span>}</div><p><MapPin size={16}/>{h.address}</p><strong>{h.pitch_length_m} × {h.pitch_width_m} м</strong><small className="muted">{h.surface||'Покрытие не указано'}</small></Link>)}</div>}</>;
 }

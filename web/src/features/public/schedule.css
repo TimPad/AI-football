@@ -49,3 +49,5 @@
 @media(max-width:600px){.schedule-toolbar{gap:8px;padding:12px}.schedule-toolbar select{min-width:0;flex:1 1 140px}.day-stepper{flex:1 1 100%}.day-stepper input{flex:1;min-width:0}}
 .tournament-section{margin-top:16px}
 .time-axis span:last-child{transform:translateY(-100%)}
+.whole-row{position:relative}.whole-row .slot-open::after{content:'';position:absolute;inset:0}.whole-row .slot-open:focus-visible{outline:none}.whole-row:has(.slot-open:focus-visible){outline:2px solid var(--focus);outline-offset:-2px}.schedule-row.whole-row:hover{background:#f8fafb}
+@media(max-width:760px){.day-stepper .icon-button{min-width:44px;min-height:44px}}

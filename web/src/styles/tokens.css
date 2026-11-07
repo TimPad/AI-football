@@ -1,6 +1,6 @@
 /* Design lock 15.10.2026: docs/design/2026-10-15-ui-system.md */
 :root{
- --app-bg:#f4f6f8;--surface:#fff;--text:#19221f;--text-muted:#697487;--border:#e2e7ec;
+ --app-bg:#f4f6f8;--surface:#fff;--text:#19221f;--text-muted:#626d80;--border:#e2e7ec;
  --accent:#b8ec64;--accent-strong:#9fd94a;--accent-ink:#22361a;--accent-soft:#eef8dc;--accent-line:#6fae1c;
  --pitch:#172620;--home:#488ee6;--away:#e9aa49;
  --ok:#2f7d32;--ok-soft:#e8f4e8;--warn:#9a5b00;--warn-soft:#fff4e0;--danger:#b42318;--danger-soft:#fdecea;--info-soft:#eaf2fc;

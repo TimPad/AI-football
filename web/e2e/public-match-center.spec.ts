@@ -5,14 +5,16 @@ import {login,createTournament} from './helpers';
 test('calendar groups, preserved return, empty day and responsive layout',async({page,browser})=>{
  await login(page);const first=await createTournament(page);await page.goto('/tournaments');const second=await createTournament(page);
  const guest=await browser.newContext();const p=await guest.newPage();await p.goto('/?day=2026-10-20');
- // «Найдено» рисуется вместе со списком: без ожидания count() видит пустую страницу, а «Ещё матчи» есть лишь при >50 матчах дня.
- await expect(p.getByText(/^Найдено: \d+ ·/)).toBeVisible();
+ // Строки матчей рисуются вместе со списком: без ожидания count() видит пустую страницу, а «Ещё матчи» есть лишь при >50 матчах дня.
+ await expect(p.getByRole('link',{name:/^Открыть матч /}).first()).toBeVisible();
  for(let n=0;n<100&&(!await p.getByRole('link',{name:`Открыть матч ${first.home} — ${first.away}`}).count()||!await p.getByRole('link',{name:`Открыть матч ${second.home} — ${second.away}`}).count());n++){await p.getByRole('button',{name:'Ещё матчи',exact:true}).click();await expect(p.getByRole('button',{name:'Загружаем…',exact:true})).toHaveCount(0)}
  await expect(p.getByRole('link',{name:`Открыть матч ${first.home} — ${first.away}`})).toBeVisible();await expect(p.getByRole('link',{name:`Открыть матч ${second.home} — ${second.away}`})).toBeVisible();
  await p.getByRole('link',{name:`Открыть матч ${first.home} — ${first.away}`} ).click();await p.getByRole('link',{name:'← К календарю матчей'}).click();await expect(p.getByLabel('Дата матчей')).toHaveValue('2026-10-20');
  await p.getByLabel('Дата матчей').fill('2020-01-01');await expect(p.getByText(/1 января матчей нет/)).toBeVisible();await expect(p.getByLabel('Дата матчей')).toHaveValue('2020-01-01');
  await p.getByLabel('Дата матчей').fill('2026-10-20');
  for(const width of [1440,1024,390]){await p.setViewportSize({width,height:900});await expect(p.getByRole('link',{name:`Открыть матч ${first.home} — ${first.away}`})).toBeVisible();expect(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await p.screenshot({path:`test-results/match-center-${width}.png`,fullPage:true})}
+ // На телефоне турниры, статус и поиск — в листе «Фильтры».
+ await p.getByRole('button',{name:'Фильтры'}).click();await expect(p.getByRole('dialog',{name:'Фильтры'})).toBeVisible();
  await p.getByRole('link',{name:'Каталог турниров →'}).click();await expect(p.getByRole('heading',{name:'Футбол, который нас объединяет'})).toBeVisible();await guest.close();
 });
 

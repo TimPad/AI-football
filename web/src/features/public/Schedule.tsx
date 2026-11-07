@@ -47,7 +47,9 @@ function lanes(items:{start:number;end:number}[]){
 }
 
 // extra — отметка кабинета в строке матча (например, «На сайте»); у зрителя её нет.
-export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`,extra,matchState,teamHref,teamState,teamFilter=true}:{matches:ScheduleItem[];timezone:string;matchHref?:(id:string)=>string;extra?:(id:string)=>ReactNode;matchState?:unknown;teamFilter?:boolean}&TeamLinks){
+// wholeRow — у зрителя вся строка открывает матч (как в Apple и Google Sports), команды открываются со страницы матча.
+export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`,extra,matchState,teamHref:teamLink,teamState,teamFilter=true,wholeRow=false}:{matches:ScheduleItem[];timezone:string;matchHref?:(id:string)=>string;extra?:(id:string)=>ReactNode;matchState?:unknown;teamFilter?:boolean;wholeRow?:boolean}&TeamLinks){
+ const teamHref=wholeRow?undefined:teamLink;const rowClass=wholeRow?' whole-row':'';
  const [params,update]=useQueryPatch();
  const set=(patch:Record<string,string|null>)=>update(patch,{replace:true});
  const view=params.get('view')==='grid'?'grid':'list';
@@ -78,16 +80,16 @@ export function Schedule({matches,timezone,matchHref=id=>`/watch/matches/${id}`,
     <button aria-pressed={view==='grid'} onClick={()=>set({view:'grid'})}>Сетка</button></div>}
   </div>}
   {!shown.length?<Empty>{matches.length?'Матчей с такими условиями нет.':'Матчей пока нет.'}</Empty>
-  :view==='list'?<div className="schedule-list">{shown.map(m=><article key={m.id} className="schedule-row">
+  :view==='list'?<div className="schedule-list">{shown.map(m=><article key={m.id} className={`schedule-row${rowClass}`}>
     <div className="row-time num"><b>{matchTime(m.scheduled_at,timezone)}</b><small>{new Intl.DateTimeFormat('ru-RU',{timeZone:timezone,day:'numeric',month:'short'}).format(new Date(m.scheduled_at))}</small></div>
     <Teams match={m} teamHref={teamHref} teamState={teamState}/><span className="row-hall">{venueName(m)}</span>
     <div className="row-meta"><Status match={m}/>{extra?.(m.id)}<span className="row-video">{hasVideo(m)&&<><Radio aria-hidden="true"/>ВК</>}</span><Open match={m} href={matchHref(m.id)} matchState={matchState}/></div></article>)}</div>
-  :<TimeGrid matches={shown} columns={columns} names={names} timezone={timezone} matchHref={matchHref} matchState={matchState} teamHref={teamHref} teamState={teamState}/>}
+  :<TimeGrid matches={shown} columns={columns} names={names} timezone={timezone} matchHref={matchHref} matchState={matchState} teamHref={teamHref} teamState={teamState} rowClass={rowClass}/>}
   <footer className="schedule-foot"><span>{plural(shown.length,['матч','матча','матчей'])}{columns.length>1?` · ${plural(columns.length,['зал','зала','залов'])}`:''}</span><span>{timezoneLabel(timezone)}</span></footer>
  </section>;
 }
 
-function TimeGrid({matches,columns,names,timezone,matchHref,matchState,teamHref,teamState}:{matches:ScheduleItem[];columns:string[];names:Map<string,string>;timezone:string;matchHref:(id:string)=>string;matchState?:unknown}&TeamLinks){
+function TimeGrid({matches,columns,names,timezone,matchHref,matchState,teamHref,teamState,rowClass}:{matches:ScheduleItem[];columns:string[];names:Map<string,string>;timezone:string;matchHref:(id:string)=>string;matchState?:unknown;rowClass:string}&TeamLinks){
  const spans=matches.map(m=>{const start=localMinutes(m.scheduled_at,timezone);return {m,start,end:start+m.schedule_slot_s/60}});
  const from=Math.floor(Math.min(...spans.map(s=>s.start))/30)*30,to=Math.ceil(Math.max(...spans.map(s=>s.end))/30)*30;
  const marks=Array.from({length:(to-from)/30+1},(_,i)=>from+i*30);
@@ -100,7 +102,7 @@ function TimeGrid({matches,columns,names,timezone,matchHref,matchState,teamHref,
     <div role="cell" className="time-axis" style={{height}}>{marks.map(min=><span key={min} className={min%60?'half':''} style={{top:(min-from)*PX_PER_MIN}}>{label(min)}</span>)}</div>
     {columns.map(v=>{const own=spans.filter(s=>venueKey(s.m)===v).sort((a,b)=>a.start-b.start);const {lane,count}=lanes(own);
      return <div role="cell" key={v} className="time-column" style={{height}}>{marks.map(min=><i key={min} className="grid-line" style={{top:(min-from)*PX_PER_MIN}}/>)}
-      {own.map((s,i)=><article key={s.m.id} className={`time-slot ${s.m.status}`} style={{top:(s.start-from)*PX_PER_MIN,height:(s.end-s.start)*PX_PER_MIN,
+      {own.map((s,i)=><article key={s.m.id} className={`time-slot ${s.m.status}${rowClass}`} style={{top:(s.start-from)*PX_PER_MIN,height:(s.end-s.start)*PX_PER_MIN,
         left:`calc(${100*lane[i]/count}% + 4px)`,width:`calc(${100/count}% - 8px)`}}>
        <div className="slot-head"><span className="num">{matchTime(s.m.scheduled_at,timezone)} – {matchTime(endIso(s.m),timezone)}</span><Status match={s.m}/></div>
        <Teams match={s.m} teamHref={teamHref} teamState={teamState}/>

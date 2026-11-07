@@ -18,7 +18,7 @@ button.pending{cursor:progress}
 .crest{display:inline-grid;place-items:center;border-radius:var(--radius);color:#fff;font-weight:700;overflow:hidden;flex-shrink:0}
 .crest img{width:100%;height:100%;object-fit:contain;background:#fff}
 .crest-md{width:40px;height:40px;font-size:18px}.crest-sm{width:28px;height:28px;font-size:13px}
-.crest-home{background:var(--home)}.crest-away{background:var(--away)}
+.crest-home{background:var(--home)}.crest-away{background:var(--away);color:#3b2a0b}
 .table-scroll{max-width:100%;overflow-x:auto}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 .nav-state{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:6px;vertical-align:2px}

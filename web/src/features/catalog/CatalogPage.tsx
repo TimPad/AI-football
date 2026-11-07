@@ -1,9 +1,11 @@
 import {Link,useNavigate} from 'react-router-dom';
+import {useDocumentTitle} from '../../components/useDocumentTitle';
 import type {Team,Player} from '../../api/domain';
 import {imageUrl} from './ProfileImage';
 import {positions,age} from './TeamEditor';
 import {useState,type FormEvent} from 'react';import {Plus,Pencil,Archive,RotateCcw} from 'lucide-react';import {all,post,api} from '../../api/client';import type {Named} from '../../api/domain';import {useLoad,Loading,Empty,ErrorBox,Field,Modal} from '../../components/ui';
 export function CatalogPage({kind}:{kind:'teams'|'players'}){
+ useDocumentTitle(kind==='teams'?'Команды':'Игроки');
  const navigate=useNavigate();const state=useLoad(()=>all<Team|Player>(`/${kind}`),kind);const [editing,setEditing]=useState<Named|null|undefined>();const [archive,setArchive]=useState(false);const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);
  async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();setBusy(true);setError(undefined);try{const name=new FormData(e.currentTarget).get('name');if(editing)await api(`/${kind}/${editing.id}`,{method:'PATCH',body:JSON.stringify({name})});else await post(`/${kind}`,{name});setEditing(undefined);state.reload()}catch(e){setError(e)}finally{setBusy(false)}}
  async function toggle(row:Named){setError(undefined);try{await api(`/${kind}/${row.id}`,{method:'PATCH',body:JSON.stringify({archived:!row.archived})});state.reload()}catch(e){setError(e)}}
