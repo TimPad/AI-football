@@ -83,6 +83,7 @@ class TournamentView(NamedView):
     revision: int
     applications_open: bool = True
     applications_deadline: datetime | None = None
+    standings_public: bool = True
 class RegulationView(EntityView):
     tournament_id: UUID
     variant_name: str
@@ -206,6 +207,7 @@ class PublicTournament(BaseModel):
     starts_on: date
     ends_on: date
     timezone: str
+    standings_public: bool = True
 
 
 class PublicScore(BaseModel):

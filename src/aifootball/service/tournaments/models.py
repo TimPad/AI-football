@@ -15,6 +15,7 @@ class Tournament(Entity,Base):
     visibility=Column(String(10),nullable=False,default='draft',server_default='draft')
     applications_open=Column(Boolean,nullable=False,default=True,server_default='true')
     applications_deadline=Column(DateTime(timezone=True))
+    standings_public=Column(Boolean,nullable=False,default=True,server_default='true')
 
 
 class RegulationVersion(Entity,Base):

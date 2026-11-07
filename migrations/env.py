@@ -12,6 +12,7 @@ from aifootball.service.halls import models as hall_models
 from aifootball.service.analysis import models as analysis_models
 from aifootball.service.analysis.team_review import models as team_review_models
 from aifootball.service.ratings import models as rating_models
+from aifootball.service.stages import models as stage_models
 
 config = context.config
 url = config.attributes.get('database_url') or Settings().database_url

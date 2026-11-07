@@ -7,6 +7,7 @@ import {TournamentWorkspace} from './TournamentWorkspace';
 import preset from '../../test/preset.json';
 
 const auth=vi.hoisted(()=>({analytics:false}));
+const fixtures=vi.hoisted(()=>({list:[] as unknown[]}));
 vi.mock('../auth/Auth',()=>({useAuth:()=>({session:{id:'admin',can_manage_analytics:auth.analytics}})}));
 const T='t1';
 const hall={id:'h1',name:'Зал 1',address:'Спортивная, 1',pitch_length_m:41,pitch_width_m:15.5};
@@ -26,7 +27,8 @@ function stub(){
    :path.includes(`/tournaments/${T}/entries`)?page([team('a','Север'),team('b','Юг')])
    :path.includes('/regulation-presets')?{items:[{name:'Футзал',rules:preset}]}
    :path.includes('/regulations')?page([{id:'r1',variant_name:'Основной',version:1,rules:preset}])
-   :path.includes(`/tournaments/${T}/matches`)?page([match]):page([]);
+   :path.includes(`/tournaments/${T}/matches`)?page([match])
+   :path.includes(`/tournaments/${T}/fixtures`)?page(fixtures.list):page([]);
   return new Response(JSON.stringify(body));
  }));
  return paths;
@@ -36,15 +38,17 @@ function Harness({tab}:{tab:string}){
  return <MemoryRouter initialEntries={[`/tournaments/${T}?tab=${tab}`]}><nav aria-label="Рейл">{rail}</nav>
   <RailContext.Provider value={setRail}><TournamentWorkspace tournamentId={T}/></RailContext.Provider></MemoryRouter>;
 }
-afterEach(()=>{vi.unstubAllGlobals();auth.analytics=false});
+afterEach(()=>{vi.unstubAllGlobals();auth.analytics=false;fixtures.list=[]});
+const side=(label:string,known=true)=>({label,team:known?{entry_id:`e-${label}`,team_id:label,name:label}:null});
+const fixture=(id:string,home:ReturnType<typeof side>,away:ReturnType<typeof side>,can:boolean)=>({id,stage_id:'s1',stage_name:'Групповой этап',key:id,leg:1,round_no:1,group_no:1,bracket:null,label:'Группа A · Тур 1',home,away,match_id:null,can_schedule:can});
 
 describe('tournament workspace',()=>{
- it('shows four tournament sections and keeps the calendar in cabinet links',async()=>{
+ it('shows tournament sections and keeps the calendar in cabinet links',async()=>{
   stub();render(<Harness tab="matches"/>);
   expect(await screen.findByRole('heading',{name:'Матчи'})).toBeInTheDocument();
   const rail=screen.getByRole('navigation',{name:'Рейл'});
   await within(rail).findByRole('link',{name:'Матчи'});
-  expect(within(rail).getAllByRole('link').map(a=>a.textContent)).toEqual(['Кубок Ярославля','Матчи','Команды','Настройки']);
+  expect(within(rail).getAllByRole('link').map(a=>a.textContent)).toEqual(['Кубок Ярославля','Таблица','Матчи','Команды','Настройки']);
   expect(within(rail).getByRole('link',{name:'Матчи'})).toHaveAttribute('aria-current','page');
   expect(screen.getByRole('link',{name:'Открыть матч Север — Юг'})).toHaveAttribute('href','/matches/m1');
  });
@@ -71,5 +75,13 @@ describe('tournament workspace',()=>{
   unmount();auth.analytics=true;render(<Harness tab="info"/>);
   expect(await screen.findByRole('heading',{name:'Сведения о турнире'})).toBeInTheDocument();
   expect(await within(screen.getByRole('navigation',{name:'Рейл'})).findByRole('link',{name:'Рейтинги'})).toBeInTheDocument();
+ });
+ it('lists pairs without a date with a schedule button',async()=>{
+  fixtures.list=[fixture('f1',side('Север'),side('Юг'),true),fixture('f2',side('Победитель пары 1',false),side('B2',false),false)];
+  stub();render(<Harness tab="matches"/>);
+  const block=await screen.findByRole('region',{name:'Без даты'});
+  expect(within(block).getByText('Север — Юг')).toBeInTheDocument();
+  expect(within(block).getAllByRole('button',{name:'Назначить'})).toHaveLength(1);
+  expect(within(block).getByText('Соперник ещё не известен')).toBeInTheDocument();
  });
 });
