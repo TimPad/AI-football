@@ -20,15 +20,15 @@ test('guest calendar, timetable and VK broadcasts from organizer input',async({p
  await expect(viewer.getByRole('link',{name:new RegExp(`${data.home}.*${data.away}`)})).toBeVisible();
  // Один матч в одном зале: фильтры ничего не меняют и не показываются.
  await expect(viewer.locator('.schedule-toolbar')).toHaveCount(0);
- const row=viewer.locator('.schedule-row').first();
+ const row=viewer.locator('.schedule-list .center-match').first();
  await expect(row).toContainText('19:00');await expect(row).toContainText('Тестовый зал');
  for(const width of [1440,768,375]){
   await viewer.setViewportSize({width,height:1000});
   expect(await viewer.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  // Название команды — в одну строку, ссылка на матч не выходит за карточку.
-  for(const name of await row.locator('.slot-team b').all())
+  // Название команды — в одну строку, счёт не выходит за карточку.
+  for(const name of await row.locator('.center-match-teams b').all())
    expect(await name.evaluate(e=>e.getBoundingClientRect().height<parseFloat(getComputedStyle(e).fontSize)*2)).toBe(true);
-  expect(await row.evaluate(r=>r.querySelector('.slot-open')!.getBoundingClientRect().right<=r.getBoundingClientRect().right)).toBe(true);
+  expect(await row.evaluate(r=>r.querySelector('.center-match-score')!.getBoundingClientRect().right<=r.getBoundingClientRect().right)).toBe(true);
   await viewer.screenshot({path:`../data/service/screenshots/public-schedule-${width}.png`,fullPage:true});
  }
  await viewer.getByRole('link',{name:new RegExp(`${data.home}.*${data.away}`)}).click();

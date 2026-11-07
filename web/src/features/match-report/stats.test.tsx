@@ -38,10 +38,10 @@ describe('match statistics',()=>{
   const stats={rows:[{key:'passes_accurate',label:'Точные передачи',group:'passes',category:'passes',unit:'percent',coverage:'partial',
    home:{value:66.7,numerator:2,denominator:3,unknown:1},away:{value:null,numerator:0,denominator:0,unknown:0}}]} as unknown as TeamActionStats;
   const line=actionLines(stats).passes[0];
-  expect(line.home.text).toBe('2/3 (67 %)');expect(line.home.note).toBe('ещё неизвестно: 1');
+  expect(line.home.text).toBe('67 %');expect(line.home.note).toBe('2/3 · 1 без исхода');
   expect(line.away.text).toBe('—');expect(line.partial).toBe(true);
   render(<StatRow line={line}/>);
-  expect(screen.getByText('2/3 (67 %)').className).toBe('');
+  expect(screen.getByText('67 %').className).toBe('');expect(screen.getByText('2/3 · 1 без исхода')).toBeInTheDocument();
  });
  it('marks automatic video passes instead of the manual-markup asterisk and keeps protocol periods',()=>{
   const stats={source:{kind:'cv_auto'},periods:[{key:'all',label:'Весь матч'}],rows:[{key:'passes_total',label:'Передачи',group:'passes',

@@ -2,16 +2,13 @@
 .schedule-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px;border-bottom:1px solid var(--border)}
 .schedule-toolbar select,.schedule-toolbar input{min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);font:inherit;font-size:14px;color:var(--text)}
 .schedule-toolbar select{min-width:180px}
-.day-stepper{display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius)}
-.day-stepper input{border:0;border-inline:1px solid var(--border);border-radius:0}
-.day-stepper .icon-button{border-radius:var(--radius)}
 .view-switch{margin-left:auto;display:inline-flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
 .view-switch button{border:0;border-radius:0;min-height:38px;padding:8px 20px}
 .view-switch button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
 .schedule-list{display:grid}
-.schedule-row{display:grid;grid-template-columns:72px minmax(260px,1.6fr) minmax(120px,1fr) auto;gap:16px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
-.row-time b{display:block;font-size:18px}.row-time small{color:var(--text-muted);font-size:12px}
-.row-hall{color:var(--text-muted);font-size:13px;overflow-wrap:anywhere}
+/* Полоса игровых дней: кнопки как в календаре главной, поле даты — только под иконкой. */
+.game-days{display:flex;align-items:center;gap:8px;flex:1 1 320px;min-width:0}.game-days .center-date-days{justify-content:flex-start}.game-days .center-date-days button{flex:0 0 auto;min-width:52px}.game-days .center-date-days button span:last-child{font-size:12px;text-transform:none}
+@media(max-width:760px){.view-switch{margin-left:0}.game-days{flex-basis:100%}}
 .row-video{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--link)}
 .row-video svg{width:16px;height:16px}
 .slot-teams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px}
@@ -38,16 +35,7 @@
 .time-slot.cancelled{opacity:.7}
 .slot-head,.slot-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:var(--text-muted)}
 .schedule-foot{display:flex;justify-content:space-between;gap:16px;padding:14px 16px;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border)}
-.row-meta{display:flex;align-items:center;justify-content:flex-end;gap:12px}.row-meta .row-video{min-width:36px}
-/* Телефон и планшет: команды занимают всю строку, статус и ссылка — строкой ниже. */
-@media(max-width:900px){.schedule-row{grid-template-columns:56px minmax(0,1fr);row-gap:8px}.schedule-row>:not(.row-time){grid-column:2}.row-time{grid-row:1 / span 3;align-self:start}
- .row-meta{flex-wrap:wrap;justify-content:flex-start;gap:8px 12px}.row-meta .slot-open{margin-left:auto}.view-switch{margin-left:0}}
-/* Телефон: команды в две строки (хозяева сверху), счёт справа — названиям хватает ширины. */
-@media(max-width:600px){.schedule-row .slot-teams{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"home score" "away score";row-gap:6px}
- .schedule-row .slot-team{grid-area:home}.schedule-row .slot-team.away{grid-area:away;justify-content:flex-start;text-align:left}
- .schedule-row .slot-team.away .crest{order:-1}.schedule-row .spectator-score{grid-area:score;font-size:18px}}
-@media(max-width:600px){.schedule-toolbar{gap:8px;padding:12px}.schedule-toolbar select{min-width:0;flex:1 1 140px}.day-stepper{flex:1 1 100%}.day-stepper input{flex:1;min-width:0}}
+@media(max-width:600px){.schedule-toolbar{gap:8px;padding:12px}.schedule-toolbar select{min-width:0;flex:1 1 140px}}
 .tournament-section{margin-top:16px}
 .time-axis span:last-child{transform:translateY(-100%)}
-.whole-row{position:relative}.whole-row .slot-open::after{content:'';position:absolute;inset:0}.whole-row .slot-open:focus-visible{outline:none}.whole-row:has(.slot-open:focus-visible){outline:2px solid var(--focus);outline-offset:-2px}.schedule-row.whole-row:hover{background:var(--surface-2)}
-@media(max-width:760px){.day-stepper .icon-button{min-width:44px;min-height:44px}}
+.whole-row{position:relative}.whole-row .slot-open::after{content:'';position:absolute;inset:0}.whole-row .slot-open:focus-visible{outline:none}.whole-row:has(.slot-open:focus-visible){outline:2px solid var(--focus);outline-offset:-2px}

@@ -1,4 +1,5 @@
 import type {components} from '../../api/types';
+import {futsalRoles} from '../../api/domain';
 type S=components['schemas'];
 export type ParticipationDoc=S['ParticipationDocument-Output'];
 export type Participation=S['ParticipationOverview'];
@@ -16,7 +17,7 @@ export type Analytics=S['AnalyticsOverview'];
 export type RatingSnapshot=S['RatingSnapshotResult'];
 export type PlayerRatings=S['RatingPlayerHistory'];
 export type Fact=S['MetricFactView'];
-export const roles:Record<Role,string>={goalkeeper:'Вратарь',fixo:'Фиксо',ala:'Ала',pivot:'Пивот',universal:'Универсал',unknown:'Не установлена'};
+export const roles:Record<Role,string>={...futsalRoles,unknown:'Не установлена'};
 export const scopes={full_match:'Полный матч — проверено',continuous_excerpt:'Непрерывный фрагмент',highlights:'Нарезка',unknown:'Полнота неизвестна'};
 export const timeBases={reviewed_effective:'Проверенное время мяча в игре',official_clean:'Официальное чистое время',running_clock:'Время присутствия с паузами'};
 export const completeness={unknown:'Неизвестно',partial:'Частично',complete:'Полностью проверено'};

@@ -1,7 +1,7 @@
 import {useState,type FormEvent} from 'react';
 import {Link,useParams,useNavigate} from 'react-router-dom';
 import {Plus,Trash2,Users,Download} from 'lucide-react';
-import type {Player,TeamProfile,ProfilePlayer} from '../../api/domain';
+import {positions,type Player,type TeamProfile,type ProfilePlayer} from '../../api/domain';
 import {all,api,post,ApiError} from '../../api/client';
 import {Field,ErrorBox,Loading,useLoad,downloadJson} from '../../components/ui';
 import {useAuth} from '../auth/Auth';
@@ -10,7 +10,7 @@ import {ProfileImage} from './ProfileImage';
 import {RosterImportLaunch} from '../roster-import/RosterImportPage';
 import {CaptainAccessPanel} from '../captain/CaptainAccessPanel';
 
-export const positions={goalkeeper:'Вратарь',defender:'Защитник',winger:'Фланговый',forward:'Нападающий',universal:'Универсал'};
+export {positions};
 export function age(birth:string|null){if(!birth)return null;const now=new Date(),date=new Date(birth+'T12:00:00');let value=now.getFullYear()-date.getFullYear();if(now.getMonth()<date.getMonth()||(now.getMonth()===date.getMonth()&&now.getDate()<date.getDate()))value--;return value>=0?value:null}
 export type TeamSave=Omit<Draft,'attempted'>;
 type Draft={request_id:string,expected_revision:number,name:string,description:string,logo_id:string|null,players:ProfilePlayer[],attempted:boolean};

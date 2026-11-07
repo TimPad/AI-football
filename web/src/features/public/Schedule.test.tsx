@@ -42,7 +42,7 @@ it('shows a filter only when it can change something',()=>{
  const {container,unmount}=show('/t',one);
  // Один матч, один зал, один день: без панели фильтров, зал — без адреса.
  expect(container.querySelector('.schedule-toolbar')).toBeNull();
- expect(container.querySelector('.row-hall')).toHaveTextContent(/^Арена$/);
+ expect(container.querySelector('.center-match-meta')).toHaveTextContent(/^Арена$/);
  expect(container.querySelector('.schedule-foot')).toHaveTextContent('1 матчВремя московское');
  unmount();
  // Фильтр из ссылки остаётся видимым, чтобы его можно было сбросить.
@@ -101,17 +101,23 @@ it('draws slot heights proportional to time and keeps overlaps side by side',()=
  expect(parseFloat(container.querySelector<HTMLElement>('.time-column')!.style.height)).toBe(180*1.6);
 });
 
-it('filters teams by stable identity and provides public profile links',()=>{
+it('filters teams by stable identity and opens the match from the whole row',()=>{
  const items=matches.map((m,i)=>({...m,home_team_id:`home-${i}`,away_team_id:`away-${i}`}));
- render(<MemoryRouter initialEntries={['/t?team_id=home-1']}><Schedule matches={items} timezone="Europe/Moscow" teamHref={id=>`/teams/${id}`}/></MemoryRouter>);
+ render(<MemoryRouter initialEntries={['/t?team_id=home-1']}><Schedule matches={items} timezone="Europe/Moscow"/></MemoryRouter>);
  expect(screen.getByLabelText('Фильтр по команде')).toHaveValue('home-1');
  expect(screen.queryByRole('link',{name:/Север — Юг/})).toBeNull();
- expect(screen.getByRole('link',{name:'Восток'})).toHaveAttribute('href','/teams/home-1');
+ // Команды открываются со страницы матча: в строке нет отдельных ссылок.
+ expect(screen.queryByRole('link',{name:'Восток'})).toBeNull();
+ expect(open(/Открыть матч Восток/).closest('article')).toHaveClass('center-match');
 });
 
-it('lets a guest open the match from the whole row without separate team links',()=>{
- const items=matches.map((m,i)=>({...m,home_team_id:`home-${i}`,away_team_id:`away-${i}`}));
- render(<MemoryRouter initialEntries={['/t?team_id=home-1']}><Schedule wholeRow matches={items} timezone="Europe/Moscow" teamHref={id=>`/teams/${id}`}/></MemoryRouter>);
- expect(screen.queryByRole('link',{name:'Восток'})).toBeNull();
- const row=open(/Открыть матч Восток/).closest('article');expect(row).toHaveClass('whole-row');
+it('picks a day from the strip of game days and shows a cabinet mark on the right',()=>{
+ const items=[matches[0],{...matches[1],scheduled_at:'2026-10-22T16:00:00Z'}] as ScheduleItem[];
+ render(<MemoryRouter initialEntries={['/t']}><Routes><Route path="/t" element={<><Schedule matches={items} timezone="Europe/Moscow" extra={id=><span>отметка {id}</span>}/><Probe/></>}/></Routes></MemoryRouter>);
+ const days=screen.getByRole('group',{name:'Дни матчей'});
+ expect(within(days).getByRole('button',{name:'все дни'})).toHaveAttribute('aria-pressed','true');
+ fireEvent.click(within(days).getByRole('button',{name:/22 октября/}));
+ expect(new URLSearchParams(search).get('day')).toBe('2026-10-22');
+ expect(screen.queryByRole('link',{name:/Север — Юг/})).toBeNull();
+ expect(screen.getByText('отметка two').closest('.center-match-extra')).not.toBeNull();
 });

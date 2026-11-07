@@ -38,5 +38,5 @@ function TournamentContent({id}:{id:string}){
    onSelect={value=>update({tab:value===first?null:value})} href={value=>`?${patchQuery(params,{tab:value===first?null:value})}`}/>
   <ErrorBox error={state.error}/>
   <div className="tournament-section">{tab==='table'?<StandingsView data={standings} timezone={t.timezone} matchHref={mid=>`/watch/matches/${mid}`} teamHref={team=>`/watch/tournaments/${id}/teams/${team}`}/>
-   :tab==='matches'?<><Schedule wholeRow matches={matches} timezone={t.timezone} matchState={forward} teamHref={team=>`/watch/tournaments/${id}/teams/${team}`} teamState={forward}/><UnscheduledFixtures items={fixtures} title="Ещё без даты"/></>:tab==='teams'?<PublicTournamentTeams tournamentId={id}/>:<TournamentRatings tournamentId={id} publicView initialSnapshot={snapshot}/>}</div></>;
+   :tab==='matches'?<><Schedule matches={matches} timezone={t.timezone} matchState={forward}/><UnscheduledFixtures items={fixtures} title="Ещё без даты"/></>:tab==='teams'?<PublicTournamentTeams tournamentId={id}/>:<TournamentRatings tournamentId={id} publicView initialSnapshot={snapshot}/>}</div></>;
 }
