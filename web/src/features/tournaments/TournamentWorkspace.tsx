@@ -17,7 +17,7 @@ import {TournamentRatings} from '../ratings/TournamentRatings';
 import {MatchCreateForm} from '../matches/MatchForms';
 import {TournamentSettings} from './TournamentList';
 import {Entries,Rules} from './TournamentPage';
-import {TournamentOverview} from './TournamentOverview';
+import {TournamentOverview,TournamentVisibility} from './TournamentOverview';
 import {StageWorkspace} from '../stages/StageWorkspace';
 import {UnscheduledFixtures} from '../stages/UnscheduledFixtures';
 import {ScheduleFixtureForm} from '../stages/ScheduleFixtureForm';
@@ -63,7 +63,7 @@ export function TournamentWorkspace({tournamentId:id}:{tournamentId:string}){
  return <div className="tournament-workspace">
   <div className="page-head"><div><h1>{TITLES[tab]}</h1><p className="muted">{d.t.name}{d.t.archived?' · архив':''} · Сезон {d.t.season}</p></div>
    <div className="row">{tab==='matches'&&<button className="primary" disabled={!canCreate} onClick={()=>setCreate(true)}><Plus/>Создать матч</button>}
-    <Link className="public-action" to={`/watch/tournaments/${d.t.id}`}>Страница для зрителей<ArrowUpRight/></Link></div></div>
+    <Link className="public-action" to={`/watch/tournaments/${d.t.id}`}>Страница для зрителей<ArrowUpRight/></Link><TournamentVisibility data={d} onSaved={state.reload}/></div></div>
   <ErrorBox error={error}/>
   <TournamentOverview data={d} onSaved={state.reload}/>
   {tab==='matches'&&(!canCreate&&!d.matches.length?<Empty>Для первого матча добавьте регламент и минимум две команды.</Empty>

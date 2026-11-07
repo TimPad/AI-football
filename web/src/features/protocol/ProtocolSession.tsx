@@ -14,6 +14,8 @@ export function ProtocolSession({matchId,children}:{matchId:string;children:Reac
  const value=useProtocolCommands(matchId);
  return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
+// Для мест вне редактора (шапка матча): сессия есть только на вкладках протокола.
+export function useOptionalProtocolSession(){return useContext(SessionContext)}
 export function useProtocolSession():ProtocolSessionValue{
  const value=useContext(SessionContext);
  if(!value)throw new Error('ProtocolSession is required');

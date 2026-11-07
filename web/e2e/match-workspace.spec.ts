@@ -53,7 +53,10 @@ test('an ordinary admin sees protocol tasks only and no Admin+ requests',async({
  await expect(nav.getByRole('link',{name:'Участие',exact:true})).toHaveCount(0);
  await expect(nav.getByRole('link',{name:'Действия',exact:true})).toHaveCount(0);
  await task(page,'Публикация').click();
- await expect(page.getByRole('button',{name:'Опубликовать протокол',exact:true})).toBeVisible();
+ // Без подтверждённой версии строка протокола серая: одна причина и «Исправить», без неактивной кнопки.
+ const protocolRow=page.locator('article',{has:page.getByRole('heading',{name:'Протокол',exact:true})});
+ await expect(protocolRow.getByText('Нет подтверждённой версии протокола',{exact:true})).toBeVisible();
+ await expect(protocolRow.getByRole('link',{name:'Исправить',exact:true})).toHaveAttribute('href',/\?tab=protocol$/);
  await expect(page.getByRole('button',{name:'Опубликовать видеоанализ',exact:true})).toHaveCount(0);
  await task(page,'Предпросмотр').click();await expect(page.getByText('Отчёт в кабинете')).toBeVisible();
  expect(urls.some(u=>/participation|performance-|analytics|\/ratings|understanding/.test(u)&&!u.includes('/public/'))).toBe(false);

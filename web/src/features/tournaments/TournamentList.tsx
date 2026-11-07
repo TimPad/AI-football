@@ -2,10 +2,20 @@ import {useState,type FormEvent} from 'react';import {Link,} from 'react-router-
 import {useDocumentTitle} from '../../components/useDocumentTitle';
 import {dateRange} from '../matches/timezone';
 import {all,post,api} from '../../api/client';import type {Tournament} from '../../api/domain';import {useLoad,Loading,Empty,Field,ErrorBox} from '../../components/ui';
-export function TournamentFields({value}:{value?:Tournament}){return <div className="form-grid"><Field label="Название турнира"><input name="name" required maxLength={200} defaultValue={value?.name}/></Field><Field label="Сезон"><input name="season" required maxLength={100} defaultValue={value?.season??'2026 / 2027'}/></Field><Field label="Начало турнира"><input name="starts_on" type="date" required defaultValue={value?.starts_on}/></Field><Field label="Окончание турнира"><input name="ends_on" type="date" required defaultValue={value?.ends_on}/></Field><Field label="Часовой пояс"><input name="timezone" required defaultValue={value?.timezone??'Europe/Moscow'} list="timezones"/><datalist id="timezones"><option>Europe/Moscow</option><option>Asia/Yekaterinburg</option><option>Asia/Novosibirsk</option><option>Europe/Kaliningrad</option></datalist></Field></div>}
+// Сезон считается из дат: «2026» или «2026/2027» — отдельное поле не нужно.
+export const seasonOf=(starts:string,ends:string)=>{const a=starts.slice(0,4),b=ends.slice(0,4);return !a?'':!b||a===b?a:`${a}/${b}`};
+export const TIMEZONES:[string,string][]=[['Europe/Kaliningrad','Калининград (МСК−1)'],['Europe/Moscow','Москва (МСК)'],['Europe/Samara','Самара (МСК+1)'],['Asia/Yekaterinburg','Екатеринбург (МСК+2)'],
+ ['Asia/Omsk','Омск (МСК+3)'],['Asia/Novosibirsk','Новосибирск (МСК+4)'],['Asia/Krasnoyarsk','Красноярск (МСК+4)'],['Asia/Irkutsk','Иркутск (МСК+5)'],['Asia/Yakutsk','Якутск (МСК+6)'],
+ ['Asia/Vladivostok','Владивосток (МСК+7)'],['Asia/Magadan','Магадан (МСК+8)'],['Asia/Kamchatka','Камчатка (МСК+9)']];
+export const timezoneName=(tz:string)=>TIMEZONES.find(([id])=>id===tz)?.[1]??tz;
+export function TimezoneSelect({value,onChange,name}:{value?:string;onChange?:(v:string)=>void;name?:string}){
+ const current=value??'Europe/Moscow';const known=TIMEZONES.some(([id])=>id===current);
+ return <select name={name} required {...(onChange?{value:current,onChange:e=>onChange(e.target.value)}:{defaultValue:current})}>{!known&&<option value={current}>{current}</option>}{TIMEZONES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select>;
+}
+export function TournamentFields({value}:{value?:Tournament}){return <div className="form-grid"><Field label="Название турнира"><input name="name" required maxLength={200} defaultValue={value?.name}/></Field><Field label="Часовой пояс"><TimezoneSelect name="timezone" value={value?.timezone}/></Field><Field label="Начало турнира"><input name="starts_on" type="date" required defaultValue={value?.starts_on}/></Field><Field label="Окончание турнира"><input name="ends_on" type="date" required defaultValue={value?.ends_on}/></Field></div>}
 export function TournamentSettings({value,onSaved}:{value?:Tournament,onSaved:(t:Tournament)=>void}){
  const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);
- async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const body=Object.fromEntries(f);setBusy(true);setError(undefined);try{const t=value?await api<Tournament>(`/tournaments/${value.id}`,{method:'PATCH',body:JSON.stringify({...body,expected_revision:value.revision})}):await post<Tournament>('/tournaments',body);onSaved(t)}catch(e){setError(e)}finally{setBusy(false)}}
+ async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const body={...Object.fromEntries(f),season:seasonOf(String(f.get('starts_on')),String(f.get('ends_on')))};setBusy(true);setError(undefined);try{const t=value?await api<Tournament>(`/tournaments/${value.id}`,{method:'PATCH',body:JSON.stringify({...body,expected_revision:value.revision})}):await post<Tournament>('/tournaments',body);onSaved(t)}catch(e){setError(e)}finally{setBusy(false)}}
  return <form onSubmit={submit}><fieldset className="team-fieldset" disabled={busy||value?.archived}><TournamentFields value={value}/><ErrorBox error={error}/><button className="primary" disabled={busy}>{value?'Сохранить настройки':'Создать турнир'}</button></fieldset></form>
 }
 export function TournamentList(){

@@ -19,7 +19,8 @@ function stub(overrides:Record<string,unknown>={}){
  calls=[];
  vi.stubGlobal('fetch',vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
   const path=String(input).replace('/api/v1','');const method=init?.method??'GET';const body=init?.body?JSON.parse(String(init.body)):null;calls.push({path,method,body});
-  for(const [k,v] of Object.entries(overrides))if(path.includes(k))return new Response(JSON.stringify(v));
+  // Ключ с «=» — точный путь, иначе — подстрока.
+  for(const [k,v] of Object.entries(overrides))if(k.startsWith('=')?path===k.slice(1):path.includes(k))return new Response(JSON.stringify(v));
   if(method==='POST'&&path.endsWith('/commands'))return new Response(JSON.stringify({...match,revision:5,published_version_id:'v1'}));
   if(method==='PUT')return new Response(JSON.stringify({...saved,revision:8}));
   const value=path.startsWith(`/public/matches/${M}`)&&!path.includes('/analysis')&&!path.includes('/ratings')?{id:M,home_name:'Север',away_name:'Юг',score:{home:null,away:null},public_protocol_id:null,tournament:{id:T}}
@@ -34,15 +35,25 @@ beforeEach(()=>{localStorage.clear()});
 afterEach(()=>vi.unstubAllGlobals());
 
 describe('match publication',()=>{
+ it('shows what viewers see and offers nothing when the newest protocol version is already on the site',async()=>{
+  stub({'/versions':{items:[{id:'v2',number:2,confirmed_at:'2026-10-21T18:00:00Z',published_at:'2026-10-21T18:05:00Z'},{id:'v1',number:1,confirmed_at:'2026-10-20T18:00:00Z',published_at:null}],total:2},
+   [`=/matches/${M}`]:{...match,published_version_id:'v2'}});show();
+  expect(await screen.findByRole('heading',{name:'Что видят зрители'})).toBeInTheDocument();
+  const row=(await screen.findByRole('heading',{name:'Протокол'})).closest('article')!;
+  await within(row).findByText('Последняя версия на сайте');
+  expect(within(row).getByText('На сайте')).toBeInTheDocument();
+  expect(within(row).queryByRole('button',{name:'Опубликовать протокол'})).toBeNull();
+ });
  it('reads saved sources without writing and sends the tournament revision',async()=>{
-  stub();const user=userEvent.setup();show();
+  // Источники оценок сервер принимает только для опубликованного протокола.
+  stub({[`=/matches/${M}`]:{...match,published_version_id:'v1'}});const user=userEvent.setup();show();
   const partSelect=await screen.findByLabelText('Публикуемая версия участия');
   expect(partSelect).toHaveValue('P');
   expect(screen.getByLabelText('Публикуемая версия действий')).toHaveValue('A');
   expect(calls.filter(c=>c.method!=='GET')).toEqual([]);
   expect(calls.find(c=>c.path.endsWith('/performance-publication'))?.body).toBeNull();
   await user.selectOptions(partSelect,'P2');
-  await user.click(screen.getByRole('button',{name:'Сохранить разрешение'}));
+  await user.click(screen.getByRole('button',{name:'Показать оценки на сайте'}));
   await waitFor(()=>expect(calls.some(c=>c.method==='PUT')).toBe(true));
   const put=calls.find(c=>c.method==='PUT')!.body as Record<string,unknown>;
   expect(put).toMatchObject({expected_revision:7,expected_match_revision:4,participation_version_id:'P2',action_version_id:'A',approve_policy:true});
@@ -50,9 +61,12 @@ describe('match publication',()=>{
  });
  it('keeps an unconfirmed CV blocked with a fix link while the protocol can be published',async()=>{
   stub();const user=userEvent.setup();show();
-  const cv=await screen.findByRole('button',{name:'Опубликовать видеоанализ'});
-  expect(cv).toBeDisabled();
-  expect(screen.getByText(/Версия на проверке не подтверждена/).closest('p')!.querySelector('a')).toHaveAttribute('href','/?tab=review');
+  // Недоступное — серая строка с одной причиной и «Исправить», без неактивной главной кнопки.
+  const cv=(await screen.findByRole('heading',{name:'Видеоанализ'})).closest('article')!;
+  expect(cv).toHaveClass('unavailable');
+  expect(within(cv).queryByRole('button',{name:'Опубликовать видеоанализ'})).toBeNull();
+  expect(within(cv).getByText('Версия на проверке не подтверждена')).toBeInTheDocument();
+  expect(within(cv).getByRole('link',{name:'Исправить'})).toHaveAttribute('href','/?tab=review');
   expect(Object.keys(localStorage).some(k=>k.endsWith(':lease'))).toBe(false);
   await user.click(screen.getByRole('button',{name:'Опубликовать протокол'}));
   await waitFor(()=>expect(calls.some(c=>c.method==='POST'&&c.path.endsWith('/commands'))).toBe(true));

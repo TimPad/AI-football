@@ -27,7 +27,7 @@ test('организатор выбирает формат и проводит �
  await expect(page.getByRole('radio',{name:/Группы и плей-офф/})).toHaveAttribute('aria-checked','true');
  await page.getByRole('button',{name:'Сохранить формат',exact:true}).click();
  await expect(page.getByText('Сейчас: Групповой этап → Плей-офф')).toBeVisible();
- await page.getByRole('link',{name:'4. Жеребьёвка'}).click();
+ await page.getByRole('link',{name:'5. Жеребьёвка'}).click();
  // Групповой этап: по корзинам, обмен двух команд, подтверждение.
  await page.getByRole('region',{name:'Групповой этап'}).getByRole('button',{name:'Провести жеребьёвку',exact:true}).click();
  const dialog=page.getByRole('dialog');
