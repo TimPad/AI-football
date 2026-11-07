@@ -1,4 +1,5 @@
 import {useState} from 'react';
+import {useDocumentTitle} from '../../components/useDocumentTitle';
 import {Link,useParams,useSearchParams} from 'react-router-dom';
 import {api} from '../../api/client';
 import type {components} from '../../api/types';
@@ -11,7 +12,7 @@ type Task=components['schemas']['TeamTaskView'];
 type Decision=components['schemas']['TeamDecision'];
 const stamp=(v:number)=>`${Math.floor(v/60)}:${String(Math.floor(v%60)).padStart(2,'0')}`;
 
-export function CaptainIdentityTasks(){const [offset,setOffset]=useState(0);const state=useLoad(()=>api<components['schemas']['TeamTaskList']>(`/captain/identity-tasks?offset=${offset}&limit=20`),String(offset));
+export function CaptainIdentityTasks(){useDocumentTitle('Проверка игроков');const [offset,setOffset]=useState(0);const state=useLoad(()=>api<components['schemas']['TeamTaskList']>(`/captain/identity-tasks?offset=${offset}&limit=20`),String(offset));
  return <><Link className="breadcrumb" to="/captain">← Мои команды</Link><h1>Проверка игроков</h1><p className="muted">После обработки записи организатор выдаёт кадры вашей команды. Вы самостоятельно подтверждаете игроков; аналитика появится на сайте после отдельной публикации.</p>{!state.data?<Loading error={state.error} retry={state.reload}/>:<>{!state.data.items.length?<section className="surface"><Empty>Заданий пока нет. Они появятся после обработки матча и проверки команд на видео.</Empty></section>:<div className="captain-team-cards">{state.data.items.map(t=><Link className="surface" key={t.id} to={`/captain/identity-tasks/${t.id}`}><span className="chip">{teamTaskStatuses[t.status]}</span><h2>{t.team_name} — {t.opponent_name}</h2><p>{new Date(t.scheduled_at).toLocaleString('ru-RU')}</p><b>Открыть проверку →</b></Link>)}</div>}<div className="pager"><button disabled={!offset} onClick={()=>setOffset(v=>Math.max(0,v-20))}>Предыдущие задания</button><span>{state.data.total} заданий</span><button disabled={offset+20>=state.data.total} onClick={()=>setOffset(v=>v+20)}>Следующие задания</button></div></>}</>;
 }
 

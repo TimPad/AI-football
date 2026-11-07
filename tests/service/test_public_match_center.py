@@ -64,3 +64,29 @@ def test_keyset_pages_group_counts_and_filter_binding(admin_client,match_factory
     assert admin_client.get(URL+'?limit=1000').status_code==422
     assert admin_client.get(URL+'?day=bad').status_code==422
     assert admin_client.get(URL+'?cursor=broken').status_code==422
+
+def test_neighbour_game_days_follow_filters(admin_client,match_factory):
+    before=match_factory(scheduled_at='2026-10-16T21:30:00Z')
+    after=match_factory(scheduled_at='2026-10-25T18:00:00Z')
+    hidden=match_factory(scheduled_at='2026-10-18T18:00:00Z')
+    admin_client.patch('/api/v1/tournaments/'+hidden['tournament_id'],json={'expected_revision':0,'visibility':'draft'})
+    data=admin_client.get(URL+'?day=2026-10-20').json()
+    # 16 Oct 21:30 UTC is already 17 Oct in Moscow; a hidden tournament is not a game day.
+    assert data['total']==0 and data['previous_day']=='2026-10-17' and data['next_day']=='2026-10-25'
+    only=admin_client.get(URL+f"?day=2026-10-20&tournament_id={after['tournament_id']}").json()
+    assert only['previous_day'] is None and only['next_day']=='2026-10-25'
+    assert admin_client.get(URL+'?day=2026-10-17').json()['previous_day'] is None
+    assert before['id']
+
+def test_recent_results_newest_first(admin_client,match_factory,send_command,monkeypatch):
+    from aifootball.service import public_match_center as center
+    monkeypatch.setattr(center,'now',lambda:datetime(2026,10,26,10,tzinfo=timezone.utc))
+    old=finish(send_command,match_factory(scheduled_at='2026-10-10T18:00:00Z'))
+    new=finish(send_command,match_factory(scheduled_at='2026-10-20T18:00:00Z'))
+    match_factory(scheduled_at='2026-10-21T18:00:00Z')
+    hidden=finish(send_command,match_factory(scheduled_at='2026-10-22T18:00:00Z'))
+    admin_client.patch('/api/v1/tournaments/'+hidden['tournament_id'],json={'expected_revision':0,'visibility':'draft'})
+    recent=admin_client.get(URL+'/recent').json()
+    assert [x['id'] for x in recent['items']]==[new['id'],old['id']]
+    assert [x['id'] for x in admin_client.get(URL+f"/recent?tournament_id={old['tournament_id']}").json()['items']]==[old['id']]
+    assert admin_client.get(URL+'/recent?limit=6').status_code==422

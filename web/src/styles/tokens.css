@@ -1,6 +1,6 @@
 /* Design lock 15.10.2026: docs/design/2026-10-15-ui-system.md; тёмная тема сайта зрителя — 28.10.2026. */
 :root{
- --app-bg:#f4f6f8;--surface:#fff;--surface-2:#f8fafb;--hover:#edf1f4;--text:#19221f;--text-muted:#636e7f;--border:#e2e7ec;--line-strong:#7d8893;
+ --app-bg:#f4f6f8;--surface:#fff;--surface-2:#f8fafb;--hover:#edf1f4;--text:#19221f;--text-muted:#626d80;--border:#e2e7ec;--line-strong:#7d8893;
  --accent:#b8ec64;--accent-strong:#9fd94a;--accent-ink:#22361a;--accent-soft:#eef8dc;--accent-soft-ink:#22361a;--accent-line:#5a9316;
  --pitch:#172620;--home:#488ee6;--away:#e9aa49;
  --ok:#2f7d32;--ok-soft:#e8f4e8;--warn:#9a5b00;--warn-soft:#fff4e0;--danger:#b42318;--danger-soft:#fdecea;--on-danger:#fff;--info-soft:#eaf2fc;

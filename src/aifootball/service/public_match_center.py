@@ -27,6 +27,9 @@ class PublicMatchDayPage(BaseModel):
     total:int
     next_cursor:str|None
     tournament_totals:dict[str,int]
+    # Nearest days with any visible match under the same filters, so an empty day can lead somewhere.
+    previous_day:date|None=None
+    next_day:date|None=None
 
 class PublicUpcomingMatches(BaseModel):
     timezone:str='Europe/Moscow'
@@ -41,6 +44,10 @@ def register(router,match_query,match_view):
         generated=now();day=day or generated.astimezone(ZONE).date()
         start=datetime.combine(day,time.min,tzinfo=ZONE)
         query=match_query(tournament_id=tournament_id,team_id=team_id,q=q).where(Match.scheduled_at>=start,Match.scheduled_at<start+timedelta(days=1))
+        filtered=match_query(tournament_id=tournament_id,team_id=team_id,q=q).subquery()
+        game_day=lambda value:value.astimezone(ZONE).date() if value else None
+        previous_day=game_day(db.scalar(select(func.max(filtered.c.scheduled_at)).where(filtered.c.scheduled_at<start)))
+        next_day=game_day(db.scalar(select(func.min(filtered.c.scheduled_at)).where(filtered.c.scheduled_at>=start+timedelta(days=1))))
         if status!='all':query=query.where(Match.status=={'live':'live','upcoming':'scheduled','finished':'ended'}[status])
         if status=='upcoming':query=query.where(Match.scheduled_at>=generated)
         source=query.subquery();total=db.scalar(select(func.count()).select_from(source))
@@ -61,10 +68,17 @@ def register(router,match_query,match_view):
             m,t=rows[-1][:2]
             next_cursor=base64.urlsafe_b64encode(json.dumps([fingerprint,rows[-1][-1],str(t.id),m.scheduled_at.isoformat(),str(m.id)]).encode()).decode().rstrip('=')
         return {'day':day,'generated_at':generated,'items':[match_view(row[:-1]) for row in rows],'total':total,
-                'next_cursor':next_cursor,'tournament_totals':{str(key):value for key,value in counts}}
+                'next_cursor':next_cursor,'tournament_totals':{str(key):value for key,value in counts},
+                'previous_day':previous_day,'next_day':next_day}
 
     @router.get('/matches/upcoming',response_model=PublicUpcomingMatches)
     def upcoming(tournament_id:UUID|None=None,team_id:UUID|None=None,q:str=Query('',max_length=200),limit:int=Query(3,ge=1,le=3),db:Session=Depends(get_session)):
         generated=now()
         query=match_query(tournament_id=tournament_id,team_id=team_id,q=q).where(Match.status=='scheduled',Match.scheduled_at>=generated,Match.scheduled_at<=generated+timedelta(days=14))
         return {'generated_at':generated,'items':[match_view(row) for row in db.execute(query.order_by(Match.scheduled_at,Match.id).limit(limit))]}
+
+    @router.get('/matches/recent',response_model=PublicUpcomingMatches)
+    def recent(tournament_id:UUID|None=None,team_id:UUID|None=None,q:str=Query('',max_length=200),limit:int=Query(5,ge=1,le=5),db:Session=Depends(get_session)):
+        generated=now()
+        query=match_query(tournament_id=tournament_id,team_id=team_id,q=q).where(Match.status=='ended',Match.scheduled_at<generated)
+        return {'generated_at':generated,'items':[match_view(row) for row in db.execute(query.order_by(Match.scheduled_at.desc(),Match.id).limit(limit))]}

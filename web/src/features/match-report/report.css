@@ -68,7 +68,7 @@
 .stat-label{text-align:center;color:var(--text);line-height:18px}
 .stat-value{display:flex;flex-direction:column;gap:1px;font-variant-numeric:tabular-nums;font-weight:600;min-width:0}
 .stat-value.home{align-items:flex-start}.stat-value.away{align-items:flex-end}
-.stat-value small{font-weight:400;font-size:11px;color:var(--text-muted);line-height:14px}
+.stat-value small{font-weight:400;font-size:12px;color:var(--text-muted);line-height:14px}
 .pill{display:inline-block;padding:2px 9px;border-radius:999px;color:#fff;line-height:20px}
 .pill.home{background:var(--home)}.pill.away{background:var(--away)}
 .partial-mark{color:var(--text-muted)}
@@ -82,7 +82,7 @@
 .zone-bars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
 .zone{display:block;text-align:center;font-size:12px;font-weight:600;color:#fff;border-radius:4px;padding:4px 0}
 .zone.home{background:var(--home)}.zone.away{background:var(--away)}
-.zone-axis{display:grid;grid-template-columns:120px repeat(3,minmax(0,1fr));gap:4px;font-size:11px;color:var(--text-muted);text-align:center}
+.zone-axis{display:grid;grid-template-columns:120px repeat(3,minmax(0,1fr));gap:4px;font-size:12px;color:var(--text-muted);text-align:center}
 .zone-axis span:first-child{grid-column:2}
 /* Лента событий: хозяева слева, гости справа, минута по центру. */
 .timeline{list-style:none;margin:0;padding:0}
@@ -111,7 +111,7 @@
 .day-matches{list-style:none;margin:0;padding:0;display:grid}
 .day-matches li{padding:8px 0;border-bottom:1px solid var(--border)}.day-matches li:last-child{border-bottom:0}
 .day-matches a{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center;font-size:13px;color:var(--text)}
-.day-matches a span:first-child{text-align:right}.day-matches small{display:block;text-align:center;font-size:11px}
+.day-matches a span:first-child{text-align:right}.day-matches small{display:block;text-align:center;font-size:12px}
 @media(max-width:1024px){.match-report.with-aside{grid-template-columns:minmax(0,1fr)}.report-aside{position:static}}
 @media(max-width:760px){.stat-grid{grid-template-columns:minmax(0,1fr)}.stat-card:nth-child(odd):not(.wide){border-right:0}
  .zone-team,.zone-axis{grid-template-columns:90px minmax(0,1fr)}.zone-axis{grid-template-columns:90px repeat(3,minmax(0,1fr))}}

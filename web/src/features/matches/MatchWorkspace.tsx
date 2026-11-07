@@ -1,4 +1,5 @@
 import {scheduleReturn,analysisQueueReturn} from '../navigation/query';
+import {useDocumentTitle} from '../../components/useDocumentTitle';
 import {useEffect,useState,type ReactNode} from 'react';
 import {Link,useParams,useLocation} from 'react-router-dom';
 import {ArrowLeft,History} from 'lucide-react';
@@ -54,6 +55,7 @@ export function MatchWorkspace({matchId}:{matchId:string}){
  const tournament=useLoad(async()=>tid?api<Tournament>(`/tournaments/${tid}`):undefined,tid);
  useCabinetRail(tournament.data?<TournamentRail id={tournament.data.id} name={tournament.data.name} active={queueBack?'analysis':'matches'} analytics={analytics}/>:null,[tournament.data?.id,tournament.data?.name,analytics,queueBack]);
  const m=match.data;
+ useDocumentTitle(m?`${m.home.team.name} — ${m.away.team.name}`:null);
  if(!m)return <Loading error={match.error} retry={match.reload}/>;
  const tz=tournament.data?.timezone??'Europe/Moscow';
  const state:Record<string,SectionItem['state']>={info:m.hall_id?undefined:'attention',lineup:m.lineup.length?undefined:'attention',
