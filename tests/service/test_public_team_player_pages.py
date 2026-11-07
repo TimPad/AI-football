@@ -44,3 +44,19 @@ def test_private_or_archived_tournaments_and_unpublished_people_are_not_public(a
         assert admin_client.get('/api/v1'+path).status_code==404
     current=admin_client.get('/api/v1/tournaments/'+tid).json();admin_client.patch('/api/v1/tournaments/'+tid,json={'expected_revision':current['revision'],'visibility':'public','archived':True})
     assert admin_client.get(f'/api/v1/public/players/{pid}').status_code==404
+
+def test_public_appearance_carries_opponent_score_goals_and_assists_from_the_snapshot(admin_client,match_factory,send_command):
+    m=match_factory();home=[p for p in m['lineup'] if p['side']=='home'];away=next(p['player_id'] for p in m['lineup'] if p['side']=='away')
+    scorer,helper=home[0]['player_id'],home[1]['player_id']
+    # Итог 3 : 2 (его выставляет publish): два гола забивает scorer, один — helper, у гостей два.
+    goals=[('home',{'player_id':scorer,'assist_id':helper,'assist_known':True}),('home',{'player_id':scorer}),('home',{'player_id':helper}),('away',{'player_id':away}),('away',{'player_id':away})]
+    for side,event in goals:
+        r=send_command(m,'add_event',{'event':{'id':str(uuid4()),'kind':'goal','side':side,'period':1,'elapsed_ms':1000}|event});assert r.status_code==200,r.text;m=r.json()
+    m=send_command(m,'set_completeness',{'goals':'complete'}).json()
+    m=publish(admin_client,send_command,m);tid=m['tournament_id']
+    body=admin_client.get(f'/api/v1/public/players/{scorer}?tournament_id={tid}').json();a=body['appearances']['items'][0]
+    assert (a['side'],a['opponent_name'],a['goals_for'],a['goals_against'],a['goals'])==('home',m['away']['team']['name'],3,2,2)
+    # Передачи размечены не полностью: ноль неизвестен, а найденная передача видна.
+    assert a['assists'] is None
+    assert admin_client.get(f'/api/v1/public/players/{helper}?tournament_id={tid}').json()['appearances']['items'][0]['assists']==1
+    assert (body['shirt_number'],body['team_name'])==(home[0]['shirt_number'],m['home']['team']['name'])

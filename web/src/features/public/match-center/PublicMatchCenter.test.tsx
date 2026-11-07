@@ -38,8 +38,8 @@ it('opens a match from the whole row and keeps the guess of leaders out of the l
  vi.stubGlobal('fetch',vi.fn(async input=>{const path=String(input);return new Response(JSON.stringify(path.includes('/ratings')?{items:[],snapshot_id:null}:path.includes('/upcoming')?{items:[]}:path.includes('/tournaments?')?{items:[t],total:1}:day([match('1')])))}));
  render(<MemoryRouter initialEntries={['/?day=2026-10-20']}><Routes><Route path="/" element={<><PublicMatchCenter/><Where/></>}/></Routes></MemoryRouter>);
  const row=await screen.findByRole('link',{name:'Открыть матч Север 1 — Юг'});
- expect(row).toHaveAttribute('href','/watch/matches/1');expect(row).toHaveTextContent('Север 1');
- expect(screen.queryByRole('link',{name:'Север 1'})).toBeNull();expect(row.textContent).not.toMatch(/Запланирован/);
+ expect(row).toHaveAttribute('href','/watch/matches/1');const card=row.closest('article')!;expect(card).toHaveTextContent('Север 1');
+ expect(screen.queryByRole('link',{name:'Север 1'})).toBeNull();expect(card.textContent).not.toMatch(/Запланирован/);
  expect(screen.getByTestId('where').textContent).not.toContain('leaders_tournament_id');expect(document.title).toBe('Матчи — AI Football');
 });
 it('fills an empty day with neighbouring game days, recent results and the nearest games',async()=>{

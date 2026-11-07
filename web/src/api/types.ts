@@ -6627,6 +6627,21 @@ export interface components {
              * Format: date-time
              */
             published_at: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Opponent Name */
+            opponent_name: string;
+            /** Goals For */
+            goals_for?: number | null;
+            /** Goals Against */
+            goals_against?: number | null;
+            /** Goals */
+            goals?: number | null;
+            /** Assists */
+            assists?: number | null;
         };
         /** PublicCard */
         PublicCard: {
@@ -6970,6 +6985,10 @@ export interface components {
             id: string;
             /** Display Name */
             display_name: string;
+            /** Shirt Number */
+            shirt_number?: string | null;
+            /** Team Name */
+            team_name?: string | null;
             /** Tournament Id */
             tournament_id?: string | null;
             teams: components["schemas"]["Page_PublicPlayerTeam_"];

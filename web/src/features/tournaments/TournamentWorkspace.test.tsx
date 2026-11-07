@@ -50,7 +50,7 @@ describe('tournament workspace',()=>{
   await within(rail).findByRole('link',{name:'Матчи'});
   expect(within(rail).getAllByRole('link').map(a=>a.textContent)).toEqual(['Кубок Ярославля','Таблица','Матчи','Команды','Настройки']);
   expect(within(rail).getByRole('link',{name:'Матчи'})).toHaveAttribute('aria-current','page');
-  expect(screen.getByRole('link',{name:'Открыть матч Север — Юг'})).toHaveAttribute('href','/matches/m1');
+  expect(screen.getByRole('link',{name:/^Открыть матч Север — Юг/})).toHaveAttribute('href','/matches/m1');
  });
  it('marks an ended match that is not on the site yet, without per-match requests',async()=>{
   const paths=stub();render(<Harness tab="matches"/>);

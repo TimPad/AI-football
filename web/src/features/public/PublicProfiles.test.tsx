@@ -12,7 +12,10 @@ test('a team without a published protocol shows schedule and an honest empty ros
  await screen.findByRole('heading',{name:'Север'});expect(screen.getByText('Состав ещё не опубликован')).toBeInTheDocument();expect(screen.getByRole('heading',{name:'Матчи команды'})).toBeInTheDocument();
 });
 test('a player with a published lineup opens even without a rating',async()=>{
- vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({id:pid,display_name:'Иван из протокола',teams:{items:[{team_id:team,team_name:'Север',tournament_id:tid,tournament_name:'Кубок'}],total:1},appearances:{items:[{match_id:team,display_name:'Иван из протокола',shirt_number:'7',team_id:team,team_name:'Север',tournament_id:tid,tournament_name:'Кубок',scheduled_at:'2026-10-20T16:00:00Z',timezone:'Europe/Moscow'}],total:1}}))));
+ vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({id:pid,display_name:'Иван из протокола',teams:{items:[{team_id:team,team_name:'Север',tournament_id:tid,tournament_name:'Кубок'}],total:1},appearances:{items:[{match_id:team,display_name:'Иван из протокола',shirt_number:'7',team_id:team,team_name:'Север',tournament_id:tid,tournament_name:'Кубок',scheduled_at:'2026-10-20T16:00:00Z',timezone:'Europe/Moscow',side:'home',opponent_name:'Юг',goals_for:3,goals_against:2,goals:1,assists:null}],total:1},shirt_number:'7',team_name:'Север'}))));
  render(<MemoryRouter initialEntries={[`/watch/players/${pid}?tournament_id=${tid}`]}><Routes><Route path="/watch/players/:id" element={<PublicPlayerPage/>}/></Routes></MemoryRouter>);
- await screen.findByRole('heading',{name:'Иван из протокола'});expect(screen.getByRole('heading',{name:'Опубликованные выступления'})).toBeInTheDocument();expect(screen.getByText('Рейтинг в этом турнире пока не доступен.')).toBeInTheDocument();
+ await screen.findByRole('heading',{name:'Иван из протокола'});expect(screen.getByRole('heading',{name:'Матчи'})).toBeInTheDocument();
+ // Шапка: номер и команда; строка матча: дата без секунд, соперник, счёт и вклад игрока, без повтора имени.
+ expect(screen.getByText('№ 7 · Север')).toBeInTheDocument();
+ const row=screen.getByRole('link',{name:/Открыть матч против Юг/});expect(row).toHaveTextContent('20 окт. 2026');expect(row).toHaveTextContent('против Юг');expect(row).toHaveTextContent('3 : 2');expect(row).toHaveTextContent('1 гол');expect(row).not.toHaveTextContent('Иван');expect(row).not.toHaveTextContent(/\d:\d\d:\d\d/);expect(screen.getByText('Рейтинг в этом турнире пока не доступен.')).toBeInTheDocument();
 });

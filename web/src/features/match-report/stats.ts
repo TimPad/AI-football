@@ -70,8 +70,10 @@ const LOWER=new Set(['turnovers','errors']);
 function actionCell(row:Row,side:Side):Cell{
  const v=row[side];
  if(row.unit==='percent'){
-  if(!v.denominator)return {value:null,text:'—',note:v.unknown?`исход неизвестен: ${v.unknown}`:undefined};
-  return {value:v.value,text:`${v.numerator}/${v.denominator} (${num(v.value,0)} %)`,note:v.unknown?`ещё неизвестно: ${v.unknown}`:undefined};
+  // Крупно — процент, мелко — «точные/все» и попытки без известного исхода.
+  const open=v.unknown?`${v.unknown} без исхода`:undefined;
+  if(!v.denominator)return {value:null,text:'—',note:open};
+  return {value:v.value,text:`${num(v.value,0)} %`,note:[`${v.numerator}/${v.denominator}`,open].filter(Boolean).join(' · ')};
  }
  return count(v.value);
 }
