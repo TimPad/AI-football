@@ -40,3 +40,17 @@ button.pending{cursor:progress}
 .section-steps a[aria-current]{background:var(--accent-soft);color:var(--text);font-weight:620}
 /* Пометка данных, полученных автоматически по видео */
 .auto-note{margin:8px 0;padding:8px 12px;border-radius:var(--radius);background:var(--info-soft);font-size:14px}
+/* Меню «…» для редких и опасных действий. */
+.more-menu{position:relative;margin:0;display:inline-block}.more-menu>summary{list-style:none;display:inline-grid;place-items:center;cursor:pointer;margin:0;border-radius:var(--radius)}.more-menu>summary::-webkit-details-marker{display:none}
+.more-menu>summary:hover{background:var(--hover)}.more-menu[open]>summary{background:var(--hover)}
+.more-menu-list{position:absolute;right:0;top:calc(100% + 4px);z-index:25;min-width:220px;display:flex;flex-direction:column;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 40px #10212b26}
+.more-menu-list button{justify-content:flex-start;border:0;background:transparent;min-height:40px;font-weight:500;text-align:left}.more-menu-list button:hover{background:var(--hover)}
+.danger-text{color:var(--danger)!important}
+.confirm-body p{margin:0 0 12px}.confirm-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:8px}
+.nav-state-text{margin-left:6px;font-size:12px;font-weight:500;color:var(--warn)}.nav-state-done{margin-left:4px;width:14px;height:14px;color:var(--accent-line);vertical-align:-2px}
+/* Ссылка-кнопка выглядит как кнопка везде, а не только внутри отдельных экранов. */
+a.button{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;min-height:40px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font-size:14px;font-weight:550;text-decoration:none;white-space:nowrap}
+a.button:hover{background:var(--hover);color:var(--text);text-decoration:none}
+a.button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}a.button.primary:hover{background:var(--accent-strong);color:var(--accent-ink)}
+.empty-action{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:40px 24px}.empty-action p{margin:0;max-width:440px;color:var(--text-muted)}
+.roster-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}

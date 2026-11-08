@@ -7,9 +7,9 @@ test('creates teams from Excel in the tournament, corrects a number and schedule
  await page.getByRole('link',{name:'Создать турнир',exact:true}).click();
  await page.getByLabel('Название турнира',{exact:true}).fill(`Excel ${crypto.randomUUID().slice(0,8)}`);
  await page.getByLabel('Начало турнира').fill('2026-10-01');await page.getByLabel('Окончание турнира').fill('2027-05-30');
- await page.getByRole('button',{name:'Создать и добавить команды'}).click();await page.getByRole('button',{name:'Сохранить регламент',exact:true}).click();
+ await page.getByRole('button',{name:'Далее',exact:true}).click();await page.getByRole('button',{name:'Сохранить регламент',exact:true}).click();
  await expect(page.getByRole('button',{name:'Применить к будущим матчам'})).toBeVisible();const tid=page.url().split('/tournaments/')[1].split('/')[0];
- await page.getByRole('button',{name:'Продолжить',exact:true}).click();
+ await page.getByRole('button',{name:'Далее',exact:true}).click();
  const suffix=crypto.randomUUID().slice(0,8),home=`Север ${suffix}`,away=`Юг ${suffix}`;
  const book=execFileSync('../.venv/bin/python',['-c',`from openpyxl import Workbook\nimport sys\nw=Workbook();s=w.active;s.title='Состав';s.append(['Команда','ФИО','Номер']);s.append([sys.argv[1],sys.argv[1]+' Один','7']);s.append([sys.argv[1],sys.argv[1]+' Два','7']);s.append([sys.argv[2],sys.argv[2]+' Один','7']);[s.append([sys.argv[1],sys.argv[1]+' Игрок '+str(i),str(i)]) for i in range(9,21)];w.save(sys.stdout.buffer)`,home,away]);
  const started=Date.now();

@@ -12,7 +12,7 @@ import {useAuth} from '../auth/Auth';
 import {isUuid,readMatchTab} from '../navigation/query';
 import {TournamentRail,useCabinetRail} from '../navigation/rail';
 import {useQueryPatch} from '../navigation/useQueryPatch';
-import {ProtocolSession,SessionChrome,useProtocolSession,useSessionDispatch} from '../protocol/ProtocolSession';
+import {ProtocolSession,useOptionalProtocolSession,SessionChrome,useProtocolSession,useSessionDispatch} from '../protocol/ProtocolSession';
 import {ProtocolEditor} from '../protocol/ProtocolEditor';
 import {HistoryPanel} from '../protocol/ProtocolPanels';
 import {ReviewWorkspace} from '../analysis/ReviewWorkspace';
@@ -63,13 +63,13 @@ export function MatchWorkspace({matchId}:{matchId:string}){
  // Состояние раздела — по его шагам: хоть один требует внимания → раздел тоже.
  const items=TASKS.map(t=>{const steps=t.steps?.filter(s=>analytics||!ANALYTICS_ONLY.has(s.id)).map(s=>({...s,state:state[s.id]}));
   const own=steps?.some(s=>s.state==='attention')?'attention':state[t.id];return {...t,steps,state:own}});
- return <div className="match-workspace">
+ const page=<div className="match-workspace">
   <header className="cabinet-match-head">
    <Link className="icon-button back" to={queueBack??scheduleReturn(location.state?.scheduleReturn,m.tournament_id)} aria-label={queueBack?'К очереди аналитики':'К матчам турнира'}><ArrowLeft/></Link>
    <div className="title"><h1>{m.home.team.name} — {m.away.team.name} <span className={`chip status-chip ${m.status}`}>{statuses[m.status]}</span></h1>
     <p className="muted num">{dateTime(m.scheduled_at,tz)} · {m.hall_snapshot?.name||m.venue_label||'Место не указано'}</p></div>
    <div className="cabinet-head-side">
-    <div className="cabinet-score num" aria-label="Текущий счёт протокола в кабинете">{m.projection.effective_score.home??'—'} : {m.projection.effective_score.away??'—'}</div>
+    <HeaderScore score={m.projection.effective_score}/>
     <a className="history-link" href="?tab=history" aria-current={tab==='history'?'page':undefined} onClick={e=>{if(e.metaKey||e.ctrlKey||e.shiftKey||e.button!==0)return;e.preventDefault();update({tab:'history'})}}><History aria-hidden="true"/>История изменений</a>
    </div>
   </header>
@@ -77,7 +77,7 @@ export function MatchWorkspace({matchId}:{matchId:string}){
    href={value=>`?${new URLSearchParams({tab:value})}`}/>
   <div className="match-task">
    {tab==='overview'&&<MatchOverview match={m} timezone={tz} analytics={analytics}/>}
-   {EDITING.has(tab)&&<ProtocolSession matchId={matchId}><EditingTask tab={tab}/></ProtocolSession>}
+   {EDITING.has(tab)&&<EditingTask tab={tab}/>}
    {tab==='review'&&<ReviewWorkspace matchId={matchId} actorId={session!.id} canManage={analytics}/>}
    {tab==='participation'&&analytics&&<ParticipationEditor matchId={matchId} actorId={session!.id} onSaved={()=>setTick(n=>n+1)}/>}
    {tab==='actions'&&analytics&&<ActionReview matchId={matchId} actorId={session!.id} onSaved={()=>setTick(n=>n+1)}/>}
@@ -85,6 +85,14 @@ export function MatchWorkspace({matchId}:{matchId:string}){
    {tab==='publication'&&<MatchPublication matchId={matchId} tournamentId={m.tournament_id} actorId={session!.id} canManage={analytics}/>}
   </div>
  </div>;
+ // На вкладках протокола сессия ввода охватывает и шапку: единственный счёт матча меняется вместе с вводом.
+ return EDITING.has(tab)?<ProtocolSession matchId={matchId}>{page}</ProtocolSession>:page;
+}
+
+// Счёт — один, в шапке; в редакторе он берётся из живой сессии протокола, иначе — из последнего чтения матча.
+function HeaderScore({score}:{score:Match['projection']['effective_score']}){
+ const s=useOptionalProtocolSession()?.queue?.view.projection.effective_score??score;
+ return <div className="cabinet-score num" aria-label="Текущий счёт протокола в кабинете">{s.home??'—'} : {s.away??'—'}</div>;
 }
 
 function EditingTask({tab}:{tab:string}){

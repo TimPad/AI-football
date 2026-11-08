@@ -10,7 +10,7 @@ it('creates player rows in the team form and retains a draft on remount',()=>{
  const view=render(<MemoryRouter><TeamEditor {...props}/></MemoryRouter>);
  expect(screen.getByLabelText('ФИО игрока 1')).toBeVisible();
  fireEvent.change(screen.getByLabelText('Название команды'),{target:{value:'Север'}});
- fireEvent.click(screen.getByRole('button',{name:'Добавить строку игрока'}));
+ fireEvent.click(screen.getByRole('button',{name:'Добавить игрока'}));
  fireEvent.change(screen.getByLabelText('ФИО игрока 1'),{target:{value:'Иван Петров'}});
  fireEvent.change(screen.getByLabelText('Номер игрока 1'),{target:{value:'7'}});
  view.unmount();
