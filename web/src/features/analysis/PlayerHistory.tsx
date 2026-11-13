@@ -1,9 +1,9 @@
-import { PlayerRatingHistory } from '../ratings/PlayerRatingHistory';
-import { useAuth } from '../auth/Auth';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { AnalysisHistory, Player } from '../../api/domain';
-import { useLoad, Loading } from '../../components/ui';
+import { Loading, useLoad } from '../../components/ui';
+import { useAuth } from '../auth/Auth';
+import { PlayerRatingHistory } from '../ratings/PlayerRatingHistory';
 import { AnalysisReport, measure } from './AnalysisReport';
 export function PlayerHistory() {
   const { session } = useAuth();

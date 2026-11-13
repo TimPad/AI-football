@@ -15,12 +15,16 @@ class MemoryMailSender:
 
 
 def main():
-    import argparse, os, json
+    import argparse
+    import json
+    import os
     from pathlib import Path
+
     from sqlalchemy.engine import make_url
-    from aifootball.service.config import Settings
+
     from aifootball.service.app import create_app
     from aifootball.service.captains.mail import deliver_pending
+    from aifootball.service.config import Settings
 
     p = argparse.ArgumentParser()
     p.add_argument('--email', required=True)

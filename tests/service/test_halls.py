@@ -1,9 +1,10 @@
-from uuid import uuid4
-from io import BytesIO
-from zipfile import ZipFile
 import json
-import yaml
+from io import BytesIO
+from uuid import uuid4
+from zipfile import ZipFile
+
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 
 
@@ -110,10 +111,11 @@ def test_match_pins_hall_and_camera_and_exports_real_cv_config(admin_client, mat
         assert config['pitch'] == {'length_m': 41, 'width_m': 15.5}
         assert config['processing']['camera_profile_id'] == camera['id']
         assert json.loads(zipped.read('source.json'))['match_id'] == m['id']
-    from aifootball.venue import load_venue
-    from aifootball.state.project import project_tracks
-    from aifootball.geometry.homography import apply_homography
     import numpy as np
+
+    from aifootball.geometry.homography import apply_homography
+    from aifootball.state.project import project_tracks
+    from aifootball.venue import load_venue
 
     venue = load_venue(tmp_path)
     assert venue.length_m == 41 and venue.frame_width == 1000

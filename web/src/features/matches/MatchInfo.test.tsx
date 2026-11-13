@@ -1,8 +1,9 @@
-import { it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { expect, it, vi } from 'vitest';
+import type { DraftCommand, Match } from '../../api/domain';
 import { MatchInfo } from './MatchPage';
-import type { Match, DraftCommand } from '../../api/domain';
+
 vi.mock('../../api/client', () => ({
   api: vi.fn(async () => ({ timezone: 'Europe/Moscow' })),
   all: vi.fn(async () => []),

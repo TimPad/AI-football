@@ -1,16 +1,17 @@
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.security import require_admin
-from aifootball.service.common import as_dict, get_entity, list_entities
+from aifootball.service.common import get_entity, list_entities
 from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match, MatchCommand
 from aifootball.service.protocol.models import ProtocolVersion
 from aifootball.service.public_visibility import require_public_match
-
-from aifootball.service.views import Page, VersionView, PublicProtocol
+from aifootball.service.views import Page, PublicProtocol, VersionView
 
 router = APIRouter()
 

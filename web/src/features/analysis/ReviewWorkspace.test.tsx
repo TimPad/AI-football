@@ -1,11 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisRun } from '../../api/domain';
+
 vi.mock('../../api/client', async () => {
   const actual = await vi.importActual<typeof import('../../api/client')>('../../api/client');
   return { ...actual, api: vi.fn(), post: vi.fn() };
 });
+
 import { api } from '../../api/client';
 import { IdentityReview } from './IdentityReview';
 import { ReviewWorkspace } from './ReviewWorkspace';

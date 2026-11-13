@@ -1,13 +1,13 @@
-import { useState, type ChangeEvent } from 'react';
+import { ArrowLeft, CheckCircle2, FileSpreadsheet, Upload } from 'lucide-react';
+import { type ChangeEvent, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Upload, FileSpreadsheet, CheckCircle2, ArrowLeft } from 'lucide-react';
-import { api, post, ApiError } from '../../api/client';
-import { useLoad, Loading, ErrorBox } from '../../components/ui';
+import { ApiError, api, post } from '../../api/client';
+import { ErrorBox, Loading, useLoad } from '../../components/ui';
 import { useAuth } from '../auth/Auth';
 import { useDraft } from '../protocol/drafts';
 import { ImportMapping } from './ImportMapping';
 import { ImportPreview } from './ImportPreview';
-import { initialConfig, type ImportView, type ImportConfig, type ImportResult } from './types';
+import { type ImportConfig, type ImportResult, type ImportView, initialConfig } from './types';
 import './roster-import.css';
 
 type Draft = { config: ImportConfig; pending: { request_id: string; expected_revision: number } | null };

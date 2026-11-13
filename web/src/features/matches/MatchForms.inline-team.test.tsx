@@ -1,7 +1,8 @@
-import { test, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { expect, test, vi } from 'vitest';
+import type { Entry, RegVersion, Tournament } from '../../api/domain';
 import { MatchCreateForm } from './MatchForms';
-import type { Tournament, Entry, RegVersion } from '../../api/domain';
+
 vi.mock('../halls/HallSelection', () => ({ HallSelection: () => null }));
 vi.mock('../../api/client', () => ({
   all: async () => [],

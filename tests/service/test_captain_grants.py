@@ -1,5 +1,7 @@
 from uuid import uuid4
+
 from sqlalchemy.orm import Session
+
 from .captain_helpers import captain, configure_mail, delivered_token
 
 
@@ -49,7 +51,8 @@ def test_revoked_invitation_does_not_grant_access(admin_client):
 
 def test_expiry_one_owner_and_explicit_transfer(admin_client):
     from datetime import timedelta
-    from aifootball.service.captains.models import TeamCaptainInvitation, TeamCaptainGrant
+
+    from aifootball.service.captains.models import TeamCaptainGrant, TeamCaptainInvitation
 
     configure_mail(admin_client.app)
     c, _ = captain(admin_client.app)

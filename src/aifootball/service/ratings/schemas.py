@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Annotated, Literal, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
-from pydantic import field_validator, BaseModel, Field, StrictBool
+
+from pydantic import BaseModel, Field, StrictBool, field_validator
+
 from aifootball.service.tournaments.schemas import Input
 
 Millis = Annotated[int, Field(strict=True, ge=0, le=86400000)]

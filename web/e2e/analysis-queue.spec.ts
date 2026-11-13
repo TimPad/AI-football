@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
-import { createTournament, task, login } from './helpers';
+import { expect, test } from '@playwright/test';
+import { createTournament, login, task } from './helpers';
+
 test('Admin+ follows a queue action and returns to its filters, while ordinary admins cannot access it', async ({
   page,
   browser,

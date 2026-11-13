@@ -1,4 +1,4 @@
-import { api, ApiError, errorText } from '../../api/client';
+import { ApiError, api, errorText } from '../../api/client';
 import type { MatchRatingsView, PublicAnalysis, PublicMatch, PublicProtocol, TeamActionStats } from '../../api/domain';
 import type { ReportModel, Resource } from '../match-report/model';
 

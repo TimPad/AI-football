@@ -1,11 +1,11 @@
+import { type FormEvent, useRef, useState } from 'react';
+import { all, api, post } from '../../api/client';
+import type { Entry, Match, Player, Regulation, RegVersion, TeamProfile, Tournament } from '../../api/domain';
+import { Check, ErrorBox, Field, Loading, Modal, useLoad } from '../../components/ui';
 import { TeamEditor } from '../catalog/TeamEditor';
 import { HallSelection } from '../halls/HallSelection';
-import { BroadcastFields, readBroadcast } from './BroadcastFields';
-import { useState, useRef, type FormEvent } from 'react';
-import type { Tournament, Entry, RegVersion, Match, Regulation, Player, TeamProfile } from '../../api/domain';
-import { post, all, api } from '../../api/client';
-import { Field, ErrorBox, Check, Modal, useLoad, Loading } from '../../components/ui';
 import { RegulationForm } from '../tournaments/RegulationForm';
+import { BroadcastFields, readBroadcast } from './BroadcastFields';
 import { localInput, zonedToUtc } from './timezone';
 export function MatchCreateForm({
   tournament,

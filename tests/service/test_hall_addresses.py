@@ -1,6 +1,8 @@
 from uuid import uuid4
+
 import pytest
 from fastapi.testclient import TestClient
+
 from .test_halls import hall_body
 
 
@@ -99,6 +101,7 @@ def test_manual_fallback_and_provider_failures(admin_client, provider):
 
 def test_foreign_selection_and_actor_rate_limit(provider):
     from sqlalchemy.orm import Session
+
     from aifootball.service.auth.cli import create_admin
 
     location = selection(provider)
@@ -116,7 +119,10 @@ def test_foreign_selection_and_actor_rate_limit(provider):
 
 
 def test_adapter_converts_provider_order_and_redacts_keys(provider, monkeypatch, caplog):
-    import httpx, logging
+    import logging
+
+    import httpx
+
     from aifootball.service.halls.address_provider import YandexAddressProvider
 
     provider.app.state.settings.yandex_geocoder_key = 'fake-secret-not-for-logs'

@@ -1,7 +1,7 @@
 """Second opt-in pilot: one visual pass, persistent context, no free-form feed."""
 
-from copy import deepcopy
 import json
+from copy import deepcopy
 
 from aifootball.analytics.exchange import canonical
 from aifootball.understanding.match_context import validate_passport

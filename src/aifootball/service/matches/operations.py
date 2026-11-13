@@ -1,16 +1,17 @@
-from datetime import timezone
-from sqlalchemy import select, delete
+from datetime import UTC
+
 from fastapi.encoders import jsonable_encoder
-from aifootball.service.common import get_entity, as_dict
+from sqlalchemy import select
+
 from aifootball.service.catalog.models import Entry, EntryPlayer, Player, Team
 from aifootball.service.catalog.operations import entry_view
-from aifootball.service.tournaments.models import Tournament, RegulationVersion
-from aifootball.service.tournaments.schemas import Regulation
-from aifootball.service.tournaments.rules import resolve_rules
-from aifootball.service.matches.models import Match, LineupMember
-from aifootball.service.protocol.schemas import ProtocolDocument, ClockState
-from aifootball.service.errors import DomainError
+from aifootball.service.common import as_dict, get_entity
 from aifootball.service.db import utcnow
+from aifootball.service.errors import DomainError
+from aifootball.service.matches.models import LineupMember, Match
+from aifootball.service.protocol.schemas import ClockState, ProtocolDocument
+from aifootball.service.tournaments.models import RegulationVersion, Tournament
+from aifootball.service.tournaments.rules import resolve_rules
 
 
 def assert_match_links(home, away, regulation, tournament_id):
@@ -32,7 +33,7 @@ def create_match(db, tid, data, actor):
         raise DomainError('override_reason', 'Объясните исключение из регламента')
     values = data.model_dump()
     values['regulation_override'] = data.regulation_override.model_dump() if data.regulation_override else None
-    values['scheduled_at'] = data.scheduled_at.astimezone(timezone.utc)
+    values['scheduled_at'] = data.scheduled_at.astimezone(UTC)
     match = Match(
         tournament_id=tid,
         **values,

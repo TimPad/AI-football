@@ -1,11 +1,11 @@
-import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
+import { type FormEvent, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { all, api, post } from '../../api/client';
+import type { Tournament } from '../../api/domain';
+import { Empty, ErrorBox, Field, Loading, useLoad } from '../../components/ui';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { dateRange } from '../matches/timezone';
-import { all, post, api } from '../../api/client';
-import type { Tournament } from '../../api/domain';
-import { useLoad, Loading, Empty, Field, ErrorBox } from '../../components/ui';
 // Сезон считается из дат: «2026» или «2026/2027» — отдельное поле не нужно.
 export const seasonOf = (starts: string, ends: string) => {
   const a = starts.slice(0, 4),

@@ -3,14 +3,16 @@
 import base64
 import hashlib
 import json
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
+
 from fastapi import Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import select, func, tuple_
+from sqlalchemy import func, select, tuple_
 from sqlalchemy.orm import Session
+
 from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match
@@ -21,7 +23,7 @@ ZONE = ZoneInfo('Europe/Moscow')
 
 
 def now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class PublicMatchDayPage(BaseModel):

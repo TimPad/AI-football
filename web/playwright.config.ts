@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+
 const baseURL = `http://127.0.0.1:${process.env.AIF_E2E_PORT ?? '8181'}`;
 export default defineConfig({
   testDir: './e2e',

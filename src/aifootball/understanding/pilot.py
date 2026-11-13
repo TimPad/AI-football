@@ -1,13 +1,13 @@
 """Opt-in joint VLM experiment. Not used by process-job or the service."""
 
-from dataclasses import replace
-from copy import deepcopy
-from hashlib import sha256
 import re
+from copy import deepcopy
+from dataclasses import replace
+from hashlib import sha256
 
 from aifootball.analytics.exchange import canonical, load_json
 from aifootball.processor.qwen import QwenError
-from aifootball.understanding.schema import EVENT_KINDS, STATE_KINDS, PHASE_KINDS
+from aifootball.understanding.schema import EVENT_KINDS, PHASE_KINDS, STATE_KINDS
 
 VERSION = 'joint-pilot-v1'
 OUTPUT_LIMIT = 4096

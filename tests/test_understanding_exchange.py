@@ -1,13 +1,15 @@
+import json
+import stat
 from hashlib import sha256
 from io import BytesIO
 from zipfile import ZipFile, ZipInfo
-import json
-import stat
+
 import pytest
 from PIL import Image
+
+from aifootball.analytics.exchange import ExchangeError, Limits, canonical, validate_result
 from test_analysis_exchange import result_zip
-from understanding_fixtures import understanding_document, event
-from aifootball.analytics.exchange import canonical, validate_result, ExchangeError, Limits
+from understanding_fixtures import event, understanding_document
 
 
 def result_v2(job=None, *, mutate=None):

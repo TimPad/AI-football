@@ -5,13 +5,15 @@ import os
 os.environ['YOLO_AUTOINSTALL'] = 'false'
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
 import cv2
 import numpy as np
 import torch
 from ultralytics import YOLO
+
+from aifootball.processor.budget import Budget
 from aifootball.processor.media import make_window
 from aifootball.processor.workspace import Workspace
-from aifootball.processor.budget import Budget
 
 with TemporaryDirectory() as tmp:
     root = Path(tmp)

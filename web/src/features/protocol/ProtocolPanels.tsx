@@ -1,14 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { api, all } from '../../api/client';
-import type { Match, DraftCommand, Protocol, Version } from '../../api/domain';
+import { type FormEvent, useEffect, useState } from 'react';
+import { all, api } from '../../api/client';
+import type { DraftCommand, Match, Protocol, Version } from '../../api/domain';
 import { sections } from '../../api/domain';
-import { ErrorBox, Field, Check, useLoad, Loading, downloadJson } from '../../components/ui';
-import { MoreMenu, ConfirmDialog } from '../../components/MoreMenu';
-import { useDraft } from './drafts';
+import { ConfirmDialog, MoreMenu } from '../../components/MoreMenu';
+import { Check, downloadJson, ErrorBox, Field, Loading, useLoad } from '../../components/ui';
 import { useAuth } from '../auth/Auth';
-function validTotalsDraft(
-  v: unknown,
-): v is {
+import { useDraft } from './drafts';
+
+function validTotalsDraft(v: unknown): v is {
   reported_totals: Protocol['reported_totals'];
   shootout_totals: Protocol['shootout_totals'];
   result_type: Protocol['result_type'];

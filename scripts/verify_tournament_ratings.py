@@ -4,20 +4,21 @@ The oracle below uses explicit percentile/role-weight equations; expected values
 never call the scoring functions. It verifies software arithmetic, not athletes.
 """
 
+import json
 from copy import deepcopy
 from dataclasses import asdict, replace
 from hashlib import sha256
-import json
 from pathlib import Path
-from uuid import uuid5, NAMESPACE_URL
-from aifootball.ratings.schema import MatchPerformance, MetricFact
+from uuid import NAMESPACE_URL, uuid5
+
 from aifootball.ratings.actions import canonical_actions
-from aifootball.ratings.features import build_features, combine_rate
-from aifootball.ratings.reference import build_reference
-from aifootball.ratings.scoring import score_match
 from aifootball.ratings.aggregate import rank_players, tournament_rating
 from aifootball.ratings.explanation import explain_rating
+from aifootball.ratings.features import build_features, combine_rate
+from aifootball.ratings.reference import build_reference
 from aifootball.ratings.registry import REGISTRY
+from aifootball.ratings.schema import MatchPerformance, MetricFact
+from aifootball.ratings.scoring import score_match
 
 ROOT = Path(__file__).resolve().parents[1]
 CATEGORIES = (

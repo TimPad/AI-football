@@ -1,7 +1,7 @@
 """Team profiles, permanent rosters and stable player profiles."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = '0006_team_profiles'

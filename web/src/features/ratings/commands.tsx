@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ErrorBox, downloadJson } from '../../components/ui';
-import { readPending, sendJson, retryJson, type Pending } from '../analysis/commands';
+import { downloadJson, ErrorBox } from '../../components/ui';
+import { type Pending, readPending, retryJson, sendJson } from '../analysis/commands';
 export function useRatingCommand<T>(key: string, onSaved: (v: T) => void) {
   const [pending, setPending] = useState<Pending | null>(() => {
     try {

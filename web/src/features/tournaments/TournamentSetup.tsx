@@ -1,16 +1,16 @@
-import { useState, type FormEvent } from 'react';
+import { type FormEvent, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { api, all, post, ApiError } from '../../api/client';
-import type { Tournament, Entry, RegVersion, Match } from '../../api/domain';
-import { Field, ErrorBox, useLoad, Loading } from '../../components/ui';
+import { ApiError, all, api, post } from '../../api/client';
+import type { Entry, Match, RegVersion, Tournament } from '../../api/domain';
+import { ErrorBox, Field, Loading, useLoad } from '../../components/ui';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { useAuth } from '../auth/Auth';
 import { useDraft } from '../protocol/drafts';
-import { Rules, Entries } from './TournamentPage';
-import { TimezoneSelect, seasonOf } from './TournamentList';
-import { useDocumentTitle } from '../../components/useDocumentTitle';
+import type { Standings } from '../stages/api';
 import { FormatStep } from '../stages/FormatStep';
 import { StageWorkspace } from '../stages/StageWorkspace';
-import type { Standings } from '../stages/api';
+import { seasonOf, TimezoneSelect } from './TournamentList';
+import { Entries, Rules } from './TournamentPage';
 import './setup.css';
 
 type Draft = {

@@ -1,15 +1,17 @@
 """Encrypted outbox; only a configured worker transmits production mail."""
 
 import json
+import smtplib
 from datetime import timedelta
 from email.message import EmailMessage
-import smtplib
-from sqlalchemy import select, or_
-from sqlalchemy.orm import Session
+
 from cryptography.fernet import Fernet
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
+
+from aifootball.service.captains.models import MailOutbox
 from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
-from aifootball.service.captains.models import MailOutbox
 
 
 class SMTPMailSender:

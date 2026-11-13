@@ -1,7 +1,8 @@
-import { afterEach, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
+import { afterEach, expect, it, vi } from 'vitest';
 import { DateNavigation } from './DateNavigation';
+
 afterEach(() => vi.useRealTimers());
 it('crosses the year and computes today at the time of clicking', () => {
   vi.useFakeTimers();

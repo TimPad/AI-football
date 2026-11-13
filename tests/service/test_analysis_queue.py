@@ -1,10 +1,11 @@
-from uuid import uuid4
 from sqlalchemy import event
 from sqlalchemy.orm import Session
-from .test_analysis_jobs import analytics_match, new_job, grant
-from .test_analysis_import import upload
-from .test_analysis_assignments import save_assignments, command
+
 from test_analysis_exchange import result_zip
+
+from .test_analysis_assignments import command, save_assignments
+from .test_analysis_import import upload
+from .test_analysis_jobs import analytics_match, grant, new_job  # noqa: F401
 
 
 def queue(client, m, query=''):
@@ -74,8 +75,8 @@ def test_queue_context_freshness_and_page_query_count(admin_client, analytics_ma
 
 
 def test_queue_shows_captain_side_readiness_and_invalidates_changed_assignments(admin_client, analytics_match):
-    from .test_team_identity_tasks import owner, issue
-    from .test_team_identity_confirmations import draft, confirm, getrun
+    from .test_team_identity_confirmations import confirm, draft, getrun
+    from .test_team_identity_tasks import issue, owner
 
     m = analytics_match
     cap, team_id, _ = owner(admin_client, m)

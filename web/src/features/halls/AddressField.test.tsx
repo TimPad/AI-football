@@ -1,7 +1,8 @@
-import { afterEach, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
 import { AddressField, type AddressValue } from './AddressField';
+
 afterEach(() => vi.unstubAllGlobals());
 it('selects with the keyboard without submitting and clears the old point when typing', async () => {
   const submit = vi.fn(),

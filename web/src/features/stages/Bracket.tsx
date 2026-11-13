@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import type { PairView, SectionView } from './api';
-import { PairCard } from './PairCard';
 import { BracketTree } from './BracketTree';
+import { PairCard } from './PairCard';
+
 export { PairCard } from './PairCard';
 
 function useWide() {

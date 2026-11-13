@@ -1,12 +1,14 @@
-from secrets import compare_digest
 from hashlib import sha256
+from secrets import compare_digest
+
 from fastapi import Request
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
+from aifootball.service.auth.security import check_origin, token_hash
+from aifootball.service.captains.models import CaptainAccount, CaptainRateLimit, CaptainSession, TeamCaptainGrant
 from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
-from aifootball.service.auth.security import token_hash, check_origin
-from aifootball.service.captains.models import CaptainAccount, CaptainSession, TeamCaptainGrant, CaptainRateLimit
 
 
 def current_session(request):

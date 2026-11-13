@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PublicMatchPage } from './PublicMatchPage';
 
 const A = '11111111-1111-4111-8111-111111111111',

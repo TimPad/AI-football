@@ -1,13 +1,15 @@
 from io import BytesIO
-from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
-from uuid import uuid5, NAMESPACE_URL
-from sqlalchemy import select
+from uuid import NAMESPACE_URL, uuid5
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import select
+
 from aifootball.service.analysis.context import build_context, canonical_json, context_hash
-from aifootball.service.analysis.models import AnalysisJob, AnalysisCommand
+from aifootball.service.analysis.models import AnalysisCommand, AnalysisJob
 from aifootball.service.analysis.schemas import JobView
-from aifootball.service.halls.operations import lock_request
 from aifootball.service.errors import DomainError
+from aifootball.service.halls.operations import lock_request
 
 
 def command_hash(match_id, kind, payload):
@@ -62,6 +64,7 @@ def create_job(db, match_id, actor_id, request_id):
 
 def export_job(job, attachment_root):
     from hashlib import sha256
+
     from aifootball.service.halls.frames import reference_path
 
     contract = {

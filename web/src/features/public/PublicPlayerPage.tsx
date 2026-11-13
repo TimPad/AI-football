@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { api, ApiError } from '../../api/client';
+import { ApiError, api } from '../../api/client';
 import type { components } from '../../api/types';
-import { useLoad, Loading, Empty } from '../../components/ui';
-import { useQueryPatch } from '../navigation/useQueryPatch';
-import { isUuid } from '../navigation/query';
+import { Empty, Loading, useLoad } from '../../components/ui';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { publicBack } from '../navigation/publicContext';
+import { isUuid } from '../navigation/query';
+import { useQueryPatch } from '../navigation/useQueryPatch';
 import { PlayerRatingHistory } from '../ratings/PlayerRatingHistory';
 import './profiles.css';
+
 type Profile = components['schemas']['PublicPlayerProfile'];
 type Appearance = Profile['appearances']['items'][number];
 const plural = (n: number, forms: [string, string, string]) =>

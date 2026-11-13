@@ -1,5 +1,5 @@
 import { Field } from '../../components/ui';
-import { broadcastValue, parseBroadcast, type Broadcast } from './vk';
+import { type Broadcast, broadcastValue, parseBroadcast } from './vk';
 
 export function BroadcastFields({ url, embed }: { url?: string | null; embed?: string | null }) {
   return (

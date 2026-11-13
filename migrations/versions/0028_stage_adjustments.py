@@ -1,7 +1,7 @@
 """Stage participants per draw version, technical pair outcomes and team withdrawals."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = '0028_stage_adjustments'

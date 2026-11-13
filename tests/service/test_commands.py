@@ -1,4 +1,5 @@
 from uuid import uuid4
+
 from .test_events import event
 
 
@@ -20,6 +21,7 @@ def test_retry_goal_and_key_conflict(admin_client, match_factory, send_command):
 def test_parallel_commands_only_one_wins(admin_client, match_factory):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
+
     from fastapi.testclient import TestClient
 
     m = match_factory()

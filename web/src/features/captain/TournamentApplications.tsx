@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, all } from '../../api/client';
+import { all, api } from '../../api/client';
 import type { Team, Tournament } from '../../api/domain';
 import type { components } from '../../api/types';
-import { useLoad, Loading, Field, Check, Empty } from '../../components/ui';
+import { Check, Empty, Field, Loading, useLoad } from '../../components/ui';
 import { useAuth } from '../auth/Auth';
-import { useRatingCommand, CommandStatus } from '../ratings/commands';
 import { localInput, zonedToUtc } from '../matches/timezone';
-import { applicationStatuses, type Application } from './CaptainEntryPage';
+import { CommandStatus, useRatingCommand } from '../ratings/commands';
+import { type Application, applicationStatuses } from './CaptainEntryPage';
 export function ApplicationSettings({ tournament: t, onSaved }: { tournament: Tournament; onSaved: () => void }) {
   const { session } = useAuth();
   const [open, setOpen] = useState(t.applications_open ?? true);

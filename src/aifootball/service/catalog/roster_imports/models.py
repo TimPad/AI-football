@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, Uuid, Integer, DateTime, UniqueConstraint
+from sqlalchemy import Column, DateTime, Integer, String, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
+
 from aifootball.service.db import Base, Entity
 
 

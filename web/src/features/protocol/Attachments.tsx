@@ -1,10 +1,11 @@
+import { Download, Paperclip, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Paperclip, Download, Trash2 } from 'lucide-react';
-import { ApiError, api } from '../../api/client';
-import type { Match, DraftCommand } from '../../api/domain';
-import { useLoad, ErrorBox, Loading, Field } from '../../components/ui';
+import { ApiError, api, type ErrorBody } from '../../api/client';
+import type { DraftCommand, Match } from '../../api/domain';
+import { ErrorBox, Field, Loading, useLoad } from '../../components/ui';
 import { useAuth } from '../auth/Auth';
 import { useDraft } from './drafts';
+
 type UploadMeta = { requestId: string; revision: number; name: string; size: number } | null;
 export function Attachments({
   match,
@@ -71,7 +72,7 @@ export function Attachments({
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) resolve();
           else {
-            let e;
+            let e: ErrorBody | null;
             try {
               e = JSON.parse(xhr.responseText).error;
             } catch {

@@ -1,11 +1,11 @@
-from pathlib import Path
-from io import BytesIO
-from uuid import uuid4
-from hashlib import sha256
-from zipfile import ZipFile, ZipInfo
 import copy
 import json
 import math
+from hashlib import sha256
+from io import BytesIO
+from uuid import uuid4
+from zipfile import ZipFile, ZipInfo
+
 import pytest
 
 
@@ -85,7 +85,7 @@ def result_zip(job=None, mutate=None, extras=None):
 
 
 def test_result_without_manifest_is_rejected(tmp_path):
-    from aifootball.analytics.exchange import validate_result, ExchangeError
+    from aifootball.analytics.exchange import ExchangeError, validate_result
 
     path = tmp_path / 'result.zip'
     with ZipFile(path, 'w') as archive:
@@ -121,7 +121,7 @@ def test_valid_result_and_content_hash_ignore_zip_timestamps():
     ],
 )
 def test_invalid_numbers_tracks_and_geometry(mutate):
-    from aifootball.analytics.exchange import validate_result, ExchangeError
+    from aifootball.analytics.exchange import ExchangeError, validate_result
 
     with pytest.raises(ExchangeError):
         validate_result(result_zip(mutate=mutate))
@@ -129,14 +129,14 @@ def test_invalid_numbers_tracks_and_geometry(mutate):
 
 @pytest.mark.parametrize('name', ['../outside.jpg', '/absolute.jpg', 'thumbs/../../a.jpg', 'evil.html', 'inner.zip'])
 def test_archive_path_and_file_type_rejected(name):
-    from aifootball.analytics.exchange import validate_result, ExchangeError
+    from aifootball.analytics.exchange import ExchangeError, validate_result
 
     with pytest.raises(ExchangeError):
         validate_result(result_zip(extras={name: b'x'}))
 
 
 def test_unpack_limits_and_file_hash():
-    from aifootball.analytics.exchange import validate_result, ExchangeError, Limits
+    from aifootball.analytics.exchange import ExchangeError, Limits, validate_result
 
     raw = result_zip()
     with pytest.raises(ExchangeError):
@@ -158,7 +158,7 @@ def test_unpack_limits_and_file_hash():
     ],
 )
 def test_inconsistent_coverage_and_negative_team_metrics_rejected(mutate):
-    from aifootball.analytics.exchange import validate_result, ExchangeError
+    from aifootball.analytics.exchange import ExchangeError, validate_result
 
     with pytest.raises(ExchangeError):
         validate_result(result_zip(mutate=mutate))
@@ -166,7 +166,7 @@ def test_inconsistent_coverage_and_negative_team_metrics_rejected(mutate):
 
 @pytest.mark.parametrize('field', ['name', 'label'])
 def test_required_display_fields_are_validated_before_import(field):
-    from aifootball.analytics.exchange import validate_result, ExchangeError
+    from aifootball.analytics.exchange import ExchangeError, validate_result
 
     def remove(m, r, t, c):
         target = r['periods'][0] if field == 'name' else r['periods'][0]['players'][0]
@@ -240,7 +240,7 @@ def test_contract_3_carries_validated_passes():
     ],
 )
 def test_contract_3_rejects_bad_events(raw):
-    from aifootball.analytics.exchange import validate_result, ExchangeError
+    from aifootball.analytics.exchange import ExchangeError, validate_result
 
     with pytest.raises(ExchangeError):
         validate_result(raw())

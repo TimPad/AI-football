@@ -1,9 +1,9 @@
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { components } from '../../api/types';
-import { useLoad, Loading, Field, Check, Empty } from '../../components/ui';
+import { Check, Empty, Field, Loading, useLoad } from '../../components/ui';
 import { useDraft } from '../protocol/drafts';
-import { useRatingCommand, CommandStatus } from '../ratings/commands';
+import { CommandStatus, useRatingCommand } from '../ratings/commands';
 import { useCaptainAuth } from './CaptainAuth';
 export type Application = components['schemas']['ApplicationView'];
 type Team = components['schemas']['CaptainTeamView'];

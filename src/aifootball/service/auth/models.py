@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, Uuid, Index, Integer
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Uuid
+
 from aifootball.service.db import Base, Entity, utcnow
 
 

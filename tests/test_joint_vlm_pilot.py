@@ -1,8 +1,8 @@
 """Synthetic tests: no real media, provider or service database."""
 
+import json
 from dataclasses import replace
 from hashlib import sha256
-import json
 
 import httpx
 import pytest
@@ -65,7 +65,7 @@ def test_live_first_call_and_cache_only_restart_are_one_paid_call(tmp_path):
 
 
 def test_timeout_is_reserved_and_never_automatically_retried(tmp_path):
-    from aifootball.understanding.pilot import paid_once, PilotStopped
+    from aifootball.understanding.pilot import PilotStopped, paid_once
 
     window, workspace, budget = environment(tmp_path)
     client = Client(fail=True)
@@ -78,7 +78,7 @@ def test_timeout_is_reserved_and_never_automatically_retried(tmp_path):
 
 
 def test_unknown_pending_after_crash_does_not_send_again(tmp_path):
-    from aifootball.understanding.pilot import paid_once, request_key, PilotStopped
+    from aifootball.understanding.pilot import PilotStopped, paid_once, request_key
 
     window, workspace, budget = environment(tmp_path)
     client = Client()
@@ -111,7 +111,7 @@ def test_response_receipt_recovers_crash_before_cache_commit(tmp_path):
 
 
 def test_changed_effective_prompt_or_mode_cannot_hit_wrong_cache(tmp_path):
-    from aifootball.understanding.pilot import paid_once, PilotStopped, request_key
+    from aifootball.understanding.pilot import PilotStopped, paid_once, request_key
 
     window, workspace, budget = environment(tmp_path)
     client = Client()
@@ -123,7 +123,7 @@ def test_changed_effective_prompt_or_mode_cannot_hit_wrong_cache(tmp_path):
 
 
 def test_budget_blocks_before_network_and_raw_invalid_schema_is_reusable(tmp_path):
-    from aifootball.understanding.pilot import paid_once, PilotStopped, validate_joint
+    from aifootball.understanding.pilot import PilotStopped, paid_once, validate_joint
 
     window, workspace, _ = environment(tmp_path)
     client = Client({'unexpected': 'saved'})
@@ -217,7 +217,7 @@ def test_concurrent_worker_is_blocked_before_second_network_call(tmp_path):
 
 def test_saved_fenced_json_is_locally_recovered_without_second_request(tmp_path):
     from aifootball.understanding.pilot import paid_once
-    from test_qwen_client import sse, completed
+    from test_qwen_client import completed, sse
 
     window, workspace, budget = environment(tmp_path)
     calls = []

@@ -1,9 +1,10 @@
 from copy import deepcopy
 from uuid import UUID, uuid4
+
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from .test_analysis_jobs import analytics_match, grant
-import pytest
+
+from .test_analysis_jobs import analytics_match, grant  # noqa: F401
 
 
 def base(match):
@@ -257,7 +258,7 @@ def test_ordinary_admin_guest_foreign_snapshot_and_stale_commands_are_rejected(a
 
 
 def test_replacing_cv_run_changes_fingerprint_without_second_appearance(admin_client, analytics_match, send_command):
-    from .test_analysis_assignments import import_run, save_assignments, command
+    from .test_analysis_assignments import command, import_run, save_assignments
 
     match, protocol, part, actions = prepare(admin_client, analytics_match, send_command)
     run = import_run(admin_client, match)
@@ -363,8 +364,8 @@ def test_same_fingerprint_produces_identical_frozen_leaderboard(admin_client, an
 def test_replacement_video_review_invalidates_old_episode_facts_but_preserves_old_snapshot(
     admin_client, analytics_match, send_command
 ):
+    from .test_analysis_assignments import command, save_assignments
     from .test_understanding import imported, review
-    from .test_analysis_assignments import save_assignments, command
 
     match, protocol, part, actions = prepare(admin_client, analytics_match, send_command)
     run = imported(admin_client, match)
@@ -488,7 +489,7 @@ def test_saved_match_explanation_retains_own_goal_flag_without_positive_credit(
 ):
     pid = next(p['player_id'] for p in analytics_match['lineup'] if p['side'] == 'home')
     changed = send_command(
-        analytics_match,
+        analytics_match,  # noqa: F401
         'add_event',
         {
             'event': {

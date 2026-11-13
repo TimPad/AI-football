@@ -1,4 +1,5 @@
 from uuid import uuid4
+
 import pytest
 
 
@@ -16,8 +17,8 @@ def goal(**changes):
 
 
 def test_partial_score_not_added_to_events(regulation_data):
-    from aifootball.service.protocol.schemas import ProtocolDocument
     from aifootball.service.protocol.projection import project_protocol
+    from aifootball.service.protocol.schemas import ProtocolDocument
     from aifootball.service.tournaments.schemas import Regulation
 
     doc = ProtocolDocument(
@@ -41,8 +42,8 @@ def test_partial_score_not_added_to_events(regulation_data):
 
 
 def test_own_goal_shootout_and_unknown_score(regulation_data):
-    from aifootball.service.protocol.schemas import ProtocolDocument
     from aifootball.service.protocol.projection import project_protocol
+    from aifootball.service.protocol.schemas import ProtocolDocument
     from aifootball.service.tournaments.schemas import Regulation
 
     rules = Regulation(**{**regulation_data, 'shootout': {'enabled': True, 'initial_attempts': 5}})
@@ -59,11 +60,11 @@ def test_own_goal_shootout_and_unknown_score(regulation_data):
 
 
 def test_complete_mismatch_confirmation_and_technical_result(regulation_data):
-    from aifootball.service.protocol.schemas import ProtocolDocument
+    from aifootball.service.errors import DomainError
     from aifootball.service.protocol.projection import project_protocol
+    from aifootball.service.protocol.schemas import ProtocolDocument
     from aifootball.service.protocol.validation import validate_confirmation
     from aifootball.service.tournaments.schemas import Regulation
-    from aifootball.service.errors import DomainError
 
     rules = Regulation(**regulation_data)
     doc = ProtocolDocument(events=[goal()], reported_totals={'home': {'score': 3}, 'away': {'score': 0}})
@@ -76,8 +77,8 @@ def test_complete_mismatch_confirmation_and_technical_result(regulation_data):
 
 
 def test_penalty_attempt_not_double_counted_and_cards(regulation_data):
-    from aifootball.service.protocol.schemas import ProtocolDocument
     from aifootball.service.protocol.projection import project_protocol
+    from aifootball.service.protocol.schemas import ProtocolDocument
     from aifootball.service.tournaments.schemas import Regulation
 
     award = str(uuid4())

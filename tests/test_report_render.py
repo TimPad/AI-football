@@ -2,10 +2,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from report_fixtures import LENGTH, synthetic_match  # noqa: E402
-
 from aifootball.analytics.report_data import build_report  # noqa: E402
 from aifootball.report.render import image_requests, render_html  # noqa: E402
+from report_fixtures import LENGTH, synthetic_match  # noqa: E402
 
 
 class _Venue:

@@ -1,7 +1,8 @@
-import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { afterEach, expect, test, vi } from 'vitest';
 import { TournamentAnalysisQueue } from './TournamentAnalysisQueue';
+
 afterEach(() => vi.unstubAllGlobals());
 test('filters review work and preserves the queue context when opening a match', async () => {
   const requests: string[] = [];

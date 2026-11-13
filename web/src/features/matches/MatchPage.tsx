@@ -1,13 +1,13 @@
-import { HallSelection } from '../halls/HallSelection';
-import { BroadcastFields, readBroadcast } from './BroadcastFields';
-import { useState, type FormEvent } from 'react';
+import { type FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
-import type { Match, Roster, Tournament, DraftCommand, Regulation } from '../../api/domain';
+import type { DraftCommand, Match, Regulation, Roster, Tournament } from '../../api/domain';
 import { statuses } from '../../api/domain';
-import { useLoad, Loading, Field, ErrorBox, Check } from '../../components/ui';
-import { dateTime, localInput, zonedToUtc } from './timezone';
+import { Check, ErrorBox, Field, Loading, useLoad } from '../../components/ui';
+import { HallSelection } from '../halls/HallSelection';
 import { RegulationForm } from '../tournaments/RegulationForm';
+import { BroadcastFields, readBroadcast } from './BroadcastFields';
+import { dateTime, localInput, zonedToUtc } from './timezone';
 export function Lineups({ match, dispatch }: { match: Match; dispatch: (d: DraftCommand) => Promise<unknown> }) {
   const state = useLoad(
     async () =>

@@ -1,11 +1,13 @@
 from copy import deepcopy
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
+
 import pytest
-from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
-from .test_analysis_jobs import analytics_match, grant
+from sqlalchemy.orm import Session
+
+from .test_analysis_assignments import command, save_assignments
+from .test_analysis_jobs import analytics_match, grant  # noqa: F401
 from .test_understanding import imported
-from .test_analysis_assignments import save_assignments, command
 
 
 def body(match, **changes):

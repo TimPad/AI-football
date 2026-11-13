@@ -1,7 +1,8 @@
-import { it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
-import { NotesPanel } from './ProtocolPanels';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
 import type { Match } from '../../api/domain';
+import { NotesPanel } from './ProtocolPanels';
+
 vi.mock('../auth/Auth', () => ({ useAuth: () => ({ session: { id: 'test-admin' } }) }));
 afterEach(() => {
   vi.useRealTimers();

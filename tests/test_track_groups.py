@@ -3,9 +3,9 @@
 import numpy as np
 import polars as pl
 import pytest
-from test_analysis_exchange import result_zip
 
 from aifootball.analytics.track_groups import track_groups
+from test_analysis_exchange import result_zip
 
 FPS = 10
 

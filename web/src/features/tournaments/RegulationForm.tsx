@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { type FormEvent, type ReactNode, useState } from 'react';
 import type { Regulation } from '../../api/domain';
 import { Check, ErrorBox, Field } from '../../components/ui';
 export function RegulationForm({

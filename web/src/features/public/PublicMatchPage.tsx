@@ -1,22 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { useQueryPatch } from '../navigation/useQueryPatch';
 import { api } from '../../api/client';
 import type { PublicMatch } from '../../api/domain';
-import { Loading } from '../../components/ui';
 import { MatchHeader } from '../../components/match/MatchHeader';
 import { SectionNavigation } from '../../components/match/SectionNavigation';
-import { isUuid, patchQuery, readMatchTab } from '../navigation/query';
-import { MatchReport } from '../match-report/MatchReport';
-import type { PlayerOrigin, ReportModel } from '../match-report/model';
+import { Loading } from '../../components/ui';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { STAT_GROUPS, type StatGroup } from '../match-report/facts';
-import { resultNote } from '../protocol/PublicProtocolContent';
-import { loadPublicSection, SECTION_SOURCES } from './matchLoader';
+import { MatchReport } from '../match-report/MatchReport';
+import { goalScorers } from '../match-report/MatchTimeline';
+import type { PlayerOrigin, ReportModel } from '../match-report/model';
 import { publicBack } from '../navigation/publicContext';
+import { isUuid, patchQuery, readMatchTab } from '../navigation/query';
+import { useQueryPatch } from '../navigation/useQueryPatch';
+import { resultNote } from '../protocol/PublicProtocolContent';
 import { Broadcast } from './Broadcast';
 import { MatchAside } from './MatchAside';
-import { goalScorers } from '../match-report/MatchTimeline';
+import { loadPublicSection, SECTION_SOURCES } from './matchLoader';
 
 const SECTIONS = [
   { id: 'overview', label: 'Обзор' },

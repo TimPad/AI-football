@@ -1,7 +1,7 @@
 """Independent revision for active/public analysis pointers."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = '0009_analysis_revision'
 down_revision = '0008_analysis'

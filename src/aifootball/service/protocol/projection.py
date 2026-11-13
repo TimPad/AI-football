@@ -1,6 +1,5 @@
-from pydantic import Field
+from aifootball.service.protocol.events import Card, Foul, Goal, PeriodBoundary, ShootoutAttempt, Timeout, opposite
 from aifootball.service.tournaments.schemas import Input
-from aifootball.service.protocol.events import Goal, Foul, Card, Timeout, ShootoutAttempt, PeriodBoundary, opposite
 
 SIDES = ['home', 'away']
 

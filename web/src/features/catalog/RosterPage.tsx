@@ -1,12 +1,12 @@
-import { RosterImportLaunch } from '../roster-import/RosterImportPage';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { all, api } from '../../api/client';
-import type { Named, Roster, TeamProfile, Tournament, ProfilePlayer } from '../../api/domain';
-import { useLoad, Loading, Field, Modal, Empty, downloadJson, ErrorBox } from '../../components/ui';
+import type { Named, ProfilePlayer, Roster, TeamProfile, Tournament } from '../../api/domain';
+import { downloadJson, Empty, ErrorBox, Field, Loading, Modal, useLoad } from '../../components/ui';
 import { useAuth } from '../auth/Auth';
 import { useDraft } from '../protocol/drafts';
-import { useRatingCommand, CommandStatus } from '../ratings/commands';
+import { CommandStatus, useRatingCommand } from '../ratings/commands';
+import { RosterImportLaunch } from '../roster-import/RosterImportPage';
 import { positions } from './TeamEditor';
 export function RosterPage() {
   const { id = '', entryId = '' } = useParams();
@@ -104,7 +104,7 @@ function RosterEditor({
       </div>
       {tournament.archived && <p className="warning">Турнир в архиве. Заявка доступна для просмотра.</p>}
       <RosterImportLaunch scope="tournament" targetId={tid} entryId={roster.id} disabled={locked || draft.dirty} />
-      <section className="surface" role="region" aria-label="Текущая заявка">
+      <section className="surface" aria-label="Текущая заявка">
         <div className="panel-head">
           <h2>Текущая заявка · {Object.keys(d.selected).length}</h2>
           <button disabled={locked} onClick={addNew}>

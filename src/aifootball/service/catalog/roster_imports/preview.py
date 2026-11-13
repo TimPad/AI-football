@@ -1,16 +1,19 @@
 """Normalize reviewed rows without mutating players, teams or applications."""
 
 from collections import Counter, defaultdict
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from uuid import UUID, uuid5
+
 from pydantic import ValidationError
-from sqlalchemy import select, func
+from sqlalchemy import func, select
+
+from aifootball.service.catalog.models import Entry, EntryPlayer, Player, Team, TeamMember
+from aifootball.service.catalog.schemas import ProfilePlayer
 from aifootball.service.common import get_entity
 from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
-from aifootball.service.catalog.models import Team, Player, Entry, EntryPlayer, TeamMember
-from aifootball.service.catalog.schemas import ProfilePlayer
-from aifootball.service.tournaments.models import Tournament, RegulationVersion
+from aifootball.service.tournaments.models import RegulationVersion, Tournament
+
 from .models import RosterImport
 
 FIELDS = {

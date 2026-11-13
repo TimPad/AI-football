@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PublicTournamentPage } from '../public/PublicPages';
 import { group, groupsStage, pair, side } from './fixtures.test-data';
 

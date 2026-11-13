@@ -1,6 +1,9 @@
 from uuid import UUID
+
 from sqlalchemy.orm import Session
-from aifootball.service.stages.results import load_results, confirmed_match_ids
+
+from aifootball.service.stages.results import confirmed_match_ids, load_results
+
 from .test_confirmation import finish
 
 

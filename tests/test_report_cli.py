@@ -3,10 +3,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from report_fixtures import synthetic_match  # noqa: E402
-
 from aifootball import schemas  # noqa: E402
 from aifootball.cli import main  # noqa: E402
+from report_fixtures import synthetic_match  # noqa: E402
 
 
 def test_report_command_writes_html_and_json(venue, tmp_path):
@@ -38,8 +37,9 @@ def test_report_command_writes_html_and_json(venue, tmp_path):
     assert 'Зелёные — Оранжевые' in html and '<img' not in html
 
 
-import pytest
-from conftest import write_video
+import pytest  # noqa: E402
+
+from conftest import write_video  # noqa: E402
 
 
 def _match(tmp_path, seconds=2):

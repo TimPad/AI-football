@@ -1,6 +1,9 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy.orm import Session
+
 from aifootball.service.matches.models import Match
+
 from .test_confirmation import finish
 
 URL = '/api/v1/public/matches'
@@ -23,7 +26,7 @@ def test_moscow_day_groups_and_narrow_results(admin_client, match_factory, send_
 def test_hidden_counts_search_and_upcoming(admin_client, match_factory, monkeypatch):
     from aifootball.service import public_match_center as center
 
-    monkeypatch.setattr(center, 'now', lambda: datetime(2026, 10, 20, 10, tzinfo=timezone.utc))
+    monkeypatch.setattr(center, 'now', lambda: datetime(2026, 10, 20, 10, tzinfo=UTC))
     m = match_factory(scheduled_at='2026-10-20T18:00:00Z')
     hidden = match_factory(scheduled_at='2026-10-20T19:00:00Z')
     admin_client.patch(
@@ -100,7 +103,7 @@ def test_neighbour_game_days_follow_filters(admin_client, match_factory):
 def test_recent_results_newest_first(admin_client, match_factory, send_command, monkeypatch):
     from aifootball.service import public_match_center as center
 
-    monkeypatch.setattr(center, 'now', lambda: datetime(2026, 10, 26, 10, tzinfo=timezone.utc))
+    monkeypatch.setattr(center, 'now', lambda: datetime(2026, 10, 26, 10, tzinfo=UTC))
     old = finish(send_command, match_factory(scheduled_at='2026-10-10T18:00:00Z'))
     new = finish(send_command, match_factory(scheduled_at='2026-10-20T18:00:00Z'))
     match_factory(scheduled_at='2026-10-21T18:00:00Z')

@@ -1,8 +1,8 @@
-import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useCaptainAuth } from './CaptainAuth';
-import { useLoad } from '../../components/ui';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { TeamProfile } from '../../api/domain';
+import { useLoad } from '../../components/ui';
+import { useCaptainAuth } from './CaptainAuth';
 import './captain.css';
 export function CaptainShell() {
   const { session, logout } = useCaptainAuth();

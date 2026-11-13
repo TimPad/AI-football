@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { api, all } from '../../api/client';
+import { all, api } from '../../api/client';
 import type { Tournament } from '../../api/domain';
-import { useLoad, Loading, Field } from '../../components/ui';
-import { roles, type PlayerRatings } from './types';
+import { Field, Loading, useLoad } from '../../components/ui';
 import { MatchRating } from './MatchRating';
 import { RankingTable } from './TournamentRatings';
+import { type PlayerRatings, roles } from './types';
 // tournamentIds — турниры, где игрок есть в опубликованных составах: в выборе только они, а единственный открывается сам.
 export function PlayerRatingHistory({
   playerId,

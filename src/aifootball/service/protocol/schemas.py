@@ -1,9 +1,10 @@
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
+
 from pydantic import Field
-from aifootball.service.tournaments.schemas import Input
+
 from aifootball.service.protocol.events import Event
-from typing import Annotated
+from aifootball.service.tournaments.schemas import Input
 
 Count = Annotated[int, Field(ge=0, le=100000, strict=True)]
 

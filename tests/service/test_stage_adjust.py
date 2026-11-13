@@ -1,5 +1,6 @@
 from uuid import uuid4
-from .test_stages_api import format_env, draw, fixtures, schedule, result  # noqa: F401
+
+from .test_stages_api import draw, fixtures, format_env, result, schedule  # noqa: F401
 
 
 def test_remove_from_group_keeps_other_groups_matches(admin_client, format_env):

@@ -1,10 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import preset from '../../test/preset.json';
 import { RailContext } from '../navigation/rail';
 import { TournamentWorkspace } from './TournamentWorkspace';
-import preset from '../../test/preset.json';
 
 const auth = vi.hoisted(() => ({ analytics: false }));
 const fixtures = vi.hoisted(() => ({ list: [] as unknown[] }));

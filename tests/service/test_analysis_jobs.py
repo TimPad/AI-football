@@ -1,11 +1,14 @@
-from io import BytesIO
-from zipfile import ZipFile
-from uuid import uuid4
 import json
+from io import BytesIO
+from uuid import uuid4
+from zipfile import ZipFile
+
 import pytest
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.models import Admin
-from .test_halls import create_hall, camera_body
+
+from .test_halls import camera_body, create_hall
 
 
 def grant(client, enabled=True):

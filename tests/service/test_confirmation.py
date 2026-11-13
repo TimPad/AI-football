@@ -64,9 +64,10 @@ def test_full_goal_journal_cannot_hide_wrong_score(admin_client, match_factory, 
 
 
 def test_duplicate_confirm_and_parallel_confirm_are_single_version(admin_client, match_factory, send_command):
-    from uuid import uuid4
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
+    from uuid import uuid4
+
     from fastapi.testclient import TestClient
 
     m = finish(send_command, match_factory())

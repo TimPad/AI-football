@@ -1,7 +1,7 @@
 """Ball events of an imported CV run (result contract 3): passes for automatic team statistics."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = '0014_analysis_events'

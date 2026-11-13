@@ -1,15 +1,15 @@
 """Versioned, bounded exchange contract. No CV/model/service imports."""
 
+import json
+import math
+import re
+import stat
 from dataclasses import dataclass
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 from uuid import UUID
-from zipfile import ZipFile, BadZipFile
-import json
-import math
-import re
-import stat
+from zipfile import BadZipFile, ZipFile
 
 UNITS = {'distance': 'm', 'speed': 'm/s', 'time': 's', 'heatmap': 's'}
 RESULT_JSON = {'manifest.json', 'report.json', 'track-index.json', 'checks.json'}

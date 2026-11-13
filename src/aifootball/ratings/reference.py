@@ -1,12 +1,13 @@
 """Frozen, content-addressed reference cohorts of compatible verified facts."""
 
+import json
 from collections import defaultdict
 from dataclasses import asdict
 from datetime import datetime
 from hashlib import sha256
-import json
+
 from aifootball.ratings.registry import REGISTRY
-from aifootball.ratings.scoring import validate_policy, policy_hash, required_metrics, usable, validate_feature
+from aifootball.ratings.scoring import policy_hash, required_metrics, usable, validate_feature, validate_policy
 
 
 def _date(value):

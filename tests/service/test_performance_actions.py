@@ -1,7 +1,9 @@
-from uuid import uuid4
 from copy import deepcopy
-from .test_analysis_jobs import analytics_match, grant
+from uuid import uuid4
+
 import pytest
+
+from .test_analysis_jobs import analytics_match, grant  # noqa: F401
 
 
 def body(match):
@@ -73,13 +75,13 @@ def test_ordinary_admin_cannot_read_or_write_manual_facts(admin_client, analytic
 def test_video_goal_link_uses_only_reviewed_actor_and_does_not_duplicate_protocol(
     admin_client, analytics_match, send_command, reviewed
 ):
+    from .test_analysis_assignments import assignments, command, save_assignments
     from .test_understanding import imported, review
-    from .test_analysis_assignments import save_assignments, command, assignments
 
     pid = next(p['player_id'] for p in analytics_match['lineup'] if p['side'] == 'home')
     goal = str(uuid4())
     changed = send_command(
-        analytics_match,
+        analytics_match,  # noqa: F401
         'add_event',
         {'event': {'id': goal, 'kind': 'goal', 'side': 'home', 'player_id': pid, 'period': 1, 'elapsed_ms': 1000}},
     )

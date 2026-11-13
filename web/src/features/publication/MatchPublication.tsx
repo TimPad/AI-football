@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Check, CircleAlert, Eye, Lock, RefreshCw, Upload } from 'lucide-react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Upload, RefreshCw, Lock, CircleAlert, Check, Eye } from 'lucide-react';
 import { all, api } from '../../api/client';
 import type { AnalysisOverview, Match, Version } from '../../api/domain';
 import { ErrorBox, Loading, useLoad } from '../../components/ui';
@@ -8,7 +8,7 @@ import { ProtocolSession, useProtocolSession } from '../protocol/ProtocolSession
 import { CommandStatus, useRatingCommand } from '../ratings/commands';
 import type { Actions, Analytics, Participation, RatingSnapshot } from '../ratings/types';
 import { GuestPreview } from './GuestPreview';
-import { cvBlock, performanceBlock, protocolBlock, ratingBlock, when, type PublicationBlock } from './publicationModel';
+import { cvBlock, type PublicationBlock, performanceBlock, protocolBlock, ratingBlock, when } from './publicationModel';
 import './publication.css';
 
 type PerformanceView = {

@@ -3,14 +3,16 @@
 from collections import defaultdict
 from hashlib import sha256
 from uuid import UUID
-from sqlalchemy import select, func
-from aifootball.service.common import get_entity
-from aifootball.service.errors import DomainError
-from aifootball.service.catalog.models import Team, Player, TeamMember, Entry, EntryPlayer
-from aifootball.service.catalog.schemas import ProfilePlayer, RosterUpdate, RosterPlayer
+
+from sqlalchemy import func, select
+
+from aifootball.service.catalog.models import Entry, EntryPlayer, Player, Team, TeamMember
 from aifootball.service.catalog.operations import set_roster
+from aifootball.service.catalog.schemas import ProfilePlayer, RosterPlayer, RosterUpdate
+from aifootball.service.errors import DomainError
+
 from .models import RosterImport
-from .preview import owned_import, target_entity, import_view
+from .preview import import_view, owned_import, target_entity
 
 
 def conflict():

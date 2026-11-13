@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
-import { login, createTournament } from './helpers';
+import { expect, test } from '@playwright/test';
+import { createTournament, login } from './helpers';
+
 test('published team and player preserve the viewer path and calendar filters without ratings', async ({
   page,
   browser,
@@ -52,7 +53,7 @@ test('published team and player preserve the viewer path and calendar filters wi
     .click();
   await viewer.locator('.match-team.home').getByRole('link', { name: data.home, exact: true }).click();
   await expect(viewer.getByRole('heading', { name: data.home, exact: true })).toBeVisible();
-  await viewer.getByRole('link', { name: new RegExp('Открыть матч') }).click();
+  await viewer.getByRole('link', { name: /Открыть матч/ }).click();
   await viewer.getByRole('link', { name: 'Составы', exact: true }).click();
   await viewer.getByRole('button', { name: new RegExp(name) }).click();
   await viewer.getByRole('link', { name: 'Карточка игрока и история →', exact: true }).click();

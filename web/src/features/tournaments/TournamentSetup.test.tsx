@@ -1,7 +1,8 @@
-import { afterEach, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
 import { TournamentCreate } from './TournamentSetup';
+
 vi.mock('../auth/Auth', () => ({ useAuth: () => ({ session: { id: 'admin' } }) }));
 afterEach(() => {
   localStorage.clear();

@@ -1,7 +1,8 @@
-import { it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
 import { CaptainEntryPage } from './CaptainEntryPage';
+
 vi.mock('./CaptainAuth', () => ({ useCaptainAuth: () => ({ session: { id: 'captain' } }) }));
 afterEach(() => {
   vi.unstubAllGlobals();

@@ -1,16 +1,15 @@
 import json
-from pathlib import Path
-from types import SimpleNamespace
-from hashlib import sha256
-import os
-import sys
 import subprocess
+import sys
+from types import SimpleNamespace
+
 import numpy as np
 import polars as pl
 import pytest
+
+from aifootball import schemas
 from conftest import write_video
 from test_processor_job import job_package
-from aifootball import schemas
 
 
 class Array:
@@ -137,8 +136,8 @@ def test_range_sampler_keeps_global_ids_and_original_grid(tmp_path):
 
 def test_batches_record_empty_frames_and_preserve_time(cv_case):
     from aifootball.perception.detect import detect_batches
-    from aifootball.venue import load_venue
     from aifootball.processor.job import read_job
+    from aifootball.venue import load_venue
 
     job, video, models, ws = cv_case
     Predictor.empty = True
@@ -185,8 +184,8 @@ run_cv(Path(sys.argv[1]),Path(sys.argv[2]),Workspace(Path(sys.argv[4]),{'test':'
 
 
 def test_existing_process_job_still_packages_contract_v1(cv_case, tmp_path):
-    from aifootball.processor.job import process_job
     from aifootball.analytics.exchange import validate_result
+    from aifootball.processor.job import process_job
 
     job, video, models, _ = cv_case
     output = process_job(job, video, tmp_path / 'result.zip', models=models)
@@ -197,10 +196,10 @@ def test_existing_process_job_still_packages_contract_v1(cv_case, tmp_path):
 
 
 def test_understand_cli_packages_v2_and_scope_change_reuses_cv(cv_case, tmp_path, monkeypatch):
-    from aifootball.processor.job import process_job
-    from aifootball.analytics.exchange import validate_result
-    from test_understanding_processor import Client
     import aifootball.processor.qwen as qwen
+    from aifootball.analytics.exchange import validate_result
+    from aifootball.processor.job import process_job
+    from test_understanding_processor import Client
 
     job, video, models, _ = cv_case
     client = Client()
@@ -256,8 +255,8 @@ def test_understand_cli_packages_v2_and_scope_change_reuses_cv(cv_case, tmp_path
 
 
 def test_understand_off_does_not_read_api_configuration(cv_case, tmp_path, monkeypatch):
-    from aifootball.processor.job import process_job
     import aifootball.processor.qwen as qwen
+    from aifootball.processor.job import process_job
 
     def forbidden(cls):
         raise AssertionError('API configuration must stay unused')

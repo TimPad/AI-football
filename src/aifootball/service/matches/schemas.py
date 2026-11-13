@@ -1,9 +1,11 @@
-from datetime import datetime
-from uuid import UUID
-from typing import Literal
-from pydantic import Field, field_validator
-from urllib.parse import urlsplit, parse_qs
 import re
+from datetime import datetime
+from typing import Literal
+from urllib.parse import parse_qs, urlsplit
+from uuid import UUID
+
+from pydantic import Field, field_validator
+
 from aifootball.service.tournaments.schemas import Input, Regulation
 
 MatchStatus = Literal['scheduled', 'live', 'ended', 'postponed', 'cancelled']

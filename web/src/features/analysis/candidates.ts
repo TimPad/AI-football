@@ -1,4 +1,4 @@
-import type { AnalysisRun, AnalysisAssignment } from '../../api/domain';
+import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
 import type { IdentitySuggestion } from './understandingTypes';
 
 // Кандидат-игрок — цепочка треков одного человека из склейки (run.groups) или одиночный трек.

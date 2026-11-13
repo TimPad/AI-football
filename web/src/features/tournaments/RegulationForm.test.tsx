@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RegulationForm } from './RegulationForm';
-import preset from '../../test/preset.json';
+import { expect, it, vi } from 'vitest';
 import type { Regulation } from '../../api/domain';
-import { vi, it, expect } from 'vitest';
+import preset from '../../test/preset.json';
+import { RegulationForm } from './RegulationForm';
+
 it('shows duration and submits period lengths in seconds', async () => {
   const save = vi.fn().mockResolvedValue(undefined);
   render(<RegulationForm initial={preset as Regulation} onSave={save} />);

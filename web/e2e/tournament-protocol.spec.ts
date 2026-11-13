@@ -1,21 +1,20 @@
-import { test, expect } from '@playwright/test';
-import { login, createTournament, goal, totals } from './helpers';
+import { expect, test } from '@playwright/test';
+import { createTournament, goal, login, totals } from './helpers';
+
 test('manual protocol snapshots, publication, recovery and responsive layouts', async ({ page, browser }) => {
   await login(page);
   const data = await createTournament(page);
   await goal(page);
   await totals(page, 3, 2);
   await expect(page.getByText('Известные голы: 1 : 0', { exact: true })).toBeVisible();
-  await page
-    .getByLabel('Прикрепить документ', { exact: true })
-    .setInputFiles({
-      name: 'protocol.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/mNcAAAAASUVORK5CYII=',
-        'base64',
-      ),
-    });
+  await page.getByLabel('Прикрепить документ', { exact: true }).setInputFiles({
+    name: 'protocol.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/mNcAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  });
   await page.getByRole('button', { name: 'Загрузить', exact: true }).click();
   await expect(page.getByRole('link', { name: 'protocol.png', exact: true })).toBeVisible();
   await page.getByLabel('Внутренние заметки').fill('PRIVATE-ONLY-NOTE');

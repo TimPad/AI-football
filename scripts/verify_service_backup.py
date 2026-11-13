@@ -5,13 +5,15 @@ Original database and files are never changed. Test restore DB is retained.
 """
 
 import argparse
-from datetime import datetime, timezone
-from pathlib import Path
-from uuid import uuid4
 import subprocess
 import tarfile
+from datetime import UTC, datetime
+from pathlib import Path
+from uuid import uuid4
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
+
 from aifootball.service.config import Settings
 
 parser = argparse.ArgumentParser()
@@ -24,7 +26,7 @@ if args.source == 'e2e':
     settings = settings.model_copy(update={'attachment_root': Path('data/service/e2e-attachments')})
 if url.host not in {'127.0.0.1', 'localhost'} or url.port != 54329:
     raise SystemExit('This verifier only supports the local compose database on port54329.')
-root = Path('data/service/backups') / datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')
+root = Path('data/service/backups') / datetime.now(UTC).strftime('%Y%m%d-%H%M%S')
 root.mkdir(parents=True, mode=0o700)
 root.chmod(0o700)
 dump = root / 'database.dump'

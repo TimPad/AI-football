@@ -1,7 +1,5 @@
 """Small deterministic selection, not an exhaustive account or an LLM verdict."""
 
-from copy import deepcopy
-
 LABELS = {
     'goal': 'Гол',
     'pass': 'Успешная передача',

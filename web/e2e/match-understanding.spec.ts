@@ -1,6 +1,7 @@
-import { task, assignTrack } from './helpers';
-import { test, expect } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
+import { expect, test } from '@playwright/test';
+import { assignTrack, task } from './helpers';
+
 test('private episode review, safe retry, confirmation and a new review version', async ({ page, browser }) => {
   const seed = spawnSync('../.venv/bin/python', ['../scripts/seed_understanding_e2e.py'], { encoding: 'utf8' });
   if (seed.status !== 0) throw Error(seed.stderr);

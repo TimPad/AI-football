@@ -1,14 +1,14 @@
-import { AddressField } from './AddressField';
-import { useDocumentTitle } from '../../components/useDocumentTitle';
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MapPin, Plus } from 'lucide-react';
-import { all, api, post, ApiError } from '../../api/client';
-import type { Hall, CameraProfile } from '../../api/domain';
-import { Field, ErrorBox, Loading, Empty, useLoad, downloadJson, Check } from '../../components/ui';
+import { type FormEvent, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ApiError, all, api, post } from '../../api/client';
+import type { CameraProfile, Hall } from '../../api/domain';
+import { Check, downloadJson, Empty, ErrorBox, Field, Loading, useLoad } from '../../components/ui';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { useAuth } from '../auth/Auth';
 import { useDraft } from '../protocol/drafts';
-import { FramePicker, frameFromVideo, landmarks, pointLabel, readImageSize, type Frame } from './FramePicker';
+import { AddressField } from './AddressField';
+import { type Frame, FramePicker, frameFromVideo, landmarks, pointLabel, readImageSize } from './FramePicker';
 
 export function HallList() {
   useDocumentTitle('Залы');

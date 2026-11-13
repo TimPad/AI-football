@@ -1,7 +1,8 @@
-from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Literal
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class JobCreate(BaseModel):
@@ -44,7 +45,7 @@ class AssignmentsUpdate(Mutation):
     assignments: list[AssignmentInput] = Field(max_length=50000)
 
 
-from typing import Any
+from typing import Any  # noqa: E402
 
 
 class RosterPerson(BaseModel):

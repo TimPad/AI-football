@@ -1,19 +1,20 @@
 """Dedicated browser-test service. Never truncates or uses organizer data."""
 
-from pathlib import Path
 import os
+from pathlib import Path
 
 os.chdir(Path(__file__).resolve().parents[1])
-from sqlalchemy import create_engine, text, select
+import uvicorn
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
-from alembic.config import Config
-from alembic import command
-import uvicorn
-from aifootball.service.config import Settings
+
 from aifootball.service.app import create_app
-from aifootball.service.auth.models import Admin
 from aifootball.service.auth.cli import create_admin
+from aifootball.service.auth.models import Admin
+from aifootball.service.config import Settings
 
 base = Settings()
 database = os.environ.get('AIF_E2E_DATABASE_NAME', 'aifootball_e2e')
@@ -36,7 +37,7 @@ command.upgrade(cfg, 'head')
 # AIF_WEB_DIST — отдельная сборка интерфейса ветки: общая web/dist остаётся у сервиса организатора.
 app = create_app(settings, web_dist=os.environ.get('AIF_WEB_DIST') or None)
 if os.environ.get('AIF_E2E_FAKE_MAIL') == '1':
-    from captain_e2e_mail import MemoryMailSender, E2E_MAIL_KEY
+    from captain_e2e_mail import E2E_MAIL_KEY, MemoryMailSender
 
     settings.captain_mail_key = E2E_MAIL_KEY
     app.state.mail_sender = MemoryMailSender()

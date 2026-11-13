@@ -1,9 +1,9 @@
-import type { AnalysisRun } from '../../api/domain';
 import { useState } from 'react';
-import type { components } from '../../api/types';
 import { api } from '../../api/client';
-import { useLoad, Loading, Field } from '../../components/ui';
-import { useRatingCommand, CommandStatus } from '../ratings/commands';
+import type { AnalysisRun } from '../../api/domain';
+import type { components } from '../../api/types';
+import { Field, Loading, useLoad } from '../../components/ui';
+import { CommandStatus, useRatingCommand } from '../ratings/commands';
 export const teamTaskStatuses: Record<string, string> = {
   open: 'У капитана',
   team_confirmed: 'Команда подтверждена',

@@ -1,7 +1,8 @@
 """Verified interval arithmetic; no conversion from CV visibility to participation."""
 
 from collections import defaultdict
-from aifootball.ratings.schema import ROLES, COMPLETENESS
+
+from aifootball.ratings.schema import COMPLETENESS, ROLES
 
 
 def intervals(value, duration=86400000):

@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { CircleHelp } from 'lucide-react';
+import { useState } from 'react';
 import { Modal } from '../../components/ui';
 import { FORMAT_GUIDE, TEMPLATE_NAME } from './labels';
 

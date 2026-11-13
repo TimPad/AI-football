@@ -1,5 +1,7 @@
 from uuid import uuid4
+
 from fastapi.testclient import TestClient
+
 from test_roster_xlsx import book
 
 
@@ -140,6 +142,7 @@ def test_tournament_import_adds_only_entry_not_permanent_members(admin_client, t
 
 def test_archive_and_private_preview_are_guarded(admin_client, tournament_factory):
     from sqlalchemy.orm import Session
+
     from aifootball.service.auth.cli import create_admin
 
     tournament = tournament_factory()
@@ -185,10 +188,12 @@ def test_roster_limit_blocks_all_teams_before_any_write(admin_client, tournament
 
 def test_expired_preview_is_private_but_committed_replay_survives_cleanup(admin_client):
     from datetime import timedelta
+
     from sqlalchemy.orm import Session
-    from aifootball.service.db import utcnow
-    from aifootball.service.catalog.roster_imports.models import RosterImport
+
     from aifootball.service.catalog.roster_imports.cleanup import cleanup
+    from aifootball.service.catalog.roster_imports.models import RosterImport
+    from aifootball.service.db import utcnow
 
     team = admin_client.post('/api/v1/teams', json={'name': 'Север'}).json()
     source = upload(admin_client, team['id'], [['ФИО'], ['Первый']], 'team')

@@ -1,5 +1,5 @@
-import type { MouseEvent } from 'react';
 import { Check } from 'lucide-react';
+import type { MouseEvent } from 'react';
 export type SectionItem = { id: string; label: string; state?: 'attention' | 'done'; steps?: SectionItem[] };
 const STATE_TITLE = { attention: 'Требует внимания', done: 'Готово' } as const;
 

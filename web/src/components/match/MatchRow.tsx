@@ -1,11 +1,11 @@
+import { Radio } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Radio } from 'lucide-react';
 import type { PublicMatch } from '../../api/domain';
 import { statuses } from '../../api/domain';
-import { TeamCrest } from './MatchHeader';
-import { publicForward } from '../../features/navigation/publicContext';
 import { matchTime } from '../../features/matches/timezone';
+import { publicForward } from '../../features/navigation/publicContext';
+import { TeamCrest } from './MatchHeader';
 
 export const ZONE = 'Europe/Moscow';
 export type RowMatch = Pick<

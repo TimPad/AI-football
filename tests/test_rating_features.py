@@ -1,10 +1,12 @@
 from dataclasses import replace
 from uuid import uuid4
+
 import pytest
-from aifootball.ratings.schema import MatchPerformance, MetricFact
+
 from aifootball.ratings.actions import canonical_actions
-from aifootball.ratings.features import build_features, aggregate_facts, combine_rate
+from aifootball.ratings.features import aggregate_facts, build_features, combine_rate
 from aifootball.ratings.registry import REGISTRY
+from aifootball.ratings.schema import MatchPerformance, MetricFact
 
 PID = str(uuid4())
 OTHER = str(uuid4())
@@ -144,7 +146,6 @@ def test_protocol_unknown_author_assist_own_goal_and_shootout():
 
 
 def test_key_pass_chain_breaks_at_intervening_pass_unknown_touch_or_opponent_control():
-    pid = PID
     pos = str(uuid4())
     first = action('pass', success=True, possession_id=pos, start_ms=1000)
     shot = action('shot', player_id=OTHER, counts_as_shot=True, on_target=True, possession_id=pos, start_ms=3000)

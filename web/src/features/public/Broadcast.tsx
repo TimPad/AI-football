@@ -1,5 +1,5 @@
+import { ExternalLink, Radio } from 'lucide-react';
 import { useState } from 'react';
-import { Radio, ExternalLink } from 'lucide-react';
 import type { PublicMatch } from '../../api/domain';
 import { Empty } from '../../components/ui';
 

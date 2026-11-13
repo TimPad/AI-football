@@ -1,7 +1,10 @@
 from uuid import uuid4
+
 from sqlalchemy.orm import Session
-from .captain_helpers import captain
+
 from test_roster_xlsx import book as workbook
+
+from .captain_helpers import captain
 
 
 def test_team_and_owner_atomic_retry_and_profile_proposal(client):
@@ -122,6 +125,7 @@ def test_profile_decision_and_create_replay_recheck_current_grant(admin_client):
 
 def test_images_are_scoped_to_uploader_or_active_team_grant(admin_client):
     from io import BytesIO
+
     from PIL import Image
 
     c, _ = captain(admin_client.app)

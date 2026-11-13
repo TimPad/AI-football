@@ -1,8 +1,9 @@
 """Deterministic, inspectable pilot heuristic. Never reweights missing data."""
 
+import json
 import math
 from hashlib import sha256
-import json
+
 from aifootball.ratings.registry import REGISTRY, REGISTRY_VERSION
 
 

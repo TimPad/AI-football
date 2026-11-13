@@ -1,8 +1,9 @@
 import json
 from hashlib import sha256
-from pathlib import Path
+
 import httpx
 import pytest
+
 from understanding_fixtures import make_frame
 
 
@@ -57,7 +58,7 @@ def test_endpoint_and_payload_match_omni_contract(frame_window):
 
 @pytest.mark.parametrize('kind,block', [('video', 'video_url'), ('audio', 'input_audio')])
 def test_native_media_uses_local_bytes_not_public_url(tmp_path, kind, block):
-    from aifootball.understanding.types import Window, MediaAsset
+    from aifootball.understanding.types import MediaAsset, Window
 
     path = tmp_path / ('clip.mp4' if kind == 'video' else 'clip.wav')
     path.write_bytes(b'media')
@@ -143,6 +144,7 @@ def test_key_redacted_from_config_repr(monkeypatch):
 
 def test_media_limits_enforced_before_network(frame_window):
     from dataclasses import replace
+
     from aifootball.processor.qwen import QwenError
 
     def forbidden(request):

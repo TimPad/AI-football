@@ -3,9 +3,9 @@ import { ApiError, api, post } from '../../api/client';
 import type { Entry } from '../../api/domain';
 import { ErrorBox } from '../../components/ui';
 import type { DrawPreview, StageView, Standings } from './api';
-import { ParticipantsPicker, storeParticipants, storedParticipants } from './ParticipantsPicker';
-import { plural } from './labels';
 import { PairCard } from './Bracket';
+import { plural } from './labels';
+import { ParticipantsPicker, storedParticipants, storeParticipants } from './ParticipantsPicker';
 import './stages.css';
 
 type Method = 'pots' | 'snake' | 'seeded' | 'random' | 'scheme' | 'manual';

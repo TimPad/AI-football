@@ -5,10 +5,10 @@ import { Empty, ErrorBox, Loading, Modal, useLoad } from '../../components/ui';
 import type { GroupView, PairView, StageView, Standings } from './api';
 import { DrawStep } from './DrawStep';
 import { FormatStep } from './FormatStep';
-import { RosterPanel } from './RosterPanel';
-import { WithdrawDialog } from './WithdrawDialog';
-import { StageBlock } from './StandingsView';
 import { CRITERIA, STATUS } from './labels';
+import { RosterPanel } from './RosterPanel';
+import { StageBlock } from './StandingsView';
+import { WithdrawDialog } from './WithdrawDialog';
 import './stages.css';
 
 export function useCabinetStandings(tid: string) {

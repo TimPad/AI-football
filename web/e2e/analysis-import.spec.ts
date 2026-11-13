@@ -1,6 +1,6 @@
-import { task, assignTrack } from './helpers';
-import { test, expect } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
+import { expect, test } from '@playwright/test';
+import { assignTrack, task } from './helpers';
 
 function packageFor(job: unknown, mode: 'valid' | 'foreign' | 'events' = 'valid') {
   // events — пакет версии 3 с передачами по мячу (две передачи команды A)
@@ -105,7 +105,7 @@ test('external report → identities → one-match history → separate publicat
   await task(page, 'Проверка').click();
   await page.getByRole('button', { name: 'Создать задание', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Скачать job.zip' })).toBeVisible();
-  let overview = await (await page.request.get(`/api/v1${path}/analysis`)).json();
+  const overview = await (await page.request.get(`/api/v1${path}/analysis`)).json();
   const job = overview.jobs[0];
   const raw = packageFor(job, 'events');
   const ids: string[] = [];

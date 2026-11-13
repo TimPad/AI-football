@@ -1,17 +1,19 @@
 """Private projections/review commands. Never mutates the official protocol."""
 
 from copy import deepcopy
+
 from sqlalchemy import select
-from aifootball.service.common import get_entity
-from aifootball.service.matches.models import Match
+
+from aifootball.service.analysis.jobs import prior_command, remember
 from aifootball.service.analysis.models import (
-    AnalysisRun,
-    AnalysisJob,
     AnalysisAssignment,
+    AnalysisJob,
+    AnalysisRun,
     AnalysisUnderstandingDecision,
 )
-from aifootball.service.analysis.jobs import prior_command, remember
+from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
+from aifootball.service.matches.models import Match
 from aifootball.understanding.identity import resolve_identity
 from aifootball.understanding.schema import validate_understanding
 

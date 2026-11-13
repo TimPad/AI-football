@@ -1,45 +1,47 @@
 from copy import deepcopy
 from uuid import UUID, uuid5
+
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func, or_, exists
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import Session
-from aifootball.service.db import get_session
-from aifootball.service.common import get_entity, as_dict
-from aifootball.service.errors import DomainError, RevisionConflict
+
 from aifootball.service.auth.security import require_admin, require_csrf
-from aifootball.service.catalog.models import Team, TeamMember, Entry
-from aifootball.service.catalog.schemas import RosterPlayer, RosterUpdate
-from aifootball.service.catalog.operations import set_roster
-from aifootball.service.tournaments.models import Tournament
-from aifootball.service.tournaments.commands import setup_command
+from aifootball.service.captains.commands import command
+from aifootball.service.captains.entries import (
+    allowed_tournament,
+    check_submission_limit,
+    entry_revision,
+    own_submission,
+    snapshot,
+    tournament_option,
+    view,
+)
+from aifootball.service.captains.entry_schemas import (
+    ApplicationCommand,
+    ApplicationCreate,
+    ApplicationDecision,
+    ApplicationDraft,
+    ApplicationSettings,
+    ApplicationView,
+    CaptainTournamentOption,
+    EntryInvitationCreate,
+    EntryInvitationView,
+)
 from aifootball.service.captains.models import (
+    EntryInvitation,
     EntrySubmission,
     EntrySubmissionVersion,
-    EntryInvitation,
     TeamCaptainGrant,
 )
 from aifootball.service.captains.security import require_captain, require_captain_csrf, require_captain_team
-from aifootball.service.captains.commands import command
-from aifootball.service.captains.entry_schemas import (
-    ApplicationCreate,
-    ApplicationCommand,
-    ApplicationDraft,
-    ApplicationDecision,
-    ApplicationSettings,
-    EntryInvitationCreate,
-    ApplicationView,
-    CaptainTournamentOption,
-    EntryInvitationView,
-)
-from aifootball.service.captains.entries import (
-    view,
-    snapshot,
-    entry_revision,
-    check_submission_limit,
-    allowed_tournament,
-    own_submission,
-    tournament_option,
-)
+from aifootball.service.catalog.models import Entry, Team, TeamMember
+from aifootball.service.catalog.operations import set_roster
+from aifootball.service.catalog.schemas import RosterPlayer, RosterUpdate
+from aifootball.service.common import as_dict, get_entity
+from aifootball.service.db import get_session
+from aifootball.service.errors import DomainError, RevisionConflict
+from aifootball.service.tournaments.commands import setup_command
+from aifootball.service.tournaments.models import Tournament
 from aifootball.service.views import Page, TournamentView
 
 router = APIRouter()

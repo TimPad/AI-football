@@ -1,8 +1,8 @@
 """Чтение кадров видео с прореживанием до целевого fps."""
 
+import math
 from collections.abc import Iterator
 from pathlib import Path
-import math
 
 import cv2
 import numpy as np

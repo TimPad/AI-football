@@ -2,13 +2,12 @@ import numpy as np
 import polars as pl
 import pytest
 
-from aifootball import schemas
-from aifootball.geometry.homography import apply_homography
 from aifootball.analytics.validation import (
     evaluate_detections,
     evaluate_projection_error,
     evaluate_tracking,
 )
+from aifootball.geometry.homography import apply_homography
 from aifootball.venue import load_venue
 from conftest import make_venue_dir
 

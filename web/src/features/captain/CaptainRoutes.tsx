@@ -1,9 +1,9 @@
-import { CaptainIdentityTasks, CaptainIdentityReview } from './CaptainIdentityReview';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { CaptainAuthProvider, CaptainPrivate, CaptainLogin, CaptainRegister, CaptainTokenPage } from './CaptainAuth';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { CaptainAuthProvider, CaptainLogin, CaptainPrivate, CaptainRegister, CaptainTokenPage } from './CaptainAuth';
 import { CaptainApplications, CaptainEntryPage } from './CaptainEntryPage';
+import { CaptainIdentityReview, CaptainIdentityTasks } from './CaptainIdentityReview';
 import { CaptainShell } from './CaptainShell';
-import { CaptainHome, CaptainTeamPage, CaptainRosterImportPage } from './CaptainTeamPage';
+import { CaptainHome, CaptainRosterImportPage, CaptainTeamPage } from './CaptainTeamPage';
 export function CaptainRoutes() {
   return (
     <CaptainAuthProvider>

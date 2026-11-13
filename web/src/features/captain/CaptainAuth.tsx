@@ -1,10 +1,11 @@
-import { createContext, useContext, useEffect, useState, useRef, type ReactNode, type FormEvent } from 'react';
-import { useDocumentTitle } from '../../components/useDocumentTitle';
+import { createContext, type FormEvent, type ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
-import { api, post, setCsrf, ApiError } from '../../api/client';
+import { ApiError, api, post, setCsrf } from '../../api/client';
 import type { components } from '../../api/types';
 import { ErrorBox, Field } from '../../components/ui';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { useDraft } from '../protocol/drafts';
+
 type Session = components['schemas']['CaptainSessionView'];
 type Auth = {
   session: Session | null;

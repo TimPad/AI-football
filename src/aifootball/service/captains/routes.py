@@ -1,38 +1,39 @@
 from datetime import timedelta
 from secrets import token_urlsafe
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from aifootball.service.db import get_session, utcnow
-from aifootball.service.common import get_entity, as_dict
-from aifootball.service.auth.security import require_csrf, require_admin, token_hash
-from aifootball.service.catalog.models import Team
-from aifootball.service.catalog.profiles import team_profile
-from aifootball.service.views import Page, TeamProfile
-from aifootball.service.errors import DomainError
-from aifootball.service.tournaments.commands import setup_command
-from aifootball.service.captains.models import (
-    CaptainAccount,
-    TeamCaptainGrant,
-    TeamCaptainInvitation,
-    CaptainGrantAudit,
-    CaptainOwnershipRequest,
-)
-from aifootball.service.captains.schemas import (
-    InvitationCreate,
-    InvitationView,
-    TokenInput,
-    GrantView,
-    ReasonCommand,
-    GrantCreate,
-    OwnershipRequest,
-)
-from aifootball.service.captains.security import require_captain, require_captain_csrf, require_captain_team
+
+from aifootball.service.auth.security import require_admin, require_csrf, token_hash
 from aifootball.service.captains.commands import command
 from aifootball.service.captains.mail import enqueue, require_transport
+from aifootball.service.captains.models import (
+    CaptainAccount,
+    CaptainGrantAudit,
+    CaptainOwnershipRequest,
+    TeamCaptainGrant,
+    TeamCaptainInvitation,
+)
+from aifootball.service.captains.schemas import (
+    GrantCreate,
+    GrantView,
+    InvitationCreate,
+    InvitationView,
+    OwnershipRequest,
+    ReasonCommand,
+    TokenInput,
+)
+from aifootball.service.captains.security import require_captain, require_captain_csrf, require_captain_team
 from aifootball.service.captains.team_routes import CaptainTeamView
 from aifootball.service.captains.teams import captain_team_view
+from aifootball.service.catalog.models import Team
+from aifootball.service.common import as_dict, get_entity
+from aifootball.service.db import get_session, utcnow
+from aifootball.service.errors import DomainError
+from aifootball.service.tournaments.commands import setup_command
+from aifootball.service.views import Page
 
 router = APIRouter()
 

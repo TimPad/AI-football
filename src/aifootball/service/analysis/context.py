@@ -1,12 +1,14 @@
 import json
 from hashlib import sha256
+
 from sqlalchemy import select
-from aifootball.service.common import get_entity
-from aifootball.service.matches.models import Match, LineupMember
+
 from aifootball.service.catalog.models import Entry, Team
+from aifootball.service.common import get_entity
+from aifootball.service.errors import DomainError
 from aifootball.service.halls.models import CameraProfile
 from aifootball.service.halls.operations import same_dimensions
-from aifootball.service.errors import DomainError
+from aifootball.service.matches.models import LineupMember, Match
 
 
 def canonical_json(value):

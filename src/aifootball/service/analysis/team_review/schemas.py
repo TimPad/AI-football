@@ -1,7 +1,8 @@
 from datetime import datetime
-from uuid import UUID
 from typing import Literal
-from pydantic import BaseModel, Field, ConfigDict
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TeamTaskCreate(BaseModel):

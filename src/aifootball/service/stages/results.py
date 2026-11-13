@@ -1,6 +1,7 @@
 """Результаты матчей для таблиц: кабинет — последняя подтверждённая версия, зритель — опубликованная."""
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import and_, func, select
+
 from aifootball.service.matches.models import Match
 from aifootball.service.protocol.models import ProtocolVersion
 from aifootball.service.stages.rules.progress import Leg

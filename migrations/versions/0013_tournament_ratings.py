@@ -1,7 +1,7 @@
 """Immutable ratings, published inputs and independent tournament publication."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = '0013_tournament_ratings'

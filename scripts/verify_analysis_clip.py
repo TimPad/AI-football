@@ -4,21 +4,23 @@ Creates a clearly labelled demonstration match; never touches organizer data.
 The roster labels are review placeholders, not claims about people's identities.
 """
 
-from pathlib import Path
 import json
+from pathlib import Path
 from uuid import uuid4
-from sqlalchemy import create_engine, text, select
-from sqlalchemy.engine import make_url
-from sqlalchemy.orm import Session
+
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from aifootball.service.config import Settings
+from sqlalchemy import create_engine, select, text
+from sqlalchemy.engine import make_url
+from sqlalchemy.orm import Session
+
+from aifootball.processor.job import process_job
 from aifootball.service.app import create_app
 from aifootball.service.auth.cli import create_admin
 from aifootball.service.auth.models import Admin
+from aifootball.service.config import Settings
 from aifootball.service.tournaments.schemas import Regulation
-from aifootball.processor.job import process_job
 
 root = Path('output/analysis-acceptance')
 root.mkdir(parents=True, exist_ok=True)

@@ -1,13 +1,13 @@
-import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { PairCard } from './PairCard';
-import { BracketTree, rowsFor } from './BracketTree';
+import { describe, expect, it } from 'vitest';
+import type { SectionView } from './api';
 import { Bracket } from './Bracket';
+import { BracketTree, rowsFor } from './BracketTree';
 import { pair, side } from './fixtures.test-data';
 import { pairSpeech } from './labels';
-import type { SectionView } from './api';
+import { PairCard } from './PairCard';
 
 const leg = (n: number, iso: string | null, score: [number, number] | null, extra = {}) => ({
   match_id: score ? `m${n}` : null,

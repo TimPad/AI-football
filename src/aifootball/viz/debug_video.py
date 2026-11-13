@@ -8,7 +8,7 @@ import polars as pl
 
 from aifootball.perception.frames import iter_frames
 from aifootball.venue import Venue
-from aifootball.viz.overlay import TrackAnnotator, draw_tracks
+from aifootball.viz.overlay import TrackAnnotator
 from aifootball.viz.topdown import draw_pitch, draw_players
 
 

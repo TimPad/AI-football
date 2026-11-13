@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { api } from '../../api/client';
-import { Field, ErrorBox } from '../../components/ui';
+import { ErrorBox, Field } from '../../components/ui';
 import { YandexMapsLink } from '../../components/YandexMapsLink';
 import './address.css';
 export type AddressValue = {

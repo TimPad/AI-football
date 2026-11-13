@@ -1,15 +1,17 @@
-from uuid import uuid5, NAMESPACE_URL
 from copy import deepcopy
+from uuid import NAMESPACE_URL, uuid5
+
 from sqlalchemy import select
-from aifootball.service.analysis.models import AnalysisRun, AnalysisJob, AnalysisAssignment
-from aifootball.service.analysis.jobs import prior_command, remember
+
+from aifootball.service.analysis.assignments import create_metrics, set_assignments
 from aifootball.service.analysis.context import build_context, context_hash
-from aifootball.service.analysis.assignments import set_assignments, create_metrics
+from aifootball.service.analysis.jobs import prior_command, remember
+from aifootball.service.analysis.models import AnalysisAssignment, AnalysisJob, AnalysisRun
 from aifootball.service.analysis.queries import run_view
-from aifootball.service.ratings.auto import confirm_auto_sources, publish_auto_sources
-from aifootball.service.matches.models import Match
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
+from aifootball.service.matches.models import Match
+from aifootball.service.ratings.auto import confirm_auto_sources, publish_auto_sources
 
 
 def mutate(db, match_id, run_id, actor_id, data, kind):

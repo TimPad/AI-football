@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { login, createTournament } from './helpers';
+import { expect, test } from '@playwright/test';
+import { createTournament, login } from './helpers';
 
 test('team sheet, images, draft recovery, safe retry and tournament identity', async ({ page }) => {
   await login(page);

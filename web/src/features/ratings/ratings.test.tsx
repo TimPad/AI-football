@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { describe, expect, it } from 'vitest';
 import { MatchRating } from './MatchRating';
-import { RankingTable, defaultBasis } from './TournamentRatings';
+import { defaultBasis, RankingTable } from './TournamentRatings';
 import type { RatingSummary } from './types';
 
 describe('verified ratings', () => {
@@ -138,9 +138,10 @@ describe('verified ratings', () => {
   });
 });
 
-import { vi, afterEach } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { ParticipationForm, RoleIntervals } from './ParticipationEditor';
 import type { Participation, PersonPresence } from './types';
+
 afterEach(() => {
   localStorage.clear();
   vi.unstubAllGlobals();
@@ -238,6 +239,7 @@ it('preserves malformed nested participation as a recoverable corrupt draft', ()
 
 import { waitFor } from '@testing-library/react';
 import { PlayerRatingHistory } from './PlayerRatingHistory';
+
 it('keeps historical snapshot in the leaderboard player link', () => {
   const row = {
     player_id: 'p1',

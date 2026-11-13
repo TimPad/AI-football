@@ -1,7 +1,7 @@
-import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MatchPublication } from './MatchPublication';
 
 vi.mock('../auth/Auth', () => ({ useAuth: () => ({ session: { id: 'admin-1' } }) }));

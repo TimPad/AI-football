@@ -1,20 +1,21 @@
 """Batch source selection and per-role adapters. No inference of attendance from CV."""
 
 from copy import deepcopy
-from dataclasses import asdict, replace
+from dataclasses import replace
 from hashlib import sha256
-from uuid import UUID
+
 from sqlalchemy import select
+
 from aifootball.analytics.exchange import canonical
 from aifootball.ratings.actions import canonical_actions
 from aifootball.ratings.features import build_features
-from aifootball.ratings.schema import MatchPerformance, MetricFact
-from aifootball.ratings.validate import intervals, intersection, duration_s, _remaining
+from aifootball.ratings.schema import MatchPerformance
+from aifootball.ratings.validate import _remaining, duration_s, intersection, intervals
+from aifootball.service.analysis.models import AnalysisRun, PlayerMatchMetric
 from aifootball.service.matches.models import Match
 from aifootball.service.matches.operations import get_match_view
 from aifootball.service.protocol.models import ProtocolVersion
-from aifootball.service.analysis.models import AnalysisRun, PlayerMatchMetric
-from aifootball.service.ratings.models import ParticipationVersion, ActionVersion, RatingMatchPublication, is_auto
+from aifootball.service.ratings.models import ActionVersion, ParticipationVersion, RatingMatchPublication, is_auto
 from aifootball.service.ratings.operations import participation_view
 
 

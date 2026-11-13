@@ -1,7 +1,7 @@
-from uuid import uuid4
 from fastapi.testclient import TestClient
-from .test_analysis_jobs import analytics_match
-from .test_analysis_assignments import import_run, save_assignments, command
+
+from .test_analysis_assignments import command, import_run, save_assignments
+from .test_analysis_jobs import analytics_match  # noqa: F401
 
 
 def confirm(client, match, run):

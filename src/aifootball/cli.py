@@ -16,7 +16,7 @@ import argparse
 import json
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from aifootball import schemas
@@ -67,7 +67,7 @@ def cmd_detect(args, venue) -> None:
             'imgsz': venue.imgsz,
             'ball_model': venue.ball_model,
             'schema_version': schemas.SCHEMA_VERSION,
-            'created_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+            'created_at': datetime.now(UTC).isoformat(timespec='seconds'),
         },
         args.match / 'meta.json',
     )
@@ -285,6 +285,7 @@ def cmd_report(args, venue) -> None:
 def _report_video_duration(args, processed_end: float) -> tuple[float, bool]:
     """Длительность исходника; без источника явно помечаем оценку по артефактам."""
     import math
+
     import cv2
 
     meta_path = args.match / 'meta.json'

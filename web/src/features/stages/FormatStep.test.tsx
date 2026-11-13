@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { FormatStep } from './FormatStep';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Entry, RegVersion } from '../../api/domain';
 import { DrawStep } from './DrawStep';
+import { FormatStep } from './FormatStep';
 import { groupsStage, team } from './fixtures.test-data';
-import type { RegVersion, Entry } from '../../api/domain';
 
 const reg = { id: 'r1', variant_name: 'Основной', version: 1 } as RegVersion;
 const names = ['Север', 'Юг', 'Запад', 'Восток'];

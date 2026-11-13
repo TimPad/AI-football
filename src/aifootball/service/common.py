@@ -1,5 +1,5 @@
-from uuid import UUID
-from sqlalchemy import select, func, inspect
+from sqlalchemy import func, inspect, select
+
 from aifootball.service.errors import DomainError
 
 

@@ -1,7 +1,8 @@
-import { it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { expect, it } from 'vitest';
 import { PublicShell } from './PublicShell';
+
 it('offers one sign-in entry that leads to either cabinet', () => {
   render(
     <MemoryRouter>

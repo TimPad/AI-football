@@ -2,12 +2,14 @@
 
 import json
 from hashlib import sha256
-from uuid import uuid5, NAMESPACE_URL
+from uuid import NAMESPACE_URL, uuid5
+
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import select, func
-from aifootball.service.common import get_entity, as_dict
-from aifootball.service.catalog.models import Team, Player, TeamMember, TeamProfileCommand, CatalogImage
+from sqlalchemy import func, select
+
+from aifootball.service.catalog.models import CatalogImage, Player, Team, TeamMember, TeamProfileCommand
 from aifootball.service.catalog.schemas import PlayerDetails
+from aifootball.service.common import as_dict, get_entity
 from aifootball.service.errors import DomainError, RevisionConflict
 
 

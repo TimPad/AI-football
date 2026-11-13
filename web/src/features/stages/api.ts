@@ -1,4 +1,5 @@
 import type { components } from '../../api/types';
+
 type S = components['schemas'];
 export type Standings = S['StandingsView'];
 export type StageView = S['StageView'];

@@ -1,5 +1,5 @@
-import { useRef, useState, type ReactNode } from 'react';
 import { MoreHorizontal } from 'lucide-react';
+import { type ReactNode, useRef, useState } from 'react';
 import { Modal } from './ui';
 
 export type MenuItem = { label: string; onSelect: () => void; danger?: boolean; disabled?: boolean };
@@ -45,6 +45,7 @@ export function ConfirmDialog({
   title: string;
   children: ReactNode;
   confirm: string;
+  // biome-ignore lint/suspicious/noConfusingVoidType: обработчик либо ничего не возвращает, либо ждёт запрос
   onConfirm: () => void | Promise<unknown>;
   onClose: () => void;
   busy?: boolean;

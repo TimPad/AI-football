@@ -1,10 +1,12 @@
 import shutil
 import subprocess
 from pathlib import Path
+
 import cv2
 import numpy as np
 import polars as pl
 import pytest
+
 from conftest import write_video
 
 

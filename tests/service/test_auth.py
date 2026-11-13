@@ -1,7 +1,8 @@
 def test_private_session_contract():
+    from fastapi.testclient import TestClient
+
     from aifootball.service.app import create_app
     from aifootball.service.config import Settings
-    from fastapi.testclient import TestClient
 
     app = create_app(Settings(database_url='postgresql+psycopg://localhost/aifootball_test'))
     with TestClient(app) as client:
@@ -25,8 +26,10 @@ def test_login_csrf_logout(client, seed_admin):
 
 def test_origin_throttle_and_expired_session(client, seed_admin):
     from datetime import timedelta
+
     from sqlalchemy import update
     from sqlalchemy.orm import Session
+
     from aifootball.service.auth.models import AdminSession
     from aifootball.service.db import utcnow
 

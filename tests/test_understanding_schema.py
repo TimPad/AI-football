@@ -1,8 +1,7 @@
-import copy
-from hashlib import sha256
 import pytest
+
 from test_analysis_exchange import result_zip
-from understanding_fixtures import understanding_document, make_frame, event
+from understanding_fixtures import event, make_frame, understanding_document
 
 
 @pytest.fixture
@@ -169,8 +168,8 @@ def test_player_uuid_must_belong_to_roster(case):
 
 
 def test_window_timestamps_translate_once_and_do_not_mutate_input(tmp_path):
-    from aifootball.understanding.types import Window
     from aifootball.understanding.schema import validate_window_response
+    from aifootball.understanding.types import Window
 
     frame = make_frame(tmp_path, video_ms=11200)
     window = Window('w1', 10000, 12000, (frame,), None, (1,), 'frames')
@@ -194,8 +193,8 @@ def test_window_timestamps_translate_once_and_do_not_mutate_input(tmp_path):
 
 
 def test_native_audio_observation_bound_to_source_clip(tmp_path):
-    from aifootball.understanding.types import Window, MediaAsset
     from aifootball.understanding.schema import validate_window_response
+    from aifootball.understanding.types import MediaAsset, Window
 
     media = MediaAsset('clip', 'video', tmp_path / 'clip.mp4', 'a' * 64, 10000, 12000, True)
     window = Window('w1', 10000, 12000, (), media, (), 'native')

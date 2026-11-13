@@ -1,16 +1,19 @@
-import { beforeEach, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { MatchUnderstanding } from './MatchUnderstanding';
-import { IdentityReview } from './IdentityReview';
-import { VideoAnalysisTab } from './AnalysisTab';
+import { beforeEach, expect, it, vi } from 'vitest';
 import type { AnalysisRun } from '../../api/domain';
+import { VideoAnalysisTab } from './AnalysisTab';
+import { IdentityReview } from './IdentityReview';
+import { MatchUnderstanding } from './MatchUnderstanding';
 import type { UnderstandingView } from './understandingTypes';
+
 vi.mock('../../api/client', async () => ({
   ...(await vi.importActual<typeof import('../../api/client')>('../../api/client')),
   api: vi.fn(),
 }));
+
 import { api } from '../../api/client';
+
 const run = {
   id: 'run',
   match_id: 'match',

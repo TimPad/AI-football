@@ -2,7 +2,7 @@ import pytest
 
 
 def test_clean_clock_excludes_pauses(regulation_data):
-    from aifootball.service.protocol.clock import transition_clock, clock_elapsed
+    from aifootball.service.protocol.clock import clock_elapsed, transition_clock
     from aifootball.service.protocol.schemas import ClockState
     from aifootball.service.tournaments.schemas import Regulation
 
@@ -16,10 +16,10 @@ def test_clean_clock_excludes_pauses(regulation_data):
 
 
 def test_running_mixed_and_extra_modes(regulation_data):
+    from aifootball.service.errors import DomainError
     from aifootball.service.protocol.clock import transition_clock
     from aifootball.service.protocol.schemas import ClockState
     from aifootball.service.tournaments.schemas import Regulation
-    from aifootball.service.errors import DomainError
 
     running = Regulation(**{**regulation_data, 'clock_mode': 'running'})
     s = transition_clock(ClockState(), 'start', now_ms=0, regulation=running)
@@ -45,10 +45,10 @@ def test_running_mixed_and_extra_modes(regulation_data):
 
 
 def test_clock_boundaries_corrections_and_backward_time(regulation_data):
-    from aifootball.service.protocol.clock import transition_clock, clock_elapsed
+    from aifootball.service.errors import DomainError
+    from aifootball.service.protocol.clock import clock_elapsed, transition_clock
     from aifootball.service.protocol.schemas import ClockState
     from aifootball.service.tournaments.schemas import Regulation
-    from aifootball.service.errors import DomainError
 
     r = Regulation(**regulation_data)
     s = transition_clock(ClockState(), 'start', now_ms=1000, regulation=r)

@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react';
+import { type FormEvent, useState } from 'react';
 import { api } from '../../api/client';
+import type { Player } from '../../api/domain';
 import { Field, Loading, useLoad } from '../../components/ui';
 import { useAuth } from '../auth/Auth';
-import { useRatingCommand, CommandStatus } from '../ratings/commands';
-import type { Player } from '../../api/domain';
+import { CommandStatus, useRatingCommand } from '../ratings/commands';
+
 type Access = {
   grants: { id: string; email: string; display_name: string; active: boolean }[];
   invitations: { id: string; email: string; used_at: string | null; revoked_at: string | null; expires_at: string }[];

@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
-import { login, createTournament } from './helpers';
+import { expect, test } from '@playwright/test';
+import { createTournament, login } from './helpers';
+
 test('creates a suggested hall without losing the match form', async ({ page }) => {
   await login(page);
   const t = await createTournament(page);

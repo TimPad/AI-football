@@ -1,18 +1,19 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { api } from '../../../api/client';
 import type { PublicMatch, PublicTournament } from '../../../api/domain';
 import type { components } from '../../../api/types';
-import { api } from '../../../api/client';
-import { Loading, ErrorBox, Modal } from '../../../components/ui';
+import { ErrorBox, Loading, Modal } from '../../../components/ui';
 import { useDocumentTitle } from '../../../components/useDocumentTitle';
 import { useQueryPatch } from '../../navigation/useQueryPatch';
 import { DateNavigation, today } from './DateNavigation';
-import { TournamentMatchGroup } from './TournamentMatchGroup';
-import { UpcomingMatches, MatchShortList } from './UpcomingMatches';
+import { useNarrowScreen, usePublicRequest, useWideScreen } from './request';
 import { TournamentLeaders } from './TournamentLeaders';
-import { usePublicRequest, useWideScreen, useNarrowScreen } from './request';
+import { TournamentMatchGroup } from './TournamentMatchGroup';
+import { MatchShortList, UpcomingMatches } from './UpcomingMatches';
 import './match-center.css';
+
 type Day = components['schemas']['PublicMatchDayPage'];
 const STATUSES = [
   ['all', 'Все'],

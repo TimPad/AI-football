@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass, field
 from itertools import permutations
-from aifootball.service.stages.rules.standings import rank, rank_across, Result, DEFAULT_CRITERIA
+
+from aifootball.service.stages.rules.standings import DEFAULT_CRITERIA, rank, rank_across
 
 
 @dataclass(frozen=True)

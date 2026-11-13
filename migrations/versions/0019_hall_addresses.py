@@ -1,5 +1,5 @@
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = '0019_hall_addresses'
 down_revision = '0018_roster_imports'

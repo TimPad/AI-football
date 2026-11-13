@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { components } from '../../../api/types';
+import { MatchRow } from '../../../components/match/MatchRow';
 import { Loading } from '../../../components/ui';
 import { usePublicRequest } from './request';
-import { MatchRow } from '../../../components/match/MatchRow';
+
 type MatchList = components['schemas']['PublicUpcomingMatches'];
 // A short list of other days' matches: recent results or the nearest games. Nothing is drawn when the list is empty.
 export function MatchShortList({

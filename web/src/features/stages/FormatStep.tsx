@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { AlertTriangle, Check as CheckIcon } from 'lucide-react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { post } from '../../api/client';
 import type { Entry, RegVersion } from '../../api/domain';
+import type { components } from '../../api/types';
 import { Check, ErrorBox, Field, Modal } from '../../components/ui';
 import type { Standings, Template } from './api';
-import type { components } from '../../api/types';
 import { FormatHelp } from './FormatHelp';
-import { ParticipantsPicker, storeParticipants, storedParticipants } from './ParticipantsPicker';
+import { plural, TEMPLATE_HINT, TEMPLATE_NAME } from './labels';
+import { ParticipantsPicker, storedParticipants, storeParticipants } from './ParticipantsPicker';
 import { Stepper } from './Stepper';
-import { TEMPLATE_HINT, TEMPLATE_NAME, plural } from './labels';
 import './stages.css';
 
 type Card = components['schemas']['EstimateCard'];

@@ -1,9 +1,11 @@
 from typing import Annotated, Literal, Union
 from uuid import UUID
+
 from pydantic import Field, create_model
-from aifootball.service.tournaments.schemas import Input
-from aifootball.service.matches.schemas import MatchUpdate, LineupUpdate, StatusUpdate
+
+from aifootball.service.matches.schemas import LineupUpdate, MatchUpdate, StatusUpdate
 from aifootball.service.protocol import payloads
+from aifootball.service.tournaments.schemas import Input
 
 
 class Envelope(Input):
@@ -36,4 +38,4 @@ _types = []
 for kind, payload_type in PAYLOAD_TYPES.items():
     name = ''.join(part.title() for part in kind.split('_')) + 'Command'
     _types.append(create_model(name, __base__=Envelope, kind=(Literal[kind], Field()), payload=(payload_type, Field())))
-CommandRequest = Annotated[Union[tuple(_types)], Field(discriminator='kind')]
+CommandRequest = Annotated[Union[tuple(_types)], Field(discriminator='kind')]  # noqa: UP007 — состав объединения собирается в цикле

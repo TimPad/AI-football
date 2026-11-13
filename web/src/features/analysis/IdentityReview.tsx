@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
-import type { AnalysisRun, AnalysisAssignment } from '../../api/domain';
-import type { IdentitySuggestion } from './understandingTypes';
+import { useEffect, useState } from 'react';
+import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
+import { downloadJson, ErrorBox } from '../../components/ui';
 import { useDraft } from '../protocol/drafts';
-import { ErrorBox, downloadJson } from '../../components/ui';
-import { TRACK_FILTERS, filteredCount, trackState, visibleTrackIds, type TrackFilter } from './reviewQueue';
-import { PlayerCandidates } from './PlayerCandidates';
 import { baseGroups } from './candidates';
+import { PlayerCandidates } from './PlayerCandidates';
+import { filteredCount, TRACK_FILTERS, type TrackFilter, trackState, visibleTrackIds } from './reviewQueue';
+import type { IdentitySuggestion } from './understandingTypes';
 import './review.css';
+
 type Review = { side_map: AnalysisRun['side_map']; assignments: AnalysisAssignment[] };
 function valid(v: unknown): v is Review {
   if (!v || typeof v !== 'object') return false;

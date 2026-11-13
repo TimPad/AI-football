@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
-import { login, createTournament, task, catalog } from './helpers';
+import { expect, test } from '@playwright/test';
+import { catalog, createTournament, login, task } from './helpers';
+
 test('roster, assists, second yellow and editing a penalty episode', async ({ page }) => {
   await login(page);
   const data = await createTournament(page);

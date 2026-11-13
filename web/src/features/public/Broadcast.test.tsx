@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Broadcast } from './Broadcast';
+import { describe, expect, it } from 'vitest';
 import type { PublicMatch } from '../../api/domain';
+import { Broadcast } from './Broadcast';
 
 describe('broadcast', () => {
   it('creates the iframe only after the viewer asks and keeps the VK fallback', async () => {

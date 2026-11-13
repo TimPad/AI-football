@@ -1,11 +1,11 @@
+import { ChartColumn, ExternalLink, FileText, Video } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, FileText, Video, ChartColumn } from 'lucide-react';
 import { api, errorText } from '../../api/client';
 import type { PublicMatch } from '../../api/domain';
 import { TeamCrest } from '../../components/match/MatchHeader';
-import { loadPublicSection } from '../public/matchLoader';
 import type { ReportModel } from '../match-report/model';
+import { loadPublicSection } from '../public/matchLoader';
 
 type Sources = Partial<Pick<ReportModel, 'protocol' | 'cv' | 'ratings'>>;
 

@@ -1,23 +1,25 @@
 """Public HTTP response contracts; OpenAPI is the frontend's source of types."""
 
 from datetime import date, datetime
+from typing import Generic, Literal, TypeVar
 from uuid import UUID
-from typing import Generic, TypeVar, Literal
+
 from pydantic import BaseModel
-from aifootball.service.tournaments.schemas import Regulation
+
+from aifootball.service.protocol.projection import Projection
 from aifootball.service.protocol.schemas import (
-    ProtocolDocument,
     ClockState,
+    Completeness,
+    ProtocolDocument,
     ReportedTotals,
     ShootoutTotals,
-    Completeness,
 )
-from aifootball.service.protocol.projection import Projection
+from aifootball.service.tournaments.schemas import Regulation
 
 T = TypeVar('T')
 
 
-class Page(BaseModel, Generic[T]):
+class Page(BaseModel, Generic[T]):  # noqa: UP046 — синтаксис PEP 695 меняет имена схем в OpenAPI
     items: list[T]
     total: int
 
@@ -209,9 +211,11 @@ class VersionView(EntityView):
 
 # Build a separate, narrow public event schema. Serialization never supplies
 # private note/time fields omitted by the public snapshot endpoint.
-from typing import Annotated, Union, get_args
-from pydantic import Field, create_model, ConfigDict
-from aifootball.service.protocol.events import Event
+from typing import Annotated, Union, get_args  # noqa: E402
+
+from pydantic import ConfigDict, Field, create_model  # noqa: E402
+
+from aifootball.service.protocol.events import Event  # noqa: E402
 
 _public_events = []
 for event_type in get_args(get_args(Event)[0]):
@@ -221,7 +225,7 @@ for event_type in get_args(get_args(Event)[0]):
         if name not in {'notes', 'video_ms', 'created_at'}
     }
     _public_events.append(create_model('Public' + event_type.__name__, __config__=ConfigDict(extra='forbid'), **fields))
-PublicEvent = Annotated[Union[tuple(_public_events)], Field(discriminator='kind')]
+PublicEvent = Annotated[Union[tuple(_public_events)], Field(discriminator='kind')]  # noqa: UP007 — состав объединения собирается в цикле
 
 
 class PublicLineup(BaseModel):

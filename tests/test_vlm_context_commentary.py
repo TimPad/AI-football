@@ -1,11 +1,11 @@
+import json
 from copy import deepcopy
 from dataclasses import replace
-import json
 
 import pytest
 
 from test_joint_vlm_pilot import environment
-from test_vlm_match_context import SOURCE, passport, document
+from test_vlm_match_context import SOURCE, document, passport
 
 
 def response():
@@ -74,9 +74,9 @@ def test_no_ball_and_static_players_do_not_establish_game_state(tmp_path, kind, 
 
 
 def test_approach_to_goal_does_not_create_shot_or_highlight_line(tmp_path):
+    from aifootball.understanding.commentary import compile_commentary
     from aifootball.understanding.context_pilot import project_context
     from aifootball.understanding.match_context import MatchChronology
-    from aifootball.understanding.commentary import compile_commentary
 
     window, _, _ = environment(tmp_path)
     raw = response()
@@ -90,9 +90,9 @@ def test_approach_to_goal_does_not_create_shot_or_highlight_line(tmp_path):
 
 
 def test_save_without_observed_kick_does_not_assert_shot_or_create_highlight(tmp_path):
+    from aifootball.understanding.commentary import compile_commentary
     from aifootball.understanding.context_pilot import project_context
     from aifootball.understanding.match_context import MatchChronology
-    from aifootball.understanding.commentary import compile_commentary
 
     window, _, _ = environment(tmp_path)
     raw = response()
@@ -116,9 +116,9 @@ def test_save_without_observed_kick_does_not_assert_shot_or_create_highlight(tmp
 
 
 def test_observed_shot_becomes_stable_video_timed_entry_exactly_once(tmp_path):
+    from aifootball.understanding.commentary import compile_commentary
     from aifootball.understanding.context_pilot import project_context
     from aifootball.understanding.match_context import MatchChronology
-    from aifootball.understanding.commentary import compile_commentary
 
     window, _, _ = environment(tmp_path)
     window = replace(window, start_ms=30000, end_ms=42000)
@@ -135,9 +135,9 @@ def test_observed_shot_becomes_stable_video_timed_entry_exactly_once(tmp_path):
 
 
 def test_goal_is_still_candidate_and_match_start_is_never_invented(tmp_path):
+    from aifootball.understanding.commentary import compile_commentary
     from aifootball.understanding.context_pilot import project_context
     from aifootball.understanding.match_context import MatchChronology
-    from aifootball.understanding.commentary import compile_commentary
 
     window, _, _ = environment(tmp_path)
     raw = response()
@@ -152,9 +152,9 @@ def test_goal_is_still_candidate_and_match_start_is_never_invented(tmp_path):
 
 
 def test_restart_line_requires_adjacent_observed_stoppage_and_no_gap(tmp_path):
+    from aifootball.understanding.commentary import compile_commentary
     from aifootball.understanding.context_pilot import project_context
     from aifootball.understanding.match_context import MatchChronology
-    from aifootball.understanding.commentary import compile_commentary
 
     window, _, _ = environment(tmp_path)
     raw = response()
@@ -194,8 +194,8 @@ def test_schema_metadata_can_be_repaired_but_not_bad_time_or_wrong_evidence(tmp_
 
 
 def test_feed_does_not_trust_legacy_states_without_observed_signals(tmp_path):
-    from aifootball.understanding.match_context import MatchChronology
     from aifootball.understanding.commentary import compile_commentary
+    from aifootball.understanding.match_context import MatchChronology
 
     window, _, _ = environment(tmp_path)
     raw = response()

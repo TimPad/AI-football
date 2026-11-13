@@ -1,12 +1,14 @@
-from uuid import UUID, uuid5
-from sqlalchemy import select, func
-from aifootball.service.common import get_entity, as_dict
-from aifootball.service.errors import DomainError, RevisionConflict
-from aifootball.service.catalog.models import Team, Player, TeamMember
-from aifootball.service.catalog.profiles import team_profile, check_image
-from aifootball.service.catalog.schemas import PlayerDetails, PlayerCreate
-from aifootball.service.captains.models import TeamCaptainGrant, PlayerProfileProposal, CaptainImage
+from uuid import uuid5
+
+from sqlalchemy import func, select
+
+from aifootball.service.captains.models import CaptainImage, PlayerProfileProposal, TeamCaptainGrant
 from aifootball.service.captains.security import require_captain_team
+from aifootball.service.catalog.models import Player, Team, TeamMember
+from aifootball.service.catalog.profiles import team_profile
+from aifootball.service.catalog.schemas import PlayerDetails
+from aifootball.service.common import as_dict, get_entity
+from aifootball.service.errors import DomainError, RevisionConflict
 
 
 def captain_team_view(db, team, account):

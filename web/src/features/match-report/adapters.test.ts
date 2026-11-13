@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { ReportContext } from './model';
+import type { AnalysisRun, MatchRatingsView, PublicAnalysis, PublicProtocol } from '../../api/domain';
 import { canAttachCurrentCv, mergeRoster, periodLabel, publicAnalysisFromRun } from './adapters';
-import type { AnalysisRun, PublicAnalysis, PublicProtocol, MatchRatingsView } from '../../api/domain';
+import type { ReportContext } from './model';
 
 const lineup = (player_id: string, display_name: string, shirt_number: string | null, side: 'home' | 'away') => ({
   player_id,

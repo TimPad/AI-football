@@ -4,17 +4,19 @@
 Кадр задаётся один раз: перенастроенной камере нужна новая версия профиля.
 """
 
+import os
+import warnings
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from uuid import UUID
-import os
-import warnings
-from PIL import Image, UnidentifiedImageError
+
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import FileResponse
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.security import require_admin, require_csrf
 from aifootball.service.common import get_entity
 from aifootball.service.db import get_session

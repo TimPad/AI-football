@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { HallEditor } from './HallPage';
-import { YandexMapsLink } from '../../components/YandexMapsLink';
 import { Link } from 'react-router-dom';
 import { all } from '../../api/client';
-import type { Hall, CameraProfile } from '../../api/domain';
-import { useLoad, Loading, Field, Modal } from '../../components/ui';
+import type { CameraProfile, Hall } from '../../api/domain';
+import { Field, Loading, Modal, useLoad } from '../../components/ui';
+import { YandexMapsLink } from '../../components/YandexMapsLink';
+import { HallEditor } from './HallPage';
 export function HallSelection({
   hallId,
   cameraId,

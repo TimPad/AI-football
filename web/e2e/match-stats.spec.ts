@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
+import { expect, test } from '@playwright/test';
 
 test('guest reads FotMob-like match statistics from published protocol and reviewed actions', async ({ page }) => {
   const seed = spawnSync('../.venv/bin/python', ['../scripts/seed_match_stats_e2e.py'], { encoding: 'utf8' });

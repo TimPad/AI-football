@@ -1,6 +1,6 @@
-import { afterEach, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
 import { AuthProvider, Private, useAuth } from './Auth';
 
 let state: unknown = 'unset';

@@ -1,9 +1,9 @@
-from uuid import UUID
-from sqlalchemy import select
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import select
+
+from aifootball.service.analysis.models import AnalysisAssignment, AnalysisJob, AnalysisRun, PlayerMatchMetric
 from aifootball.service.common import get_entity
 from aifootball.service.matches.models import Match
-from aifootball.service.analysis.models import AnalysisJob, AnalysisRun, AnalysisAssignment, PlayerMatchMetric
 
 
 def job_view(job):
@@ -109,8 +109,8 @@ def match_analysis(db, match_id):
 
 
 def get_player_history(db, player_id):
-    from aifootball.service.catalog.models import Player
     from aifootball.service.analysis.aggregation import aggregate_player
+    from aifootball.service.catalog.models import Player
 
     get_entity(db, Player, player_id)
     rows = db.execute(

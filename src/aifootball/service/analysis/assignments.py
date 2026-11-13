@@ -1,10 +1,11 @@
 from collections import defaultdict
-from uuid import UUID
-from sqlalchemy import select, delete
-from aifootball.service.analysis.models import AnalysisAssignment, PlayerMatchMetric
-from aifootball.service.analysis.aggregation import aggregate_player
-from aifootball.service.errors import DomainError
+
+from sqlalchemy import delete, select
+
 from aifootball.analytics.track_groups import OVERLAP_S
+from aifootball.service.analysis.aggregation import aggregate_player
+from aifootball.service.analysis.models import AnalysisAssignment, PlayerMatchMetric
+from aifootball.service.errors import DomainError
 
 
 def set_assignments(db, run, job, data):

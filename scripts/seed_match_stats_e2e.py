@@ -9,10 +9,12 @@ import os
 import random
 from pathlib import Path
 from uuid import uuid4
-from sqlalchemy.engine import make_url
+
 from fastapi.testclient import TestClient
-from aifootball.service.config import Settings
+from sqlalchemy.engine import make_url
+
 from aifootball.service.app import create_app
+from aifootball.service.config import Settings
 from aifootball.service.tournaments.schemas import Regulation
 
 CATEGORIES = (

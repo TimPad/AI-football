@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import preset from '../../test/preset.json';
 
 const owners = vi.hoisted(() => ({ active: 0, max: 0, mounts: 0, analytics: true, enqueue: vi.fn(async () => {}) }));
@@ -44,6 +44,7 @@ vi.mock('../analysis/AnalysisTab', () => ({
     <p>проверка записи {canManage ? 'Админ+' : 'обычная'}</p>
   ),
 }));
+
 import { MatchWorkspacePage } from './MatchWorkspace';
 
 const M = '11111111-1111-4111-8111-111111111111';

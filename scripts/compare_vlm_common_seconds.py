@@ -6,12 +6,13 @@ Manifest — тот же, что у eval_vlm_per_second.py. Скорость CV 
 """
 
 import argparse
-from itertools import combinations
 import json
+from itertools import combinations
 from math import comb
 from pathlib import Path
 
 from eval_vlm_per_second import in_span, load_fragment, run_cases
+
 from aifootball.understanding.per_second import fit_threshold, predicted_seconds, score_seconds
 
 

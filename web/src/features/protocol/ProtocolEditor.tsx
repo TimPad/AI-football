@@ -1,17 +1,17 @@
-import { useState } from 'react';
 import { Plus } from 'lucide-react';
+import { useState } from 'react';
 import type { Match, MatchEvent } from '../../api/domain';
 import { kinds } from '../../api/domain';
+import { downloadJson, ErrorBox, Loading, Modal } from '../../components/ui';
 import { useAuth } from '../auth/Auth';
-import { ErrorBox, Loading, Modal, downloadJson } from '../../components/ui';
-import { ClockPanel } from './ClockPanel';
-import { EventForm, isEventDraft, newEventDraft, type EventDraft } from './EventForm';
-import { EventJournal } from './EventJournal';
-import { TotalsForm, Completeness, NotesPanel, VersionsPanel } from './ProtocolPanels';
 import { Attachments } from './Attachments';
+import { ClockPanel } from './ClockPanel';
 import { useDraft } from './drafts';
-import { SessionChrome, useProtocolSession, useSessionDispatch } from './ProtocolSession';
+import { type EventDraft, EventForm, isEventDraft, newEventDraft } from './EventForm';
+import { EventJournal } from './EventJournal';
 import { ModeSelector, useProtocolMode } from './ProtocolMode';
+import { Completeness, NotesPanel, TotalsForm, VersionsPanel } from './ProtocolPanels';
+import { SessionChrome, useProtocolSession, useSessionDispatch } from './ProtocolSession';
 
 export function ProtocolEditor() {
   const state = useProtocolSession();

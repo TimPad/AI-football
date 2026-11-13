@@ -5,7 +5,6 @@
 деление не зависит от того, с какой стороны и под каким углом стоит камера.
 """
 
-import math
 import numpy as np
 import polars as pl
 
@@ -57,8 +56,6 @@ def evaluate_tracking(pred_df: pl.DataFrame, gt_df: pl.DataFrame) -> dict:
 
     # Подсчет переключений ID (ID Swaps)
     id_swaps = 0
-    gt_frames = gt_df.select('frame_id', 'track_id').unique()
-    pred_frames = pred_df.select('frame_id', 'track_id').unique()
 
     # Сопоставление треков по кадрам
     joined = gt_df.join(pred_df, on='frame_id', suffix='_pred')

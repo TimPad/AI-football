@@ -1,9 +1,8 @@
 """L1: детекция людей и мяча по видео -> detections.parquet."""
 
-from dataclasses import dataclass
 import sys
 import time
-from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np

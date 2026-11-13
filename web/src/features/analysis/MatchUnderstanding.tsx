@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { AnalysisRun } from '../../api/domain';
-import { ErrorBox, downloadJson } from '../../components/ui';
+import { downloadJson, ErrorBox } from '../../components/ui';
 import { useDraft } from '../protocol/drafts';
-import { readPending, sendJson, retryJson, type Pending } from './commands';
+import { type Pending, readPending, retryJson, sendJson } from './commands';
 import { EvidenceGallery } from './EvidenceGallery';
-import { clock, episodeLabels, type UnderstandingView, type Episode, type Decision } from './understandingTypes';
+import { clock, type Decision, type Episode, episodeLabels, type UnderstandingView } from './understandingTypes';
+
 type Edit = {
   event_id: string;
   base_revision: number;

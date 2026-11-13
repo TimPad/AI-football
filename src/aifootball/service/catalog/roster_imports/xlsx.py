@@ -2,9 +2,11 @@
 
 from datetime import date, datetime
 from io import BytesIO
-from zipfile import ZipFile, BadZipFile
-from openpyxl import load_workbook, Workbook
+from zipfile import ZipFile
+
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
+
 from aifootball.service.errors import DomainError
 
 FILE_LIMIT = 5 * 1024 * 1024

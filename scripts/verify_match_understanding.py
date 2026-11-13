@@ -2,11 +2,11 @@
 
 import argparse
 import json
-from pathlib import Path
 import resource
 import sys
 import time
-from zipfile import ZipFile
+from pathlib import Path
+
 from aifootball.processor.job import process_job
 from aifootball.processor.qwen import QwenError
 from aifootball.understanding.evaluate import evaluate_understanding

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
+import { cloneElement, isValidElement, type ReactElement, type ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { errorText } from '../api/client';
 export function ErrorBox({ error }: { error: unknown }) {
@@ -10,6 +10,7 @@ export function ErrorBox({ error }: { error: unknown }) {
 }
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: поле приходит в children и получает aria-label ниже
     <label className="field">
       <span>{label}</span>
       {isValidElement(children)

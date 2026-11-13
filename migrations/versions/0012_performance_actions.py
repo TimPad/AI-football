@@ -1,7 +1,7 @@
 """Canonical action source versions and explicit category coverage."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = '0012_performance_actions'

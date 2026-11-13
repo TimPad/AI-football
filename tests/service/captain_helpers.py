@@ -1,7 +1,8 @@
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
-from fastapi.testclient import TestClient
+
 from cryptography.fernet import Fernet
+from fastapi.testclient import TestClient
 
 PASSWORD = 'synthetic-captain-password'
 

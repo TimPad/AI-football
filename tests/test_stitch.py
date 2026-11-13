@@ -1,6 +1,5 @@
 import numpy as np
 import polars as pl
-import pytest
 
 from aifootball import schemas
 from aifootball.perception.stitch import split_on_color_change, stitch_tracks

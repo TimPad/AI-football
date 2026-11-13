@@ -1,10 +1,9 @@
-from dataclasses import replace
 import json
+from dataclasses import replace
 
 import pytest
 
 from test_joint_vlm_pilot import environment
-
 
 SOURCE = 'a' * 64
 

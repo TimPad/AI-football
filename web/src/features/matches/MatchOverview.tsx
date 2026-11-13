@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
 import { ArrowRight, CircleAlert, CircleCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { AnalysisOverview, Match } from '../../api/domain';
 import { sections } from '../../api/domain';

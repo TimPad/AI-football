@@ -1,6 +1,6 @@
 """Пары круговых этапов и сеток на выбывание: чистые функции без базы."""
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 
 # Источник стороны пары: {'entry': id}, {'winner': key}, {'loser': key},
 # {'group': 'A', 'place': 1}, {'best': 3, 'rank': 1}, {'stage_place': 1}; None — соперника нет.
@@ -151,7 +151,7 @@ def prune(specs):
         def resolve(source):
             if not source or ('winner' not in source and 'loser' not in source):
                 return source, False
-            ref = by_key.get(source.get('winner') or source.get('loser'))
+            ref = by_key.get(source.get('winner') or source.get('loser'))  # noqa: B023
             if ref is None:
                 return None, True
             if ref.bye:

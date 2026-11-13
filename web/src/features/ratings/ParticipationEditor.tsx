@@ -1,20 +1,21 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
-import { Field, Check, Loading, ErrorBox, useLoad, downloadJson } from '../../components/ui';
+import { Check, downloadJson, ErrorBox, Field, Loading, useLoad } from '../../components/ui';
 import { useDraft } from '../protocol/drafts';
 import { CommandStatus, useRatingCommand } from './commands';
 import { Intervals } from './Intervals';
 import {
-  roles,
-  scopes,
-  timeBases,
   completeness,
   type Participation,
   type ParticipationDoc,
   type ParticipationVersion,
   type PersonPresence,
   type Role,
+  roles,
+  scopes,
+  timeBases,
 } from './types';
+
 type Draft = { revision: number; matchRevision: number; document: ParticipationDoc };
 function ranges(v: unknown): boolean {
   return (

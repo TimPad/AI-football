@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+
 from aifootball.service.errors import DomainError
 
 MAX_DOCUMENT_BYTES = 20 * 1024 * 1024  # Достаточно для скана протокола, не для видеозаписи.

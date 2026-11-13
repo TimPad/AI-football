@@ -2,11 +2,12 @@
 
 import random
 from math import ceil
-from aifootball.service.stages.schemas import template_stages, StageConfig, ELIMINATION
-from aifootball.service.stages.generate import fixtures_for, scheme_for, qualifier_count
+
+from aifootball.service.stages.generate import fixtures_for, qualifier_count, scheme_for
 from aifootball.service.stages.rules.brackets import bracket_size
-from aifootball.service.stages.rules.draws import snake_draw, group_sizes
+from aifootball.service.stages.rules.draws import group_sizes, snake_draw
 from aifootball.service.stages.rules.progress import Leg, resolve_bracket
+from aifootball.service.stages.schemas import ELIMINATION, StageConfig, template_stages
 
 TEMPLATES = ('league', 'groups_playoff', 'playoff', 'double_elim', 'swiss')
 

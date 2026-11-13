@@ -1,18 +1,20 @@
 from copy import deepcopy
 from hashlib import sha256
 from uuid import UUID, uuid4
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
+
 from aifootball.analytics.exchange import canonical
 from aifootball.ratings.actions import canonical_actions
-from aifootball.ratings.validate import intervals, intersection
+from aifootball.ratings.validate import intervals
+from aifootball.service.analysis.jobs import prior_command, remember
+from aifootball.service.analysis.models import AnalysisAssignment, AnalysisJob, AnalysisRun
+from aifootball.service.analysis.understanding import _effective
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match
 from aifootball.service.matches.operations import get_match_view
 from aifootball.service.protocol.models import ProtocolVersion
-from aifootball.service.analysis.models import AnalysisRun, AnalysisAssignment, AnalysisJob
-from aifootball.service.analysis.understanding import _effective
-from aifootball.service.analysis.jobs import prior_command, remember
 from aifootball.service.ratings.models import ActionVersion, ParticipationVersion, is_auto
 from aifootball.service.ratings.operations import participation_overview
 

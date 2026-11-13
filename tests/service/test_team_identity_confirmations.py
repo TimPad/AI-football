@@ -1,8 +1,10 @@
 from uuid import uuid4
-from .test_analysis_jobs import analytics_match
-from .test_analysis_assignments import import_run, save_assignments, command
-from .test_team_identity_tasks import owner, issue
+
 import pytest
+
+from .test_analysis_assignments import command, import_run, save_assignments
+from .test_analysis_jobs import analytics_match  # noqa: F401
+from .test_team_identity_tasks import issue, owner
 
 
 def path(task):
@@ -172,6 +174,7 @@ def test_confirm_uses_frozen_draft_and_rejects_reused_body_and_own_changes(admin
 
 def test_source_context_change_requires_new_processing_job(admin_client, analytics_match):
     from sqlalchemy.orm import Session
+
     from aifootball.service.matches.models import Match
 
     cap, team_id, _ = owner(admin_client, analytics_match)
@@ -192,8 +195,8 @@ def test_source_context_change_requires_new_processing_job(admin_client, analyti
 
 
 def test_admin_edits_invalidate_captain_authorship_and_old_confirmation_stays_immutable(admin_client, analytics_match):
-    from sqlalchemy import select
     from sqlalchemy.orm import Session
+
     from aifootball.service.analysis.team_review.models import TeamIdentityConfirmation
 
     cap, team_id, _ = owner(admin_client, analytics_match)

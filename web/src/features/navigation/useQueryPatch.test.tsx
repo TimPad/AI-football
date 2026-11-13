@@ -1,6 +1,6 @@
-import { expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
+import { expect, it } from 'vitest';
 import { useQueryPatch } from './useQueryPatch';
 
 let search = '';

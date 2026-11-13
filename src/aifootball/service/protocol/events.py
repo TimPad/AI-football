@@ -1,10 +1,11 @@
 from datetime import datetime
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal
 from uuid import UUID
-from pydantic import Field, model_validator
-from aifootball.service.tournaments.schemas import Input
-from aifootball.service.db import utcnow
+
+from pydantic import Field
+
 from aifootball.service.errors import DomainError
+from aifootball.service.tournaments.schemas import Input
 
 Side = Literal['home', 'away']
 Millis = Annotated[int, Field(ge=0, le=86400000, strict=True)]
@@ -89,18 +90,16 @@ class PeriodBoundary(EventBase):
 
 
 Event = Annotated[
-    Union[
-        Goal,
-        Foul,
-        Card,
-        PenaltyAwarded,
-        PenaltyAttempt,
-        ShootoutAttempt,
-        Timeout,
-        Substitution,
-        Stoppage,
-        PeriodBoundary,
-    ],
+    Goal
+    | Foul
+    | Card
+    | PenaltyAwarded
+    | PenaltyAttempt
+    | ShootoutAttempt
+    | Timeout
+    | Substitution
+    | Stoppage
+    | PeriodBoundary,
     Field(discriminator='kind'),
 ]
 

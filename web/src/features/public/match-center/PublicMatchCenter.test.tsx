@@ -1,7 +1,8 @@
-import { afterEach, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
 import { PublicMatchCenter } from './PublicMatchCenter';
+
 const t = { id: 'a', name: 'Кубок', season: '2026' },
   u = { ...t, id: 'b' };
 const match = (id: string, tournament = t) => ({

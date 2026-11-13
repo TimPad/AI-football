@@ -1,32 +1,34 @@
 from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.security import require_admin, require_csrf
 from aifootball.service.common import get_entity
 from aifootball.service.db import get_session
-from aifootball.service.tournaments.models import Tournament
-from aifootball.service.tournaments.commands import setup_command
-from aifootball.service.views import MatchView, Page
 from aifootball.service.stages import operations as ops
-from aifootball.service.stages.models import Stage, Fixture
+from aifootball.service.stages.models import Fixture, Stage
 from aifootball.service.stages.schemas import (
-    WithdrawalInput,
-    WithdrawalPreview,
     AdjustInput,
+    DrawConfirm,
+    DrawInput,
+    DrawPreview,
     EstimateInput,
     EstimateView,
+    FixtureReplace,
+    FixtureSchedule,
+    FixtureView,
     FormatCreate,
-    StagePatch,
-    DrawInput,
-    DrawConfirm,
     LotInput,
     NextRound,
-    FixtureSchedule,
-    FixtureReplace,
+    StagePatch,
     StandingsView,
-    DrawPreview,
-    FixtureView,
+    WithdrawalInput,
+    WithdrawalPreview,
 )
+from aifootball.service.tournaments.commands import setup_command
+from aifootball.service.tournaments.models import Tournament
+from aifootball.service.views import MatchView, Page
 
 router = APIRouter()
 
@@ -63,6 +65,7 @@ def create_format(tid: UUID, data: FormatCreate, admin=Depends(require_csrf), db
 @router.post('/tournaments/{tid}/format/estimate', response_model=EstimateView, dependencies=[Depends(require_csrf)])
 def estimate(tid: UUID, data: EstimateInput, db: Session = Depends(get_session)):
     from pydantic import ValidationError
+
     from aifootball.service.errors import DomainError
     from aifootball.service.stages.estimate import estimate_all
 

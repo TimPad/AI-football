@@ -1,4 +1,4 @@
-import { api, ApiError } from '../../api/client';
+import { ApiError, api } from '../../api/client';
 export type Pending = { path: string; method: string; body: Record<string, unknown> };
 export function readPending(key: string): Pending | null {
   const raw = localStorage.getItem(key);

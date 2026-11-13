@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { ProtocolSession, useProtocolSession } from './ProtocolSession';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { storageKey } from './outbox';
+import { ProtocolSession, useProtocolSession } from './ProtocolSession';
 
 vi.mock('../auth/Auth', () => ({ useAuth: () => ({ session: { id: 'admin-1' } }) }));
 const M = '11111111-1111-4111-8111-111111111111';
@@ -30,7 +30,7 @@ describe('protocol session', () => {
     const posts: { request_id: string; expected_revision: number; kind: string; payload: unknown }[] = [];
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
         if (init?.method === 'POST') {
           posts.push(JSON.parse(String(init.body)));
           if (posts.length === 1) throw new TypeError('lost');

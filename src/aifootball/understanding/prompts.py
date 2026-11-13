@@ -1,8 +1,9 @@
 """Versioned, grounded instructions. No roster names, secrets or external tools."""
 
 import math
+
 from aifootball.analytics.exchange import canonical
-from aifootball.understanding.schema import EVENT_KINDS, STATE_KINDS, PHASE_KINDS, METRICS, SCOPES
+from aifootball.understanding.schema import EVENT_KINDS, METRICS, PHASE_KINDS, SCOPES, STATE_KINDS
 
 PROMPT_VERSION = 'futsal-v2'
 INSTRUCTION = """Верни только JSON по указанному контракту. Анализируй футзал, не футбол 11×11.

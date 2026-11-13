@@ -1,29 +1,30 @@
 """Этапы турнира: вычисление таблиц и сетки, жеребьёвка, назначение пар, жребий, туры швейцарки."""
 
 from dataclasses import dataclass, field
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
+
+from aifootball.service.catalog.models import Entry, Team
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
-from aifootball.service.catalog.models import Entry, Team
-from aifootball.service.matches.models import Match, LineupMember
-from aifootball.service.tournaments.models import RegulationVersion
-from aifootball.service.stages.models import Stage, StageDraw, Fixture, StageWithdrawal
-from aifootball.service.stages.schemas import StageConfig, ELIMINATION, template_stages
-from aifootball.service.stages.generate import participants_placement, fixtures_for, scheme_for, qualifier_count
-from aifootball.service.stages.results import load_results, confirmed_match_ids
-from aifootball.service.stages.labels import group_name, pair_label, source_label, round_name
+from aifootball.service.matches.models import LineupMember, Match
+from aifootball.service.stages.generate import fixtures_for, participants_placement, qualifier_count, scheme_for
+from aifootball.service.stages.labels import group_name, pair_label, round_name, source_label
+from aifootball.service.stages.models import Fixture, Stage, StageDraw, StageWithdrawal
+from aifootball.service.stages.results import confirmed_match_ids, load_results
 from aifootball.service.stages.rules.brackets import FixtureSpec, bracket_size
 from aifootball.service.stages.rules.progress import (
-    Outcome,
     Leg,
+    Outcome,
+    _stage_order,
+    group_outcome,
     resolve_bracket,
     resolve_source,
-    group_outcome,
-    _stage_order,
 )
 from aifootball.service.stages.rules.standings import Result, rank, rank_across
 from aifootball.service.stages.rules.swiss import swiss_pairs
-from aifootball.service.stages.rules.draws import group_sizes
+from aifootball.service.stages.schemas import ELIMINATION, StageConfig, template_stages
+from aifootball.service.tournaments.models import RegulationVersion
 
 
 def stage_conflict(stage):
@@ -1061,8 +1062,8 @@ def _fixture_context(db, fixture_id):
 
 
 def schedule_fixture(db, actor, tournament, fixture_id, data):
-    from aifootball.service.matches.schemas import MatchCreate
     from aifootball.service.matches.operations import create_match
+    from aifootball.service.matches.schemas import MatchCreate
 
     _assert_open(tournament)
     fixture, stage = _fixture_context(db, fixture_id)

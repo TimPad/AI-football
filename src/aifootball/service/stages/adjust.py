@@ -1,8 +1,8 @@
 """Правка состава этапа до старта: новая версия жеребьёвки с ручной расстановкой."""
 
 from aifootball.service.errors import DomainError
-from aifootball.service.stages.schemas import DrawConfirm, DrawInput, ELIMINATION
 from aifootball.service.stages import operations as ops
+from aifootball.service.stages.schemas import ELIMINATION, DrawConfirm, DrawInput
 
 
 def adjusted(stage, draw, data):

@@ -1,6 +1,7 @@
-import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
+import { expect, test } from '@playwright/test';
 import { login } from './helpers';
+
 test('creates teams from Excel in the tournament, corrects a number and schedules a match', async ({ page }) => {
   await login(page);
   const session = await (await page.request.get('/api/v1/auth/me')).json();
@@ -29,13 +30,11 @@ test('creates teams from Excel in the tournament, corrects a number and schedule
     away,
   ]);
   const started = Date.now();
-  await page
-    .getByLabel('Файл Excel', { exact: true })
-    .setInputFiles({
-      name: 'Состав.xlsx',
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      buffer: book,
-    });
+  await page.getByLabel('Файл Excel', { exact: true }).setInputFiles({
+    name: 'Состав.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: book,
+  });
   await page.getByRole('button', { name: 'Проверить строки', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Применить импорт', exact: true })).toBeDisabled();
   await page.getByLabel('Номер, строка 3', { exact: true }).fill('8');

@@ -1,8 +1,9 @@
 from sqlalchemy import select
-from aifootball.service.catalog.models import Team, Player, Entry, EntryPlayer, TeamMember
+
+from aifootball.service.catalog.models import Entry, EntryPlayer, Player, Team, TeamMember
 from aifootball.service.common import as_dict, get_entity
 from aifootball.service.errors import DomainError, RevisionConflict
-from aifootball.service.tournaments.models import Tournament, RegulationVersion
+from aifootball.service.tournaments.models import RegulationVersion, Tournament
 
 
 def entry_view(db, entry):
@@ -10,7 +11,7 @@ def entry_view(db, entry):
 
 
 def enter_team(db, tournament, team):
-    from aifootball.service.catalog.schemas import RosterUpdate, RosterPlayer
+    from aifootball.service.catalog.schemas import RosterPlayer, RosterUpdate
 
     if tournament.archived or team.archived:
         raise DomainError('archived', 'Выбранная запись в архиве')

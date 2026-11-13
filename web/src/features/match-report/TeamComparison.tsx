@@ -1,6 +1,6 @@
 import type { PublicAnalysis } from '../../api/domain';
-import { PitchMap } from '../../components/pitch/PitchMap';
 import { sharedHeatmapMax } from '../../components/pitch/heatmap';
+import { PitchMap } from '../../components/pitch/PitchMap';
 import { num } from '../ratings/types';
 
 type TeamValues = {

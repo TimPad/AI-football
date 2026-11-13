@@ -2,7 +2,6 @@ import numpy as np
 import polars as pl
 import pytest
 
-from aifootball import schemas
 from aifootball.analytics.metrics import _heatmap
 from aifootball.perception.track import _compute_robust_foot_points
 from aifootball.state.smooth import _clip_kinematic_outliers, smooth_tracks

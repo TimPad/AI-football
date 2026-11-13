@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { login } from './helpers';
 
 // Подготовка через API (команды, регламент, зал), формат и жеребьёвка — через интерфейс.

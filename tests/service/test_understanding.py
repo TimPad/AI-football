@@ -1,13 +1,15 @@
-from uuid import uuid4, UUID
-from copy import deepcopy
+from uuid import UUID, uuid4
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from .test_analysis_jobs import analytics_match, new_job, grant
-from .test_analysis_import import upload
-from .test_analysis_assignments import save_assignments, command
-from test_understanding_exchange import result_v2
+
 from test_analysis_exchange import result_zip
+from test_understanding_exchange import result_v2
+
+from .test_analysis_assignments import command, save_assignments
+from .test_analysis_import import upload
+from .test_analysis_jobs import analytics_match, grant, new_job  # noqa: F401
 
 
 def path(match, run):

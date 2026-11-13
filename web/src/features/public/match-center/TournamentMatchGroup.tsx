@@ -1,8 +1,8 @@
-import { publicForward } from '../../navigation/publicContext';
-import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import type { PublicMatch, PublicTournament } from '../../../api/domain';
 import { MatchRow } from '../../../components/match/MatchRow';
+import { publicForward } from '../../navigation/publicContext';
 export function TournamentMatchGroup({
   tournament: t,
   total,

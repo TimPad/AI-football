@@ -2,8 +2,10 @@
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from aifootball.service.config import Settings
 from aifootball.service.db import make_engine, utcnow
+
 from .models import RosterImport
 
 

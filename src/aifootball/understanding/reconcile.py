@@ -2,8 +2,9 @@
 
 from copy import deepcopy
 from hashlib import sha256
+
 from aifootball.analytics.exchange import canonical
-from aifootball.understanding.schema import require, hash_value, integer
+from aifootball.understanding.schema import hash_value, integer, require
 
 
 def _union(intervals):

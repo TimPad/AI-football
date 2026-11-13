@@ -1,5 +1,5 @@
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = '0024_team_confirmation_versions'
 down_revision = '0023_team_identity'

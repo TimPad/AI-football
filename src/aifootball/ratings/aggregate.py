@@ -1,8 +1,9 @@
 """One selected source per match, role-weighted scores and capped shrinkage."""
 
+import math
 from collections import defaultdict
 from copy import deepcopy
-import math
+
 from aifootball.ratings.scoring import validate_policy
 
 EDITION = ('model_version', 'reference_version', 'profile_id', 'time_basis')

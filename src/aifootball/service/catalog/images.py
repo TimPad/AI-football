@@ -1,22 +1,24 @@
 """Private normalized profile images. No HTML/SVG or arbitrary file paths."""
 
-from io import BytesIO
-from hashlib import sha256
-from pathlib import Path
-from tempfile import NamedTemporaryFile
-from uuid import UUID, uuid5, NAMESPACE_URL
 import os
 import warnings
-from PIL import Image, ImageOps, UnidentifiedImageError
-from fastapi import APIRouter, Depends, File, UploadFile, Request, Header
+from hashlib import sha256
+from io import BytesIO
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+from uuid import NAMESPACE_URL, UUID, uuid5
+
+from fastapi import APIRouter, Depends, File, Header, Request, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select, func
+from PIL import Image, ImageOps, UnidentifiedImageError
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.security import require_admin, require_csrf
-from aifootball.service.db import get_session
-from aifootball.service.common import get_entity, as_dict
-from aifootball.service.errors import DomainError
 from aifootball.service.catalog.models import CatalogImage
+from aifootball.service.common import as_dict, get_entity
+from aifootball.service.db import get_session
+from aifootball.service.errors import DomainError
 from aifootball.service.views import CatalogImageView
 
 router = APIRouter(prefix='/catalog/images')

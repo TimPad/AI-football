@@ -1,8 +1,10 @@
 import argparse
 from getpass import getpass
+
 from argon2 import PasswordHasher
-from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from aifootball.service.auth.models import Admin
 from aifootball.service.config import Settings
 from aifootball.service.db import make_engine

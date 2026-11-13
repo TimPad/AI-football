@@ -19,8 +19,10 @@
 from collections import defaultdict
 from math import ceil, floor
 from uuid import NAMESPACE_URL, UUID, uuid5
+
 from pydantic import ValidationError
-from sqlalchemy import select, func, update
+from sqlalchemy import func, select, update
+
 from aifootball.analytics.track_groups import MAX_GAP_S
 from aifootball.service.analysis.models import AnalysisAssignment
 from aifootball.service.common import get_entity
@@ -80,7 +82,7 @@ def _trim(group, limit):
         if not excess:
             return
         a, b = excess[0]
-        edge = lambda pid: min(min(abs(s - a), abs(e - b)) for s, e in group[pid] if s < b and e > a)
+        edge = lambda pid: min(min(abs(s - a), abs(e - b)) for s, e in group[pid] if s < b and e > a)  # noqa: B023
         pid = min((p for p in group if any(s < b and e > a for s, e in group[p])), key=lambda p: (edge(p), p))
         group[pid] = _cut(group[pid], a, b)
 

@@ -1,17 +1,19 @@
 from copy import deepcopy
-from uuid import UUID
-from sqlalchemy import select, func
-from aifootball.analytics.exchange import canonical
 from hashlib import sha256
+from uuid import UUID
+
+from sqlalchemy import func, select
+
+from aifootball.analytics.exchange import canonical
+from aifootball.ratings.validate import exposure_by_role, validate_participation
+from aifootball.service.analysis.jobs import prior_command, remember
+from aifootball.service.analysis.models import AnalysisJob, AnalysisRun
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match
 from aifootball.service.matches.operations import get_match_view
-from aifootball.service.analysis.models import AnalysisRun, AnalysisJob
-from aifootball.service.analysis.jobs import prior_command, remember
 from aifootball.service.protocol.models import ProtocolVersion
 from aifootball.service.ratings.models import ParticipationVersion, is_auto
-from aifootball.ratings.validate import validate_participation, exposure_by_role
 
 
 def participation_view(version):

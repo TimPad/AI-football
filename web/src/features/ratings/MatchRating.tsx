@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
-import { useLoad, Loading } from '../../components/ui';
-import { roles, metrics, num, pct, reason, type RatingMatch, type Fact } from './types';
+import { Loading, useLoad } from '../../components/ui';
+import { type Fact, metrics, num, pct, type RatingMatch, reason, roles } from './types';
+
 type Moment = {
   canonical_action_id: string;
   text: string;

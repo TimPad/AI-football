@@ -1,7 +1,8 @@
-import { afterEach, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
 import { RosterImportPage } from './RosterImportPage';
+
 vi.mock('../auth/Auth', () => ({ useAuth: () => ({ session: { id: 'admin' } }) }));
 const I = 'c81c1810-5dc0-4edf-819e-b86c72ec2bf6';
 const base = {

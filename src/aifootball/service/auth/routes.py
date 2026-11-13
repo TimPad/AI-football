@@ -1,16 +1,17 @@
 from datetime import timedelta
 from secrets import token_urlsafe
+
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, InvalidHashError
-from fastapi import APIRouter, Request, Response, Depends
-from sqlalchemy import select, func, delete
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
+from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.models import Admin, AdminSession, LoginAttempt
 from aifootball.service.auth.schemas import Login
-from aifootball.service.auth.security import check_origin, token_hash, current_session, require_csrf
+from aifootball.service.auth.security import check_origin, current_session, require_csrf, token_hash
 from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
-
 from aifootball.service.views import SessionView
 
 router = APIRouter(prefix='/auth')

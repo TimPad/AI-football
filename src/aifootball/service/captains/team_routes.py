@@ -1,23 +1,25 @@
-from uuid import UUID, uuid5
 from pathlib import Path
-from fastapi import APIRouter, Depends, Request, File, UploadFile, Header
+from uuid import UUID, uuid5
+
+from fastapi import APIRouter, Depends, File, Header, Request, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select, or_
-from sqlalchemy.orm import Session
 from pydantic import Field
-from aifootball.service.db import get_session
-from aifootball.service.common import get_entity, as_dict
-from aifootball.service.views import TeamProfile, CatalogImageView
-from aifootball.service.catalog.schemas import TeamCreate, TeamProfileUpdate, ProfilePlayer, PlayerDetails
-from aifootball.service.catalog.models import Team, Player, TeamMember
-from aifootball.service.auth.security import require_csrf, require_admin
-from aifootball.service.captains.security import require_captain, require_captain_csrf, require_captain_team
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from aifootball.service.auth.security import require_admin, require_csrf
 from aifootball.service.captains.commands import command
-from aifootball.service.captains.models import CaptainImage, TeamCaptainGrant, PlayerProfileProposal
-from aifootball.service.captains.teams import save_team, allowed_image, captain_team_view
+from aifootball.service.captains.models import CaptainImage, PlayerProfileProposal, TeamCaptainGrant
 from aifootball.service.captains.schemas import ReasonCommand
-from aifootball.service.tournaments.commands import setup_command
+from aifootball.service.captains.security import require_captain, require_captain_csrf, require_captain_team
+from aifootball.service.captains.teams import allowed_image, save_team
+from aifootball.service.catalog.models import Player, Team, TeamMember
+from aifootball.service.catalog.schemas import PlayerDetails, ProfilePlayer, TeamCreate, TeamProfileUpdate
+from aifootball.service.common import as_dict, get_entity
+from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
+from aifootball.service.tournaments.commands import setup_command
+from aifootball.service.views import CatalogImageView, TeamProfile
 
 router = APIRouter()
 

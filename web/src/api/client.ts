@@ -2,6 +2,12 @@ const csrf = { admin: '', captain: '' };
 export const setCsrf = (value: string, audience: 'admin' | 'captain' = 'admin') => {
   csrf[audience] = value;
 };
+export type ErrorBody = {
+  code?: string;
+  message?: string;
+  fields?: Record<string, string>;
+  current_revision?: number;
+};
 export class ApiError extends Error {
   constructor(
     public code: string,
@@ -31,7 +37,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     throw new ApiError('network', 'Не удалось связаться с сервером. Правки сохранены в этом браузере.');
   }
   if (!response.ok) {
-    let error;
+    let error: ErrorBody | null;
     try {
       error = (await response.json()).error;
     } catch {

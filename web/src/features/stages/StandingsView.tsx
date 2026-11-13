@@ -1,7 +1,7 @@
-import type { PairView, Standings, StageView } from './api';
-import { GroupTable } from './GroupTable';
+import type { PairView, StageView, Standings } from './api';
 import { Bracket } from './Bracket';
 import { GroupMatches } from './GroupMatches';
+import { GroupTable } from './GroupTable';
 
 function advanceNote(next?: StageView) {
   if (!next) return undefined;

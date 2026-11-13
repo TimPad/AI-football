@@ -1,8 +1,7 @@
-from aifootball import schemas
-
 import numpy as np
 import pytest
 
+from aifootball import schemas
 from aifootball.analytics.report_data import hsr_distance, segments, sustained_max_speed
 
 
@@ -34,15 +33,14 @@ def test_sustained_speed_none_when_only_capped():
     assert sustained_max_speed(ts, speed, cap=10.0) is None
 
 
-import sys
-from pathlib import Path
+import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
 
-import polars as pl
+import polars as pl  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).parent))
-from report_fixtures import LENGTH, synthetic_match  # noqa: E402
-
 from aifootball.analytics.report_data import assign_goalkeeper_teams, orient, thirds_share  # noqa: E402
+from report_fixtures import LENGTH, synthetic_match  # noqa: E402
 
 
 def _swap_halves(state, at):
@@ -260,8 +258,9 @@ def test_report_flags_implausible_displacement():
 
 
 def test_process_coverage_uses_actual_variable_frame_steps():
-    from aifootball.analytics.report_data import _coverage_seconds
     import polars as pl
+
+    from aifootball.analytics.report_data import _coverage_seconds
 
     tracks = pl.DataFrame({'ts': [0.0, 1 / 15, 3 / 15, 4 / 15, 6 / 15, 7 / 15]})
     # All neighbouring samples are continuous; don't replace every step with the median.

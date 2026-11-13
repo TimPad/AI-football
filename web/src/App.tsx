@@ -1,23 +1,24 @@
-import { TournamentCreate, TournamentSetup } from './features/tournaments/TournamentSetup';
-import { CaptainRoutes } from './features/captain/CaptainRoutes';
-import { RosterImportPage } from './features/roster-import/RosterImportPage';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { PlayerHistory } from './features/analysis/PlayerHistory';
-import { HallList, HallPage } from './features/halls/HallPage';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { CabinetShell } from './features/navigation/CabinetShell';
-import { PublicShell } from './features/navigation/PublicShell';
-import { PublicHome, PublicTournamentPage, PublicTournamentCatalog } from './features/public/PublicPages';
-import { PublicMatchPage } from './features/public/PublicMatchPage';
-import { PublicTeamPage } from './features/public/PublicTeamPage';
-import { PublicPlayerHistoryPage } from './features/public/PublicPlayerHistoryPage';
-import { TeamPage } from './features/catalog/TeamEditor';
-import { AuthProvider, Private, Login } from './features/auth/Auth';
-import { TournamentList } from './features/tournaments/TournamentList';
-import { TournamentPage } from './features/tournaments/TournamentWorkspace';
+import { AuthProvider, Login, Private } from './features/auth/Auth';
+import { CaptainRoutes } from './features/captain/CaptainRoutes';
 import { CatalogPage } from './features/catalog/CatalogPage';
 import { RosterPage } from './features/catalog/RosterPage';
+import { TeamPage } from './features/catalog/TeamEditor';
+import { HallList, HallPage } from './features/halls/HallPage';
 import { MatchWorkspacePage } from './features/matches/MatchWorkspace';
+import { CabinetShell } from './features/navigation/CabinetShell';
+import { PublicShell } from './features/navigation/PublicShell';
 import { PublicProtocolPage } from './features/protocol/PublicProtocolPage';
+import { PublicMatchPage } from './features/public/PublicMatchPage';
+import { PublicHome, PublicTournamentCatalog, PublicTournamentPage } from './features/public/PublicPages';
+import { PublicPlayerHistoryPage } from './features/public/PublicPlayerHistoryPage';
+import { PublicTeamPage } from './features/public/PublicTeamPage';
+import { RosterImportPage } from './features/roster-import/RosterImportPage';
+import { TournamentList } from './features/tournaments/TournamentList';
+import { TournamentCreate, TournamentSetup } from './features/tournaments/TournamentSetup';
+import { TournamentPage } from './features/tournaments/TournamentWorkspace';
+
 function CabinetRoutes() {
   return (
     <AuthProvider>

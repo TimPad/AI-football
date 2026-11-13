@@ -1,8 +1,9 @@
+import os
 from io import BytesIO
 from pathlib import Path
-from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
-import os
-from aifootball.analytics.exchange import Limits, ExchangeError
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+
+from aifootball.analytics.exchange import Limits
 from aifootball.service.errors import DomainError
 
 

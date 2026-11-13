@@ -1,15 +1,15 @@
-import { TournamentApplications } from '../captain/TournamentApplications';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
-import { all, api, post, ApiError } from '../../api/client';
-import type { Tournament, Entry, RegVersion, Regulation, Match, Team, Player, TeamProfile } from '../../api/domain';
-import { Field, Modal, ErrorBox, Loading, Empty, useLoad, Check } from '../../components/ui';
-import { RegulationForm } from './RegulationForm';
-import { TeamEditor } from '../catalog/TeamEditor';
-import { RosterImportLaunch } from '../roster-import/RosterImportPage';
+import { ApiError, all, api, post } from '../../api/client';
+import type { Entry, Match, Player, Regulation, RegVersion, Team, TeamProfile, Tournament } from '../../api/domain';
+import { Check, Empty, ErrorBox, Field, Loading, Modal, useLoad } from '../../components/ui';
 import { useAuth } from '../auth/Auth';
+import { TournamentApplications } from '../captain/TournamentApplications';
+import { TeamEditor } from '../catalog/TeamEditor';
 import { useDraft } from '../protocol/drafts';
+import { RosterImportLaunch } from '../roster-import/RosterImportPage';
+import { RegulationForm } from './RegulationForm';
 export type Data = { t: Tournament; entries: Entry[]; rules: RegVersion[]; matches: Match[] };
 export function Entries({ tid, data, onSaved }: { tid: string; data: Data; onSaved: () => void }) {
   const [mode, setMode] = useState<'existing' | 'new' | null>(null);

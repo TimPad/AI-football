@@ -1,7 +1,8 @@
 from uuid import uuid4
+
 from .captain_helpers import captain
-from .test_analysis_jobs import analytics_match
 from .test_analysis_assignments import import_run, save_assignments
+from .test_analysis_jobs import analytics_match  # noqa: F401
 
 
 def owner(admin, match, side='home', email='identity@example.test'):
@@ -72,6 +73,7 @@ def test_revocation_and_obsolete_material_prevent_reading(admin_client, analytic
 def test_reading_a_task_does_not_lock_match_and_missing_camera_is_obsolete(admin_client, analytics_match):
     from sqlalchemy import event
     from sqlalchemy.orm import Session
+
     from aifootball.service.matches.models import Match
 
     cap, team_id, _ = owner(admin_client, analytics_match)
@@ -95,7 +97,7 @@ def test_reading_a_task_does_not_lock_match_and_missing_camera_is_obsolete(admin
     assert response.json()['status'] == 'obsolete'
 
 
-import pytest
+import pytest  # noqa: E402
 
 
 @pytest.mark.parametrize('replacement', ['import', 'review'])

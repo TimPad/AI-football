@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
+import { useState } from 'react';
 
 // Число без клавиатуры: «−» и «+» по 48 px. На границе кнопка не отключается, а сообщает предел.
 export function Stepper({

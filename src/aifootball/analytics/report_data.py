@@ -4,23 +4,14 @@
 Спецификация: docs/specs/2026-10-13-match-report-design.md.
 """
 
+import cv2
 import numpy as np
-
 import polars as pl
 
-from aifootball.state.smooth import MAX_GAP_S
-
-from aifootball.analytics.periods import in_period
-
+from aifootball.analytics.metrics import HEATMAP_CELL_M, SPRINT_MIN_DURATION_S, SPRINT_THRESHOLD_MS, compute_metrics
+from aifootball.analytics.periods import in_period, make_periods
 from aifootball.perception.teams import defending_sides
-
-from aifootball.analytics.metrics import HEATMAP_CELL_M, compute_metrics
-
-from aifootball.analytics.metrics import SPRINT_MIN_DURATION_S, SPRINT_THRESHOLD_MS
-
-import cv2
-
-from aifootball.analytics.periods import make_periods
+from aifootball.state.smooth import MAX_GAP_S
 
 HSR_MS = 4.0  # бег быстрее этого — «высокоинтенсивный»; стартовое значение, см. спецификацию
 
@@ -430,7 +421,7 @@ def team_colors(tracks: pl.DataFrame) -> dict[str, str]:
     out = {}
     for team, (l, a, b) in lab.items():
         bgr = cv2.cvtColor(np.uint8([[[min(l, 170.0), a, b]]]), cv2.COLOR_LAB2BGR)[0, 0]
-        out[team] = '#{:02x}{:02x}{:02x}'.format(int(bgr[2]), int(bgr[1]), int(bgr[0]))
+        out[team] = f'#{int(bgr[2]):02x}{int(bgr[1]):02x}{int(bgr[0]):02x}'
     return out
 
 

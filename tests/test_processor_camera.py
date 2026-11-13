@@ -3,10 +3,12 @@
 import json
 from hashlib import sha256
 from zipfile import ZipFile
+
 import cv2
 import numpy as np
 import pytest
-from test_processor_resume import cv_case, Predictor  # noqa: F401  (фикстура)
+
+from test_processor_resume import Predictor, cv_case  # noqa: F401  (фикстура)
 
 
 def textured(seed=3, size=(400, 200)):
@@ -42,8 +44,8 @@ def write(path, frames, fps=1):
 
 
 def test_job_reference_must_match_its_hash(cv_case):
-    from aifootball.processor.job import read_job
     from aifootball.analytics.exchange import ExchangeError
+    from aifootball.processor.job import read_job
 
     job, _, _, _ = cv_case
     assert read_job(with_reference(job, textured()))
@@ -52,9 +54,9 @@ def test_job_reference_must_match_its_hash(cv_case):
 
 
 def test_alignment_is_recorded_and_reported(cv_case, tmp_path):
+    from aifootball.analytics.exchange import validate_result
     from aifootball.processor.cv import run_cv
     from aifootball.processor.job import package_result
-    from aifootball.analytics.exchange import validate_result
 
     job, video, models, ws = cv_case
     root = run_cv(with_reference(job, textured()), video, ws('flat'), models=models)

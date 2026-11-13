@@ -1,7 +1,8 @@
 """Этапы турнира, подтверждённые версии жеребьёвки и пары этапа."""
 
-from sqlalchemy import Column, String, Integer, Boolean, Uuid, ForeignKey, DateTime, UniqueConstraint, CheckConstraint
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
+
 from aifootball.service.db import Base, Entity, utcnow
 
 

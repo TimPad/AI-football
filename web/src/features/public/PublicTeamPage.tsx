@@ -1,15 +1,16 @@
-import { Link, useParams, useLocation } from 'react-router-dom';
-import { useDocumentTitle } from '../../components/useDocumentTitle';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { all, api } from '../../api/client';
-import type { components } from '../../api/types';
 import type { PublicMatch } from '../../api/domain';
-import { useLoad, Loading, Empty, ErrorBox } from '../../components/ui';
+import type { components } from '../../api/types';
 import { TeamCrest } from '../../components/match/MatchHeader';
-import { useQueryPatch } from '../navigation/useQueryPatch';
-import { isUuid } from '../navigation/query';
+import { Empty, ErrorBox, Loading, useLoad } from '../../components/ui';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { publicBack, publicForward } from '../navigation/publicContext';
+import { isUuid } from '../navigation/query';
+import { useQueryPatch } from '../navigation/useQueryPatch';
 import { Schedule } from './Schedule';
 import './profiles.css';
+
 type Team = components['schemas']['PublicTeamView'];
 export function PublicTeamPage() {
   const { id = '', teamId = '' } = useParams();

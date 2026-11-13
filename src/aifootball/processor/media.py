@@ -1,15 +1,17 @@
 """Timed local evidence; no media URLs or generative image transformations."""
 
-from hashlib import sha256
-from pathlib import Path
 import json
 import math
 import shutil
 import subprocess
 import tempfile
+from hashlib import sha256
+from pathlib import Path
+
 import cv2
 import numpy as np
 import polars as pl
+
 from aifootball.analytics.exchange import canonical
 from aifootball.perception.frames import iter_frames, video_fps
 from aifootball.processor.job import file_hash, video_info

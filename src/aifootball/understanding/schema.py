@@ -1,10 +1,10 @@
 """Pure, bounded schema validation. No model, network or service dependencies."""
 
-from copy import deepcopy
-from hashlib import sha256
 import json
 import math
 import re
+from copy import deepcopy
+from hashlib import sha256
 from uuid import UUID
 
 STATE_KINDS = {'pre_match', 'playing', 'stoppage', 'break', 'post_match', 'unknown'}

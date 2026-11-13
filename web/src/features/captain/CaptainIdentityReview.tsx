@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { components } from '../../api/types';
-import { useLoad, Loading, Field, Empty, downloadJson, ErrorBox } from '../../components/ui';
-import { useDraft } from '../protocol/drafts';
-import { useRatingCommand, CommandStatus } from '../ratings/commands';
-import { useCaptainAuth } from './CaptainAuth';
+import { downloadJson, Empty, ErrorBox, Field, Loading, useLoad } from '../../components/ui';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { teamTaskStatuses } from '../analysis/TeamReviewPanel';
+import { useDraft } from '../protocol/drafts';
+import { CommandStatus, useRatingCommand } from '../ratings/commands';
+import { useCaptainAuth } from './CaptainAuth';
+
 type Task = components['schemas']['TeamTaskView'];
 type Decision = components['schemas']['TeamDecision'];
 const stamp = (v: number) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;

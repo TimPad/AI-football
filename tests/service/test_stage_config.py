@@ -1,8 +1,9 @@
 import pytest
 from pydantic import ValidationError
+
 from aifootball.service.errors import DomainError
+from aifootball.service.stages.generate import fixtures_for, participants_placement, qualifier_count, scheme_for
 from aifootball.service.stages.schemas import StageConfig, template_stages
-from aifootball.service.stages.generate import participants_placement, fixtures_for, scheme_for, qualifier_count
 
 
 def test_config_validation():

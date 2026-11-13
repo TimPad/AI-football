@@ -1,7 +1,9 @@
 import re
-from uuid import UUID, uuid4
 from datetime import datetime
+from uuid import UUID, uuid4
+
 from pydantic import BaseModel, Field, field_validator
+
 from aifootball.service.tournaments.schemas import Input
 
 

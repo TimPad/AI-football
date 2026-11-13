@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from aifootball.geometry.homography import apply_homography
-from aifootball.tools.fit_field import FIELD_POINTS, fit_field, field_xy
+from aifootball.tools.fit_field import FIELD_POINTS, field_xy, fit_field
 
 TRUE_H = np.array([[0.02, 0.004, -3.0], [0.001, 0.05, -12.0], [0.00001, 0.0006, 1.0]])
 

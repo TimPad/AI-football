@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check } from '../../components/ui';
-import { FIELD_LABELS, type ImportView, type ImportConfig } from './types';
+import { FIELD_LABELS, type ImportConfig, type ImportView } from './types';
 
 export function ImportPreview({
   value,

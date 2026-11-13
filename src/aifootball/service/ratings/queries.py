@@ -1,28 +1,30 @@
-from copy import deepcopy
 from collections import defaultdict
+from copy import deepcopy
+
+from sqlalchemy import select
+
 from aifootball.ratings.aggregate import tournament_rating
 from aifootball.ratings.explanation import explain_rating
-from sqlalchemy import select
+from aifootball.service.catalog.models import Player
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
-from aifootball.service.tournaments.models import Tournament
-from aifootball.service.catalog.models import Player
-from aifootball.service.ratings.models import (
-    TournamentRatingSnapshot,
-    PlayerRatingRow,
-    RatingPolicyVersion,
-    RatingReferenceVersion,
-    RatingMatchPublication,
-    is_auto,
-)
 from aifootball.service.ratings.calculation import (
-    rating_state,
     current_policy,
-    snapshot_view,
     make_summaries,
+    rating_state,
+    snapshot_view,
     summary_facts,
 )
-from aifootball.service.ratings.inputs import selected_inputs, digest
+from aifootball.service.ratings.inputs import digest, selected_inputs
+from aifootball.service.ratings.models import (
+    PlayerRatingRow,
+    RatingMatchPublication,
+    RatingPolicyVersion,
+    RatingReferenceVersion,
+    TournamentRatingSnapshot,
+    is_auto,
+)
+from aifootball.service.tournaments.models import Tournament
 
 
 def overview(db, tid):

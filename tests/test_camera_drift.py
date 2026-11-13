@@ -3,10 +3,10 @@
 import cv2
 import numpy as np
 import pytest
-from conftest import SCALE_H, make_venue_dir
 
-from aifootball.venue import Calibration, load_venue
 from aifootball.geometry import camera_drift as D
+from aifootball.venue import Calibration, load_venue
+from conftest import SCALE_H, make_venue_dir
 
 W, H = 640, 480
 POLYGON = [[40, 40], [600, 40], [600, 440], [40, 440]]

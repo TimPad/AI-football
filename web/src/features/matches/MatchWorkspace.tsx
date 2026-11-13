@@ -1,32 +1,31 @@
-import { scheduleReturn, analysisQueueReturn } from '../navigation/query';
-import { useDocumentTitle } from '../../components/useDocumentTitle';
-import { useEffect, useState, type ReactNode } from 'react';
-import { Link, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, History } from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { Match, Tournament } from '../../api/domain';
 import { statuses } from '../../api/domain';
+import { type SectionItem, SectionNavigation } from '../../components/match/SectionNavigation';
 import { Loading, useLoad } from '../../components/ui';
-import { SectionNavigation, type SectionItem } from '../../components/match/SectionNavigation';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
+import { ReviewWorkspace } from '../analysis/ReviewWorkspace';
 import { useAuth } from '../auth/Auth';
-import { isUuid, readMatchTab } from '../navigation/query';
+import { analysisQueueReturn, isUuid, readMatchTab, scheduleReturn } from '../navigation/query';
 import { TournamentRail, useCabinetRail } from '../navigation/rail';
 import { useQueryPatch } from '../navigation/useQueryPatch';
+import { ProtocolEditor } from '../protocol/ProtocolEditor';
+import { HistoryPanel } from '../protocol/ProtocolPanels';
 import {
   ProtocolSession,
-  useOptionalProtocolSession,
   SessionChrome,
+  useOptionalProtocolSession,
   useProtocolSession,
   useSessionDispatch,
 } from '../protocol/ProtocolSession';
-import { ProtocolEditor } from '../protocol/ProtocolEditor';
-import { HistoryPanel } from '../protocol/ProtocolPanels';
-import { ReviewWorkspace } from '../analysis/ReviewWorkspace';
-import { ParticipationEditor } from '../ratings/ParticipationEditor';
-import { ActionReview } from '../ratings/ActionReview';
 import { MatchPublication } from '../publication/MatchPublication';
-import { Lineups, MatchInfo } from './MatchPage';
+import { ActionReview } from '../ratings/ActionReview';
+import { ParticipationEditor } from '../ratings/ParticipationEditor';
 import { MatchOverview } from './MatchOverview';
+import { Lineups, MatchInfo } from './MatchPage';
 import { MatchReportTab } from './MatchReportTab';
 import { dateTime } from './timezone';
 import './workspace.css';

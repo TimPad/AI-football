@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, ApiError, errorText } from '../../api/client';
+import { ApiError, api, errorText } from '../../api/client';
 import type {
   AnalysisOverview,
   AnalysisRun,
@@ -11,10 +11,10 @@ import type {
   Tournament,
 } from '../../api/domain';
 import { SourceStatus } from '../../components/match/SourceStatus';
-import { MatchReport } from '../match-report/MatchReport';
 import { publicAnalysisFromRun } from '../match-report/adapters';
-import type { PlayerSelection, ReportModel, Resource } from '../match-report/model';
 import type { StatGroup } from '../match-report/facts';
+import { MatchReport } from '../match-report/MatchReport';
+import type { PlayerSelection, ReportModel, Resource } from '../match-report/model';
 import { MatchRatings } from '../ratings/MatchRating';
 
 type Sources = Pick<ReportModel, 'protocol' | 'cv' | 'ratings' | 'actions'>;

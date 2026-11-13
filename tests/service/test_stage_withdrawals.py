@@ -1,5 +1,6 @@
 from uuid import uuid4
-from .test_stages_api import format_env, draw, fixtures, schedule, result, stage_list  # noqa: F401
+
+from .test_stages_api import draw, fixtures, format_env, result, schedule, stage_list  # noqa: F401
 
 
 def own(client, env, team, unscheduled=True):
@@ -98,7 +99,7 @@ def test_swiss_withdrawn_team_skips_next_rounds(admin_client, format_env, send_c
     current = [f for f in fixtures(admin_client, env) if f['round_no'] == 1]
     result(send_command, schedule(admin_client, env, current[0]), 1, 0)
     team = current[1]['home']['team']['entry_id']
-    body = withdraw(admin_client, env, stage['id'], team).json()['stages'][0]
+    assert withdraw(admin_client, env, stage['id'], team).json()['stages']
     for f in [f for f in fixtures(admin_client, env) if f['round_no'] == 1]:
         result(send_command, schedule(admin_client, env, f), 1, 0)
     stage = stage_list(admin_client, env)[0]

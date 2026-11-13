@@ -1,22 +1,23 @@
 import { useState } from 'react';
-import { api, all } from '../../api/client';
+import { all, api } from '../../api/client';
 import type { Version } from '../../api/domain';
-import { Field, Loading, ErrorBox, useLoad, downloadJson, Check } from '../../components/ui';
+import { Check, downloadJson, ErrorBox, Field, Loading, useLoad } from '../../components/ui';
+import type { UnderstandingView } from '../analysis/understandingTypes';
 import { useDraft } from '../protocol/drafts';
 import { CommandStatus, useRatingCommand } from './commands';
 import { Intervals } from './Intervals';
 import {
+  type Action,
+  type ActionDoc,
+  type Actions,
+  type ActionsVersion,
   actionLabels,
   categories,
   completeness,
-  scopes,
-  type Actions,
-  type ActionDoc,
-  type Action,
-  type ActionsVersion,
   type ParticipationVersion,
+  scopes,
 } from './types';
-import type { UnderstandingView } from '../analysis/understandingTypes';
+
 type Draft = { revision: number; matchRevision: number; document: ActionDoc };
 function valid(v: unknown): v is Draft {
   if (!v || typeof v !== 'object') return false;

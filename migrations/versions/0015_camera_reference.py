@@ -1,7 +1,7 @@
 """Reference frame of a camera profile version: the processor checks the camera position against it."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = '0015_camera_reference'
 down_revision = '0014_analysis_events'

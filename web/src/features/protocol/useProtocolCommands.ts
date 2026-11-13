@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, post } from '../../api/client';
 import type { Match } from '../../api/domain';
 import { useAuth } from '../auth/Auth';
-import { BrowserOutbox, createCommandQueue, type CommandQueue } from './outbox';
+import { BrowserOutbox, type CommandQueue, createCommandQueue } from './outbox';
 export function useProtocolCommands(matchId: string) {
   const { session } = useAuth();
   const [, rerender] = useState(0);
@@ -29,7 +29,7 @@ export function useProtocolCommands(matchId: string) {
     if (!session) return;
     let active = true;
     let q: CommandQueue | undefined;
-    let timers: ReturnType<typeof setTimeout>[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
     api<Match>(`/matches/${matchId}`)
       .then((view) => {
         if (!active) return;

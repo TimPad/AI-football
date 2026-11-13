@@ -1,9 +1,9 @@
 from uuid import uuid4
-import copy
-from sqlalchemy.orm import Session
-from .test_analysis_jobs import analytics_match, new_job, grant
-from .test_analysis_import import upload
+
 from test_analysis_exchange import result_zip
+
+from .test_analysis_import import upload
+from .test_analysis_jobs import analytics_match, grant, new_job  # noqa: F401
 
 
 def import_run(client, match, mutate=None):

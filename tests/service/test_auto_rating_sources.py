@@ -1,11 +1,13 @@
 """Этап E: подтверждённый видеоанализ сам даёт версии участия и действий для оценок."""
 
 from uuid import uuid4
-from .test_analysis_jobs import analytics_match, new_job
+
+from aifootball.service.ratings.auto import presence
+
 from .test_analysis_assignments import command
 from .test_analysis_import import upload
+from .test_analysis_jobs import analytics_match, new_job  # noqa: F401
 from .test_ratings_snapshots import base, calculate, publish_sources, revision
-from aifootball.service.ratings.auto import presence
 
 
 def _track(*spans):
@@ -55,7 +57,7 @@ def _protocol(client, match, send, publish=False):
 def _video(client, match, *, publish=False):
     """Пакет версии 3: трек 1 (A, 0–60 с) и 2 (A, 120–240 с) — разные игроки хозяев, трек 3 — гость.
     Две передачи трека 1: точная треку 2 и неточная."""
-    from test_analysis_exchange import result_zip, events_doc
+    from test_analysis_exchange import events_doc, result_zip
 
     job = new_job(client, match)
     run = upload(

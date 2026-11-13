@@ -1,15 +1,15 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { positions, type Player, type TeamProfile, type ProfilePlayer } from '../../api/domain';
-import { all, api, post, ApiError } from '../../api/client';
-import { Field, ErrorBox, Loading, useLoad, downloadJson } from '../../components/ui';
+import { type FormEvent, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ApiError, all, api, post } from '../../api/client';
+import { type Player, type ProfilePlayer, positions, type TeamProfile } from '../../api/domain';
+import { ErrorBox, Field, Loading, useLoad } from '../../components/ui';
 import { useAuth } from '../auth/Auth';
-import { useDraft } from '../protocol/drafts';
-import { ProfileImage } from './ProfileImage';
-import { RosterImportLaunch } from '../roster-import/RosterImportPage';
 import { CaptainAccessPanel } from '../captain/CaptainAccessPanel';
+import { useDraft } from '../protocol/drafts';
+import { RosterImportLaunch } from '../roster-import/RosterImportPage';
+import { ProfileImage } from './ProfileImage';
 
 export { positions };
 export function age(birth: string | null) {

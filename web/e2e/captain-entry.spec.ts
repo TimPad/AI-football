@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
+import { expect, test } from '@playwright/test';
 import { login } from './helpers';
 
 test('captain corrects a returned application and organizer accepts its new immutable version', async ({

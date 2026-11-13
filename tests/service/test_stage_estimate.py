@@ -1,7 +1,8 @@
 import pytest
+
 from aifootball.service.stages.estimate import auto_params, estimate, estimate_all
-from aifootball.service.stages.schemas import template_stages, StageConfig
-from aifootball.service.stages.generate import fixtures_for, scheme_for, qualifier_count
+from aifootball.service.stages.generate import fixtures_for, scheme_for
+from aifootball.service.stages.schemas import StageConfig, template_stages
 
 
 def real_matches(template, params, n):

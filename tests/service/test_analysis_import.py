@@ -1,11 +1,13 @@
 from uuid import uuid4
-import copy
+
 import pytest
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+
 from aifootball.service.analysis.models import AnalysisRun
-from .test_analysis_jobs import analytics_match, new_job, grant
 from test_analysis_exchange import result_zip
+
+from .test_analysis_jobs import analytics_match, grant, new_job  # noqa: F401
 
 
 def upload(client, match, package, request_id=None):

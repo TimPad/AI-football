@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 export function useDraft<T>(key: string, initial: T, validate: (v: unknown) => v is T) {
   const [loaded] = useState(() => {
     let raw: string | null = null;

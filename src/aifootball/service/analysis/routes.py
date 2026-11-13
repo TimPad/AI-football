@@ -1,34 +1,36 @@
-from uuid import UUID
 from typing import Literal
-from fastapi import APIRouter, Depends, Request, UploadFile, File, Header, Query
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, File, Header, Query, Request, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from aifootball.service.db import get_session
-from aifootball.service.auth.security import require_admin, require_analytics_admin, require_analytics_reader
-from aifootball.service.common import get_entity
-from aifootball.service.errors import DomainError
+
+from aifootball.analytics.exchange import ExchangeError, validate_result
+from aifootball.service.analysis.commands import mutate
+from aifootball.service.analysis.imports import import_result
+from aifootball.service.analysis.jobs import create_job, export_job
 from aifootball.service.analysis.models import AnalysisJob, AnalysisRun
+from aifootball.service.analysis.queries import get_player_history, get_public_analysis, match_analysis, run_view
 from aifootball.service.analysis.schemas import (
+    AssignmentsUpdate,
     JobCreate,
     JobView,
-    AssignmentsUpdate,
-    PointerMutation,
-    RunView,
     Overview,
     PlayerHistoryView,
+    PointerMutation,
     PublicAnalysis,
+    RunView,
 )
-from aifootball.service.analysis.jobs import create_job, export_job
-from aifootball.service.analysis.queries import match_analysis, run_view, get_player_history, get_public_analysis
-from aifootball.service.analysis.commands import mutate
-from aifootball.service.analysis.storage import limits, read_upload, read_file
-from aifootball.service.analysis.imports import import_result
-from aifootball.analytics.exchange import validate_result, ExchangeError
+from aifootball.service.analysis.storage import limits, read_file, read_upload
+from aifootball.service.auth.security import require_admin, require_analytics_admin, require_analytics_reader
+from aifootball.service.common import get_entity
+from aifootball.service.db import get_session
+from aifootball.service.errors import DomainError
 
 router = APIRouter()
 
-from aifootball.service.analysis.queue import AnalysisQueueItem, QueueStage, analysis_queue
-from aifootball.service.views import Page
+from aifootball.service.analysis.queue import AnalysisQueueItem, QueueStage, analysis_queue  # noqa: E402
+from aifootball.service.views import Page  # noqa: E402
 
 
 @router.get(
@@ -155,8 +157,8 @@ def public(mid: UUID, db: Session = Depends(get_session)):
     return get_public_analysis(db, mid)
 
 
-from aifootball.service.analysis.schemas import UnderstandingView, UnderstandingReviewUpdate
-from aifootball.service.analysis.understanding import get_understanding, review_understanding
+from aifootball.service.analysis.schemas import UnderstandingReviewUpdate, UnderstandingView  # noqa: E402
+from aifootball.service.analysis.understanding import get_understanding, review_understanding  # noqa: E402
 
 
 @router.get('/matches/{mid}/analysis/runs/{rid}/understanding', response_model=UnderstandingView)

@@ -1,19 +1,21 @@
-from io import BytesIO
-from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 import json
+from io import BytesIO
 from uuid import UUID
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from aifootball.service.db import get_session
-from aifootball.service.common import get_entity, as_dict, list_entities
+
 from aifootball.service.auth.security import require_admin, require_csrf
+from aifootball.service.common import as_dict, get_entity, list_entities
+from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
-from aifootball.service.halls.models import Hall, CameraProfile
-from aifootball.service.halls.schemas import HallCreate, HallUpdate, CameraCreate
-from aifootball.service.halls.operations import save_hall, make_camera, camera_view, same_dimensions
-from aifootball.service.views import Page, HallView, CameraProfileView
+from aifootball.service.halls.models import CameraProfile, Hall
+from aifootball.service.halls.operations import make_camera, same_dimensions, save_hall
+from aifootball.service.halls.schemas import CameraCreate, HallCreate, HallUpdate
 from aifootball.service.matches.models import Match
+from aifootball.service.views import CameraProfileView, HallView, Page
 
 router = APIRouter()
 

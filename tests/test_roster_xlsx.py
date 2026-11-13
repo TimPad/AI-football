@@ -1,7 +1,7 @@
 """Synthetic workbooks: no participant data or real spreadsheets."""
 
 from io import BytesIO
-from zipfile import ZipFile
+
 import pytest
 from openpyxl import Workbook, load_workbook
 
@@ -70,7 +70,7 @@ def test_rejects_unsupported_corrupt_and_excess_rows():
 
 
 def test_template_and_report_cells_never_execute_formulas():
-    from aifootball.service.catalog.roster_imports.xlsx import template, report_workbook
+    from aifootball.service.catalog.roster_imports.xlsx import report_workbook, template
 
     source = load_workbook(BytesIO(template('tournament')))
     assert [c.value for c in source.active[1]][:3] == ['Команда', 'ФИО', 'Номер']

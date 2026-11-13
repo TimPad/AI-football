@@ -1,5 +1,5 @@
-import numpy as np
 import polars as pl
+
 from aifootball.analytics.events import extract_events, stoppages
 
 L, W, DT = 40.0, 20.0, 0.1

@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { Calendar, ChartColumn, ListOrdered, Settings, Trophy, Users, Video } from 'lucide-react';
+import { createContext, type ReactNode, useContext, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, ChartColumn, Users, Settings, Trophy, Video, ListOrdered } from 'lucide-react';
 
 // Страница задаёт контекст рейла (турнир), оболочка его показывает.
 export const RailContext = createContext<(node: ReactNode) => void>(() => {});

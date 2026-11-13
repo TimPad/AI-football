@@ -1,7 +1,7 @@
 """Bind an unverified registration's credentials to its email proof."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = '0026_registration_credentials'
 down_revision = '0025_analysis_queue_indexes'

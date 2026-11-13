@@ -1,26 +1,27 @@
 import base64
-import json
+import math
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
-from zipfile import ZipFile, ZIP_DEFLATED
-import math
+from zipfile import ZIP_DEFLATED, ZipFile
+
 import yaml
-from aifootball.understanding.schema import restrict_to_tracks
-from aifootball.analytics.track_groups import track_groups
+
 from aifootball.analytics.exchange import (
-    canonical,
-    read_archive,
-    load_json,
-    ensure,
-    uuid,
-    hash_value,
-    validate_result,
-    ExchangeError,
-    UNITS,
     EVENT_KINDS,
+    UNITS,
+    ExchangeError,
+    canonical,
+    ensure,
+    hash_value,
+    load_json,
+    read_archive,
+    uuid,
+    validate_result,
 )
+from aifootball.analytics.track_groups import track_groups
+from aifootball.understanding.schema import restrict_to_tracks
 
 # Передачи замерены на 15 кадрах/с; на 10 кадрах/с точность падает 0.78 → 0.70 (scripts/eval_events.py, Ярославль).
 # Порог чуть ниже 15: «15 кадров/с» у камер бывает 14.9.
@@ -171,6 +172,7 @@ def ball_model_path(models, name):
 def ball_events(artifacts, venue, state, spans, track_ids, models=None):
     """События по мячу для events.json: (содержимое, предупреждение). Без модели мяча — (None, None)."""
     import polars as pl
+
     from aifootball import schemas
     from aifootball.analytics.events import extract_events
     from aifootball.analytics.periods import in_period
@@ -244,15 +246,17 @@ def package_result(
     evidence_files=None,
     models=None,
 ):
-    import polars as pl
-    from aifootball import schemas
-    from aifootball.venue import load_venue
-    from aifootball.analytics.report_data import build_report, thumb_request, heatmap_seconds, assign_goalkeeper_teams
-    from aifootball.analytics.periods import find_halves, parse_halves, in_period
-    from aifootball.analytics.checks import phase1_checks
-    from aifootball.report.frames import grab_images
     from tempfile import TemporaryDirectory
+
+    import polars as pl
+
+    from aifootball import schemas
+    from aifootball.analytics.checks import phase1_checks
+    from aifootball.analytics.periods import find_halves, in_period, parse_halves
+    from aifootball.analytics.report_data import assign_goalkeeper_teams, build_report, heatmap_seconds, thumb_request
     from aifootball.geometry.camera_drift import alignment_messages, apply_alignment
+    from aifootball.report.frames import grab_images
+    from aifootball.venue import load_venue
 
     job = read_job(job_path)
     source = source_for_job(job, video_path)
@@ -465,6 +469,7 @@ def process_job(
     client = None
     if understand:
         import shutil
+
         from aifootball.processor.qwen import QwenClient, QwenConfig
 
         client = QwenClient(QwenConfig.from_env())
@@ -508,8 +513,8 @@ def process_job(
         understanding = None
         evidence = None
         if understand:
-            from aifootball.processor.understand import run_understanding
             from aifootball.processor.budget import Budget
+            from aifootball.processor.understand import run_understanding
 
             budget = Budget(
                 workspace,

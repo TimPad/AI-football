@@ -1,14 +1,14 @@
-from uuid import uuid4
-from pathlib import Path
-from io import BytesIO
-from zipfile import ZipFile
 import json
-import yaml
-import pytest
+from uuid import uuid4
+from zipfile import ZipFile
+
 import polars as pl
+import pytest
+import yaml
+
+from aifootball import schemas
 from conftest import write_video
 from report_fixtures import synthetic_match
-from aifootball import schemas
 
 
 def job_package(venue, tmp_path):
@@ -53,8 +53,8 @@ def job_package(venue, tmp_path):
 
 
 def test_package_has_real_thumbnails_short_tracks_and_absolute_times(venue, tmp_path):
-    from aifootball.processor.job import package_result
     from aifootball.analytics.exchange import validate_result
+    from aifootball.processor.job import package_result
 
     path, job = job_package(venue, tmp_path)
     video = write_video(tmp_path / 'source.mp4', n_frames=400, fps=2, size=(400, 200))
@@ -81,8 +81,8 @@ def test_package_has_real_thumbnails_short_tracks_and_absolute_times(venue, tmp_
 
 
 def test_job_rejects_changed_cv_geometry_and_source_resolution(venue, tmp_path):
-    from aifootball.processor.job import read_job, package_result
     from aifootball.analytics.exchange import ExchangeError
+    from aifootball.processor.job import package_result, read_job
 
     path, job = job_package(venue, tmp_path)
     video = write_video(tmp_path / 'wrong.mp4')
@@ -117,8 +117,8 @@ def test_operator_can_mark_fragment_recording():
 
 @pytest.mark.parametrize('mode', ['unknown_speed', 'missing_team'])
 def test_package_preserves_missing_metrics_with_reasons(venue, tmp_path, mode):
-    from aifootball.processor.job import package_result
     from aifootball.analytics.exchange import validate_result
+    from aifootball.processor.job import package_result
 
     path, job = job_package(venue, tmp_path)
     video = write_video(tmp_path / 'clip.mp4', n_frames=140, fps=2, size=(400, 200))

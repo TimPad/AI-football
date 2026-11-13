@@ -6,10 +6,9 @@ must intersect category declarations with these ranges; processing completion
 or model confidence never supplies a completeness declaration.
 """
 
-from collections import defaultdict
-from aifootball.ratings.schema import MetricFact, MatchPerformance
-from aifootball.ratings.registry import REGISTRY
 from aifootball.ratings.actions import discipline_cost, valid_block_link
+from aifootball.ratings.registry import REGISTRY
+from aifootball.ratings.schema import MatchPerformance, MetricFact
 
 
 def _missing(numerator, denominator, unit, reason, completeness='unknown'):

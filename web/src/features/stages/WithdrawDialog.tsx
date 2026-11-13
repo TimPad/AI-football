@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { post } from '../../api/client';
-import { ErrorBox, Modal } from '../../components/ui';
 import type { components } from '../../api/types';
+import { ErrorBox, Modal } from '../../components/ui';
 import type { StageView, TeamRef } from './api';
 import { plural } from './labels';
 

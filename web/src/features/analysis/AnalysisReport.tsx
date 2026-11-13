@@ -1,7 +1,8 @@
-import { PitchMap, type PitchTone } from '../../components/pitch/PitchMap';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { components } from '../../api/types';
+import { PitchMap, type PitchTone } from '../../components/pitch/PitchMap';
+
 type Metrics = components['schemas']['PublicMetrics'] | components['schemas']['MetricValues'];
 type Person = { player_id: string; display_name: string; shirt_number?: string | null; side: string; metrics: Metrics };
 export const measure = (value: number | null | undefined, digits = 1) =>

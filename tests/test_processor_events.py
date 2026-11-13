@@ -1,13 +1,15 @@
 """Передачи по мячу в пакете результата: events.json и контракт версии 3."""
 
 import json
+
 import numpy as np
 import polars as pl
 import pytest
+
+from aifootball import schemas
 from conftest import write_video
 from report_fixtures import synthetic_match
 from test_processor_job import job_package
-from aifootball import schemas
 
 FPS = 15
 PLAYERS = [(1, 'A', 10.0, 10.0), (2, 'A', 24.0, 10.0), (3, 'B', 30.0, 4.0), (4, 'B', 30.0, 16.0)]
@@ -134,8 +136,8 @@ def test_no_ball_model_means_no_events(venue, tmp_path):
 
 
 def test_ball_model_name_stays_inside_the_models_folder(tmp_path):
-    from aifootball.processor.job import ball_model_path
     from aifootball.analytics.exchange import ExchangeError
+    from aifootball.processor.job import ball_model_path
 
     (tmp_path / 'hall').mkdir()
     (tmp_path / 'hall' / 'best.pt').write_bytes(b'w')
@@ -146,8 +148,8 @@ def test_ball_model_name_stays_inside_the_models_folder(tmp_path):
 
 
 def test_package_with_ball_is_contract_3(venue, tmp_path):
-    from aifootball.processor.job import package_result
     from aifootball.analytics.exchange import validate_result
+    from aifootball.processor.job import package_result
 
     path, _ = job_package(venue, tmp_path)
     video = write_video(tmp_path / 'clip.mp4', n_frames=140, fps=2, size=(400, 200))
@@ -193,6 +195,7 @@ def test_package_with_ball_is_contract_3(venue, tmp_path):
 
 def test_ball_model_uses_measured_confidence_and_margin(venue):
     from dataclasses import replace
+
     from aifootball.processor.job import ball_settings
 
     tuned = ball_settings(replace(venue, conf_ball=0.1, ball_margin_px=0), 2592)

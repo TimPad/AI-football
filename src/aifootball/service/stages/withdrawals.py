@@ -1,6 +1,7 @@
 """Снятие команды после старта этапа: правило половины в группах, техническая победа в сетке, без новых туров в швейцарке."""
 
 from sqlalchemy import select
+
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match

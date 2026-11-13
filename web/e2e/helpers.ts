@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+
 // Задачи матча: четыре раздела, шаги раздела видны, когда он открыт. task открывает раздел шага, если нужно.
 const SECTION: Record<string, string> = {
   Сведения: 'Протокол',

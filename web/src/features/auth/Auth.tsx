@@ -1,9 +1,10 @@
-import { createContext, useContext, useEffect, useState, useRef, type ReactNode, type FormEvent } from 'react';
-import { useDocumentTitle } from '../../components/useDocumentTitle';
-import { useLocation, Navigate } from 'react-router-dom';
+import { createContext, type FormEvent, type ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { api, post, setCsrf } from '../../api/client';
 import type { Session } from '../../api/domain';
 import { ErrorBox, Field } from '../../components/ui';
+import { useDocumentTitle } from '../../components/useDocumentTitle';
+
 type AuthState = {
   session: Session | null;
   loading: boolean;

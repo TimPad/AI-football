@@ -1,5 +1,5 @@
 import { Field } from '../../components/ui';
-import { FIELD_LABELS, inferMapping, type ImportView, type ImportConfig } from './types';
+import { FIELD_LABELS, type ImportConfig, type ImportView, inferMapping } from './types';
 
 export function ImportMapping({
   value,

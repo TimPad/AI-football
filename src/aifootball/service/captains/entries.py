@@ -1,12 +1,12 @@
-from uuid import UUID
 from sqlalchemy import select
-from aifootball.service.common import get_entity, as_dict
-from aifootball.service.db import utcnow
-from aifootball.service.errors import DomainError, RevisionConflict
-from aifootball.service.catalog.models import Team, Player, TeamMember, Entry
-from aifootball.service.tournaments.models import Tournament, RegulationVersion
+
 from aifootball.service.captains.models import EntryInvitation, EntrySubmission, EntrySubmissionVersion
 from aifootball.service.captains.security import require_captain_team
+from aifootball.service.catalog.models import Entry, Player, Team, TeamMember
+from aifootball.service.common import as_dict, get_entity
+from aifootball.service.db import utcnow
+from aifootball.service.errors import DomainError
+from aifootball.service.tournaments.models import RegulationVersion, Tournament
 
 
 def tournament_option(t, invitation=None):

@@ -1,9 +1,10 @@
-import { YandexMapsLink } from '../../components/YandexMapsLink';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { components } from '../../api/types';
-import { useLoad, Loading } from '../../components/ui';
-import { PublicProtocolContent, PublicLineups } from './PublicProtocolContent';
+import { Loading, useLoad } from '../../components/ui';
+import { YandexMapsLink } from '../../components/YandexMapsLink';
+import { PublicLineups, PublicProtocolContent } from './PublicProtocolContent';
+
 type Public = components['schemas']['PublicProtocol'];
 export function PublicProtocolPage() {
   const { publicId } = useParams();

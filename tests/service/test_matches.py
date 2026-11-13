@@ -1,3 +1,6 @@
+from datetime import UTC
+
+
 def test_match_keeps_roster_and_rules_snapshot(admin_client, match_factory, regulation_data):
     m = match_factory()
     player = m['lineup'][0]
@@ -41,12 +44,12 @@ def test_commands_retry_and_conflict(admin_client, match_factory, send_command):
 
 
 def test_regulation_apply_is_atomic(admin_client, match_factory, send_command, regulation_data):
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
     from uuid import uuid4
 
     # оба матча в будущем: регламент меняется только у будущих, и 409 должна дать лишь устаревшая версия b,
     # а не прошедшая дата (матчи проверяются в порядке id, и прошедший a давал 422 через раз)
-    future = lambda days: (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
+    future = lambda days: (datetime.now(UTC) + timedelta(days=days)).isoformat()
     a = match_factory(scheduled_at=future(30))
     tid = a['tournament_id']
     b = admin_client.post(

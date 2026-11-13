@@ -1,7 +1,7 @@
 """Halls, immutable camera geometry and match venue snapshots."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = '0007_halls'

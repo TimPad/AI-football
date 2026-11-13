@@ -1,13 +1,14 @@
 """Эталонный кадр профиля камеры: загрузка, неизменность, контекст задания и кадр в job.zip."""
 
+import json
 from hashlib import sha256
 from io import BytesIO
 from zipfile import ZipFile
-import json
-import pytest
+
 from PIL import Image
-from .test_analysis_jobs import analytics_match, new_job, grant  # noqa: F401
-from .test_halls import create_hall, camera_body
+
+from .test_analysis_jobs import analytics_match, grant, new_job  # noqa: F401
+from .test_halls import camera_body, create_hall
 
 
 def frame(size=(1000, 500), color=(40, 90, 160), fmt='JPEG'):

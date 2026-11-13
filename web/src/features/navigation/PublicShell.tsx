@@ -1,6 +1,6 @@
+import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { ChevronDown } from 'lucide-react';
 import './shell.css';
 
 export function PublicShell() {
@@ -39,17 +39,17 @@ function SignInMenu() {
     const outside = (e: PointerEvent) => {
       if (!box.current?.contains(e.target as Node)) setOpen(false);
     };
-    const escape = (e: KeyboardEvent) => {
+    const onEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false);
         box.current?.querySelector('button')?.focus();
       }
     };
     document.addEventListener('pointerdown', outside);
-    document.addEventListener('keydown', escape);
+    document.addEventListener('keydown', onEscape);
     return () => {
       document.removeEventListener('pointerdown', outside);
-      document.removeEventListener('keydown', escape);
+      document.removeEventListener('keydown', onEscape);
     };
   }, [open]);
   return (

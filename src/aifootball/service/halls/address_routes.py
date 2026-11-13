@@ -1,8 +1,7 @@
-from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, Response
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.security import require_admin, require_csrf
 from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError

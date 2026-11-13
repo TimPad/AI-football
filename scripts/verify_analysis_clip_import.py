@@ -1,14 +1,16 @@
 """Finish the isolated real-clip acceptance; demo UUIDs are not actual identities."""
 
+import json
 from pathlib import Path
 from uuid import uuid4
-import json
-from sqlalchemy.engine import make_url
+
 from fastapi.testclient import TestClient
+from sqlalchemy.engine import make_url
+
+from aifootball.analytics.exchange import validate_result
+from aifootball.processor.job import process_job
 from aifootball.service.app import create_app
 from aifootball.service.config import Settings
-from aifootball.processor.job import process_job
-from aifootball.analytics.exchange import validate_result
 
 root = Path('output/analysis-acceptance')
 context = json.loads((root / 'context.json').read_text())

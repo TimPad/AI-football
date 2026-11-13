@@ -1,4 +1,5 @@
 from uuid import uuid4
+
 from .test_confirmation import finish
 
 

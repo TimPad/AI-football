@@ -1,9 +1,11 @@
-from uuid import UUID
-from pydantic import Field
 from typing import Literal
-from aifootball.service.tournaments.schemas import Input
+from uuid import UUID
+
+from pydantic import Field
+
 from aifootball.service.protocol.events import Event
-from aifootball.service.protocol.schemas import ReportedTotals, ShootoutTotals, CompletenessValue
+from aifootball.service.protocol.schemas import CompletenessValue, ReportedTotals, ShootoutTotals
+from aifootball.service.tournaments.schemas import Input
 
 
 class EventChange(Input):

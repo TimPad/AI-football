@@ -1,9 +1,11 @@
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
-from PIL import Image
+
 from fastapi.testclient import TestClient
-from .test_team_profiles import create, update, player
+from PIL import Image
+
+from .test_team_profiles import create, player, update
 
 
 def upload_png(client, color='blue'):

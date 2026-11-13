@@ -1,13 +1,14 @@
 import json
 from hashlib import sha256
+
 from pydantic import ValidationError
 from sqlalchemy import select
-from aifootball.service.errors import DomainError, RevisionConflict
+
 from aifootball.service.common import get_entity
+from aifootball.service.errors import DomainError, RevisionConflict
 from aifootball.service.matches.models import Match, MatchCommand
-from aifootball.service.matches.schemas import MatchUpdate, LineupUpdate, StatusUpdate
 from aifootball.service.matches.operations import get_match_view, set_lineup
-from aifootball.service.tournaments.schemas import Regulation
+from aifootball.service.matches.schemas import LineupUpdate, MatchUpdate, StatusUpdate
 
 
 def validate_payload(cls, value):
@@ -29,14 +30,15 @@ def apply_mutation(db, match, command, actor):
     if not match.protocol.get('draft', True) and command.kind not in ['reopen', 'publish', 'unpublish']:
         raise DomainError('confirmed', 'Сначала откройте новую редакцию протокола')
     if command.kind.startswith('clock_'):
+        from uuid import uuid4
+
+        from aifootball.service.db import utcnow
         from aifootball.service.protocol.clock import transition_clock
-        from aifootball.service.protocol.schemas import ClockState, ProtocolDocument
         from aifootball.service.protocol.events import PeriodBoundary
         from aifootball.service.protocol.payloads import ClockSet, Empty
+        from aifootball.service.protocol.schemas import ClockState, ProtocolDocument
         from aifootball.service.tournaments.models import RegulationVersion
         from aifootball.service.tournaments.rules import resolve_rules
-        from aifootball.service.db import utcnow
-        from uuid import uuid4
 
         rules = resolve_rules(match, get_entity(db, RegulationVersion, match.regulation_id))
         action = command.kind.removeprefix('clock_')

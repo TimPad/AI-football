@@ -1,21 +1,21 @@
 from copy import deepcopy
 from uuid import uuid4
-from pydantic import TypeAdapter
-from sqlalchemy import select, func
-from aifootball.service.common import get_entity
+
+from sqlalchemy import func, select
+
+from aifootball.service.common import as_dict, get_entity
 from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
-from aifootball.service.protocol import payloads
-from aifootball.service.protocol.schemas import ProtocolDocument
-from aifootball.service.protocol.events import validate_event
-from aifootball.service.protocol.projection import project_protocol
-from aifootball.service.protocol.validation import validate_confirmation
-from aifootball.service.protocol.models import ProtocolVersion, Attachment
-from aifootball.service.tournaments.models import RegulationVersion
-from aifootball.service.tournaments.rules import resolve_rules
 from aifootball.service.matches.models import LineupMember
 from aifootball.service.matches.operations import get_match_view
-from aifootball.service.common import as_dict
+from aifootball.service.protocol import payloads
+from aifootball.service.protocol.events import validate_event
+from aifootball.service.protocol.models import Attachment, ProtocolVersion
+from aifootball.service.protocol.projection import project_protocol
+from aifootball.service.protocol.schemas import ProtocolDocument
+from aifootball.service.protocol.validation import validate_confirmation
+from aifootball.service.tournaments.models import RegulationVersion
+from aifootball.service.tournaments.rules import resolve_rules
 
 
 def apply_protocol_mutation(db, match, command, actor):

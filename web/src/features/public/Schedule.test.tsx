@@ -1,6 +1,6 @@
-import { it, expect } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { expect, it } from 'vitest';
 import { Schedule, type ScheduleItem } from './Schedule';
 
 const matches = [

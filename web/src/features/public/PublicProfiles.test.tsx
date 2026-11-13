@@ -1,8 +1,9 @@
-import { test, expect, vi, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { PublicTeamPage } from './PublicTeamPage';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, expect, test, vi } from 'vitest';
 import { PublicPlayerPage } from './PublicPlayerPage';
+import { PublicTeamPage } from './PublicTeamPage';
+
 vi.mock('../ratings/PlayerRatingHistory', () => ({
   PlayerRatingHistory: () => <p>Рейтинг в этом турнире пока не доступен.</p>,
 }));

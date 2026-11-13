@@ -3,19 +3,21 @@
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import select, func, case, cast, String, true
+from sqlalchemy import case, cast, func, select, true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session, aliased
-from aifootball.service.db import get_session
+
+from aifootball.service.catalog.models import Entry, Team
 from aifootball.service.common import as_dict
+from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
-from aifootball.service.public_visibility import require_public_tournament
-from aifootball.service.catalog.models import Team, Entry
 from aifootball.service.matches.models import Match
-from aifootball.service.tournaments.models import Tournament
 from aifootball.service.protocol.models import ProtocolVersion
+from aifootball.service.public_visibility import require_public_tournament
+from aifootball.service.tournaments.models import Tournament
 from aifootball.service.views import Page, PublicTournament
 
 router = APIRouter(prefix='/public')

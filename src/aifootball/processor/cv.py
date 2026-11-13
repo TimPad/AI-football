@@ -1,16 +1,18 @@
 """Resume expensive detections, then replay the existing tracking pipeline once."""
 
-from datetime import datetime, timezone
-from hashlib import sha256
-import os
-from pathlib import Path
-from dataclasses import replace
-from types import SimpleNamespace
 import math
+import os
+from dataclasses import replace
+from datetime import UTC, datetime
+from hashlib import sha256
+from pathlib import Path
+from types import SimpleNamespace
+
 import polars as pl
+
 from aifootball import schemas
 from aifootball.analytics.exchange import canonical
-from aifootball.processor.job import read_job, source_for_job, file_hash
+from aifootball.processor.job import file_hash, read_job, source_for_job
 from aifootball.processor.workspace import Workspace
 from aifootball.venue import load_venue
 
@@ -36,10 +38,10 @@ def _write_detections(data, path):
 
 
 def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, ball_model: str | None = None) -> Path:
+    from aifootball import cli
     from aifootball.perception.detect import detect_batches, pick_device
     from aifootball.perception.frames import video_fps
     from aifootball.processor.job import EVENTS_MIN_FPS, ball_model_path, ball_settings
-    from aifootball import cli
 
     job = read_job(job_path)
     source = source_for_job(job, video)
@@ -59,7 +61,9 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
         if 'reference.jpg' in job.files:
             alignment = workspace.get_json('cv:alignment')
             if alignment is None:
-                import cv2, numpy as np
+                import cv2
+                import numpy as np
+
                 from aifootball.geometry.camera_drift import check_camera
 
                 reference = cv2.imdecode(np.frombuffer(job.files['reference.jpg'], np.uint8), cv2.IMREAD_COLOR)
@@ -186,7 +190,7 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
             'source_sha256': source['sha256'],
             'context_hash': job.contract['context_hash'],
             'camera_alignment': alignment,
-            'created_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+            'created_at': datetime.now(UTC).isoformat(timespec='seconds'),
         }
         Workspace._atomic(root / 'meta.json', canonical(meta))
         args = SimpleNamespace(video=Path(video), match=root, models=Path(models))

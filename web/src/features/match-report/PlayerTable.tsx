@@ -1,7 +1,7 @@
 import type { MatchRatingsView, PublicAnalysis } from '../../api/domain';
-import { roles, num } from '../ratings/types';
+import { num, roles } from '../ratings/types';
+import { factLabel, formatFact, GROUP_FACTS, MOVEMENT, type StatGroup } from './facts';
 import type { PlayerSelection } from './model';
-import { GROUP_FACTS, MOVEMENT, factLabel, formatFact, type StatGroup } from './facts';
 
 type RatingRow = MatchRatingsView['items'][number];
 type Select = (s: PlayerSelection) => void;

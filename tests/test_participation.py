@@ -1,8 +1,9 @@
-from copy import deepcopy
 from uuid import uuid4
+
 import pytest
-from aifootball.ratings.validate import exposure_by_role, validate_participation
+
 from aifootball.ratings.schema import MetricFact
+from aifootball.ratings.validate import exposure_by_role, validate_participation
 
 
 def player(**changes):

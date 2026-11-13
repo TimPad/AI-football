@@ -1,6 +1,6 @@
 """Таблица и порядок мест: личные встречи по правилу УЕФА, затем общие показатели, затем жребий."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from fractions import Fraction
 
 H2H = ('h2h_points', 'h2h_goal_diff', 'h2h_goals')
@@ -109,13 +109,13 @@ def rank(teams, results, criteria=DEFAULT_CRITERIA, lot=(), byes=()):
                 block = criteria[i:end]
                 mini = _table(group, [r for r in results if r.home in group and r.away in group])
                 names = {'h2h_points': 'points', 'h2h_goal_diff': 'goal_diff', 'h2h_goals': 'goals_for'}
-                parts = _split(group, lambda t: tuple(_value(mini[t], names[c]) for c in block))
+                parts = _split(group, lambda t: tuple(_value(mini[t], names[c]) for c in block))  # noqa: B023
                 if len(parts) > 1:
                     # Разделившиеся подгруппы заново проходят личные встречи только между собой.
                     return [sub for part in parts for sub in order(part, i)]
                 i = end
                 continue
-            parts = _split(group, lambda t: _value(rows[t], criterion))
+            parts = _split(group, lambda t: _value(rows[t], criterion))  # noqa: B023
             if len(parts) > 1:
                 return [sub for part in parts for sub in order(part, i + 1)]
             i += 1

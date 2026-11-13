@@ -1,9 +1,9 @@
 import type { PublicAnalysis, PublicMatch, PublicProtocol, TeamActionStats } from '../../api/domain';
-import { ShotMap, type Shot } from '../../components/pitch/ShotMap';
+import { type Shot, ShotMap } from '../../components/pitch/ShotMap';
 import type { ReportModel, Resource } from './model';
 import { AUTO_HINT, StatCard } from './StatBlocks';
-import { TeamComparison } from './TeamComparison';
 import { actionLines, cvLines, cvPeriodKey, cvThirds, protocolLines, type StatLine } from './stats';
+import { TeamComparison } from './TeamComparison';
 
 const ready = <T,>(r: Resource<T>) => (r.status === 'ready' ? r.value : null);
 export type PeriodOption = { key: string; label: string };

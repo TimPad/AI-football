@@ -2,9 +2,9 @@
 
 from fastapi.testclient import TestClient
 
+from .test_analysis_assignments import command, import_run, save_assignments
+from .test_analysis_jobs import analytics_match  # noqa: F401
 from .test_confirmation import finish
-from .test_analysis_jobs import analytics_match
-from .test_analysis_assignments import import_run, save_assignments, command
 
 
 def visibility(client, tournament_id, value):

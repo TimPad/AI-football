@@ -159,6 +159,9 @@ npm --prefix web run build
 При подготовленной `.env` и работающем PostgreSQL:
 
 ```sh
+.venv/bin/ruff check src tests scripts migrations
+.venv/bin/ruff format --check src tests scripts migrations
+npm --prefix web run lint
 .venv/bin/python -m pytest --tb=line -q
 npm --prefix web run test
 npm --prefix web run build
@@ -175,7 +178,7 @@ E2E запускает собственный API на порту 8181; порт
 npm --prefix web run types:api
 ```
 
-GitHub Actions проверяет backend на PostgreSQL, frontend, сборку, соответствие типов API и сквозные Chromium-сценарии. CI использует синтетические данные и тестовые учётные записи, без рабочих видео и секретов.
+GitHub Actions проверяет оформление и линтер (ruff, Biome), backend на PostgreSQL, frontend, сборку, соответствие типов API и сквозные Chromium-сценарии. Правила оформления — в [CONTRIBUTING.md](CONTRIBUTING.md#оформление-и-линтер). CI использует синтетические данные и тестовые учётные записи, без рабочих видео и секретов.
 
 ## Документация
 

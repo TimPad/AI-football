@@ -4,10 +4,9 @@
 (медиана по кадрам окна WINDOW_S). Короче — остановка внутри тайма (аут, замена, травма).
 """
 
-from dataclasses import dataclass
-
 import math
 import re
+from dataclasses import dataclass
 
 import numpy as np
 import polars as pl

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
+import { ConfirmDialog, MoreMenu } from '../../components/MoreMenu';
 import { ErrorBox } from '../../components/ui';
-import { MoreMenu, ConfirmDialog } from '../../components/MoreMenu';
 import type { Data } from './TournamentPage';
 export function nextStep(d: Data) {
   return d.t.archived

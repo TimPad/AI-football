@@ -1,10 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { StageWorkspace } from './StageWorkspace';
-import { groupsStage } from './fixtures.test-data';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Entry, RegVersion, Tournament } from '../../api/domain';
+import { groupsStage } from './fixtures.test-data';
+import { StageWorkspace } from './StageWorkspace';
 
 afterEach(() => vi.unstubAllGlobals());
 describe('вкладка «Таблица» кабинета', () => {

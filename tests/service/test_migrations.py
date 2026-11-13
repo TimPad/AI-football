@@ -8,13 +8,12 @@ def test_migration_ready_and_no_video_import(client):
 
 
 def test_clean_migration_upgrade_downgrade(service_settings):
-    from alembic.config import Config
     from alembic import command
-    from sqlalchemy import create_engine, inspect
+    from alembic.config import Config
+    from sqlalchemy import create_engine, inspect, text
 
     # Использовать только ещё одну отдельную test БД, не уже наполненную fixture.
     from sqlalchemy.engine import make_url
-    from sqlalchemy import text
 
     base = make_url(service_settings.database_url)
     engine = create_engine(base.render_as_string(hide_password=False), isolation_level='AUTOCOMMIT')
@@ -36,8 +35,9 @@ def test_clean_migration_upgrade_downgrade(service_settings):
 
 def test_visibility_migration_preserves_existing_public_tournaments(service_settings):
     from uuid import uuid4
-    from alembic.config import Config
+
     from alembic import command
+    from alembic.config import Config
     from sqlalchemy import create_engine, text
     from sqlalchemy.engine import make_url
 

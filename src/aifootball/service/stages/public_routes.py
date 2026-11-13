@@ -1,13 +1,15 @@
 """Таблицы, сетка и пары без даты для зрителя — только по опубликованным протоколам."""
 
 from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
 from aifootball.service.db import get_session
 from aifootball.service.public_visibility import require_public_tournament
-from aifootball.service.views import Page
 from aifootball.service.stages import operations as ops
-from aifootball.service.stages.schemas import StandingsView, FixtureView
+from aifootball.service.stages.schemas import FixtureView, StandingsView
+from aifootball.service.views import Page
 
 router = APIRouter(prefix='/public')
 

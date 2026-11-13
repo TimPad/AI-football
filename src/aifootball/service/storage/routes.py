@@ -1,18 +1,20 @@
 from pathlib import Path
-from uuid import UUID, uuid5, NAMESPACE_URL
 from urllib.parse import quote
-from fastapi import APIRouter, Depends, File, UploadFile, Request, Header
+from uuid import NAMESPACE_URL, UUID, uuid5
+
+from fastapi import APIRouter, Depends, File, Header, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.security import require_admin, require_csrf
-from aifootball.service.common import get_entity, as_dict
+from aifootball.service.common import as_dict, get_entity
 from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
+from aifootball.service.matches.models import Match
+from aifootball.service.protocol.commands import record_command
 from aifootball.service.protocol.models import Attachment
 from aifootball.service.protocol.schemas import Command
-from aifootball.service.protocol.commands import record_command
-from aifootball.service.matches.models import Match
 from aifootball.service.storage.attachments import AttachmentStore
 
 router = APIRouter()
@@ -35,8 +37,8 @@ def upload(
     info = None
     with db.begin():
         match = get_entity(db, Match, mid, lock=True)
-        from aifootball.service.matches.models import MatchCommand
         from aifootball.service.errors import RevisionConflict
+        from aifootball.service.matches.models import MatchCommand
 
         prior = db.scalar(
             select(MatchCommand).where(MatchCommand.match_id == mid, MatchCommand.request_id == request_id)

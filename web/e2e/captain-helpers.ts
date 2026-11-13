@@ -1,5 +1,5 @@
-import { expect, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
+import { expect, type Page } from '@playwright/test';
 export async function verifiedCaptain(page: Page, email: string) {
   await page.goto('/captain/login');
   const origin = new URL(page.url()).origin;

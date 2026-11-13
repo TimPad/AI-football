@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { type FormEvent, useState } from 'react';
 import { post } from '../../api/client';
 import type { Match, Tournament } from '../../api/domain';
 import { ErrorBox, Field } from '../../components/ui';

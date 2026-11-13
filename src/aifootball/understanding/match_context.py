@@ -1,9 +1,9 @@
 """Source-bound operator facts and an unverified, bounded VLM history."""
 
-from copy import deepcopy
-from hashlib import sha256
 import math
 import re
+from copy import deepcopy
+from hashlib import sha256
 
 from aifootball.analytics.exchange import canonical
 

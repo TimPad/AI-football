@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import type { AnalysisRun, AnalysisAssignment } from '../../api/domain';
-import type { IdentitySuggestion } from './understandingTypes';
+import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
 import {
-  SHORT_S,
   assignGroup,
   baseGroups,
+  type Candidate,
   candidatesOf,
   clashes,
   decisionOf,
   overlaps,
+  SHORT_S,
   suggestionOf,
-  type Candidate,
 } from './candidates';
+import type { IdentitySuggestion } from './understandingTypes';
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 

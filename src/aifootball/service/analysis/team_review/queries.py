@@ -1,13 +1,15 @@
 from sqlalchemy import select, update
-from aifootball.service.analysis.models import AnalysisJob, AnalysisRun, AnalysisAssignment
-from aifootball.service.analysis.context import context_hash, build_context
+
+from aifootball.service.analysis.context import build_context, context_hash
+from aifootball.service.analysis.models import AnalysisAssignment, AnalysisJob, AnalysisRun
 from aifootball.service.captains.models import TeamCaptainGrant
 from aifootball.service.captains.security import require_captain_team
 from aifootball.service.common import get_entity
 from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match
-from .models import TeamIdentityReviewTask, TeamIdentityConfirmation
+
+from .models import TeamIdentityConfirmation, TeamIdentityReviewTask
 
 
 def side_material(run, job, side):

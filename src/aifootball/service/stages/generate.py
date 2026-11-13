@@ -1,8 +1,8 @@
 """Пары этапа из настроек и результата жеребьёвки."""
 
 from aifootball.service.errors import DomainError
-from aifootball.service.stages.rules.brackets import FixtureSpec, round_robin, single_elim, double_elim, entry
-from aifootball.service.stages.rules.draws import pots_draw, snake_draw, random_order, group_scheme
+from aifootball.service.stages.rules.brackets import FixtureSpec, double_elim, entry, round_robin, single_elim
+from aifootball.service.stages.rules.draws import group_scheme, pots_draw, random_order, snake_draw
 from aifootball.service.stages.schemas import ELIMINATION
 
 METHODS = {

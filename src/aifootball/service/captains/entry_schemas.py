@@ -1,9 +1,10 @@
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel, Field, field_validator
-from aifootball.service.tournaments.schemas import Input
+
 from aifootball.service.catalog.schemas import RosterPlayer
-from aifootball.service.captains.schemas import ReasonCommand
+from aifootball.service.tournaments.schemas import Input
 
 
 class ApplicationCreate(Input):

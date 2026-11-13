@@ -6,12 +6,11 @@ This experiment does not import results, publish or update organizer data.
 """
 
 import argparse
-from dataclasses import replace
+import json
+import time
 from hashlib import sha256
 from html import escape
-import json
 from pathlib import Path
-import time
 from zipfile import ZipFile
 
 import polars as pl
@@ -25,12 +24,12 @@ from aifootball.processor.workspace import Workspace
 from aifootball.understanding.pilot import (
     VERSION,
     PilotStopped,
-    joint_window,
     joint_prompt,
+    joint_window,
     paid_once,
+    project_joint,
     short_memory,
     validate_joint,
-    project_joint,
 )
 
 

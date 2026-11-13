@@ -1,22 +1,23 @@
-from datetime import datetime, date, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.security import require_admin, require_csrf
-from aifootball.service.common import get_entity, list_entities, as_dict
+from aifootball.service.common import as_dict, get_entity, list_entities
 from aifootball.service.db import get_session, utcnow
+from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match
-from aifootball.service.matches.schemas import MatchCreate, PreviewRules, ApplyRules
 from aifootball.service.matches.operations import create_match, get_match_view
-from aifootball.service.protocol.schemas import Command
+from aifootball.service.matches.schemas import ApplyRules, MatchCreate, PreviewRules
 from aifootball.service.protocol.command_schemas import CommandRequest
 from aifootball.service.protocol.commands import execute_command, record_command
-from aifootball.service.tournaments.models import Tournament, RegulationVersion
-from aifootball.service.errors import DomainError
-
-from aifootball.service.views import Page, MatchView
+from aifootball.service.protocol.schemas import Command
+from aifootball.service.tournaments.models import RegulationVersion, Tournament
+from aifootball.service.views import MatchView, Page
 
 router = APIRouter()
 

@@ -1,10 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PlayerRatingHistory } from '../ratings/PlayerRatingHistory';
 import { RankingTable } from '../ratings/TournamentRatings';
-import { PublicPlayerHistoryPage } from './PublicPlayerHistoryPage';
 import type { RatingSummary } from '../ratings/types';
+import { PublicPlayerHistoryPage } from './PublicPlayerHistoryPage';
 
 const P = '33333333-3333-4333-8333-333333333333',
   T = '88888888-8888-4888-8888-888888888888',

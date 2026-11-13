@@ -140,7 +140,7 @@ def _stats(p: dict, data: dict) -> str:
     if 'ball' in p:
         poss, passes = p['ball']['possession'], p['ball']['passes']
         ball = (
-            f'<div class="card"><h3>Владение и передачи (приблизительно)</h3>'
+            '<div class="card"><h3>Владение и передачи (приблизительно)</h3>'
             + _row('Владение', poss['possession_pct']['A'], poss['possession_pct']['B'], '{:.0f}%', colors)
             + _row('Передачи', passes['passes_total']['A'], passes['passes_total']['B'], '{:.0f}', colors)
             + _row(

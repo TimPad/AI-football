@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Play, Pause, Square } from 'lucide-react';
-import type { Match, DraftCommand } from '../../api/domain';
-import { Field, ErrorBox } from '../../components/ui';
+import { Pause, Play, Square } from 'lucide-react';
+import { type FormEvent, useEffect, useState } from 'react';
+import type { DraftCommand, Match } from '../../api/domain';
+import { ErrorBox, Field } from '../../components/ui';
 export function ClockPanel({
   match,
   dispatch,

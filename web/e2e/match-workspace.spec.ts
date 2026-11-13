@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { login, createTournament, task, goal } from './helpers';
+import { expect, test } from '@playwright/test';
+import { createTournament, goal, login, task } from './helpers';
 
 test('result-only protocol, independent publication and guest path through the match page', async ({
   page,

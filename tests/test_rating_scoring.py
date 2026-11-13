@@ -1,13 +1,14 @@
+import json
 from copy import deepcopy
 from dataclasses import replace
-from datetime import datetime, timezone
-import json
 from pathlib import Path
 from uuid import uuid4
+
 import pytest
-from aifootball.ratings.schema import MatchPerformance, MetricFact
-from aifootball.ratings.registry import REGISTRY
+
 from aifootball.ratings.reference import build_reference
+from aifootball.ratings.registry import REGISTRY
+from aifootball.ratings.schema import MatchPerformance, MetricFact
 from aifootball.ratings.scoring import percentile, score_match, validate_policy
 
 

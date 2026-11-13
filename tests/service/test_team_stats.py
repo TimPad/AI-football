@@ -1,5 +1,6 @@
 from uuid import uuid4
-from .test_analysis_jobs import analytics_match, grant
+
+from .test_analysis_jobs import analytics_match, grant  # noqa: F401
 from .test_events import event
 from .test_ratings_snapshots import publish_sources
 
@@ -117,7 +118,7 @@ def _row(stats, key):
 def test_team_stats_count_outcomes_keep_unknown_and_skip_undeclared(admin_client, analytics_match, send_command):
     match, _, _, _ = _setup(
         admin_client,
-        analytics_match,
+        analytics_match,  # noqa: F401
         send_command,
         _actions,
         {'shots': [{'status': 'complete'}], 'passes': [{'status': 'partial', 'intervals': [[0, 600000]]}]},
@@ -176,9 +177,11 @@ def test_ordinary_admin_cannot_read_private_stats(admin_client, analytics_match)
 def _cv_run_with_passes(client, match, *, side_map=None, publish=True):
     """Импорт пакета версии 3 (две передачи команды A: точная и неточная), подтверждение и публикация."""
     from uuid import uuid4
-    from test_analysis_exchange import result_zip, events_doc
-    from .test_analysis_import import upload
+
+    from test_analysis_exchange import events_doc, result_zip
+
     from .test_analysis_assignments import command
+    from .test_analysis_import import upload
     from .test_analysis_jobs import new_job
 
     side_map = side_map or {'A': 'home', 'B': 'away'}
@@ -286,7 +289,7 @@ def test_manual_passes_win_and_auto_fills_only_missing_categories(admin_client, 
 def test_manual_passes_are_not_mixed_with_auto(admin_client, analytics_match, send_command):
     match, _, _, _ = _setup(
         admin_client,
-        analytics_match,
+        analytics_match,  # noqa: F401
         send_command,
         _actions,
         {'shots': [{'status': 'complete'}], 'passes': [{'status': 'complete'}]},

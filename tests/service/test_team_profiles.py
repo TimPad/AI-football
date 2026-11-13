@@ -1,7 +1,8 @@
 from io import BytesIO
 from uuid import uuid4
-from PIL import Image
+
 from fastapi.testclient import TestClient
+from PIL import Image
 
 
 def player(name='Иван Петров', **changes):

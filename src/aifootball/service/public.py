@@ -4,20 +4,22 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from uuid import UUID
 from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import FileResponse
-from sqlalchemy import select, func, exists, or_
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import Session, aliased
+
+from aifootball.service.catalog.models import CatalogImage, Entry, Player, Team
+from aifootball.service.common import as_dict, list_entities
 from aifootball.service.db import get_session
-from aifootball.service.common import get_entity, as_dict, list_entities
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match
-from aifootball.service.catalog.models import CatalogImage, Entry, Player, Team
-from aifootball.service.tournaments.models import Tournament, RegulationVersion
-from aifootball.service.tournaments.rules import resolve_rules
 from aifootball.service.protocol.models import ProtocolVersion
-from aifootball.service.views import Page, PublicTournament, PublicMatch
 from aifootball.service.public_visibility import require_public_tournament
+from aifootball.service.tournaments.models import RegulationVersion, Tournament
+from aifootball.service.tournaments.rules import resolve_rules
+from aifootball.service.views import Page, PublicMatch, PublicTournament
 
 router = APIRouter(prefix='/public')
 
@@ -127,7 +129,7 @@ def calendar(
     }
 
 
-from aifootball.service.public_match_center import register
+from aifootball.service.public_match_center import register  # noqa: E402
 
 register(router, match_query, match_view)
 

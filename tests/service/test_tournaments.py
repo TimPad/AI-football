@@ -41,6 +41,7 @@ def test_invalid_patch_and_archived_regulations(admin_client, tournament_factory
 def test_parallel_versions_get_distinct_numbers(admin_client, tournament_factory, regulation_data):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
+
     from fastapi.testclient import TestClient
 
     t = tournament_factory()

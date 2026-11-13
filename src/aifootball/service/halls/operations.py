@@ -2,12 +2,14 @@
 
 import json
 from hashlib import sha256
-from uuid import uuid5, NAMESPACE_URL
+from uuid import NAMESPACE_URL, uuid5
+
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import select, func
-from aifootball.service.common import get_entity, as_dict
+from sqlalchemy import func, select
+
+from aifootball.service.common import as_dict, get_entity
 from aifootball.service.errors import DomainError
-from aifootball.service.halls.models import Hall, HallCommand, CameraProfile
+from aifootball.service.halls.models import CameraProfile, Hall, HallCommand
 from aifootball.service.halls.schemas import HallFields
 
 
@@ -139,8 +141,9 @@ def make_camera(db, hall_id, data):
 
 
 def calculate_geometry(data, hall):
-    import numpy as np
     import cv2
+    import numpy as np
+
     from aifootball.geometry.homography import fit_homography, leave_one_out_error
     from aifootball.geometry.polygons import is_simple_polygon
     from aifootball.geometry.undistort import undistort_points

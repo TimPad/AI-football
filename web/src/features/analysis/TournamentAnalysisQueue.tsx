@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../../api/client';
 import type { components } from '../../api/types';
-import { useLoad, Loading, Field, Empty } from '../../components/ui';
+import { Empty, Field, Loading, useLoad } from '../../components/ui';
 import { useQueryPatch } from '../navigation/useQueryPatch';
 import { teamTaskStatuses } from './TeamReviewPanel';
 import './queue.css';
+
 type Item = components['schemas']['AnalysisQueueItem'];
 export const queueStages: Record<string, string> = {
   not_started: 'Нет задания',

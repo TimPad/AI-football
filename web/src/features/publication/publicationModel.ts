@@ -1,5 +1,5 @@
 import type { AnalysisOverview, Match, Version } from '../../api/domain';
-import type { Analytics, Actions, Participation } from '../ratings/types';
+import type { Actions, Analytics, Participation } from '../ratings/types';
 
 export type Blocker = { text: string; href: string };
 export type PublicationBlock = {

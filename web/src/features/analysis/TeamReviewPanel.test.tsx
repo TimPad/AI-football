@@ -1,7 +1,8 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { test, expect, vi } from 'vitest';
-import { TeamReviewPanel } from './TeamReviewPanel';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { expect, test, vi } from 'vitest';
 import type { AnalysisRun } from '../../api/domain';
+import { TeamReviewPanel } from './TeamReviewPanel';
+
 const execute = vi.hoisted(() => vi.fn());
 vi.mock('../../api/client', () => ({ api: vi.fn(async () => ({ items: [], total: 0 })) }));
 vi.mock('../ratings/commands', () => ({

@@ -1,5 +1,6 @@
-import { test, expect } from 'vitest';
-import { publicContext, publicForward, publicBack } from './publicContext';
+import { expect, test } from 'vitest';
+import { publicBack, publicContext, publicForward } from './publicContext';
+
 const tid = '11111111-1111-4111-8111-111111111111',
   mid = '22222222-2222-4222-8222-222222222222';
 test('keeps local public context and drops unsafe or circular forward targets', () => {

@@ -1,15 +1,16 @@
 """Opt-in match-context VLM pilot: dry-run by default; fixed six-call budget."""
 
 import argparse
+import json
+import re
+import time
 from dataclasses import asdict
 from hashlib import sha256
 from html import escape
-import json
 from pathlib import Path
-import re
-import time
 
 import polars as pl
+from verify_joint_vlm import detail_crops, prepare_context, sample_states, write_json
 
 from aifootball.analytics.exchange import canonical
 from aifootball.processor.budget import Budget
@@ -17,12 +18,11 @@ from aifootball.processor.job import file_hash, video_info
 from aifootball.processor.media import make_window
 from aifootball.processor.qwen import QwenClient, QwenConfig
 from aifootball.processor.workspace import Workspace
-from aifootball.understanding.types import FrameAsset, MediaAsset, Window
-from aifootball.understanding.pilot import joint_window, paid_once, PilotStopped, request_key
-from aifootball.understanding.match_context import MatchChronology, validate_passport
-from aifootball.understanding.context_pilot import VERSION, context_prompt, project_context
 from aifootball.understanding.commentary import compile_commentary
-from verify_joint_vlm import prepare_context, detail_crops, sample_states, write_json
+from aifootball.understanding.context_pilot import VERSION, context_prompt, project_context
+from aifootball.understanding.match_context import MatchChronology, validate_passport
+from aifootball.understanding.pilot import PilotStopped, joint_window, paid_once, request_key
+from aifootball.understanding.types import FrameAsset, MediaAsset, Window
 
 
 def input_identity(manifest, client):

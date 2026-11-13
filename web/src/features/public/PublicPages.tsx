@@ -1,24 +1,25 @@
-import { PublicMatchCenter } from './match-center/PublicMatchCenter';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
+import { PublicMatchCenter } from './match-center/PublicMatchCenter';
 export function PublicHome() {
   return <PublicMatchCenter />;
 }
-import { TournamentRatings } from '../ratings/TournamentRatings';
-import { Link, useParams, useLocation } from 'react-router-dom';
-import { useQueryPatch } from '../navigation/useQueryPatch';
-import { SectionNavigation } from '../../components/match/SectionNavigation';
-import { isUuid, patchQuery } from '../navigation/query';
-import { Trophy, ArrowUpRight } from 'lucide-react';
+
+import { ArrowUpRight, Trophy } from 'lucide-react';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { all, api } from '../../api/client';
-import type { PublicTournament, PublicMatch } from '../../api/domain';
-import { useLoad, Loading, ErrorBox, Empty } from '../../components/ui';
+import type { PublicMatch, PublicTournament } from '../../api/domain';
+import { SectionNavigation } from '../../components/match/SectionNavigation';
+import { Empty, ErrorBox, Loading, useLoad } from '../../components/ui';
+import { dateRange } from '../matches/timezone';
 import { publicBack, publicForward } from '../navigation/publicContext';
-import { PublicTournamentTeams } from './PublicTeamPage';
+import { isUuid, patchQuery } from '../navigation/query';
+import { useQueryPatch } from '../navigation/useQueryPatch';
+import { TournamentRatings } from '../ratings/TournamentRatings';
+import type { FixtureView, Standings } from '../stages/api';
 import { StandingsView } from '../stages/StandingsView';
 import { UnscheduledFixtures } from '../stages/UnscheduledFixtures';
-import type { FixtureView, Standings } from '../stages/api';
+import { PublicTournamentTeams } from './PublicTeamPage';
 import { Schedule } from './Schedule';
-import { dateRange } from '../matches/timezone';
 
 export function PublicTournamentCatalog() {
   useDocumentTitle('Турниры');

@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
+import { expect, test } from '@playwright/test';
 import { verifiedCaptain } from './captain-helpers';
 import { task as matchTask } from './helpers';
 

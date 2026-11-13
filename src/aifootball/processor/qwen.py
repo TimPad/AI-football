@@ -1,11 +1,11 @@
 """One bounded Omni API attempt; durable retry/budget policy belongs to the caller."""
 
 import base64
-from dataclasses import dataclass, field
-from hashlib import sha256
 import json
 import math
 import os
+from dataclasses import dataclass, field
+from hashlib import sha256
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -152,8 +152,8 @@ class QwenClient:
         return anyio.run(self._infer, raw, response_sink)
 
     async def _infer(self, raw, response_sink=None):
-        import httpx
         import anyio
+        import httpx
 
         timeout = httpx.Timeout(60, connect=15, write=30, pool=10)
         try:

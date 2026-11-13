@@ -1,12 +1,13 @@
 """Atomic, checksummed local state with a process/thread exclusive lock."""
 
-from contextlib import contextmanager
-from hashlib import sha256
-from pathlib import Path
 import fcntl
 import os
 import tempfile
 import threading
+from contextlib import contextmanager
+from hashlib import sha256
+from pathlib import Path
+
 from aifootball.analytics.exchange import canonical, load_json
 
 

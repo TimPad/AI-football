@@ -1,8 +1,10 @@
 """Regular coverage plus bounded refinements; absence of a ball is not a stoppage."""
 
-from hashlib import sha256
 import math
+from hashlib import sha256
+
 import polars as pl
+
 from aifootball.analytics.exchange import canonical
 
 

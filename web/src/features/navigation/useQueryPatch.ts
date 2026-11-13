@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { patchQuery } from './query';
 
 // Роутер применяет навигацию в переходе: до перерисовки второе изменение

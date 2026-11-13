@@ -1,4 +1,3 @@
-from copy import deepcopy
 import pytest
 
 HOME = '11111111-1111-4111-8111-111111111111'

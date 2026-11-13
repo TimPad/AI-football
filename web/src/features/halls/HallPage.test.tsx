@@ -1,7 +1,8 @@
-import { it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
 import { HallPage } from './HallPage';
+
 vi.mock('../auth/Auth', () => ({ useAuth: () => ({ session: { id: 'admin-test' } }) }));
 afterEach(() => {
   vi.unstubAllGlobals();

@@ -2,6 +2,7 @@
 
 import math
 import re
+
 from aifootball.understanding.schema import EVENT_KINDS
 
 

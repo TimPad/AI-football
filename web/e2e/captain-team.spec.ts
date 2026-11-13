@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
+import { expect, test } from '@playwright/test';
+
 test('verified captain creates a team and imports a stable roster from Excel', async ({ page }) => {
   const suffix = crypto.randomUUID().slice(0, 8),
     email = `captain-${suffix}@example.test`,
@@ -46,13 +47,11 @@ test('verified captain creates a team and imports a stable roster from Excel', a
     `from openpyxl import Workbook\nimport sys\nw=Workbook();s=w.active;s.title='Состав';s.append(['ФИО','Номер']);s.append([sys.argv[1]+' Один','7']);s.append([sys.argv[1]+' Два','8']);w.save(sys.stdout.buffer)`,
     suffix,
   ]);
-  await page
-    .getByLabel('Файл Excel', { exact: true })
-    .setInputFiles({
-      name: 'Состав.xlsx',
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      buffer: book,
-    });
+  await page.getByLabel('Файл Excel', { exact: true }).setInputFiles({
+    name: 'Состав.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: book,
+  });
   await page.getByRole('button', { name: 'Проверить строки', exact: true }).click();
   await page.getByRole('button', { name: 'Применить импорт', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Состав загружен', exact: true })).toBeVisible();

@@ -1,10 +1,11 @@
-import { it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Match } from '../../api/domain';
-import { EventForm, newEventDraft } from './EventForm';
-import preset from '../../test/preset.json';
 import { useState } from 'react';
+import { expect, it, vi } from 'vitest';
+import type { Match } from '../../api/domain';
+import preset from '../../test/preset.json';
+import { EventForm, newEventDraft } from './EventForm';
+
 const match = {
   lineup: [],
   home: { team: { name: 'Север' } },

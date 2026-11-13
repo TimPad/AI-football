@@ -1,22 +1,23 @@
 """Optional, resumable multimodal stage. Nothing here changes official match facts."""
 
-from dataclasses import replace
-from hashlib import sha256
-from pathlib import Path
 import random
 import time
+from hashlib import sha256
+from pathlib import Path
+
 import polars as pl
+
 from aifootball import schemas
 from aifootball.analytics.exchange import canonical
 from aifootball.processor.job import source_for_job
 from aifootball.processor.media import make_window, select_player_frames
 from aifootball.processor.qwen import QwenError
-from aifootball.understanding.types import Window
-from aifootball.understanding.schema import validate_window_response, validate_understanding, SCOPES
-from aifootball.understanding.windows import plan_windows
-from aifootball.understanding.prompts import match_prompt, identity_prompt, PROMPT_VERSION
 from aifootball.understanding.identity import resolve_identity
+from aifootball.understanding.prompts import PROMPT_VERSION, identity_prompt, match_prompt
 from aifootball.understanding.reconcile import reconcile_windows
+from aifootball.understanding.schema import SCOPES, validate_understanding, validate_window_response
+from aifootball.understanding.types import Window
+from aifootball.understanding.windows import plan_windows
 
 
 def _evidence(frame):
@@ -180,7 +181,7 @@ def run_understanding(
         stop = False
 
         def validated_response(document):
-            return validate_window_response(identity_only(document) if kind == 'identity' else document, window)
+            return validate_window_response(identity_only(document) if kind == 'identity' else document, window)  # noqa: B023
 
         if cached is None:
             for rid in budget.reservations_for(key):

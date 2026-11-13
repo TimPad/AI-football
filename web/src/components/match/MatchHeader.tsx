@@ -1,11 +1,11 @@
 import './match.css';
-import { useState, type ReactNode } from 'react';
+import { CircleDot } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { PublicMatch } from '../../api/domain';
 import { statuses } from '../../api/domain';
-import { CircleDot } from 'lucide-react';
-import { publicForward } from '../../features/navigation/publicContext';
 import { dateTime } from '../../features/matches/timezone';
+import { publicForward } from '../../features/navigation/publicContext';
 
 // Только публичный логотип; при ошибке или отсутствии — инициал, а не приватный URL.
 export function TeamCrest({

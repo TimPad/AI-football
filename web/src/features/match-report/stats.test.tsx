@@ -1,12 +1,12 @@
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
 import type { PublicProtocol, TeamActionStats } from '../../api/domain';
 import { ShotMap } from '../../components/pitch/ShotMap';
-import { actionLines, leader, protocolLines } from './stats';
 import { periodOptions } from './MatchStats';
+import { eventMinute, goalScorers, MatchTimeline } from './MatchTimeline';
 import type { ReportModel } from './model';
 import { StatRow } from './StatBlocks';
-import { MatchTimeline, eventMinute, goalScorers } from './MatchTimeline';
+import { actionLines, leader, protocolLines } from './stats';
 
 const P1 = 'p1',
   P2 = 'p2';

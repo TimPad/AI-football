@@ -1,8 +1,10 @@
-from copy import deepcopy
 import json
+from copy import deepcopy
 from pathlib import Path
+
 import pytest
-from aifootball.ratings.aggregate import tournament_rating, rank_players
+
+from aifootball.ratings.aggregate import rank_players, tournament_rating
 
 POLICY = json.loads(Path('configs/ratings/role-profile-v1.json').read_text())
 

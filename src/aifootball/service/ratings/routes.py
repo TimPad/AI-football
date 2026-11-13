@@ -1,24 +1,26 @@
 from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from aifootball.service.db import get_session
+
 from aifootball.service.auth.security import require_analytics_admin, require_analytics_reader
 from aifootball.service.common import get_entity
-from aifootball.service.matches.models import Match
+from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
+from aifootball.service.matches.models import Match
+from aifootball.service.ratings.actions import action_overview, action_view, save_actions
+from aifootball.service.ratings.models import ActionVersion, ParticipationVersion
+from aifootball.service.ratings.operations import participation_overview, participation_view, save_participation
 from aifootball.service.ratings.schemas import (
-    ParticipationSave,
-    ParticipationView,
-    ParticipationOverview,
+    ActionsOverview,
     ActionsSave,
     ActionsView,
-    ActionsOverview,
+    ParticipationOverview,
+    ParticipationSave,
+    ParticipationView,
+    TeamActionStats,
 )
-from aifootball.service.ratings.models import ParticipationVersion, ActionVersion
-from aifootball.service.ratings.operations import save_participation, participation_overview, participation_view
-from aifootball.service.ratings.actions import save_actions, action_view, action_overview
-from aifootball.service.ratings.team_stats import public_action_stats, private_action_stats
-from aifootball.service.ratings.schemas import TeamActionStats
+from aifootball.service.ratings.team_stats import private_action_stats, public_action_stats
 
 router = APIRouter()
 
@@ -81,26 +83,28 @@ def save_action_version(
         return save_actions(db, mid, actor.id, data)
 
 
-from fastapi import Query
-from typing import Literal
-from aifootball.service.ratings.schemas import (
-    RatingCalculate,
-    RatingPublish,
+from typing import Literal  # noqa: E402
+
+from fastapi import Query  # noqa: E402
+
+from aifootball.service.ratings.calculation import calculate_snapshot, publish_snapshot, publish_sources  # noqa: E402
+from aifootball.service.ratings.queries import (  # noqa: E402
+    get_rankings,
+    match_ratings,
+    overview,
+    performance_publication,
+    player_history,
+)
+from aifootball.service.ratings.schemas import (  # noqa: E402
+    AnalyticsOverview,
+    MatchRatingsView,
     PerformancePublication,
+    PerformancePublicationView,
+    RatingCalculate,
     RatingPage,
     RatingPlayerHistory,
+    RatingPublish,
     RatingSnapshotResult,
-    AnalyticsOverview,
-    PerformancePublicationView,
-    MatchRatingsView,
-)
-from aifootball.service.ratings.calculation import calculate_snapshot, publish_snapshot, publish_sources
-from aifootball.service.ratings.queries import (
-    overview,
-    get_rankings,
-    player_history,
-    match_ratings,
-    performance_publication,
 )
 
 

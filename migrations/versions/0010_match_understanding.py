@@ -1,7 +1,7 @@
 """Private match understanding, review history and explicit side confirmation."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = '0010_match_understanding'

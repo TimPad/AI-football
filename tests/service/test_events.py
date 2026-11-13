@@ -1,4 +1,5 @@
 from uuid import uuid4
+
 import pytest
 
 
@@ -16,9 +17,10 @@ def event(kind='goal', **changes):
 
 def test_goal_assist_player_and_time_validation(regulation_data):
     from pydantic import TypeAdapter
+
+    from aifootball.service.errors import DomainError
     from aifootball.service.protocol.events import Event, validate_event
     from aifootball.service.tournaments.schemas import Regulation
-    from aifootball.service.errors import DomainError
 
     home, other = str(uuid4()), str(uuid4())
     lineup = [{'player_id': home, 'side': 'home'}, {'player_id': other, 'side': 'away'}]
@@ -39,9 +41,10 @@ def test_goal_assist_player_and_time_validation(regulation_data):
 
 def test_second_yellow_requires_same_player_previous_card(regulation_data):
     from pydantic import TypeAdapter
+
+    from aifootball.service.errors import DomainError
     from aifootball.service.protocol.events import Event, validate_event
     from aifootball.service.tournaments.schemas import Regulation
-    from aifootball.service.errors import DomainError
 
     pid = str(uuid4())
     lineup = [{'player_id': pid, 'side': 'home'}]
@@ -56,9 +59,10 @@ def test_second_yellow_requires_same_player_previous_card(regulation_data):
 
 def test_penalty_links_and_foul_victim(regulation_data):
     from pydantic import TypeAdapter, ValidationError
+
+    from aifootball.service.errors import DomainError
     from aifootball.service.protocol.events import Event, validate_event
     from aifootball.service.tournaments.schemas import Regulation
-    from aifootball.service.errors import DomainError
 
     rules = Regulation(**regulation_data)
     pid = str(uuid4())
@@ -77,8 +81,8 @@ def test_penalty_links_and_foul_victim(regulation_data):
 
 
 def test_complete_projection_does_not_mutate_document(regulation_data):
-    from aifootball.service.protocol.schemas import ProtocolDocument
     from aifootball.service.protocol.projection import project_protocol
+    from aifootball.service.protocol.schemas import ProtocolDocument
     from aifootball.service.tournaments.schemas import Regulation
 
     doc = ProtocolDocument(events=[event()])

@@ -1,7 +1,8 @@
-import { afterEach, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
 import { TournamentLeaders } from './TournamentLeaders';
+
 afterEach(() => vi.unstubAllGlobals());
 it('uses one qualified public edition and preserves canonical tied ranks in links', async () => {
   const requests: string[] = [];

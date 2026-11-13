@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
-import { login, createTournament } from './helpers';
+import { expect, test } from '@playwright/test';
+import { createTournament, login } from './helpers';
+
 test('two sessions conflict rather than silently overwrite notes', async ({ page, browser }) => {
   await login(page);
   const { path } = await createTournament(page);

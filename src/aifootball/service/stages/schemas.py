@@ -3,9 +3,11 @@
 from datetime import datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from aifootball.service.tournaments.schemas import Input
+
 from aifootball.service.matches.schemas import BroadcastFields, MatchCreate
+from aifootball.service.tournaments.schemas import Input
 
 Criterion = Literal[
     'points', 'h2h_points', 'h2h_goal_diff', 'h2h_goals', 'goal_diff', 'goals_for', 'wins', 'buchholz', 'lot'

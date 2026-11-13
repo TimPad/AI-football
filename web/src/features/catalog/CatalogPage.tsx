@@ -1,13 +1,12 @@
+import { Archive, Pencil, Plus, RotateCcw } from 'lucide-react';
+import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { all, api, post } from '../../api/client';
+import type { Named, Player, Team } from '../../api/domain';
+import { Empty, ErrorBox, Field, Loading, Modal, useLoad } from '../../components/ui';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
-import type { Team, Player } from '../../api/domain';
 import { imageUrl } from './ProfileImage';
-import { positions, age } from './TeamEditor';
-import { useState, type FormEvent } from 'react';
-import { Plus, Pencil, Archive, RotateCcw } from 'lucide-react';
-import { all, post, api } from '../../api/client';
-import type { Named } from '../../api/domain';
-import { useLoad, Loading, Empty, ErrorBox, Field, Modal } from '../../components/ui';
+import { age, positions } from './TeamEditor';
 export function CatalogPage({ kind }: { kind: 'teams' | 'players' }) {
   useDocumentTitle(kind === 'teams' ? 'Команды' : 'Игроки');
   const navigate = useNavigate();

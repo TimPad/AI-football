@@ -9,16 +9,18 @@ python scripts/eval_events.py
 """
 
 from pathlib import Path
+
 import polars as pl
+
 from aifootball import schemas
-from aifootball.venue import load_venue
-from aifootball.perception.ball import process_ball_trajectory
-from aifootball.perception.teams import defending_sides
 from aifootball.analytics.events import extract_events, stoppages
 from aifootball.analytics.report_data import assign_goalkeeper_teams
 from aifootball.analytics.validation import truth_from_touches
+from aifootball.perception.ball import process_ball_trajectory
+from aifootball.perception.teams import defending_sides
 from aifootball.perception.track import _compute_robust_foot_points
 from aifootball.state.project import project_tracks
+from aifootball.venue import load_venue
 
 FRAGMENTS = [
     ('yaroslavl-60-240', 'data/matches/yaroslavl-60-240-v2'),

@@ -1,5 +1,6 @@
-import type { components } from '../../api/types';
 import { futsalRoles } from '../../api/domain';
+import type { components } from '../../api/types';
+
 type S = components['schemas'];
 export type ParticipationDoc = S['ParticipationDocument-Output'];
 export type Participation = S['ParticipationOverview'];

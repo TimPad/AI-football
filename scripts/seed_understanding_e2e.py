@@ -1,11 +1,12 @@
 """Seed synthetic understanding through the dedicated localhost E2E API only."""
 
 import argparse
-import os
 import json
-from pathlib import Path
+import os
 import sys
+from pathlib import Path
 from uuid import uuid4
+
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tests'))

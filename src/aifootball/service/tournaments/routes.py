@@ -1,17 +1,18 @@
-from uuid import UUID, uuid5, NAMESPACE_URL
-from pydantic import ValidationError
+from uuid import NAMESPACE_URL, UUID, uuid5
+
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func
+from pydantic import ValidationError
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.security import require_admin, require_csrf
 from aifootball.service.common import as_dict, get_entity, list_entities
 from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError, RevisionConflict
-from aifootball.service.tournaments.models import Tournament, RegulationVersion
-from aifootball.service.tournaments.schemas import Regulation, TournamentCreate, TournamentPatch, RegulationCreate
 from aifootball.service.tournaments.commands import setup_command
-
-from aifootball.service.views import Page, TournamentView, RegulationView, Preset
+from aifootball.service.tournaments.models import RegulationVersion, Tournament
+from aifootball.service.tournaments.schemas import Regulation, RegulationCreate, TournamentCreate, TournamentPatch
+from aifootball.service.views import Page, Preset, RegulationView, TournamentView
 
 router = APIRouter(prefix='/tournaments')
 

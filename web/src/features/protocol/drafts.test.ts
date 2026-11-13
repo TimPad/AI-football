@@ -1,6 +1,7 @@
-import { it, expect, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, expect, it } from 'vitest';
 import { useDraft } from './drafts';
+
 const validate = (v: unknown): v is { text: string } =>
   !!v && typeof v === 'object' && 'text' in v && typeof v.text === 'string';
 afterEach(() => localStorage.clear());

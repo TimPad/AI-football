@@ -1,14 +1,17 @@
 from uuid import uuid4
+
 from fastapi.testclient import TestClient
-from sqlalchemy import event, select, func
+from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session
+
 from aifootball.service.ratings.models import (
-    TournamentRatingState,
+    RatingCommand,
     RatingMatchPublication,
     RatingPolicyVersion,
-    RatingCommand,
+    TournamentRatingState,
 )
-from .test_analysis_jobs import grant, analytics_match
+
+from .test_analysis_jobs import analytics_match, grant  # noqa: F401
 from .test_ratings_snapshots import prepare, publish_sources
 
 

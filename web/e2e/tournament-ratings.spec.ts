@@ -1,6 +1,7 @@
-import { task } from './helpers';
-import { test, expect } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
+import { expect, test } from '@playwright/test';
+import { task } from './helpers';
+
 test('reviewed actions, stable retry, immutable edition and independent public ratings', async ({ page, browser }) => {
   test.setTimeout(120000);
   const seed = spawnSync('../.venv/bin/python', ['../scripts/seed_rating_e2e.py'], { encoding: 'utf8' });

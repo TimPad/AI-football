@@ -1,7 +1,7 @@
-from uuid import uuid4
 from fastapi.testclient import TestClient
+
 from .test_confirmation import finish
-from .test_stages_api import format_env, draw, fixtures, schedule, result, publish  # noqa: F401
+from .test_stages_api import draw, fixtures, format_env, publish, result, schedule  # noqa: F401
 
 
 def test_public_standings_only_published(admin_client, format_env, send_command):

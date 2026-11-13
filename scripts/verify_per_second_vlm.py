@@ -10,15 +10,16 @@ Manifest (локальный, вне Git): cases: [{id, video, cv, venue, start_
 """
 
 import argparse
-from hashlib import sha256
 import json
 import os
-from pathlib import Path
 import time
+from hashlib import sha256
+from pathlib import Path
 
-from dotenv import dotenv_values
 import numpy as np
 import polars as pl
+from dotenv import dotenv_values
+from verify_context_vlm import pack_window, unpack_window
 
 from aifootball.analytics.exchange import canonical
 from aifootball.geometry.polygons import points_near_polygon
@@ -38,7 +39,6 @@ from aifootball.understanding.per_second_pilot import (
 )
 from aifootball.understanding.pilot import OUTPUT_LIMIT, PilotStopped, joint_window, paid_once, request_key
 from aifootball.venue import load_venue
-from verify_context_vlm import pack_window, unpack_window
 
 VARIANTS = ('fullframe', 'follow', 'follow_cv')
 # Одобрено пользователем 18.10: до ~120 вызовов и ~1,5 CNY; план — 3 варианта × 30 окон.

@@ -1,17 +1,17 @@
-from pathlib import Path
 import pytest
 
 pytest.importorskip('fastapi')
 pytest.importorskip('sqlalchemy')
 from alembic import command
 from alembic.config import Config
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
-from fastapi.testclient import TestClient
-from aifootball.service.config import Settings
+
 from aifootball.service.app import create_app
 from aifootball.service.auth.cli import create_admin
+from aifootball.service.config import Settings
 
 
 @pytest.fixture(scope='session')

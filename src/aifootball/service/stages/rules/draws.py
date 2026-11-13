@@ -2,7 +2,8 @@
 
 import random
 from itertools import permutations
-from aifootball.service.stages.rules.brackets import seed_positions, bracket_size
+
+from aifootball.service.stages.rules.brackets import bracket_size, seed_positions
 
 
 def group_sizes(count, groups):

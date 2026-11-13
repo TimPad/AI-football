@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { login, createTournament, task } from './helpers';
+import { expect, test } from '@playwright/test';
+import { createTournament, login, task } from './helpers';
 
 // Синтетический кадр с белой рамкой «поля» — рисуется в браузере, без файлов в репозитории.
 async function openImage(page: import('@playwright/test').Page, w: number, h: number) {
@@ -180,7 +180,9 @@ test('a frame is taken from the recording itself in its own resolution', async (
     clearInterval(draw);
     const bytes = new Uint8Array(await new Blob(parts, { type: 'video/webm' }).arrayBuffer());
     let text = '';
-    bytes.forEach((b) => (text += String.fromCharCode(b)));
+    bytes.forEach((b) => {
+      text += String.fromCharCode(b);
+    });
     return btoa(text);
   });
   await page

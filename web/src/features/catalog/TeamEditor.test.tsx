@@ -1,7 +1,8 @@
-import { it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { expect, it, vi } from 'vitest';
 import { TeamEditor } from './TeamEditor';
+
 vi.mock('../auth/Auth', () => ({ useAuth: () => ({ session: { id: 'test-admin' } }) }));
 
 it('creates player rows in the team form and retains a draft on remount', () => {

@@ -1,15 +1,16 @@
 from pathlib import Path
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+
 from alembic.script import ScriptDirectory
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+from aifootball.service.auth.routes import router as auth_router
 from aifootball.service.config import Settings
 from aifootball.service.db import make_engine
 from aifootball.service.errors import DomainError, error_body
-from aifootball.service.auth.routes import router as auth_router
 
 
 def create_app(settings=None, *, web_dist=None):
@@ -27,8 +28,8 @@ def create_app(settings=None, *, web_dist=None):
 
     app.include_router(captain_auth_router, prefix='/api/v1')
     app.include_router(captain_router, prefix='/api/v1')
-    from aifootball.service.captains.team_routes import router as captain_team_router
     from aifootball.service.captains.import_routes import router as captain_import_router
+    from aifootball.service.captains.team_routes import router as captain_team_router
 
     app.include_router(captain_team_router, prefix='/api/v1')
     app.include_router(captain_import_router, prefix='/api/v1')
@@ -77,8 +78,8 @@ def create_app(settings=None, *, web_dist=None):
     from aifootball.service.public_profiles import router as public_profiles_router
 
     app.include_router(public_profiles_router, prefix='/api/v1')
-    from aifootball.service.stages.routes import router as stage_router
     from aifootball.service.stages.public_routes import router as public_stage_router
+    from aifootball.service.stages.routes import router as stage_router
 
     app.include_router(stage_router, prefix='/api/v1')
     app.include_router(public_stage_router, prefix='/api/v1')

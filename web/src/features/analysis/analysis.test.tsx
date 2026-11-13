@@ -1,17 +1,20 @@
-import { it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { AnalysisReport } from './AnalysisReport';
-import { IdentityReview } from './IdentityReview';
-import { VideoAnalysisTab } from './AnalysisTab';
-import { sendJson, readPending } from './commands';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { ApiError } from '../../api/client';
 import type { AnalysisRun } from '../../api/domain';
+import { AnalysisReport } from './AnalysisReport';
+import { VideoAnalysisTab } from './AnalysisTab';
+import { readPending, sendJson } from './commands';
+import { IdentityReview } from './IdentityReview';
+
 vi.mock('../../api/client', async () => {
   const actual = await vi.importActual<typeof import('../../api/client')>('../../api/client');
   return { ...actual, api: vi.fn(), post: vi.fn() };
 });
+
 import { api } from '../../api/client';
+
 const run = {
   id: 'run',
   job_id: 'job',

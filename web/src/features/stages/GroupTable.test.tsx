@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { GroupTable } from './GroupTable';
+import { describe, expect, it } from 'vitest';
 import { Bracket } from './Bracket';
 import { group, row, sections } from './fixtures.test-data';
+import { GroupTable } from './GroupTable';
 import { criteriaText } from './labels';
 
 describe('таблица и сетка', () => {

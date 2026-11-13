@@ -1,7 +1,9 @@
-from uuid import UUID, uuid4, uuid5, NAMESPACE_URL
 from datetime import date
 from typing import Literal
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
+
 from pydantic import Field, field_validator, model_validator
+
 from aifootball.service.tournaments.schemas import Input
 
 

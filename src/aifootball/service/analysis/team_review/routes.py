@@ -1,33 +1,36 @@
 from datetime import timedelta
 from uuid import UUID
-from fastapi import APIRouter, Depends, Request, Query
+
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from aifootball.service.db import get_session, utcnow
-from aifootball.service.common import get_entity
-from aifootball.service.errors import DomainError
+
+from aifootball.service.analysis.context import build_context, context_hash
+from aifootball.service.analysis.jobs import prior_command, remember
+from aifootball.service.analysis.models import AnalysisJob, AnalysisRun
+from aifootball.service.analysis.storage import read_file
 from aifootball.service.auth.security import require_analytics_admin, require_analytics_reader
-from aifootball.service.captains.security import require_captain, require_captain_csrf
 from aifootball.service.captains.commands import command as captain_command
 from aifootball.service.captains.models import TeamCaptainGrant
+from aifootball.service.captains.security import require_captain, require_captain_csrf
+from aifootball.service.common import get_entity
+from aifootball.service.db import get_session, utcnow
+from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match
-from aifootball.service.analysis.models import AnalysisRun, AnalysisJob
-from aifootball.service.analysis.jobs import prior_command, remember
-from aifootball.service.analysis.context import build_context, context_hash
-from aifootball.service.analysis.storage import read_file
+
+from .confirmations import admin_confirm_side, confirm_team, corrections, save_draft, side_statuses
 from .models import TeamIdentityReviewTask
+from .queries import assignment_fingerprint, latest_run_id, scoped_task, side_material, task_status, task_view
 from .schemas import (
-    TeamTaskCreate,
-    TeamTaskView,
-    TeamTaskList,
-    TeamTaskDraft,
-    TeamTaskCommand,
     AdminSideConfirmation,
     TeamSideStatuses,
+    TeamTaskCommand,
+    TeamTaskCreate,
+    TeamTaskDraft,
+    TeamTaskList,
+    TeamTaskView,
 )
-from .queries import side_material, assignment_fingerprint, task_status, task_view, scoped_task, latest_run_id
-from .confirmations import save_draft, confirm_team, corrections, admin_confirm_side, side_statuses
 
 router = APIRouter()
 

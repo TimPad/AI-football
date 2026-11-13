@@ -1,21 +1,21 @@
-import { useState, type ReactNode } from 'react';
 import { CircleHelp, SlidersHorizontal } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { all, api } from '../../api/client';
-import { Field, Loading, useLoad, Empty, Modal } from '../../components/ui';
 import type { Entry } from '../../api/domain';
+import { Empty, Field, Loading, Modal, useLoad } from '../../components/ui';
 import { CommandStatus, useRatingCommand } from './commands';
+import { MetricTable } from './MatchRating';
 import {
-  roles,
+  type Analytics,
   num,
   pct,
-  timeBases,
-  type Analytics,
-  type RatingSnapshot,
   type RatingPage,
+  type RatingSnapshot,
   type RatingSummary,
+  roles,
+  timeBases,
 } from './types';
-import { MetricTable } from './MatchRating';
 export function TournamentRatings({
   tournamentId,
   actorId,

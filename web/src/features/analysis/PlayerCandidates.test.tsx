@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisRun } from '../../api/domain';
+import { assignGroup, baseGroups, candidatesOf, clashes } from './candidates';
 import { IdentityReview } from './IdentityReview';
-import { clashes, candidatesOf, baseGroups, assignGroup } from './candidates';
 
 const track = (id: number, team: string, from: number, to: number, role = 'player') => ({
   track_id: id,

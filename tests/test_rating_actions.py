@@ -1,5 +1,7 @@
 from copy import deepcopy
+
 import pytest
+
 from aifootball.ratings.actions import canonical_actions, discipline_cost
 
 

@@ -1,14 +1,15 @@
 from uuid import UUID
+
 from sqlalchemy import select
-from aifootball.analytics.exchange import ValidatedResult
-from aifootball.service.analysis.models import AnalysisJob, AnalysisRun
-from aifootball.service.analysis.jobs import prior_command, remember
+
 from aifootball.service.analysis.context import build_context, context_hash
+from aifootball.service.analysis.jobs import prior_command, remember
+from aifootball.service.analysis.models import AnalysisJob, AnalysisRun
 from aifootball.service.analysis.queries import run_view
 from aifootball.service.analysis.storage import put_package
-from aifootball.service.halls.operations import lock_request
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
+from aifootball.service.halls.operations import lock_request
 
 
 def import_result(db, match_id, actor_id, request_id, result, root, created_paths):

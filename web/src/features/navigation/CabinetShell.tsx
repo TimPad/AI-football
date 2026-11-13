@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { RailContext } from './rail';
+import { BookOpen, ChevronDown, ExternalLink, LogOut, MapPin, Menu, Trophy, UserRound, Users, X } from 'lucide-react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Trophy, Users, UserRound, MapPin, LogOut, Menu, X, ExternalLink, BookOpen, ChevronDown } from 'lucide-react';
 import { useAuth } from '../auth/Auth';
+import { RailContext } from './rail';
 import './shell.css';
 
 // Вверху — «Турниры» и меню «Справочники»; боковое меню есть только внутри турнира (его разделы).
@@ -24,14 +24,14 @@ function CatalogMenu() {
     const outside = (e: MouseEvent) => {
       if (!box.current?.contains(e.target as Node)) setOpen(false);
     };
-    const escape = (e: KeyboardEvent) => {
+    const onEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
     };
     document.addEventListener('mousedown', outside);
-    document.addEventListener('keydown', escape);
+    document.addEventListener('keydown', onEscape);
     return () => {
       document.removeEventListener('mousedown', outside);
-      document.removeEventListener('keydown', escape);
+      document.removeEventListener('keydown', onEscape);
     };
   }, [open]);
   const here = CATALOG.some((c) => location.pathname.startsWith(c.to));

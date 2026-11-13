@@ -1,7 +1,8 @@
-import { it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
+import { expect, it, vi } from 'vitest';
 import { Modal } from './ui';
+
 it('holds keyboard focus and returns it to the opener', () => {
   function Harness() {
     const [open, setOpen] = useState(false);

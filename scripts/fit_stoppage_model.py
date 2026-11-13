@@ -21,10 +21,10 @@ from aifootball.analytics.events import viterbi_stoppages
 from aifootball.perception.ball import process_ball_trajectory
 from aifootball.processor.job import ball_settings
 from aifootball.understanding.per_second import (
+    dead_intervals,
     reference_seconds,
     score_seconds,
     stoppage_interval_recall,
-    dead_intervals,
 )
 from aifootball.venue import load_venue
 

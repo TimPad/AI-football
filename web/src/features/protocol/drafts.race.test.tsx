@@ -1,7 +1,8 @@
-import { it, expect, afterEach } from 'vitest';
-import { useLayoutEffect } from 'react';
 import { render, screen } from '@testing-library/react';
+import { useLayoutEffect } from 'react';
+import { afterEach, expect, it } from 'vitest';
 import { useDraft } from './drafts';
+
 afterEach(() => localStorage.clear());
 it('keeps an edit made before the initial passive effect finishes', () => {
   function Harness() {

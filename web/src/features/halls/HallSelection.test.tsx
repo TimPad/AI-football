@@ -1,8 +1,9 @@
-import { it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { expect, it, vi } from 'vitest';
 import { all } from '../../api/client';
 import { HallSelection } from './HallSelection';
+
 vi.mock('../../api/client', () => ({ all: vi.fn(), errorText: (e: Error) => e.message }));
 it('refreshes halls and camera profiles without remounting or losing current input', async () => {
   const hall = {

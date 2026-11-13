@@ -1,6 +1,8 @@
 from typing import Annotated
 from uuid import UUID, uuid4
+
 from pydantic import Field, model_validator
+
 from aifootball.service.tournaments.schemas import Input
 
 Finite = Annotated[float, Field(allow_inf_nan=False)]

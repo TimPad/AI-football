@@ -3,8 +3,8 @@
 Варианты отличаются только входом: весь кадр, кадр вокруг игры из CV, тот же кадр с подсказками CV.
 """
 
-from copy import deepcopy
 import json
+from copy import deepcopy
 
 import numpy as np
 import polars as pl

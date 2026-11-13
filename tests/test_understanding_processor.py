@@ -1,12 +1,11 @@
-from dataclasses import replace
-from pathlib import Path
-from types import SimpleNamespace
 from collections import Counter
+
 import pytest
-from conftest import write_video
-from test_processor_job import job_package
-from report_fixtures import synthetic_match
+
 from aifootball import schemas
+from conftest import write_video
+from report_fixtures import synthetic_match
+from test_processor_job import job_package
 
 
 class Client:
@@ -33,9 +32,9 @@ class Client:
 
 @pytest.fixture
 def case(venue, tmp_path):
+    from aifootball.processor.budget import Budget
     from aifootball.processor.job import read_job
     from aifootball.processor.workspace import Workspace
-    from aifootball.processor.budget import Budget
 
     job, _ = job_package(venue, tmp_path)
     video = write_video(tmp_path / 'silent.mp4', n_frames=100, fps=4, size=(400, 200))
@@ -145,8 +144,8 @@ def test_exported_evidence_contains_referenced_frames_only(case):
 
 
 def test_request_budget_stops_before_next_paid_attempt(case):
-    from aifootball.processor.understand import run_understanding
     from aifootball.processor.budget import Budget
+    from aifootball.processor.understand import run_understanding
     from aifootball.processor.workspace import Workspace
 
     job, video, artifacts, ws, _ = case
@@ -194,10 +193,10 @@ def test_resume_requires_existing_work_directory_before_video_or_api(tmp_path):
 
 
 def test_retry_attempts_cannot_bypass_request_budget(case):
-    from aifootball.processor.understand import run_understanding
-    from aifootball.processor.workspace import Workspace
     from aifootball.processor.budget import Budget
     from aifootball.processor.qwen import QwenError
+    from aifootball.processor.understand import run_understanding
+    from aifootball.processor.workspace import Workspace
 
     job, video, artifacts, ws, _ = case
 
@@ -334,8 +333,8 @@ def test_resume_skips_malformed_raw_receipt_after_interrupted_validation(case, m
 @pytest.mark.parametrize('unfinished', ['identity', 'refinement'])
 def test_processing_status_exposes_unfinished_tasks_even_with_full_temporal_coverage(case, monkeypatch, unfinished):
     from aifootball.processor import understand as module
-    from aifootball.processor.workspace import Workspace
     from aifootball.processor.budget import Budget
+    from aifootball.processor.workspace import Workspace
     from aifootball.understanding.types import InferenceResult
     from understanding_fixtures import make_frame
 
@@ -395,8 +394,9 @@ def test_invalid_budget_is_rejected_before_source_or_api(tmp_path):
 
 def test_exhausted_budget_still_assembles_already_paid_later_windows(case):
     import json
-    from aifootball.processor.understand import run_understanding
+
     from aifootball.processor.budget import Budget
+    from aifootball.processor.understand import run_understanding
     from aifootball.processor.workspace import Workspace
 
     job, video, artifacts, ws, _ = case

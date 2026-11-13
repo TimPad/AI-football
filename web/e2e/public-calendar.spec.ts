@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { login, createTournament, task } from './helpers';
+import { expect, test } from '@playwright/test';
+import { createTournament, login, task } from './helpers';
 
 test('guest calendar, timetable and VK broadcasts from organizer input', async ({ page, browser }) => {
   await login(page);

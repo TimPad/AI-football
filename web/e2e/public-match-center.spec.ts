@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { login, createTournament } from './helpers';
+import { expect, test } from '@playwright/test';
+import { createTournament, login } from './helpers';
 
 test('calendar groups, preserved return, empty day and responsive layout', async ({ page, browser }) => {
   await login(page);

@@ -7,6 +7,7 @@
 """
 
 from sqlalchemy import select
+
 from aifootball.service.errors import DomainError
 from aifootball.service.ratings.models import ActionVersion, RatingMatchPublication, is_auto
 

@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react';
 import { CircleDot, Target, Timer } from 'lucide-react';
+import type { ReactElement } from 'react';
 import type { PublicProtocol } from '../../api/domain';
 
 type Event = PublicProtocol['protocol']['events'][number];
@@ -49,9 +49,9 @@ const SHOWN = new Set(['goal', 'card', 'timeout', 'penalty_awarded', 'penalty_at
 
 function Line({ p, e, score }: { p: PublicProtocol; e: Event; score: string | null }) {
   const name = playerName(p, 'player_id' in e ? e.player_id : null);
-  let icon,
-    title,
-    detail: string | null = name;
+  let icon: ReactElement;
+  let title: string;
+  let detail: string | null = name;
   if (e.kind === 'goal') {
     icon = <CircleDot className="ev-icon goal" />;
     title = `Гол${score ? ` · ${score}` : ''}`;

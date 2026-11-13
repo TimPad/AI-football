@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from uuid import UUID
 
 ROLES = {'goalkeeper', 'fixo', 'ala', 'pivot', 'universal', 'unknown'}

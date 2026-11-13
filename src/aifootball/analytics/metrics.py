@@ -6,13 +6,12 @@
 
 import math
 
+import cv2
 import numpy as np
 import polars as pl
 
 from aifootball import schemas
 from aifootball.state.smooth import MAX_GAP_S
-
-import cv2
 
 HEATMAP_CELL_M = 1.0
 TEAMS = ('A', 'B')

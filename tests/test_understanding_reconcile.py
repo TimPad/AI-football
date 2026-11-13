@@ -1,5 +1,5 @@
-from copy import deepcopy
 import pytest
+
 from understanding_fixtures import event
 
 

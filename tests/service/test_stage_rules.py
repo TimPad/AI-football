@@ -1,20 +1,21 @@
-from collections import Counter
 import random
+from collections import Counter
+
 import pytest
+
 from aifootball.service.stages.rules.brackets import (
     berger_rounds,
-    round_robin,
-    seed_positions,
-    single_elim,
+    bracket_size,
     double_elim,
     entry,
-    bracket_size,
-    FixtureSpec,
+    seed_positions,
+    single_elim,
 )
-from aifootball.service.stages.rules.draws import pots_draw, snake_draw, group_scheme, group_sizes, meeting_round
-from aifootball.service.stages.rules.standings import rank, rank_across, Result as R, Row, SWISS_CRITERIA
+from aifootball.service.stages.rules.draws import group_scheme, group_sizes, meeting_round, pots_draw, snake_draw
+from aifootball.service.stages.rules.progress import Leg, group_outcome, pair_winner, resolve_bracket
+from aifootball.service.stages.rules.standings import SWISS_CRITERIA, Row, rank, rank_across
+from aifootball.service.stages.rules.standings import Result as R
 from aifootball.service.stages.rules.swiss import swiss_pairs
-from aifootball.service.stages.rules.progress import Leg, pair_winner, resolve_bracket, group_outcome
 
 
 @pytest.mark.parametrize('n', range(2, 17))

@@ -1,5 +1,6 @@
-import { it, expect, vi, afterEach } from 'vitest';
-import { api, ApiError, setCsrf } from './client';
+import { afterEach, expect, it, vi } from 'vitest';
+import { ApiError, api, setCsrf } from './client';
+
 afterEach(() => vi.unstubAllGlobals());
 it('treats a truncated success body as an ambiguous response, preserving safe retry semantics', async () => {
   vi.stubGlobal(

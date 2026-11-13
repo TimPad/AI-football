@@ -1,16 +1,17 @@
 from sqlalchemy import (
-    Column,
-    String,
-    Boolean,
-    Integer,
     BigInteger,
-    Float,
-    Uuid,
-    ForeignKey,
-    UniqueConstraint,
+    Boolean,
     CheckConstraint,
+    Column,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    Uuid,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+
 from aifootball.service.db import Base, Entity
 
 

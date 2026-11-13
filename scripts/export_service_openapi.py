@@ -1,6 +1,7 @@
 import argparse
 import json
 from pathlib import Path
+
 from aifootball.service.app import create_app
 from aifootball.service.config import Settings
 

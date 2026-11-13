@@ -1,33 +1,34 @@
-from copy import deepcopy
+import json
 from dataclasses import asdict
 from pathlib import Path
 from uuid import UUID
-import json
+
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
-from aifootball.ratings.reference import build_reference
-from aifootball.ratings.explanation import explain_rating
-from aifootball.ratings.scoring import score_match, policy_hash
+
 from aifootball.ratings.aggregate import rank_players
+from aifootball.ratings.explanation import explain_rating
 from aifootball.ratings.features import combine_rate
+from aifootball.ratings.reference import build_reference
 from aifootball.ratings.schema import MetricFact
+from aifootball.ratings.scoring import policy_hash, score_match
 from aifootball.service.common import get_entity
 from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
-from aifootball.service.tournaments.models import Tournament
 from aifootball.service.matches.models import Match
+from aifootball.service.ratings.inputs import digest, performances, selected_inputs
 from aifootball.service.ratings.models import (
+    ActionVersion,
+    ParticipationVersion,
+    PlayerRatingRow,
+    RatingCommand,
+    RatingMatchPublication,
     RatingPolicyVersion,
     RatingReferenceVersion,
     TournamentRatingSnapshot,
-    PlayerRatingRow,
     TournamentRatingState,
-    RatingMatchPublication,
-    RatingCommand,
-    ParticipationVersion,
-    ActionVersion,
 )
-from aifootball.service.ratings.inputs import selected_inputs, performances, digest
+from aifootball.service.tournaments.models import Tournament
 
 
 def current_policy():

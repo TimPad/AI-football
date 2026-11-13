@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
-import type { Match, MatchEvent, DraftCommand } from '../../api/domain';
+import { type FormEvent, useState } from 'react';
+import type { DraftCommand, Match, MatchEvent } from '../../api/domain';
 import { kinds } from '../../api/domain';
-import { Field, Check, ErrorBox } from '../../components/ui';
+import { Check, ErrorBox, Field } from '../../components/ui';
+
 type EventInput = Extract<DraftCommand, { kind: 'add_event' }>['payload']['event'];
 export type EventDraft = { kind: MatchEvent['kind']; editId: string | null; values: Record<string, string> };
 export function isEventDraft(v: unknown): v is EventDraft | null {
@@ -33,7 +34,10 @@ export function newEventDraft(kind: MatchEvent['kind'], e?: MatchEvent): EventDr
     notes: '',
     reason: '',
   };
-  if (e) Object.entries(e).forEach(([k, v]) => (values[k] = v === null ? '' : String(v)));
+  if (e)
+    Object.entries(e).forEach(([k, v]) => {
+      values[k] = v === null ? '' : String(v);
+    });
   return { kind, editId: e?.id ?? null, values };
 }
 export function EventForm({

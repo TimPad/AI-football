@@ -1,7 +1,8 @@
-import { it, expect } from 'vitest';
-import { createCommandQueue, MemoryOutbox, BrowserOutbox } from './outbox';
+import { expect, it } from 'vitest';
 import { ApiError } from '../../api/client';
 import type { Match } from '../../api/domain';
+import { BrowserOutbox, createCommandQueue, MemoryOutbox } from './outbox';
+
 const view = { revision: 4, id: 'match' } as Match;
 const goal = {
   kind: 'add_event' as const,

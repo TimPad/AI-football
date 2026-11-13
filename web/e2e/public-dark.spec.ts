@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { login } from './helpers';
 
 // Контраст текста к фону, считанный из вычисленных стилей (прозрачный фон — берётся у ближайшего непрозрачного предка).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isUuid, patchQuery, readMatchTab, scheduleReturn, analysisQueueReturn } from './query';
+import { analysisQueueReturn, isUuid, patchQuery, readMatchTab, scheduleReturn } from './query';
 
 describe('match URL context', () => {
   it('restores only the same local tournament schedule', () => {

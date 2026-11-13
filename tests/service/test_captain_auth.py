@@ -1,7 +1,9 @@
-from uuid import uuid4
 from datetime import timedelta
+from uuid import uuid4
+
 from sqlalchemy.orm import Session
-from .captain_helpers import captain, configure_mail, delivered_token, PASSWORD
+
+from .captain_helpers import PASSWORD, captain, configure_mail, delivered_token
 
 AUTH = '/api/v1/captain/auth'
 
@@ -61,10 +63,12 @@ def test_email_not_verified_before_token_and_no_secrets_in_api_or_outbox(client)
 
 
 def test_encrypted_outbox_retries_with_stable_message_id_then_erases_payload(client):
+    import json
+
     from cryptography.fernet import Fernet
+
     from aifootball.service.captains.mail import deliver_pending
     from aifootball.service.captains.models import MailOutbox
-    import json
 
     configure_mail(client.app)
     sender = client.app.state.mail_sender

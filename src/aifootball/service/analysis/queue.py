@@ -1,27 +1,29 @@
 """A paginated tournament work queue. No per-match database reads or processor guesses."""
 
 from collections import defaultdict
-from types import SimpleNamespace
-from uuid import UUID
 from datetime import datetime
+from types import SimpleNamespace
 from typing import Literal
+from uuid import UUID
+
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, case, cast, String, Integer, or_, literal
+from sqlalchemy import Integer, String, case, cast, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import aliased
-from aifootball.service.common import get_entity
-from aifootball.service.db import utcnow
-from aifootball.service.tournaments.models import Tournament
-from aifootball.service.catalog.models import Entry, Team
-from aifootball.service.matches.models import Match, LineupMember
-from aifootball.service.halls.models import CameraProfile
-from aifootball.service.captains.models import TeamCaptainGrant
-from aifootball.service.analysis.models import AnalysisJob, AnalysisRun, AnalysisAssignment
+
 from aifootball.service.analysis.context import context_hash
-from aifootball.service.analysis.team_review.models import TeamIdentityReviewTask, TeamIdentityConfirmation
+from aifootball.service.analysis.models import AnalysisAssignment, AnalysisJob, AnalysisRun
+from aifootball.service.analysis.team_review.models import TeamIdentityConfirmation, TeamIdentityReviewTask
 from aifootball.service.analysis.team_review.queries import side_material
 from aifootball.service.analysis.team_review.schemas import TeamSideStatus
+from aifootball.service.captains.models import TeamCaptainGrant
+from aifootball.service.catalog.models import Entry, Team
+from aifootball.service.common import get_entity
+from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
+from aifootball.service.halls.models import CameraProfile
+from aifootball.service.matches.models import LineupMember, Match
+from aifootball.service.tournaments.models import Tournament
 
 QueueStage = Literal['not_started', 'awaiting_result', 'stale', 'quality_blocked', 'review', 'unpublished', 'published']
 

@@ -1,4 +1,5 @@
 import type { components, operations } from './types';
+
 type S = components['schemas'];
 export type Regulation = S['Regulation-Output'];
 export type Tournament = S['TournamentView'];

@@ -1,10 +1,12 @@
 import json
 from hashlib import sha256
+
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
-from aifootball.service.halls.operations import lock_request
+
 from aifootball.service.captains.models import CaptainCommand
 from aifootball.service.errors import DomainError
+from aifootball.service.halls.operations import lock_request
 
 
 def command(db, actor, request_id, kind, payload, execute):

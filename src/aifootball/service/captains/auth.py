@@ -1,28 +1,31 @@
+import hashlib
+import hmac
+import json
 from datetime import timedelta
 from secrets import token_urlsafe
-import hmac, hashlib, json
-from uuid import uuid4
+
 from argon2 import PasswordHasher
-from argon2.exceptions import VerificationError, InvalidHashError
-from fastapi import APIRouter, Request, Response, Depends
-from sqlalchemy import select, delete
+from argon2.exceptions import InvalidHashError, VerificationError
+from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.security import check_origin, token_hash
+from aifootball.service.captains.mail import enqueue, require_transport
+from aifootball.service.captains.models import CaptainAccount, CaptainAuthCommand, CaptainSession, CaptainToken
+from aifootball.service.captains.schemas import (
+    CaptainSessionView,
+    EmailInput,
+    Login,
+    MessageView,
+    Register,
+    ResetComplete,
+    TokenInput,
+)
+from aifootball.service.captains.security import current_session, require_captain_csrf, throttle
 from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
 from aifootball.service.halls.operations import lock_request
-from aifootball.service.captains.models import CaptainAccount, CaptainSession, CaptainToken, CaptainAuthCommand
-from aifootball.service.captains.schemas import (
-    Register,
-    Login,
-    TokenInput,
-    ResetComplete,
-    EmailInput,
-    MessageView,
-    CaptainSessionView,
-)
-from aifootball.service.captains.security import current_session, require_captain_csrf, throttle
-from aifootball.service.captains.mail import require_transport, enqueue
 
 router = APIRouter(prefix='/captain/auth')
 hasher = PasswordHasher()

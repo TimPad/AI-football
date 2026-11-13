@@ -1,18 +1,20 @@
-from uuid import UUID
 from collections import defaultdict
 from types import SimpleNamespace
-from sqlalchemy import select, func
+from uuid import UUID
+
+from sqlalchemy import func, select
+
 from aifootball.analytics.track_groups import OVERLAP_S
+from aifootball.service.analysis.assignments import set_assignments
+from aifootball.service.analysis.context import build_context, context_hash
+from aifootball.service.analysis.models import AnalysisAssignment, AnalysisJob, AnalysisRun
+from aifootball.service.analysis.schemas import AssignmentInput
 from aifootball.service.common import get_entity
-from aifootball.service.db import utcnow
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match
-from aifootball.service.analysis.models import AnalysisRun, AnalysisJob, AnalysisAssignment
-from aifootball.service.analysis.context import context_hash, build_context
-from aifootball.service.analysis.assignments import set_assignments
-from aifootball.service.analysis.schemas import AssignmentInput
-from .models import TeamIdentityReviewTask, TeamIdentityConfirmation
-from .queries import scoped_task, task_status, side_material, assignment_fingerprint, task_view
+
+from .models import TeamIdentityConfirmation, TeamIdentityReviewTask
+from .queries import assignment_fingerprint, scoped_task, side_material, task_status, task_view
 
 
 def lock_task(db, account, task_id, revision):

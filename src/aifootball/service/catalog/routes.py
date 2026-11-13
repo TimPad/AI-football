@@ -1,32 +1,30 @@
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from aifootball.service.auth.security import require_admin, require_csrf
-from aifootball.service.catalog.models import Team, Player, Entry, TeamMember
+from aifootball.service.catalog.models import Entry, Player, Team
+from aifootball.service.catalog.operations import enter_team, entry_view, roster_view, set_roster
+from aifootball.service.catalog.profiles import check_image, save_profile, team_profile
 from aifootball.service.catalog.schemas import (
-    NamedCreate,
-    NamedPatch,
+    AddTournamentTeams,
+    CreateTournamentTeam,
     EntryCreate,
-    RosterUpdate,
     PlayerCreate,
     PlayerPatch,
+    RosterUpdate,
     TeamCreate,
     TeamPatch,
     TeamProfileUpdate,
-    RosterPlayer,
 )
-from aifootball.service.catalog.profiles import save_profile, team_profile, check_image
-from aifootball.service.catalog.operations import entry_view, roster_view, set_roster
-from aifootball.service.catalog.operations import enter_team
-from aifootball.service.catalog.schemas import CreateTournamentTeam, AddTournamentTeams
-from aifootball.service.tournaments.commands import setup_command, editable_tournament
-from aifootball.service.common import get_entity, as_dict, list_entities
+from aifootball.service.common import as_dict, get_entity, list_entities
 from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
+from aifootball.service.tournaments.commands import editable_tournament, setup_command
 from aifootball.service.tournaments.models import Tournament
-
-from aifootball.service.views import Page, NamedView, EntryView, RosterView, TeamView, PlayerView, TeamProfile
+from aifootball.service.views import EntryView, Page, PlayerView, RosterView, TeamProfile, TeamView
 
 router = APIRouter()
 
@@ -87,7 +85,7 @@ def register_named(path, cls, create_schema, patch_schema, view):
 register_named('/teams', Team, TeamCreate, TeamPatch, TeamView)
 register_named('/players', Player, PlayerCreate, PlayerPatch, PlayerView)
 
-from aifootball.service.catalog.schemas import RosterProfileUpdate, PlayerDetails
+from aifootball.service.catalog.schemas import PlayerDetails, RosterProfileUpdate  # noqa: E402
 
 
 @router.put('/entries/{entry_id}/roster', response_model=RosterView)

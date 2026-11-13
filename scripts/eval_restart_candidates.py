@@ -5,7 +5,9 @@ python scripts/eval_restart_candidates.py
 
 import json
 from pathlib import Path
+
 import polars as pl
+
 from aifootball.processor.candidates import evaluate, restart_candidates
 
 FRAGMENTS = [

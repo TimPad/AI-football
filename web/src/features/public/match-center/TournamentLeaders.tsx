@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { RatingPage } from '../../ratings/types';
 import { Loading } from '../../../components/ui';
-import { usePublicRequest } from './request';
+import type { RatingPage } from '../../ratings/types';
 import { ZONE } from './DateNavigation';
+import { usePublicRequest } from './request';
 export function TournamentLeaders({ tournamentId, tick = 0 }: { tournamentId: string; tick?: number }) {
   const [retry, setRetry] = useState(0);
   const state = usePublicRequest<RatingPage>(
