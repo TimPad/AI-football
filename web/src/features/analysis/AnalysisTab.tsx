@@ -1,83 +1,654 @@
-import {TeamReviewPanel} from './TeamReviewPanel';
-import {TRACK_FILTERS} from './reviewQueue';
-import {JobStatus} from './JobStatus';
-import {useState} from 'react';
-import {api} from '../../api/client';
-import type {AnalysisOverview,AnalysisRun,AnalysisJob,PublicAnalysis} from '../../api/domain';
-import {ErrorBox,Loading,useLoad,downloadJson} from '../../components/ui';
-import {prepare,readPending,sendJson,retryJson,type Pending} from './commands';
-import {MatchUnderstanding} from './MatchUnderstanding';
-import type {UnderstandingView} from './understandingTypes';
-import {IdentityReview} from './IdentityReview';
-import {AnalysisReport,measure,Heatmap} from './AnalysisReport';
-import {plural} from '../../components/plural';
+import { TeamReviewPanel } from './TeamReviewPanel';
+import { TRACK_FILTERS } from './reviewQueue';
+import { JobStatus } from './JobStatus';
+import { useState } from 'react';
+import { api } from '../../api/client';
+import type { AnalysisOverview, AnalysisRun, AnalysisJob, PublicAnalysis } from '../../api/domain';
+import { ErrorBox, Loading, useLoad, downloadJson } from '../../components/ui';
+import { prepare, readPending, sendJson, retryJson, type Pending } from './commands';
+import { MatchUnderstanding } from './MatchUnderstanding';
+import type { UnderstandingView } from './understandingTypes';
+import { IdentityReview } from './IdentityReview';
+import { AnalysisReport, measure, Heatmap } from './AnalysisReport';
+import { plural } from '../../components/plural';
 
-export type ReviewNav={params:URLSearchParams;update:(patch:Record<string,string|null>,options?:{replace?:boolean})=>void};
-export function VideoAnalysisTab({matchId,actorId,canManage,nav}:{matchId:string,actorId:string,canManage:boolean,nav?:ReviewNav}){
- const state=useLoad(()=>api<AnalysisOverview>(`/matches/${matchId}/analysis`),matchId);const [localSelected,setLocal]=useState<string>();
- // Выбор версии — в URL рабочего места; материал другой версии не подставляется.
- const selected=nav?nav.params.get('run_id')??undefined:localSelected;
- const setSelected=(id:string)=>nav?nav.update({run_id:id,item_id:null,page:null}):setLocal(id);
- const key=`aifootball:analysis-command:v1:${actorId}:${matchId}`;
- const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);const [file,setFile]=useState<File>();
- const [pending,setPending]=useState<Pending|null>(()=>{try{return readPending(key)}catch{return null}});
- const [corrupt]=useState(()=>{try{readPending(key);return ''}catch{return 'Повреждена сохранённая команда. Скачайте её перед очисткой.'}});
- const [resetCorrupt,setResetCorrupt]=useState(false);
- function syncPending(){try{setPending(readPending(key))}catch(e){setError(e)}}
- function result(value:AnalysisRun|AnalysisJob){state.reload();if('status' in value)setSelected(value.id)}
- async function json(path:string,body:Record<string,unknown>,method='POST'){
-  setBusy(true);setError(undefined);try{const value=await sendJson<AnalysisRun|AnalysisJob>(key,path,body,method);result(value);return value}catch(e){setError(e);throw e}finally{syncPending();setBusy(false)}
- }
- async function upload(){if(!file)return;setBusy(true);setError(undefined);try{
-  if(file.size>100*1024*1024)throw Error('Пакет результата превышает 100 МБ.');
-  const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await file.arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join('');
-  const p=prepare(key,`/matches/${matchId}/analysis/imports`,{file_sha256:digest,file_size:file.size});syncPending();
-  const body=new FormData();body.set('file',file);
-  const value=await api<AnalysisRun>(p.path,{method:'POST',headers:{'X-Request-ID':String(p.body.request_id)},body});localStorage.removeItem(key);result(value);
- }catch(e){setError(e)}finally{syncPending();setBusy(false)}}
- async function retry(){if(!pending)return;if(pending.path.endsWith('/imports')){await upload();return}setBusy(true);setError(undefined);try{result(await retryJson<AnalysisRun|AnalysisJob>(key,pending))}catch(e){setError(e)}finally{syncPending();setBusy(false)}}
- const known=state.data?.runs.some(r=>r.id===selected);
- // Когда задание уже выдано, инструкция CLI свёрнута: на экране остаются задание, загрузка и проверка.
- const hasJobs=!!state.data?.jobs.length;const hasRuns=!!state.data?.runs.length;
- // По умолчанию открывается версия, ожидающая проверки: это следующая работа Админ+.
- const reviewRun=canManage?state.data?.runs.find(r=>r.status==='review')?.id:undefined;
- const selectedId=(known?selected:undefined)??reviewRun??state.data?.active_run_id??state.data?.runs[0]?.id;
- return <div className="analysis-workflow"><section className="surface"><h2>Видеоанализ</h2>{canManage?<details className="analysis-upload" key={`upload:${hasRuns}`} open={!hasRuns}><summary><b>{hasRuns?'Новая обработка записи':'Как получить видеоанализ'}</b></summary><p>Скачайте задание матча, обработайте запись на своём компьютере и загрузите результат. Само видео остаётся у вас.</p><div className="analysis-steps"><div><b>1. Получить задание</b><p>Сначала выберите зал и камеру, заполните составы матча.</p><button disabled={busy||!!pending||!!(corrupt&&!resetCorrupt)} onClick={()=>void json(`/matches/${matchId}/analysis/jobs`,{}).catch(()=>{})}>Создать задание</button></div><details className="analysis-step-details" key={`cli:${hasJobs}`} open={!hasJobs}><summary><b>2. Обработать запись</b>{hasJobs&&<span className="muted"> · команда CLI</span>}</summary><p>Запустите CLI из проекта на компьютере с видео:</p><code className="processor-command">python -m aifootball.cli process-job --job job.zip --video match.mp4 --output result.zip</code><p className="muted">На сайте нет прогресса локальной программы. Результат: result.zip.</p></details><div><b>3. Загрузить результат</b><label className="field"><span>Пакет результата ZIP</span><input aria-label="Пакет результата ZIP" type="file" accept=".zip,application/zip" disabled={busy} onChange={e=>setFile(e.target.files?.[0])}/></label><button className="primary" disabled={busy||!file||!!(corrupt&&!resetCorrupt)||(!!pending&&!pending.path.endsWith('/imports'))} onClick={()=>void upload()}>Загрузить результат</button><small>До 100 МБ. Задание, камера и составы должны совпадать.</small></div></div></details>:<p className="muted">Для выдачи заданий, загрузки и подтверждения требуется право Админ+. Его выдаёт владелец установки.</p>}<ErrorBox error={error||(!resetCorrupt&&corrupt)}/>{pending&&<div className="draft-banner"><p>Есть незавершённая отправка. При потере ответа повтор возвращает прежний результат.{pending.path.endsWith('/imports')&&' Выберите тот же ZIP перед повтором.'}</p><div className="row"><button disabled={busy||(pending.path.endsWith('/imports')&&!file)} onClick={()=>void retry()}>Повторить отправку</button><button disabled={busy} onClick={()=>{downloadJson(pending,'команда-аналитики.json');localStorage.removeItem(key);setPending(null);state.reload()}}>Скачать команду и снять блокировку</button></div></div>}{corrupt&&!resetCorrupt&&<button onClick={()=>{downloadJson(localStorage.getItem(key),'повреждённая-команда.json');localStorage.removeItem(key);setResetCorrupt(true)}}>Скачать и очистить повреждённую команду</button>}</section>{!state.data?<Loading error={state.error} retry={state.reload}/>:<><ErrorBox error={state.error}/><section className="surface"><h2>Версии отчёта</h2>{!state.data.jobs.length&&!state.data.runs.length&&<p>Отчётов пока нет</p>}{state.data.jobs.length>0&&<details className="analysis-jobs" key={`jobs:${hasRuns}`} open={!hasRuns}><summary>Задания на обработку · {state.data.jobs.length}</summary>{state.data.jobs.map(j=><div className="analysis-job" key={j.id}><span><JobStatus jobId={j.id} overview={state.data!}/> · {new Date(j.created_at).toLocaleString('ru-RU')}</span><a className="button" href={`/api/v1/matches/${matchId}/analysis/jobs/${j.id}/package`}>Скачать job.zip</a></div>)}</details>}{state.data.runs.length>0&&<label className="field"><span>Версия отчёта</span><select aria-label="Версия отчёта" value={selectedId??''} disabled={busy} onChange={e=>setSelected(e.target.value)}>{state.data.runs.map(r=><option key={r.id} value={r.id}>{r.status==='confirmed'?'Подтверждён':'На проверке'} · {new Date(r.created_at).toLocaleString('ru-RU')}{r.id===state.data!.active_run_id?' · активный':''}{r.id===state.data!.published_run_id?' · опубликован':''}</option>)}</select></label>}</section>{selectedId&&<RunContent key={selectedId} id={selectedId} matchId={matchId} actorId={actorId} canManage={canManage} overview={state.data} busy={busy||!!pending||!!(corrupt&&!resetCorrupt)} mutate={json} refresh={state.reload} nav={nav}/>}</>}</div>;
+export type ReviewNav = {
+  params: URLSearchParams;
+  update: (patch: Record<string, string | null>, options?: { replace?: boolean }) => void;
+};
+export function VideoAnalysisTab({
+  matchId,
+  actorId,
+  canManage,
+  nav,
+}: {
+  matchId: string;
+  actorId: string;
+  canManage: boolean;
+  nav?: ReviewNav;
+}) {
+  const state = useLoad(() => api<AnalysisOverview>(`/matches/${matchId}/analysis`), matchId);
+  const [localSelected, setLocal] = useState<string>();
+  // Выбор версии — в URL рабочего места; материал другой версии не подставляется.
+  const selected = nav ? (nav.params.get('run_id') ?? undefined) : localSelected;
+  const setSelected = (id: string) => (nav ? nav.update({ run_id: id, item_id: null, page: null }) : setLocal(id));
+  const key = `aifootball:analysis-command:v1:${actorId}:${matchId}`;
+  const [error, setError] = useState<unknown>();
+  const [busy, setBusy] = useState(false);
+  const [file, setFile] = useState<File>();
+  const [pending, setPending] = useState<Pending | null>(() => {
+    try {
+      return readPending(key);
+    } catch {
+      return null;
+    }
+  });
+  const [corrupt] = useState(() => {
+    try {
+      readPending(key);
+      return '';
+    } catch {
+      return 'Повреждена сохранённая команда. Скачайте её перед очисткой.';
+    }
+  });
+  const [resetCorrupt, setResetCorrupt] = useState(false);
+  function syncPending() {
+    try {
+      setPending(readPending(key));
+    } catch (e) {
+      setError(e);
+    }
+  }
+  function result(value: AnalysisRun | AnalysisJob) {
+    state.reload();
+    if ('status' in value) setSelected(value.id);
+  }
+  async function json(path: string, body: Record<string, unknown>, method = 'POST') {
+    setBusy(true);
+    setError(undefined);
+    try {
+      const value = await sendJson<AnalysisRun | AnalysisJob>(key, path, body, method);
+      result(value);
+      return value;
+    } catch (e) {
+      setError(e);
+      throw e;
+    } finally {
+      syncPending();
+      setBusy(false);
+    }
+  }
+  async function upload() {
+    if (!file) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      if (file.size > 100 * 1024 * 1024) throw Error('Пакет результата превышает 100 МБ.');
+      const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer())), (b) =>
+        b.toString(16).padStart(2, '0'),
+      ).join('');
+      const p = prepare(key, `/matches/${matchId}/analysis/imports`, { file_sha256: digest, file_size: file.size });
+      syncPending();
+      const body = new FormData();
+      body.set('file', file);
+      const value = await api<AnalysisRun>(p.path, {
+        method: 'POST',
+        headers: { 'X-Request-ID': String(p.body.request_id) },
+        body,
+      });
+      localStorage.removeItem(key);
+      result(value);
+    } catch (e) {
+      setError(e);
+    } finally {
+      syncPending();
+      setBusy(false);
+    }
+  }
+  async function retry() {
+    if (!pending) return;
+    if (pending.path.endsWith('/imports')) {
+      await upload();
+      return;
+    }
+    setBusy(true);
+    setError(undefined);
+    try {
+      result(await retryJson<AnalysisRun | AnalysisJob>(key, pending));
+    } catch (e) {
+      setError(e);
+    } finally {
+      syncPending();
+      setBusy(false);
+    }
+  }
+  const known = state.data?.runs.some((r) => r.id === selected);
+  // Когда задание уже выдано, инструкция CLI свёрнута: на экране остаются задание, загрузка и проверка.
+  const hasJobs = !!state.data?.jobs.length;
+  const hasRuns = !!state.data?.runs.length;
+  // По умолчанию открывается версия, ожидающая проверки: это следующая работа Админ+.
+  const reviewRun = canManage ? state.data?.runs.find((r) => r.status === 'review')?.id : undefined;
+  const selectedId =
+    (known ? selected : undefined) ?? reviewRun ?? state.data?.active_run_id ?? state.data?.runs[0]?.id;
+  return (
+    <div className="analysis-workflow">
+      <section className="surface">
+        <h2>Видеоанализ</h2>
+        {canManage ? (
+          <details className="analysis-upload" key={`upload:${hasRuns}`} open={!hasRuns}>
+            <summary>
+              <b>{hasRuns ? 'Новая обработка записи' : 'Как получить видеоанализ'}</b>
+            </summary>
+            <p>
+              Скачайте задание матча, обработайте запись на своём компьютере и загрузите результат. Само видео остаётся
+              у вас.
+            </p>
+            <div className="analysis-steps">
+              <div>
+                <b>1. Получить задание</b>
+                <p>Сначала выберите зал и камеру, заполните составы матча.</p>
+                <button
+                  disabled={busy || !!pending || !!(corrupt && !resetCorrupt)}
+                  onClick={() => void json(`/matches/${matchId}/analysis/jobs`, {}).catch(() => {})}
+                >
+                  Создать задание
+                </button>
+              </div>
+              <details className="analysis-step-details" key={`cli:${hasJobs}`} open={!hasJobs}>
+                <summary>
+                  <b>2. Обработать запись</b>
+                  {hasJobs && <span className="muted"> · команда CLI</span>}
+                </summary>
+                <p>Запустите CLI из проекта на компьютере с видео:</p>
+                <code className="processor-command">
+                  python -m aifootball.cli process-job --job job.zip --video match.mp4 --output result.zip
+                </code>
+                <p className="muted">На сайте нет прогресса локальной программы. Результат: result.zip.</p>
+              </details>
+              <div>
+                <b>3. Загрузить результат</b>
+                <label className="field">
+                  <span>Пакет результата ZIP</span>
+                  <input
+                    aria-label="Пакет результата ZIP"
+                    type="file"
+                    accept=".zip,application/zip"
+                    disabled={busy}
+                    onChange={(e) => setFile(e.target.files?.[0])}
+                  />
+                </label>
+                <button
+                  className="primary"
+                  disabled={
+                    busy || !file || !!(corrupt && !resetCorrupt) || (!!pending && !pending.path.endsWith('/imports'))
+                  }
+                  onClick={() => void upload()}
+                >
+                  Загрузить результат
+                </button>
+                <small>До 100 МБ. Задание, камера и составы должны совпадать.</small>
+              </div>
+            </div>
+          </details>
+        ) : (
+          <p className="muted">
+            Для выдачи заданий, загрузки и подтверждения требуется право Админ+. Его выдаёт владелец установки.
+          </p>
+        )}
+        <ErrorBox error={error || (!resetCorrupt && corrupt)} />
+        {pending && (
+          <div className="draft-banner">
+            <p>
+              Есть незавершённая отправка. При потере ответа повтор возвращает прежний результат.
+              {pending.path.endsWith('/imports') && ' Выберите тот же ZIP перед повтором.'}
+            </p>
+            <div className="row">
+              <button disabled={busy || (pending.path.endsWith('/imports') && !file)} onClick={() => void retry()}>
+                Повторить отправку
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => {
+                  downloadJson(pending, 'команда-аналитики.json');
+                  localStorage.removeItem(key);
+                  setPending(null);
+                  state.reload();
+                }}
+              >
+                Скачать команду и снять блокировку
+              </button>
+            </div>
+          </div>
+        )}
+        {corrupt && !resetCorrupt && (
+          <button
+            onClick={() => {
+              downloadJson(localStorage.getItem(key), 'повреждённая-команда.json');
+              localStorage.removeItem(key);
+              setResetCorrupt(true);
+            }}
+          >
+            Скачать и очистить повреждённую команду
+          </button>
+        )}
+      </section>
+      {!state.data ? (
+        <Loading error={state.error} retry={state.reload} />
+      ) : (
+        <>
+          <ErrorBox error={state.error} />
+          <section className="surface">
+            <h2>Версии отчёта</h2>
+            {!state.data.jobs.length && !state.data.runs.length && <p>Отчётов пока нет</p>}
+            {state.data.jobs.length > 0 && (
+              <details className="analysis-jobs" key={`jobs:${hasRuns}`} open={!hasRuns}>
+                <summary>Задания на обработку · {state.data.jobs.length}</summary>
+                {state.data.jobs.map((j) => (
+                  <div className="analysis-job" key={j.id}>
+                    <span>
+                      <JobStatus jobId={j.id} overview={state.data!} /> ·{' '}
+                      {new Date(j.created_at).toLocaleString('ru-RU')}
+                    </span>
+                    <a className="button" href={`/api/v1/matches/${matchId}/analysis/jobs/${j.id}/package`}>
+                      Скачать job.zip
+                    </a>
+                  </div>
+                ))}
+              </details>
+            )}
+            {state.data.runs.length > 0 && (
+              <label className="field">
+                <span>Версия отчёта</span>
+                <select
+                  aria-label="Версия отчёта"
+                  value={selectedId ?? ''}
+                  disabled={busy}
+                  onChange={(e) => setSelected(e.target.value)}
+                >
+                  {state.data.runs.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.status === 'confirmed' ? 'Подтверждён' : 'На проверке'} ·{' '}
+                      {new Date(r.created_at).toLocaleString('ru-RU')}
+                      {r.id === state.data!.active_run_id ? ' · активный' : ''}
+                      {r.id === state.data!.published_run_id ? ' · опубликован' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </section>
+          {selectedId && (
+            <RunContent
+              key={selectedId}
+              id={selectedId}
+              matchId={matchId}
+              actorId={actorId}
+              canManage={canManage}
+              overview={state.data}
+              busy={busy || !!pending || !!(corrupt && !resetCorrupt)}
+              mutate={json}
+              refresh={state.reload}
+              nav={nav}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
 }
-function RunContent({id,matchId,actorId,canManage,overview,busy,mutate,refresh,nav}:{nav?:ReviewNav,id:string,matchId:string,actorId:string,canManage:boolean,overview:AnalysisOverview,busy:boolean,refresh:()=>void,mutate:(path:string,body:Record<string,unknown>,method?:string)=>Promise<AnalysisRun|AnalysisJob>}){
- const state=useLoad(()=>api<AnalysisRun>(`/matches/${matchId}/analysis/runs/${id}`),`${id}:${overview.analysis_revision}:${JSON.stringify(overview.runs)}`);const [dirty,setDirty]=useState(false);const [episodeDirty,setEpisodeDirty]=useState(false);const [focusedEvidence,setFocusedEvidence]=useState<string[]>([]);const [autoNote,setAutoNote]=useState<string|null>(null);
- const privateEnabled=canManage&&!!overview.runs.find(r=>r.id===id)?.has_understanding;
- const [localTask,setLocalTask]=useState<'identity'|'episode'>('identity');
- const task=privateEnabled&&(nav?nav.params.get('task'):localTask)==='episode'?'episode':'identity';
- const setTask=(t:'identity'|'episode')=>nav?nav.update({task:t==='identity'?null:t}):setLocalTask(t);
- const understanding=useLoad(()=>privateEnabled?api<UnderstandingView>(`/matches/${matchId}/analysis/runs/${id}/understanding`):Promise.resolve(null),`${id}:${privateEnabled}:${overview.runs.find(r=>r.id===id)?.revision}`);
- if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const run=state.data;const base=`/matches/${matchId}/analysis/runs/${id}`;
- async function change(kind:string,extra:Record<string,unknown>={},method='POST'){
-  const r=await mutate(`${base}/${kind}`,{expected_revision:run.revision,...(kind==='assignments'?{}:{expected_analysis_revision:overview.analysis_revision}),...extra},method);if('status' in r&&r.id===id){state.setData(r);if(kind==='confirm'||kind==='publish')setAutoNote(r.auto_sources?.note??null)}return r;
- }
- const source=run.manifest.source_video as {duration_s:number};const match=run.report.match as {processed_s:number};
- return <><section className="surface"><h2>{run.status==='review'?'На проверке':'Подтверждённый отчёт'}</h2><p>Запись: {measure(source.duration_s)} с · обработано: {measure(match.processed_s)} с · фрагментов: {run.tracks.length}</p><ErrorBox error={state.error}/>{(run.checks.critical_errors as string[]).map((text,i)=><p className="error" key={i}>{text}</p>)}{(run.checks.warnings as string[]).map((text,i)=><p className="warning" key={i}>{text}</p>)}{!run.passed&&<p className="error">Проверка качества не пройдена. Подтверждение заблокировано.</p>}{canManage&&<div className="row">{run.status==='review'?<button className="primary" disabled={busy||dirty||episodeDirty||!run.passed} onClick={()=>void change('confirm').catch(()=>{})}>Подтвердить аналитику</button>:<><button disabled={busy||run.id===overview.active_run_id} onClick={()=>void change('activate').catch(()=>{})}>Выбрать активным</button><button className="primary" disabled={busy||run.id===overview.published_run_id} onClick={()=>void change('publish').catch(()=>{})}>Опубликовать аналитику</button><button disabled={busy} onClick={()=>void change('reviews').catch(()=>{})}>Новая проверка игроков</button></>}{(dirty||episodeDirty)&&<small>Завершите сохранение проверки.</small>}</div>}<AutoSources run={run} note={autoNote}/></section>{privateEnabled&&<div className="segmented review-task" role="group" aria-label="Вид задачи"><button aria-pressed={task==='identity'} className={task==='identity'?'active':''} onClick={()=>setTask('identity')}>Личности</button><button aria-pressed={task==='episode'} className={task==='episode'?'active':''} onClick={()=>setTask('episode')}>Эпизоды</button></div>}
-{canManage&&<TeamReviewPanel run={run} actorId={actorId} onChanged={()=>{state.reload();refresh()}}/>}{task==='identity'&&<IdentityReview run={run} actorId={actorId} editable={canManage&&run.status==='review'&&!busy&&!episodeDirty} onDirty={setDirty} onSave={async values=>{const result=await change('assignments',values,'PUT');understanding.reload();return result}} suggestions={understanding.data?.identity_suggestions} onEvidence={ids=>{setFocusedEvidence(ids);if(privateEnabled)setTask('episode')}}
- view={nav?{filter:(TRACK_FILTERS.find(f=>f.id===nav.params.get('filter'))?.id),page:Math.max(1,Number(nav.params.get('page'))||1),item:Number.isInteger(Number(nav.params.get('item_id')))&&nav.params.get('item_id')?Number(nav.params.get('item_id')):null}:undefined}
- onView={nav?patch=>nav.update({...(patch.filter!==undefined?{filter:patch.filter}:{}),...(patch.page!==undefined?{page:String(patch.page)}:{}),...(patch.item!==undefined?{item_id:patch.item==null?null:String(patch.item)}:{})},{replace:patch.item===undefined}):undefined}/>}{privateEnabled&&task==='episode'&&<><ErrorBox error={understanding.error}/>{understanding.data?<MatchUnderstanding value={understanding.data} run={run} actorId={actorId} editable={run.status==='review'&&!busy&&!dirty} focusedEvidence={focusedEvidence} onDirty={setEpisodeDirty} onChanged={value=>{understanding.setData(value);state.setData({...run,revision:value.revision});refresh()}}/>:<Loading error={understanding.error} retry={understanding.reload}/>}</>}<details className="surface review-metrics"><summary>{run.status==="review"?"Предварительные показатели записи":"Показатели этой версии"}<span className="muted"> · таблицы треков и игроков; карты команд — в «Отчёте»</span></summary>
- <ImportedPeriods run={run}/><AnalysisReport players={run.players} partial={run.partial} videoSeconds={source.duration_s} processedSeconds={match.processed_s}/></details></>;
+function RunContent({
+  id,
+  matchId,
+  actorId,
+  canManage,
+  overview,
+  busy,
+  mutate,
+  refresh,
+  nav,
+}: {
+  nav?: ReviewNav;
+  id: string;
+  matchId: string;
+  actorId: string;
+  canManage: boolean;
+  overview: AnalysisOverview;
+  busy: boolean;
+  refresh: () => void;
+  mutate: (path: string, body: Record<string, unknown>, method?: string) => Promise<AnalysisRun | AnalysisJob>;
+}) {
+  const state = useLoad(
+    () => api<AnalysisRun>(`/matches/${matchId}/analysis/runs/${id}`),
+    `${id}:${overview.analysis_revision}:${JSON.stringify(overview.runs)}`,
+  );
+  const [dirty, setDirty] = useState(false);
+  const [episodeDirty, setEpisodeDirty] = useState(false);
+  const [focusedEvidence, setFocusedEvidence] = useState<string[]>([]);
+  const [autoNote, setAutoNote] = useState<string | null>(null);
+  const privateEnabled = canManage && !!overview.runs.find((r) => r.id === id)?.has_understanding;
+  const [localTask, setLocalTask] = useState<'identity' | 'episode'>('identity');
+  const task = privateEnabled && (nav ? nav.params.get('task') : localTask) === 'episode' ? 'episode' : 'identity';
+  const setTask = (t: 'identity' | 'episode') =>
+    nav ? nav.update({ task: t === 'identity' ? null : t }) : setLocalTask(t);
+  const understanding = useLoad(
+    () =>
+      privateEnabled
+        ? api<UnderstandingView>(`/matches/${matchId}/analysis/runs/${id}/understanding`)
+        : Promise.resolve(null),
+    `${id}:${privateEnabled}:${overview.runs.find((r) => r.id === id)?.revision}`,
+  );
+  if (!state.data) return <Loading error={state.error} retry={state.reload} />;
+  const run = state.data;
+  const base = `/matches/${matchId}/analysis/runs/${id}`;
+  async function change(kind: string, extra: Record<string, unknown> = {}, method = 'POST') {
+    const r = await mutate(
+      `${base}/${kind}`,
+      {
+        expected_revision: run.revision,
+        ...(kind === 'assignments' ? {} : { expected_analysis_revision: overview.analysis_revision }),
+        ...extra,
+      },
+      method,
+    );
+    if ('status' in r && r.id === id) {
+      state.setData(r);
+      if (kind === 'confirm' || kind === 'publish') setAutoNote(r.auto_sources?.note ?? null);
+    }
+    return r;
+  }
+  const source = run.manifest.source_video as { duration_s: number };
+  const match = run.report.match as { processed_s: number };
+  return (
+    <>
+      <section className="surface">
+        <h2>{run.status === 'review' ? 'На проверке' : 'Подтверждённый отчёт'}</h2>
+        <p>
+          Запись: {measure(source.duration_s)} с · обработано: {measure(match.processed_s)} с · фрагментов:{' '}
+          {run.tracks.length}
+        </p>
+        <ErrorBox error={state.error} />
+        {(run.checks.critical_errors as string[]).map((text, i) => (
+          <p className="error" key={i}>
+            {text}
+          </p>
+        ))}
+        {(run.checks.warnings as string[]).map((text, i) => (
+          <p className="warning" key={i}>
+            {text}
+          </p>
+        ))}
+        {!run.passed && <p className="error">Проверка качества не пройдена. Подтверждение заблокировано.</p>}
+        {canManage && (
+          <div className="row">
+            {run.status === 'review' ? (
+              <button
+                className="primary"
+                disabled={busy || dirty || episodeDirty || !run.passed}
+                onClick={() => void change('confirm').catch(() => {})}
+              >
+                Подтвердить аналитику
+              </button>
+            ) : (
+              <>
+                <button
+                  disabled={busy || run.id === overview.active_run_id}
+                  onClick={() => void change('activate').catch(() => {})}
+                >
+                  Выбрать активным
+                </button>
+                <button
+                  className="primary"
+                  disabled={busy || run.id === overview.published_run_id}
+                  onClick={() => void change('publish').catch(() => {})}
+                >
+                  Опубликовать аналитику
+                </button>
+                <button disabled={busy} onClick={() => void change('reviews').catch(() => {})}>
+                  Новая проверка игроков
+                </button>
+              </>
+            )}
+            {(dirty || episodeDirty) && <small>Завершите сохранение проверки.</small>}
+          </div>
+        )}
+        <AutoSources run={run} note={autoNote} />
+      </section>
+      {privateEnabled && (
+        <div className="segmented review-task" role="group" aria-label="Вид задачи">
+          <button
+            aria-pressed={task === 'identity'}
+            className={task === 'identity' ? 'active' : ''}
+            onClick={() => setTask('identity')}
+          >
+            Личности
+          </button>
+          <button
+            aria-pressed={task === 'episode'}
+            className={task === 'episode' ? 'active' : ''}
+            onClick={() => setTask('episode')}
+          >
+            Эпизоды
+          </button>
+        </div>
+      )}
+      {canManage && (
+        <TeamReviewPanel
+          run={run}
+          actorId={actorId}
+          onChanged={() => {
+            state.reload();
+            refresh();
+          }}
+        />
+      )}
+      {task === 'identity' && (
+        <IdentityReview
+          run={run}
+          actorId={actorId}
+          editable={canManage && run.status === 'review' && !busy && !episodeDirty}
+          onDirty={setDirty}
+          onSave={async (values) => {
+            const result = await change('assignments', values, 'PUT');
+            understanding.reload();
+            return result;
+          }}
+          suggestions={understanding.data?.identity_suggestions}
+          onEvidence={(ids) => {
+            setFocusedEvidence(ids);
+            if (privateEnabled) setTask('episode');
+          }}
+          view={
+            nav
+              ? {
+                  filter: TRACK_FILTERS.find((f) => f.id === nav.params.get('filter'))?.id,
+                  page: Math.max(1, Number(nav.params.get('page')) || 1),
+                  item:
+                    Number.isInteger(Number(nav.params.get('item_id'))) && nav.params.get('item_id')
+                      ? Number(nav.params.get('item_id'))
+                      : null,
+                }
+              : undefined
+          }
+          onView={
+            nav
+              ? (patch) =>
+                  nav.update(
+                    {
+                      ...(patch.filter !== undefined ? { filter: patch.filter } : {}),
+                      ...(patch.page !== undefined ? { page: String(patch.page) } : {}),
+                      ...(patch.item !== undefined ? { item_id: patch.item == null ? null : String(patch.item) } : {}),
+                    },
+                    { replace: patch.item === undefined },
+                  )
+              : undefined
+          }
+        />
+      )}
+      {privateEnabled && task === 'episode' && (
+        <>
+          <ErrorBox error={understanding.error} />
+          {understanding.data ? (
+            <MatchUnderstanding
+              value={understanding.data}
+              run={run}
+              actorId={actorId}
+              editable={run.status === 'review' && !busy && !dirty}
+              focusedEvidence={focusedEvidence}
+              onDirty={setEpisodeDirty}
+              onChanged={(value) => {
+                understanding.setData(value);
+                state.setData({ ...run, revision: value.revision });
+                refresh();
+              }}
+            />
+          ) : (
+            <Loading error={understanding.error} retry={understanding.reload} />
+          )}
+        </>
+      )}
+      <details className="surface review-metrics">
+        <summary>
+          {run.status === 'review' ? 'Предварительные показатели записи' : 'Показатели этой версии'}
+          <span className="muted"> · таблицы треков и игроков; карты команд — в «Отчёте»</span>
+        </summary>
+        <ImportedPeriods run={run} />
+        <AnalysisReport
+          players={run.players}
+          partial={run.partial}
+          videoSeconds={source.duration_s}
+          processedSeconds={match.processed_s}
+        />
+      </details>
+    </>
+  );
 }
-type PeriodsReport=Pick<PublicAnalysis,'periods'|'primary_period_key'|'teams'|'side_map'>;
-function TeamPeriods({report}:{report:PeriodsReport}){
- const [key,setKey]=useState(report.primary_period_key);const period=report.periods.find(p=>p.key===key);const teams=period?.teams as Record<string,{distance_m?:number|null,heatmap_s?:number[][]|null,low_data?:boolean,metric_notes?:Record<string,string>}>|undefined;
- return <section className="surface"><h2>Командные показатели по периодам</h2><select aria-label="Период командной статистики" value={key} onChange={e=>setKey(e.target.value)}>{report.periods.map(p=><option key={String(p.key)} value={String(p.key)}>{String(p.name)}</option>)}</select><div className="form-grid">{teams&&Object.entries(teams).map(([side,m])=><div key={side}><h3>{report.teams[report.side_map[side]]?.name??side}</h3><p>Дистанция, м: {measure(m.distance_m)}</p>{m.metric_notes?.distance_m&&<p className="muted">{m.metric_notes.distance_m}</p>}{m.low_data&&!m.metric_notes?.distance_m&&<p className="warning">Недостаточно наблюдений команды.</p>}{m.heatmap_s&&<Heatmap values={m.heatmap_s} tone={report.side_map[side]==='home'?'home':report.side_map[side]==='away'?'away':'neutral'}/>}</div>)}</div><p className="muted">Периоды отображаются отдельно и не складываются с основным периодом.</p></section>;
+type PeriodsReport = Pick<PublicAnalysis, 'periods' | 'primary_period_key' | 'teams' | 'side_map'>;
+function TeamPeriods({ report }: { report: PeriodsReport }) {
+  const [key, setKey] = useState(report.primary_period_key);
+  const period = report.periods.find((p) => p.key === key);
+  const teams = period?.teams as
+    | Record<
+        string,
+        {
+          distance_m?: number | null;
+          heatmap_s?: number[][] | null;
+          low_data?: boolean;
+          metric_notes?: Record<string, string>;
+        }
+      >
+    | undefined;
+  return (
+    <section className="surface">
+      <h2>Командные показатели по периодам</h2>
+      <select aria-label="Период командной статистики" value={key} onChange={(e) => setKey(e.target.value)}>
+        {report.periods.map((p) => (
+          <option key={String(p.key)} value={String(p.key)}>
+            {String(p.name)}
+          </option>
+        ))}
+      </select>
+      <div className="form-grid">
+        {teams &&
+          Object.entries(teams).map(([side, m]) => (
+            <div key={side}>
+              <h3>{report.teams[report.side_map[side]]?.name ?? side}</h3>
+              <p>Дистанция, м: {measure(m.distance_m)}</p>
+              {m.metric_notes?.distance_m && <p className="muted">{m.metric_notes.distance_m}</p>}
+              {m.low_data && !m.metric_notes?.distance_m && <p className="warning">Недостаточно наблюдений команды.</p>}
+              {m.heatmap_s && (
+                <Heatmap
+                  values={m.heatmap_s}
+                  tone={
+                    report.side_map[side] === 'home' ? 'home' : report.side_map[side] === 'away' ? 'away' : 'neutral'
+                  }
+                />
+              )}
+            </div>
+          ))}
+      </div>
+      <p className="muted">Периоды отображаются отдельно и не складываются с основным периодом.</p>
+    </section>
+  );
 }
 
-type TrackPeriod={key:string,name:string,players:({track_id:number,label:string,team:'A'|'B'|null}&AnalysisRun['players'][number]['metrics'])[]};
-function ImportedPeriods({run}:{run:AnalysisRun}){
- const [key,setKey]=useState(String(run.manifest.primary_period_key));const periods=run.report.periods as TrackPeriod[];const selected=periods.find(p=>p.key===key);
- const report:PeriodsReport={teams:run.context.teams,side_map:run.side_map,primary_period_key:String(run.manifest.primary_period_key),periods:run.report.periods as PublicAnalysis['periods']};
- return <><TeamPeriods report={report}/><section className="surface"><h2>Обзор фрагментов по периодам</h2><label className="field"><span>Период показателей фрагментов</span><select aria-label="Период показателей фрагментов" value={key} onChange={e=>setKey(e.target.value)}>{periods.map(p=><option key={p.key} value={p.key}>{p.name}</option>)}</select></label><p className="muted">Предварительные показатели относятся к трекам. Они ещё не означают подтверждённую личность игрока.</p></section>{selected&&<AnalysisReport heading="Показатели фрагментов до сопоставления" players={selected.players.map(p=>({player_id:`track:${p.track_id}`,display_name:`${p.label} · #${p.track_id}`,shirt_number:null,side:p.team?run.side_map[p.team]:'unknown',metrics:p}))} partial={run.partial} linkPlayers={false}/>}</>;
+type TrackPeriod = {
+  key: string;
+  name: string;
+  players: ({ track_id: number; label: string; team: 'A' | 'B' | null } & AnalysisRun['players'][number]['metrics'])[];
+};
+function ImportedPeriods({ run }: { run: AnalysisRun }) {
+  const [key, setKey] = useState(String(run.manifest.primary_period_key));
+  const periods = run.report.periods as TrackPeriod[];
+  const selected = periods.find((p) => p.key === key);
+  const report: PeriodsReport = {
+    teams: run.context.teams,
+    side_map: run.side_map,
+    primary_period_key: String(run.manifest.primary_period_key),
+    periods: run.report.periods as PublicAnalysis['periods'],
+  };
+  return (
+    <>
+      <TeamPeriods report={report} />
+      <section className="surface">
+        <h2>Обзор фрагментов по периодам</h2>
+        <label className="field">
+          <span>Период показателей фрагментов</span>
+          <select aria-label="Период показателей фрагментов" value={key} onChange={(e) => setKey(e.target.value)}>
+            {periods.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="muted">
+          Предварительные показатели относятся к трекам. Они ещё не означают подтверждённую личность игрока.
+        </p>
+      </section>
+      {selected && (
+        <AnalysisReport
+          heading="Показатели фрагментов до сопоставления"
+          players={selected.players.map((p) => ({
+            player_id: `track:${p.track_id}`,
+            display_name: `${p.label} · #${p.track_id}`,
+            shirt_number: null,
+            side: p.team ? run.side_map[p.team] : 'unknown',
+            metrics: p,
+          }))}
+          partial={run.partial}
+          linkPlayers={false}
+        />
+      )}
+    </>
+  );
 }
 
 // Подтверждённое сопоставление игроков сразу даёт версии для оценок: время на площадке и передачи.
-function AutoSources({run,note}:{run:AnalysisRun,note:string|null}){
- const auto=run.auto_sources;if(run.status!=='confirmed')return null;
- return <div className="auto-sources">{auto?.participation_version_id?<p>Для оценок создано автоматически: <a href="?tab=participation">участие №{auto.participation_revision}</a> — время на площадке у {plural(auto.players??0,['игрока','игроков','игроков'])}{auto.action_version_id?<>, <a href="?tab=actions">действия №{auto.action_revision}</a> — {plural(auto.passes??0,['передача','передачи','передач'])}</>:null}. Если сохранить свою версию, оценки возьмут её.</p>:!note&&<p className="muted">Версии для оценок из этой записи не созданы: игрокам протокола не назначены фрагменты.</p>}
-  {note&&<p className="warning">Для оценок: {note}.</p>}</div>;
+function AutoSources({ run, note }: { run: AnalysisRun; note: string | null }) {
+  const auto = run.auto_sources;
+  if (run.status !== 'confirmed') return null;
+  return (
+    <div className="auto-sources">
+      {auto?.participation_version_id ? (
+        <p>
+          Для оценок создано автоматически: <a href="?tab=participation">участие №{auto.participation_revision}</a> —
+          время на площадке у {plural(auto.players ?? 0, ['игрока', 'игроков', 'игроков'])}
+          {auto.action_version_id ? (
+            <>
+              , <a href="?tab=actions">действия №{auto.action_revision}</a> —{' '}
+              {plural(auto.passes ?? 0, ['передача', 'передачи', 'передач'])}
+            </>
+          ) : null}
+          . Если сохранить свою версию, оценки возьмут её.
+        </p>
+      ) : (
+        !note && (
+          <p className="muted">
+            Версии для оценок из этой записи не созданы: игрокам протокола не назначены фрагменты.
+          </p>
+        )
+      )}
+      {note && <p className="warning">Для оценок: {note}.</p>}
+    </div>
+  );
 }

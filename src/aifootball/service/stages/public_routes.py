@@ -1,4 +1,5 @@
 """Таблицы, сетка и пары без даты для зрителя — только по опубликованным протоколам."""
+
 from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session

@@ -1,4 +1,5 @@
 """Independent revision for active/public analysis pointers."""
+
 from alembic import op
 import sqlalchemy as sa
 

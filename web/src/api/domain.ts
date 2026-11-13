@@ -1,42 +1,80 @@
-import type {components,operations} from './types';
-type S=components['schemas'];
-export type Regulation=S['Regulation-Output'];
-export type Tournament=S['TournamentView'];
-export type Named=Pick<S['PlayerView'],'id'|'created_at'|'name'|'archived'>;
-export type Team=S['TeamView'];
-export type Player=S['PlayerView'];
-export type TeamProfile=S['TeamProfile'];
-export type ProfilePlayer=S['ProfilePlayer'];
-export type Entry=S['EntryView'];
-export type Roster=S['RosterView'];
-export type Match=S['MatchView'];
-export type Hall=S['HallView'];
-export type CameraProfile=S['CameraProfileView'];
-export type PublicMatch=S['PublicMatch'];
-export type PublicTournament=S['PublicTournament'];
-export type Version=S['VersionView'];
-export type RegVersion=S['RegulationView'];
-export type Session=S['SessionView'];
-export type Protocol=S['ProtocolDocument'];
-export type MatchEvent=Protocol['events'][number];
-export type Command=operations['command_api_v1_matches__mid__commands_post']['requestBody']['content']['application/json'];
-export type DraftCommand=Command extends infer C? C extends Command ? Pick<C,'kind'|'payload'>:never:never;
+import type { components, operations } from './types';
+type S = components['schemas'];
+export type Regulation = S['Regulation-Output'];
+export type Tournament = S['TournamentView'];
+export type Named = Pick<S['PlayerView'], 'id' | 'created_at' | 'name' | 'archived'>;
+export type Team = S['TeamView'];
+export type Player = S['PlayerView'];
+export type TeamProfile = S['TeamProfile'];
+export type ProfilePlayer = S['ProfilePlayer'];
+export type Entry = S['EntryView'];
+export type Roster = S['RosterView'];
+export type Match = S['MatchView'];
+export type Hall = S['HallView'];
+export type CameraProfile = S['CameraProfileView'];
+export type PublicMatch = S['PublicMatch'];
+export type PublicTournament = S['PublicTournament'];
+export type Version = S['VersionView'];
+export type RegVersion = S['RegulationView'];
+export type Session = S['SessionView'];
+export type Protocol = S['ProtocolDocument'];
+export type MatchEvent = Protocol['events'][number];
+export type Command =
+  operations['command_api_v1_matches__mid__commands_post']['requestBody']['content']['application/json'];
+export type DraftCommand = Command extends infer C ? (C extends Command ? Pick<C, 'kind' | 'payload'> : never) : never;
 // Один футзальный словарь амплуа для карточки команды и рейтингов. Каталог хранит прежние коды
 // (defender/winger/forward), импорт Excel уже сводит к ним «фиксо», «ала» и «пивот».
-export const futsalRoles={goalkeeper:'Вратарь',fixo:'Фиксо',ala:'Ала',pivot:'Пивот',universal:'Универсал'} as const;
-export const positions:Record<NonNullable<Player['position']>,string>={goalkeeper:futsalRoles.goalkeeper,defender:futsalRoles.fixo,winger:futsalRoles.ala,forward:futsalRoles.pivot,universal:futsalRoles.universal};
-export const statuses:Record<Match['status'],string>={scheduled:'Запланирован',live:'Идёт матч',ended:'Завершён',postponed:'Перенесён',cancelled:'Отменён'};
-export const sections:Record<keyof Protocol['completeness'],string>={goals:'Голы',assists:'Голевые передачи',fouls:'Фолы',cards:'Карточки',lineup:'Составы',time:'Игровое время'};
-export const kinds:Record<MatchEvent['kind'],string>={goal:'Гол',foul:'Фол',card:'Карточка',penalty_awarded:'Назначение пенальти',penalty_attempt:'Пенальти',shootout_attempt:'Серия пенальти',timeout:'Тайм-аут',substitution:'Замена',stoppage:'Остановка',period_start:'Начало тайма',period_end:'Конец тайма'};
-export type AnalysisRun=S['RunView'];
-export type AnalysisOverview=S['Overview'];
-export type AnalysisJob=S['JobView'];
-export type AnalysisAssignment=S['AssignmentInput'];
-export type AnalysisHistory=S['PlayerHistoryView'];
-export type PublicAnalysis=S['PublicAnalysis'];
-export type PublicProtocol=S['PublicProtocol'];
-export type TeamActionStats=S['TeamActionStats'];
-export type MatchRatingsView=S['MatchRatingsView'];
-export type PlayerRating=S['RatingMatchView'];
-export type TournamentRating=S['RatingSummaryView'];
-export type RatingSnapshot=S['RatingSnapshotResult'];
+export const futsalRoles = {
+  goalkeeper: 'Вратарь',
+  fixo: 'Фиксо',
+  ala: 'Ала',
+  pivot: 'Пивот',
+  universal: 'Универсал',
+} as const;
+export const positions: Record<NonNullable<Player['position']>, string> = {
+  goalkeeper: futsalRoles.goalkeeper,
+  defender: futsalRoles.fixo,
+  winger: futsalRoles.ala,
+  forward: futsalRoles.pivot,
+  universal: futsalRoles.universal,
+};
+export const statuses: Record<Match['status'], string> = {
+  scheduled: 'Запланирован',
+  live: 'Идёт матч',
+  ended: 'Завершён',
+  postponed: 'Перенесён',
+  cancelled: 'Отменён',
+};
+export const sections: Record<keyof Protocol['completeness'], string> = {
+  goals: 'Голы',
+  assists: 'Голевые передачи',
+  fouls: 'Фолы',
+  cards: 'Карточки',
+  lineup: 'Составы',
+  time: 'Игровое время',
+};
+export const kinds: Record<MatchEvent['kind'], string> = {
+  goal: 'Гол',
+  foul: 'Фол',
+  card: 'Карточка',
+  penalty_awarded: 'Назначение пенальти',
+  penalty_attempt: 'Пенальти',
+  shootout_attempt: 'Серия пенальти',
+  timeout: 'Тайм-аут',
+  substitution: 'Замена',
+  stoppage: 'Остановка',
+  period_start: 'Начало тайма',
+  period_end: 'Конец тайма',
+};
+export type AnalysisRun = S['RunView'];
+export type AnalysisOverview = S['Overview'];
+export type AnalysisJob = S['JobView'];
+export type AnalysisAssignment = S['AssignmentInput'];
+export type AnalysisHistory = S['PlayerHistoryView'];
+export type PublicAnalysis = S['PublicAnalysis'];
+export type PublicProtocol = S['PublicProtocol'];
+export type TeamActionStats = S['TeamActionStats'];
+export type MatchRatingsView = S['MatchRatingsView'];
+export type PlayerRating = S['RatingMatchView'];
+export type TournamentRating = S['RatingSummaryView'];
+export type RatingSnapshot = S['RatingSnapshotResult'];

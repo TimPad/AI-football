@@ -1,4 +1,5 @@
 """Keep existing public URLs while new tournaments start privately."""
+
 from alembic import op
 import sqlalchemy as sa
 

@@ -4,6 +4,7 @@
 касания A/B. Секунда [s, s+1) эталона — «игра», если не пересекает остановку, и «остановка», если
 целиком внутри неё. Смешанные секунды не оцениваются: граница известна с точностью нажатия клавиши.
 """
+
 import math
 
 import polars as pl
@@ -23,7 +24,7 @@ def dead_intervals(touches) -> list[tuple[float, float]]:
     for i, mark in enumerate(log):
         if mark['event'] != 'dead':
             continue
-        end = next((t['ts'] for t in log[i + 1:] if t['event'] in ('A', 'B')), None)
+        end = next((t['ts'] for t in log[i + 1 :] if t['event'] in ('A', 'B')), None)
         if end is None:
             continue
         if merged and mark['ts'] <= merged[-1][1]:
@@ -93,15 +94,23 @@ def score_seconds(reference: dict[int, str], predicted: dict[int, str]) -> dict:
     totals = {t: sum(confusion[t].values()) for t in LABELS}
     correct = sum(hits.values())
     recall = {t: _ratio(hits[t], totals[t]) for t in LABELS}
-    return {'labelled': n, 'covered': covered, 'correct': correct, 'coverage': _ratio(covered, n),
-            'accuracy': _ratio(correct, n), 'accuracy_covered': _ratio(correct, covered),
-            # Та же точность у правила «всегда игра» на отвеченных секундах: ниже неё ответы бесполезны.
-            'always_playing_covered': _ratio(covered - sum(confusion['stoppage'][t] for t in LABELS), covered),
-            'stoppage_precision': _ratio(hits['stoppage'], hits['stoppage'] + confusion['playing']['stoppage']),
-            'stoppage_recall': recall['stoppage'], 'playing_recall': recall['playing'],
-            'balanced_accuracy': None if None in recall.values() else (recall['playing'] + recall['stoppage']) / 2,
-            'accuracy_ci': wilson(correct, n), 'stoppage_recall_ci': wilson(hits['stoppage'], totals['stoppage']),
-            'confusion': confusion}
+    return {
+        'labelled': n,
+        'covered': covered,
+        'correct': correct,
+        'coverage': _ratio(covered, n),
+        'accuracy': _ratio(correct, n),
+        'accuracy_covered': _ratio(correct, covered),
+        # Та же точность у правила «всегда игра» на отвеченных секундах: ниже неё ответы бесполезны.
+        'always_playing_covered': _ratio(covered - sum(confusion['stoppage'][t] for t in LABELS), covered),
+        'stoppage_precision': _ratio(hits['stoppage'], hits['stoppage'] + confusion['playing']['stoppage']),
+        'stoppage_recall': recall['stoppage'],
+        'playing_recall': recall['playing'],
+        'balanced_accuracy': None if None in recall.values() else (recall['playing'] + recall['stoppage']) / 2,
+        'accuracy_ci': wilson(correct, n),
+        'stoppage_recall_ci': wilson(hits['stoppage'], totals['stoppage']),
+        'confusion': confusion,
+    }
 
 
 def stoppage_interval_recall(intervals, predicted: dict[int, str]) -> dict:
@@ -121,8 +130,13 @@ def match_shots(shots, events, *, tolerance_ms: int = 1500) -> dict:
     truth = [round(s['ts'] * 1000) for s in shots]
     pairs = _match(predicted, truth, lambda e, t: max(0, e['start_ms'] - t, t - e['end_ms']), tolerance_ms)
     sure = {j for j, s in enumerate(shots) if s.get('certainty') == 'sure'}
-    return {'labelled': len(shots), 'labelled_sure': len(sure), 'predicted': len(predicted),
-            'matched': len(pairs), 'matched_sure': sum(j in sure for _, j in pairs)}
+    return {
+        'labelled': len(shots),
+        'labelled_sure': len(sure),
+        'predicted': len(predicted),
+        'matched': len(pairs),
+        'matched_sure': sum(j in sure for _, j in pairs),
+    }
 
 
 def _known(values, reference):
@@ -145,9 +159,12 @@ def fit_threshold(values: dict[int, float], reference: dict[int, str]) -> float:
     candidates = [(a + b) / 2 for a, b in zip(known, known[1:])] + [known[-1] + 1e-6]
 
     def balanced(threshold):
-        predicted = {s: 'unknown' if values.get(s) is None else 'stoppage' if values[s] < threshold else 'playing'
-                     for s in reference}
+        predicted = {
+            s: 'unknown' if values.get(s) is None else 'stoppage' if values[s] < threshold else 'playing'
+            for s in reference
+        }
         return score_seconds(reference, predicted)['balanced_accuracy'] or 0.0
+
     return max(candidates, key=balanced)
 
 

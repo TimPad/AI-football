@@ -9,8 +9,18 @@ import math
 import yaml
 from aifootball.understanding.schema import restrict_to_tracks
 from aifootball.analytics.track_groups import track_groups
-from aifootball.analytics.exchange import (canonical, read_archive, load_json, ensure, uuid,
-                                           hash_value, validate_result, ExchangeError, UNITS, EVENT_KINDS)
+from aifootball.analytics.exchange import (
+    canonical,
+    read_archive,
+    load_json,
+    ensure,
+    uuid,
+    hash_value,
+    validate_result,
+    ExchangeError,
+    UNITS,
+    EVENT_KINDS,
+)
 
 # Передачи замерены на 15 кадрах/с; на 10 кадрах/с точность падает 0.78 → 0.70 (scripts/eval_events.py, Ярославль).
 # Порог чуть ниже 15: «15 кадров/с» у камер бывает 14.9.
@@ -28,8 +38,12 @@ BALL_MARGIN_FRAC = 80 / 2592
 def ball_settings(venue, frame_width):
     """Установка для своей модели мяча: замеренные порог и запас, если задание их не задаёт."""
     from dataclasses import replace
-    return replace(venue, conf_ball=max(venue.conf_ball, BALL_MODEL_CONF),
-                   ball_margin_px=venue.ball_margin_px or round(BALL_MARGIN_FRAC * frame_width))
+
+    return replace(
+        venue,
+        conf_ball=max(venue.conf_ball, BALL_MODEL_CONF),
+        ball_margin_px=venue.ball_margin_px or round(BALL_MARGIN_FRAC * frame_width),
+    )
 
 
 @dataclass(frozen=True)
@@ -44,26 +58,41 @@ def read_job(path):
     job = load_json(files['job.json'], 'job.json')
     try:
         ensure(job['contract_version'] == '1', 'Неподдерживаемая версия задания')
-        for field in ['job_id', 'match_id']: uuid(job[field], field)
-        context = job['context']; camera = context['camera']
+        for field in ['job_id', 'match_id']:
+            uuid(job[field], field)
+        context = job['context']
+        camera = context['camera']
         hash_value(job['context_hash'], 'context_hash')
         ensure(sha256(canonical(context)).hexdigest() == job['context_hash'], 'Изменён контекст задания')
         ensure(context['match_id'] == job['match_id'] and context['units'] == UNITS, 'Несогласованное задание')
-        cfg = yaml.safe_load(files['venue.yaml']); proc = cfg['processing']
-        ensure(cfg['pitch'] == context['pitch'] and cfg['venue_id'] == context['hall_id'] and
-               proc['camera_profile_id'] == camera['id'] and proc['frame_width'] == camera['frame_width'] and
-               proc['frame_height'] == camera['frame_height'] and
-               load_json(files['homography.json'], 'homography.json')['H'] == camera['homography'] and
-               load_json(files['pitch_polygon.json'], 'pitch_polygon.json')['points_px'] == camera['polygon_px'],
-               'CV-геометрия не совпадает со снимком задания')
+        cfg = yaml.safe_load(files['venue.yaml'])
+        proc = cfg['processing']
+        ensure(
+            cfg['pitch'] == context['pitch']
+            and cfg['venue_id'] == context['hall_id']
+            and proc['camera_profile_id'] == camera['id']
+            and proc['frame_width'] == camera['frame_width']
+            and proc['frame_height'] == camera['frame_height']
+            and load_json(files['homography.json'], 'homography.json')['H'] == camera['homography']
+            and load_json(files['pitch_polygon.json'], 'pitch_polygon.json')['points_px'] == camera['polygon_px'],
+            'CV-геометрия не совпадает со снимком задания',
+        )
         calibration = load_json(files['calib.json'], 'calib.json') if 'calib.json' in files else None
         ensure(calibration == camera['calibration'], 'CV-геометрия объектива не совпадает')
         # Эталонный кадр профиля: по нему обработчик сверяет, не сдвинута ли камера.
         reference = camera.get('reference_sha256')
-        ensure(('reference.jpg' in files) == (reference is not None) and
-               (reference is None or sha256(files['reference.jpg']).hexdigest() == reference), 'Эталонный кадр камеры не совпадает с заданием')
+        ensure(
+            ('reference.jpg' in files) == (reference is not None)
+            and (reference is None or sha256(files['reference.jpg']).hexdigest() == reference),
+            'Эталонный кадр камеры не совпадает с заданием',
+        )
         # Models are selected from the operator's trusted model directory, never arbitrary paths in a job.
-        ensure(isinstance(proc['model'], str) and Path(proc['model']).name == proc['model'] and proc['model'].endswith('.pt'), 'Неверное имя модели')
+        ensure(
+            isinstance(proc['model'], str)
+            and Path(proc['model']).name == proc['model']
+            and proc['model'].endswith('.pt'),
+            'Неверное имя модели',
+        )
         ensure(not proc.get('ball_model'), 'В этой версии задания используется только детектор игроков')
         return JobContext(job, files)
     except (KeyError, TypeError, yaml.YAMLError) as exc:
@@ -72,13 +101,18 @@ def read_job(path):
 
 def video_info(path):
     import cv2
+
     cap = cv2.VideoCapture(str(path))
     try:
         ensure(cap.isOpened(), 'Не открывается исходное видео')
-        fps = cap.get(cv2.CAP_PROP_FPS); frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         ensure(fps > 0 and frames > 0 and math.isfinite(fps), 'Не определена длительность видео')
-        return {'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                'duration_s': frames / fps}
+        return {
+            'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            'duration_s': frames / fps,
+        }
     finally:
         cap.release()
 
@@ -86,26 +120,33 @@ def video_info(path):
 def file_hash(path):
     hashed = sha256()
     with Path(path).open('rb') as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b''): hashed.update(chunk)
+        for chunk in iter(lambda: source.read(1024 * 1024), b''):
+            hashed.update(chunk)
     return hashed.hexdigest()
 
 
 def source_for_job(job, video):
-    source = video_info(video); camera = job.contract['context']['camera']
-    ensure(source['width'] == camera['frame_width'] and source['height'] == camera['frame_height'],
-           'разрешение видео не соответствует камере задания')
+    source = video_info(video)
+    camera = job.contract['context']['camera']
+    ensure(
+        source['width'] == camera['frame_width'] and source['height'] == camera['frame_height'],
+        'разрешение видео не соответствует камере задания',
+    )
     source['sha256'] = file_hash(video)
     return source
 
 
 def track_intervals(times, duration, max_gap=1.0):
     times = sorted(set(float(t) for t in times))
-    if not times: return []
-    out = []; start = previous = times[0]
+    if not times:
+        return []
+    out = []
+    start = previous = times[0]
     for t in times[1:]:
         if t - previous > max_gap:
             # Half-open ranges ending just after the last sample detect simultaneous detections.
-            out.append([start, min(duration, previous + 1e-6)]); start = t
+            out.append([start, min(duration, previous + 1e-6)])
+            start = t
         previous = t
     out.append([start, min(duration, previous + 1e-6)])
     return [pair for pair in out if pair[0] < pair[1]]
@@ -114,8 +155,14 @@ def track_intervals(times, duration, max_gap=1.0):
 def ball_model_path(models, name):
     """Модель мяча — файл .pt внутри доверенной папки моделей оператора (допускается одна подпапка)."""
     parts = Path(name).parts
-    ensure(isinstance(name, str) and name.endswith('.pt') and not Path(name).is_absolute() and 1 <= len(parts) <= 2 and
-           all(part not in ('.', '..') for part in parts), 'Неверное имя модели мяча')
+    ensure(
+        isinstance(name, str)
+        and name.endswith('.pt')
+        and not Path(name).is_absolute()
+        and 1 <= len(parts) <= 2
+        and all(part not in ('.', '..') for part in parts),
+        'Неверное имя модели мяча',
+    )
     path = Path(models) / name
     ensure(path.is_file(), f'Нет модели мяча: {name}')
     return path
@@ -129,6 +176,7 @@ def ball_events(artifacts, venue, state, spans, track_ids, models=None):
     from aifootball.analytics.periods import in_period
     from aifootball.perception.ball import process_ball_trajectory
     from aifootball.perception.teams import defending_sides
+
     meta_path, det_path = Path(artifacts) / 'meta.json', Path(artifacts) / 'detections.parquet'
     meta = load_json(meta_path.read_bytes(), 'meta.json') if meta_path.exists() else {}
     if not meta.get('ball_model') or not det_path.exists():
@@ -154,21 +202,48 @@ def ball_events(artifacts, venue, state, spans, track_ids, models=None):
         attack = {sides[0]: venue.length_m, sides[1]: 0.0} if sides else None
         for e in extract_events(in_period(ball, [span]), part, venue.length_m, venue.width_m, attack):
             recipient = e.get('recipient_track_id')
-            if (e['kind'] not in EVENT_KINDS or e['track_id'] not in track_ids or (recipient is not None and recipient not in track_ids)
-                    or None in (*e['start_xy'], *e['end_xy'])):
+            if (
+                e['kind'] not in EVENT_KINDS
+                or e['track_id'] not in track_ids
+                or (recipient is not None and recipient not in track_ids)
+                or None in (*e['start_xy'], *e['end_xy'])
+            ):
                 continue
-            events.append({'kind': e['kind'], 'track_id': int(e['track_id']), 'team': e['team'],
-                           'start_s': round(float(e['start_s']), 3), 'end_s': round(float(e['end_s']), 3),
-                           'start_xy': [round(float(v), 2) for v in e['start_xy']], 'end_xy': [round(float(v), 2) for v in e['end_xy']],
-                           'recipient_track_id': None if recipient is None else int(recipient), 'success': bool(e['success']),
-                           'confidence': round(float(e['confidence']), 2)})
+            events.append(
+                {
+                    'kind': e['kind'],
+                    'track_id': int(e['track_id']),
+                    'team': e['team'],
+                    'start_s': round(float(e['start_s']), 3),
+                    'end_s': round(float(e['end_s']), 3),
+                    'start_xy': [round(float(v), 2) for v in e['start_xy']],
+                    'end_xy': [round(float(v), 2) for v in e['end_xy']],
+                    'recipient_track_id': None if recipient is None else int(recipient),
+                    'success': bool(e['success']),
+                    'confidence': round(float(e['confidence']), 2),
+                }
+            )
     events.sort(key=lambda e: e['start_s'])
-    return {'schema_version': '1', 'ball': {'model': meta['ball_model'], 'sha256': sha, 'frames_with_ball': round(share, 3)},
-            'kinds': list(EVENT_KINDS), 'events': events}, None
+    return {
+        'schema_version': '1',
+        'ball': {'model': meta['ball_model'], 'sha256': sha, 'frames_with_ball': round(share, 3)},
+        'kinds': list(EVENT_KINDS),
+        'events': events,
+    }, None
 
 
-def package_result(job_path, video_path, artifacts, output_path, *, halves=None, partial_recording=False, understanding=None,
-                   evidence_files=None, models=None):
+def package_result(
+    job_path,
+    video_path,
+    artifacts,
+    output_path,
+    *,
+    halves=None,
+    partial_recording=False,
+    understanding=None,
+    evidence_files=None,
+    models=None,
+):
     import polars as pl
     from aifootball import schemas
     from aifootball.venue import load_venue
@@ -178,13 +253,17 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
     from aifootball.report.frames import grab_images
     from tempfile import TemporaryDirectory
     from aifootball.geometry.camera_drift import alignment_messages, apply_alignment
-    job = read_job(job_path); source = source_for_job(job, video_path)
+
+    job = read_job(job_path)
+    source = source_for_job(job, video_path)
     artifacts, output_path = Path(artifacts), Path(output_path)
-    state = schemas.read(artifacts / 'state.parquet', 'state'); tracks = schemas.read(artifacts / 'tracks.parquet', 'tracks')
+    state = schemas.read(artifacts / 'state.parquet', 'state')
+    tracks = schemas.read(artifacts / 'tracks.parquet', 'tracks')
     ensure(not state.is_empty() and not tracks.is_empty(), 'Нет обработанных позиций')
     with TemporaryDirectory(prefix='aifootball-cv-') as temporary:
         root = Path(temporary)
-        for name, raw in job.files.items(): (root / name).write_bytes(raw)
+        for name, raw in job.files.items():
+            (root / name).write_bytes(raw)
         venue = load_venue(root)
     meta_path = artifacts / 'meta.json'
     alignment = load_json(meta_path.read_bytes(), 'meta.json').get('camera_alignment') if meta_path.exists() else None
@@ -197,8 +276,14 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
     spans = [(a, min(b, end)) for a, b in spans] if spans else [(times[0], end)]
     ensure(all(b > a for a, b in spans), 'Нет данных внутри выбранных периодов')
     context = job.contract['context']
-    report = build_report(state, tracks, venue, spans,
-                          {'A': context['teams']['home']['name'], 'B': context['teams']['away']['name']}, source['duration_s'])
+    report = build_report(
+        state,
+        tracks,
+        venue,
+        spans,
+        {'A': context['teams']['home']['name'], 'B': context['teams']['away']['name']},
+        source['duration_s'],
+    )
     report['pitch']['orientation'] = 'camera'
     report['match']['video_duration_estimated'] = False
     primary = report['periods'][0]
@@ -206,77 +291,131 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
     for period in report['periods']:
         part = in_period(state, period['spans'])
         for player in period['players']:
-            player['heatmap_s'] = heatmap_seconds(part.filter(pl.col('track_id') == player['track_id']), venue.length_m, venue.width_m)
+            player['heatmap_s'] = heatmap_seconds(
+                part.filter(pl.col('track_id') == player['track_id']), venue.length_m, venue.width_m
+            )
         for team, values in period['teams'].items():
-            values['heatmap_s'] = heatmap_seconds(part.filter((pl.col('team') == team) & (pl.col('role') == 'player')), venue.length_m, venue.width_m)
+            values['heatmap_s'] = heatmap_seconds(
+                part.filter((pl.col('team') == team) & (pl.col('role') == 'player')), venue.length_m, venue.width_m
+            )
     normalize_report(report)
     normalized = assign_goalkeeper_teams(in_period(state, spans), spans, venue.length_m)
     known = {p['track_id']: p for p in primary['players']}
-    indexed = []; requests = {}
+    indexed = []
+    requests = {}
     for (tid,), group in normalized.group_by('track_id', maintain_order=True):
         player = known.get(tid)
         role = player['role'] if player else group['role'].mode().first()
         team = player['team'] if player else group['team'].mode().first()
-        if role not in ('player', 'goalkeeper', 'referee'): role = 'unknown'
-        if team not in ('A', 'B'): team = None
+        if role not in ('player', 'goalkeeper', 'referee'):
+            role = 'unknown'
+        if team not in ('A', 'B'):
+            team = None
         intervals = track_intervals(group['ts'].to_list(), source['duration_s'])
-        if not intervals: continue
+        if not intervals:
+            continue
         request = thumb_request(tracks, tid)
-        if request: requests[str(tid)] = request
-        indexed.append({'track_id': tid, 'team': team, 'role': role, 'intervals': intervals,
-                        'thumb': None, 'has_metrics': tid in known})
+        if request:
+            requests[str(tid)] = request
+        indexed.append(
+            {
+                'track_id': tid,
+                'team': team,
+                'role': role,
+                'intervals': intervals,
+                'thumb': None,
+                'has_metrics': tid in known,
+            }
+        )
     images = grab_images(Path(video_path), requests)
     files = {}
     for track in indexed:
         image = images.get(str(track['track_id']))
         if image:
-            name = f"thumbs/{track['track_id']}.jpg"
-            files[name] = base64.b64decode(image.split(',', 1)[1]); track['thumb'] = name
+            name = f'thumbs/{track["track_id"]}.jpg'
+            files[name] = base64.b64decode(image.split(',', 1)[1])
+            track['thumb'] = name
     checked = phase1_checks(state, venue.length_m, venue.width_m)
     partial = partial_recording or report['match']['processed_s'] < source['duration_s'] - max(1, step * 2)
     events, events_warning = ball_events(artifacts, venue, normalized, spans, {t['track_id'] for t in indexed}, models)
     camera_warnings, camera_errors = alignment_messages(alignment)
-    warnings = (['Частичная запись или неполное покрытие обработки'] if partial else []) + ([events_warning] if events_warning else []) + camera_warnings
+    warnings = (
+        (['Частичная запись или неполное покрытие обработки'] if partial else [])
+        + ([events_warning] if events_warning else [])
+        + camera_warnings
+    )
     errors = ([] if checked['passed'] else ['Проверки координат/скоростей не пройдены']) + camera_errors
-    checks = {**checked, 'passed': checked['passed'] and not camera_errors, 'critical_errors': errors,
-              'partial': partial, 'warnings': warnings}
+    checks = {
+        **checked,
+        'passed': checked['passed'] and not camera_errors,
+        'critical_errors': errors,
+        'partial': partial,
+        'warnings': warnings,
+    }
     if alignment:
-        checks['camera_alignment'] = {k: alignment[k] for k in ('status', 'shift_px', 'error_if_uncorrected_m', 'moved_at_s') if k in alignment}
+        checks['camera_alignment'] = {
+            k: alignment[k] for k in ('status', 'shift_px', 'error_if_uncorrected_m', 'moved_at_s') if k in alignment
+        }
     # Кандидаты-игроки: склейка по тем же команде и роли, что в индексе (их видит проверка в кабинете).
-    labels = pl.DataFrame({'track_id': [t['track_id'] for t in indexed], 'team_index': [t['team'] for t in indexed],
-                           'role_index': [t['role'] for t in indexed]}, schema={'track_id': normalized.schema['track_id'],
-                           'team_index': pl.String, 'role_index': pl.String})
+    labels = pl.DataFrame(
+        {
+            'track_id': [t['track_id'] for t in indexed],
+            'team_index': [t['team'] for t in indexed],
+            'role_index': [t['role'] for t in indexed],
+        },
+        schema={'track_id': normalized.schema['track_id'], 'team_index': pl.String, 'role_index': pl.String},
+    )
     labelled = normalized.join(labels, on='track_id').with_columns(team=pl.col('team_index'), role=pl.col('role_index'))
     groups = track_groups(labelled, venue.width_m)
-    for name, value in [('report.json', report), ('track-index.json', {'tracks': indexed, 'groups': groups}), ('checks.json', checks)]:
+    for name, value in [
+        ('report.json', report),
+        ('track-index.json', {'tracks': indexed, 'groups': groups}),
+        ('checks.json', checks),
+    ]:
         files[name] = canonical(value)
     if events is not None:
         files['events.json'] = canonical(events)
     if understanding is not None:
         ensure(isinstance(evidence_files, dict) and len(evidence_files) <= 500, 'Неверный реестр доказательств')
-        ensure(all(isinstance(raw, bytes) and len(raw) <= 512 * 1024 for raw in evidence_files.values()), 'Размер доказательства')
+        ensure(
+            all(isinstance(raw, bytes) and len(raw) <= 512 * 1024 for raw in evidence_files.values()),
+            'Размер доказательства',
+        )
         ensure(not (set(files) & set(evidence_files)), 'Конфликт имён доказательств')
         # Окна видят и короткие треки, которые пакет отбрасывает; ссылки сужаются до индекса пакета.
         understanding = restrict_to_tracks(understanding, {track['track_id'] for track in indexed})
-        evidence_files = {path: raw for path, raw in evidence_files.items() if path in {e['path'] for e in understanding['evidence']}}
-        files.update(evidence_files); files['understanding.json'] = canonical(understanding)
+        evidence_files = {
+            path: raw for path, raw in evidence_files.items() if path in {e['path'] for e in understanding['evidence']}
+        }
+        files.update(evidence_files)
+        files['understanding.json'] = canonical(understanding)
         ensure(len(files['understanding.json']) <= 8 * 1024 * 1024, 'Размер understanding.json')
     else:
         ensure(not evidence_files, 'Доказательства требуют understanding')
     version = '3' if events is not None else '2' if understanding is not None else '1'
     processor = {'name': 'aifootball', 'version': '0.1.0', 'model': venue.model}
-    if events is not None: processor['ball_model'] = events['ball']['model']
-    manifest = {'contract_version': version, 'run_id': str(uuid4()), 'job_id': job.contract['job_id'],
-                'match_id': job.contract['match_id'], 'context_hash': job.contract['context_hash'],
-                'camera_profile_id': context['camera']['id'], 'primary_period_key': primary['key'],
-                'source_video': source, 'processor': processor,
-                'units': UNITS, 'files': {name: {'size': len(raw), 'sha256': sha256(raw).hexdigest()} for name, raw in files.items()}}
+    if events is not None:
+        processor['ball_model'] = events['ball']['model']
+    manifest = {
+        'contract_version': version,
+        'run_id': str(uuid4()),
+        'job_id': job.contract['job_id'],
+        'match_id': job.contract['match_id'],
+        'context_hash': job.contract['context_hash'],
+        'camera_profile_id': context['camera']['id'],
+        'primary_period_key': primary['key'],
+        'source_video': source,
+        'processor': processor,
+        'units': UNITS,
+        'files': {name: {'size': len(raw), 'sha256': sha256(raw).hexdigest()} for name, raw in files.items()},
+    }
     files['manifest.json'] = canonical(manifest)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     staging = output_path.with_name(output_path.name + '.' + uuid4().hex + '.tmp')
     try:
         with ZipFile(staging, 'w', compression=ZIP_DEFLATED) as archive:
-            for name, raw in sorted(files.items()): archive.writestr(name, raw)
+            for name, raw in sorted(files.items()):
+                archive.writestr(name, raw)
         validate_result(staging)
         staging.replace(output_path)
     finally:
@@ -285,67 +424,141 @@ def package_result(job_path, video_path, artifacts, output_path, *, halves=None,
     return output_path
 
 
-def process_job(job_path, video_path, output_path, *, models=Path('models'), artifacts=None, halves=None,
-                partial_recording=False, understand=False, work_dir=None, resume=False, vlm_mode='native',
-                vlm_max_requests=200, vlm_max_input_tokens=300_000, vlm_max_output_tokens=100_000,
-                analysis_scope='unknown', ball_model=None):
+def process_job(
+    job_path,
+    video_path,
+    output_path,
+    *,
+    models=Path('models'),
+    artifacts=None,
+    halves=None,
+    partial_recording=False,
+    understand=False,
+    work_dir=None,
+    resume=False,
+    vlm_mode='native',
+    vlm_max_requests=200,
+    vlm_max_input_tokens=300_000,
+    vlm_max_output_tokens=100_000,
+    analysis_scope='unknown',
+    ball_model=None,
+):
     from aifootball.processor.cv import run_cv
     from aifootball.processor.workspace import Workspace
-    ensure(not resume or (work_dir is not None and (Path(work_dir)/'workspace.json').exists()),
-           'resume requires an existing --work-dir workspace')
-    ensure(vlm_mode in ('native','frames') and analysis_scope in ('full_match','continuous_excerpt','highlights','unknown'), 'Неверные параметры понимания')
-    ensure(all(type(value) is int and value >= 0 for value in (vlm_max_requests, vlm_max_input_tokens, vlm_max_output_tokens)), 'Неверный бюджет обработки')
+
+    ensure(
+        not resume or (work_dir is not None and (Path(work_dir) / 'workspace.json').exists()),
+        'resume requires an existing --work-dir workspace',
+    )
+    ensure(
+        vlm_mode in ('native', 'frames')
+        and analysis_scope in ('full_match', 'continuous_excerpt', 'highlights', 'unknown'),
+        'Неверные параметры понимания',
+    )
+    ensure(
+        all(
+            type(value) is int and value >= 0
+            for value in (vlm_max_requests, vlm_max_input_tokens, vlm_max_output_tokens)
+        ),
+        'Неверный бюджет обработки',
+    )
     client = None
     if understand:
         import shutil
         from aifootball.processor.qwen import QwenClient, QwenConfig
+
         client = QwenClient(QwenConfig.from_env())
         ensure(bool(shutil.which('ffmpeg') and shutil.which('ffprobe')), 'Требуется FFmpeg/ffprobe')
-    job = read_job(job_path); source = source_for_job(job, video_path)
-    ensure(ball_model is None or artifacts is None, '--ball-model задаётся при обработке видео; у артефактов модель записана в meta.json')
+    job = read_job(job_path)
+    source = source_for_job(job, video_path)
+    ensure(
+        ball_model is None or artifacts is None,
+        '--ball-model задаётся при обработке видео; у артефактов модель записана в meta.json',
+    )
     if artifacts is not None:
         meta = load_json((Path(artifacts) / 'meta.json').read_bytes(), 'meta.json')
-        ensure(meta.get('camera_profile_id') == job.contract['context']['camera']['id'] and
-               meta.get('source_sha256') == source['sha256'] and meta.get('context_hash') == job.contract['context_hash'],
-               'Артефакты не подтверждают происхождение камеры/видео/контекста задания')
+        ensure(
+            meta.get('camera_profile_id') == job.contract['context']['camera']['id']
+            and meta.get('source_sha256') == source['sha256']
+            and meta.get('context_hash') == job.contract['context_hash'],
+            'Артефакты не подтверждают происхождение камеры/видео/контекста задания',
+        )
         if not understand:
-            return package_result(job_path, video_path, artifacts, output_path, halves=halves, partial_recording=partial_recording,
-                                  models=models)
+            return package_result(
+                job_path,
+                video_path,
+                artifacts,
+                output_path,
+                halves=halves,
+                partial_recording=partial_recording,
+                models=models,
+            )
     work = Path(work_dir) if work_dir is not None else Path(output_path).parent / ('processor-' + uuid4().hex)
-    ensure(not (work_dir is not None and (work/'workspace.json').exists() and not resume), 'Existing work-dir requires --resume')
+    ensure(
+        not (work_dir is not None and (work / 'workspace.json').exists() and not resume),
+        'Existing work-dir requires --resume',
+    )
     workspace = Workspace(work, {'source': source['sha256'], 'context_hash': job.contract['context_hash']})
     with workspace.exclusive():
-        root = Path(artifacts) if artifacts is not None else run_cv(Path(job_path), Path(video_path), workspace, models=Path(models),
-                                                                     ball_model=ball_model)
-        understanding = None; evidence = None
+        root = (
+            Path(artifacts)
+            if artifacts is not None
+            else run_cv(Path(job_path), Path(video_path), workspace, models=Path(models), ball_model=ball_model)
+        )
+        understanding = None
+        evidence = None
         if understand:
             from aifootball.processor.understand import run_understanding
             from aifootball.processor.budget import Budget
-            budget = Budget(workspace, max_requests=vlm_max_requests, max_input_tokens=vlm_max_input_tokens,
-                            max_output_tokens=vlm_max_output_tokens)
-            understanding, evidence = run_understanding(job, Path(video_path), root, workspace, client=client,
-                budget=budget, mode=vlm_mode, analysis_scope=analysis_scope)
-        return package_result(job_path, video_path, root, output_path, halves=halves,
-            partial_recording=partial_recording, understanding=understanding, evidence_files=evidence, models=models)
 
+            budget = Budget(
+                workspace,
+                max_requests=vlm_max_requests,
+                max_input_tokens=vlm_max_input_tokens,
+                max_output_tokens=vlm_max_output_tokens,
+            )
+            understanding, evidence = run_understanding(
+                job,
+                Path(video_path),
+                root,
+                workspace,
+                client=client,
+                budget=budget,
+                mode=vlm_mode,
+                analysis_scope=analysis_scope,
+            )
+        return package_result(
+            job_path,
+            video_path,
+            root,
+            output_path,
+            halves=halves,
+            partial_recording=partial_recording,
+            understanding=understanding,
+            evidence_files=evidence,
+            models=models,
+        )
 
 
 def normalize_report(report):
     """Translate legacy report missingness into the strict exchange contract."""
-    metrics = ['observed_s','distance_m','m_per_min','hsr_m','sprints','vmax_ms','heatmap_s']
+    metrics = ['observed_s', 'distance_m', 'm_per_min', 'hsr_m', 'sprints', 'vmax_ms', 'heatmap_s']
     for period in report['periods']:
         for player in period['players']:
             notes = player.setdefault('metric_notes', {})
             for key in metrics:
                 if player.get(key) is None:
-                    notes[key] = 'Нет устойчивых измерений скорости' if key == 'vmax_ms' else 'Недостаточно наблюдений фрагмента'
+                    notes[key] = (
+                        'Нет устойчивых измерений скорости' if key == 'vmax_ms' else 'Недостаточно наблюдений фрагмента'
+                    )
         for team in period['teams'].values():
             notes = team.setdefault('metric_notes', {})
             if not team.get('observed_s'):
                 team['low_data'] = True
-                for key in metrics + ['width_m','depth_m','compactness_m2']:
+                for key in metrics + ['width_m', 'depth_m', 'compactness_m2']:
                     team[key] = None
                     notes[key] = 'Нет наблюдений команды'
             else:
-                for key in metrics + ['width_m','depth_m','compactness_m2']:
-                    if key in team and team[key] is None: notes[key] = 'Недостаточно наблюдений команды'
+                for key in metrics + ['width_m', 'depth_m', 'compactness_m2']:
+                    if key in team and team[key] is None:
+                        notes[key] = 'Недостаточно наблюдений команды'

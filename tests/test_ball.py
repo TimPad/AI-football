@@ -12,17 +12,53 @@ from aifootball.perception.ball import (
 def test_process_ball_trajectory_filters_spikes_and_interpolates(venue):
     # Создаём детекции мяча со скачком на 50 м/с и с пропуском 0.5 с
     rows = [
-        {"frame_id": 1, "ts": 0.1, "cls": "ball", "x1": 100.0, "y1": 100.0, "x2": 110.0, "y2": 110.0, "conf": 0.5, "torso_l": np.nan, "torso_a": np.nan, "torso_b": np.nan},
-        {"frame_id": 2, "ts": 0.2, "cls": "ball", "x1": 105.0, "y1": 100.0, "x2": 115.0, "y2": 110.0, "conf": 0.5, "torso_l": np.nan, "torso_a": np.nan, "torso_b": np.nan},
+        {
+            'frame_id': 1,
+            'ts': 0.1,
+            'cls': 'ball',
+            'x1': 100.0,
+            'y1': 100.0,
+            'x2': 110.0,
+            'y2': 110.0,
+            'conf': 0.5,
+            'torso_l': np.nan,
+            'torso_a': np.nan,
+            'torso_b': np.nan,
+        },
+        {
+            'frame_id': 2,
+            'ts': 0.2,
+            'cls': 'ball',
+            'x1': 105.0,
+            'y1': 100.0,
+            'x2': 115.0,
+            'y2': 110.0,
+            'conf': 0.5,
+            'torso_l': np.nan,
+            'torso_a': np.nan,
+            'torso_b': np.nan,
+        },
         # Пропуск 0.5 с
-        {"frame_id": 7, "ts": 0.7, "cls": "ball", "x1": 130.0, "y1": 100.0, "x2": 140.0, "y2": 110.0, "conf": 0.5, "torso_l": np.nan, "torso_a": np.nan, "torso_b": np.nan},
+        {
+            'frame_id': 7,
+            'ts': 0.7,
+            'cls': 'ball',
+            'x1': 130.0,
+            'y1': 100.0,
+            'x2': 140.0,
+            'y2': 110.0,
+            'conf': 0.5,
+            'torso_l': np.nan,
+            'torso_a': np.nan,
+            'torso_b': np.nan,
+        },
     ]
 
     detections = pl.DataFrame(rows, schema=schemas.DETECTIONS)
     ball_state = process_ball_trajectory(detections, venue)
 
     assert not ball_state.is_empty()
-    assert ball_state["interpolated"].sum() > 0  # Пропуск был интерполирован
+    assert ball_state['interpolated'].sum() > 0  # Пропуск был интерполирован
 
 
 def test_compute_possession_team_assignment():
@@ -30,44 +66,49 @@ def test_compute_possession_team_assignment():
     xs = [10] * 6 + [30] * 6
     poss = compute_possession(_ball(xs), _players([A1] * 6 + [B1] * 6, xs))
 
-    assert poss["possession_pct"]["A"] == 50.0
-    assert poss["possession_pct"]["B"] == 50.0
+    assert poss['possession_pct']['A'] == 50.0
+    assert poss['possession_pct']['B'] == 50.0
 
 
 def _ball(xs, dt=0.1):
     n = len(xs)
-    return pl.DataFrame({
-        "frame_id": list(range(1, n + 1)),
-        "ts": [dt * (i + 1) for i in range(n)],
-        "x_m": [float(x) for x in xs],
-        "y_m": [5.0] * n,
-        "speed": [0.0] * n,
-        "interpolated": [False] * n,
-    })
+    return pl.DataFrame(
+        {
+            'frame_id': list(range(1, n + 1)),
+            'ts': [dt * (i + 1) for i in range(n)],
+            'x_m': [float(x) for x in xs],
+            'y_m': [5.0] * n,
+            'speed': [0.0] * n,
+            'interpolated': [False] * n,
+        }
+    )
 
 
 def _players(owners, xs, dt=0.1):
     """owners[i] — (track_id, role, team) игрока в кадре i+1, стоящего в точке xs[i]."""
     n = len(owners)
-    return pl.DataFrame({
-        "frame_id": list(range(1, n + 1)),
-        "ts": [dt * (i + 1) for i in range(n)],
-        "track_id": [o[0] for o in owners],
-        "role": [o[1] for o in owners],
-        "team": [o[2] for o in owners],
-        "x_m": [float(x) + 0.1 for x in xs],
-        "y_m": [5.0] * n,
-        "vx": [0.0] * n,
-        "vy": [0.0] * n,
-        "speed": [0.0] * n,
-        "interpolated": [False] * n,
-    }, schema_overrides={"team": pl.Utf8})
+    return pl.DataFrame(
+        {
+            'frame_id': list(range(1, n + 1)),
+            'ts': [dt * (i + 1) for i in range(n)],
+            'track_id': [o[0] for o in owners],
+            'role': [o[1] for o in owners],
+            'team': [o[2] for o in owners],
+            'x_m': [float(x) + 0.1 for x in xs],
+            'y_m': [5.0] * n,
+            'vx': [0.0] * n,
+            'vy': [0.0] * n,
+            'speed': [0.0] * n,
+            'interpolated': [False] * n,
+        },
+        schema_overrides={'team': pl.Utf8},
+    )
 
 
-A1 = (1, "player", "A")
-A2 = (2, "player", "A")
-B1 = (3, "player", "B")
-REF = (9, "referee", None)
+A1 = (1, 'player', 'A')
+A2 = (2, 'player', 'A')
+B1 = (3, 'player', 'B')
+REF = (9, 'referee', None)
 
 
 def test_detect_passes_between_teammates():
@@ -76,9 +117,9 @@ def test_detect_passes_between_teammates():
     xs = [10] * 4 + [20] * 4
     passes = detect_passes(_ball(xs), _players([A1] * 4 + [A2] * 4, xs))
 
-    assert passes["passes_total"] == {"A": 1, "B": 0}
-    assert passes["passes_completed"] == {"A": 1, "B": 0}
-    assert passes["pass_accuracy_pct"]["A"] == 100.0
+    assert passes['passes_total'] == {'A': 1, 'B': 0}
+    assert passes['passes_completed'] == {'A': 1, 'B': 0}
+    assert passes['pass_accuracy_pct']['A'] == 100.0
 
 
 def test_detect_passes_interception_is_incomplete():
@@ -87,9 +128,9 @@ def test_detect_passes_interception_is_incomplete():
     xs = [10] * 4 + [20] * 4
     passes = detect_passes(_ball(xs), _players([A1] * 4 + [B1] * 4, xs))
 
-    assert passes["passes_total"] == {"A": 1, "B": 0}
-    assert passes["passes_completed"] == {"A": 0, "B": 0}
-    assert passes["pass_accuracy_pct"]["A"] == 0.0
+    assert passes['passes_total'] == {'A': 1, 'B': 0}
+    assert passes['passes_completed'] == {'A': 0, 'B': 0}
+    assert passes['pass_accuracy_pct']['A'] == 0.0
 
 
 def test_detect_passes_ignores_flicker_between_neighbours():
@@ -100,7 +141,7 @@ def test_detect_passes_ignores_flicker_between_neighbours():
     owners = [A1, A2] * 5
     passes = detect_passes(_ball(xs), _players(owners, xs))
 
-    assert passes["passes_total"] == {"A": 0, "B": 0}
+    assert passes['passes_total'] == {'A': 0, 'B': 0}
 
 
 def test_detect_passes_short_touch_does_not_break_possession():
@@ -111,7 +152,7 @@ def test_detect_passes_short_touch_does_not_break_possession():
     owners = [A1] * 4 + [B1] + [A1] * 4
     passes = detect_passes(_ball(xs), _players(owners, xs))
 
-    assert passes["passes_total"] == {"A": 0, "B": 0}
+    assert passes['passes_total'] == {'A': 0, 'B': 0}
 
 
 def test_detect_passes_ignores_referee_near_ball():
@@ -122,8 +163,8 @@ def test_detect_passes_ignores_referee_near_ball():
     owners = [A1] * 4 + [REF] * 4 + [A2] * 4
     passes = detect_passes(_ball(xs), _players(owners, xs))
 
-    assert passes["passes_total"] == {"A": 1, "B": 0}
-    assert passes["passes_completed"] == {"A": 1, "B": 0}
+    assert passes['passes_total'] == {'A': 1, 'B': 0}
+    assert passes['passes_completed'] == {'A': 1, 'B': 0}
 
 
 def test_detect_passes_ignores_owner_change_after_long_gap():
@@ -135,19 +176,28 @@ def test_detect_passes_ignores_owner_change_after_long_gap():
     owners = [A1] * 44 + [A2] * 4
     passes = detect_passes(_ball(ball_xs), _players(owners, player_xs))
 
-    assert passes["passes_total"] == {"A": 0, "B": 0}
+    assert passes['passes_total'] == {'A': 0, 'B': 0}
 
 
 def _ball_dets(rows):
     """rows: (frame_id, cx, cy, conf) — бокс 10x10 px вокруг центра."""
     n = len(rows)
-    return pl.DataFrame({
-        "frame_id": [r[0] for r in rows], "ts": [r[0] / 10 for r in rows], "cls": ["ball"] * n,
-        "x1": [r[1] - 5 for r in rows], "y1": [r[2] - 5 for r in rows],
-        "x2": [r[1] + 5 for r in rows], "y2": [r[2] + 5 for r in rows],
-        "conf": [r[3] for r in rows],
-        "torso_l": [np.nan] * n, "torso_a": [np.nan] * n, "torso_b": [np.nan] * n,
-    }, schema=schemas.DETECTIONS)
+    return pl.DataFrame(
+        {
+            'frame_id': [r[0] for r in rows],
+            'ts': [r[0] / 10 for r in rows],
+            'cls': ['ball'] * n,
+            'x1': [r[1] - 5 for r in rows],
+            'y1': [r[2] - 5 for r in rows],
+            'x2': [r[1] + 5 for r in rows],
+            'y2': [r[2] + 5 for r in rows],
+            'conf': [r[3] for r in rows],
+            'torso_l': [np.nan] * n,
+            'torso_a': [np.nan] * n,
+            'torso_b': [np.nan] * n,
+        },
+        schema=schemas.DETECTIONS,
+    )
 
 
 def test_ball_trajectory_takes_most_confident_detection_per_frame(venue):
@@ -156,14 +206,14 @@ def test_ball_trajectory_takes_most_confident_detection_per_frame(venue):
 
     state = process_ball_trajectory(dets, venue)
 
-    assert state.filter(pl.col("frame_id") == 1)["x_m"].to_list() == pytest.approx([10.0])
+    assert state.filter(pl.col('frame_id') == 1)['x_m'].to_list() == pytest.approx([10.0])
 
 
 def test_ball_trajectory_uses_the_floor_point_of_the_ball(venue):
     # мяч касается пола нижней точкой: бокс 95..105 px по вертикали -> 105 px -> 10.5 м
     state = process_ball_trajectory(_ball_dets([(1, 100, 100, 0.9)]), venue)
 
-    assert state["y_m"].to_list() == pytest.approx([10.5])
+    assert state['y_m'].to_list() == pytest.approx([10.5])
 
 
 def test_ball_trajectory_drops_spike_but_keeps_next_good_point(venue):
@@ -171,10 +221,10 @@ def test_ball_trajectory_drops_spike_but_keeps_next_good_point(venue):
     dets = _ball_dets([(1, 100, 100, 0.9), (2, 105, 100, 0.9), (3, 300, 100, 0.9), (4, 110, 100, 0.9)])
 
     state = process_ball_trajectory(dets, venue)
-    real = state.filter(~pl.col("interpolated"))
+    real = state.filter(~pl.col('interpolated'))
 
-    assert real["frame_id"].to_list() == [1, 2, 4]
-    assert real.filter(pl.col("frame_id") == 4)["x_m"].to_list() == pytest.approx([11.0])
+    assert real['frame_id'].to_list() == [1, 2, 4]
+    assert real.filter(pl.col('frame_id') == 4)['x_m'].to_list() == pytest.approx([11.0])
 
 
 def test_ball_trajectory_keeps_ball_within_margin_outside_contour(tmp_path):
@@ -182,21 +232,41 @@ def test_ball_trajectory_keeps_ball_within_margin_outside_contour(tmp_path):
     from aifootball.venue import load_venue
     from conftest import SCALE_H, make_venue_dir
 
-    venue = load_venue(make_venue_dir(tmp_path / "v", polygon=[[0, 0], [400, 0], [400, 200], [0, 200]], H=SCALE_H,
-                                      processing={"ball_margin_px": 20}))
+    venue = load_venue(
+        make_venue_dir(
+            tmp_path / 'v',
+            polygon=[[0, 0], [400, 0], [400, 200], [0, 200]],
+            H=SCALE_H,
+            processing={'ball_margin_px': 20},
+        )
+    )
     dets = _ball_dets([(1, 395, 100, 0.9), (2, 410, 100, 0.9), (3, 450, 100, 0.9)])
 
     state = process_ball_trajectory(dets, venue)
 
-    assert state.filter(~pl.col("interpolated"))["frame_id"].to_list() == [1, 2]
+    assert state.filter(~pl.col('interpolated'))['frame_id'].to_list() == [1, 2]
 
 
 def _crowd(frames, dt=0.1):
     """frames[i] — список (игрок, x) в кадре i+1; y у всех 5.0, как у мяча."""
-    rows = [{"frame_id": i + 1, "ts": dt * (i + 1), "track_id": p[0], "role": p[1], "team": p[2],
-             "x_m": float(x), "y_m": 5.0, "vx": 0.0, "vy": 0.0, "speed": 0.0, "interpolated": False}
-            for i, frame in enumerate(frames) for p, x in frame]
-    return pl.DataFrame(rows, schema_overrides={"team": pl.Utf8})
+    rows = [
+        {
+            'frame_id': i + 1,
+            'ts': dt * (i + 1),
+            'track_id': p[0],
+            'role': p[1],
+            'team': p[2],
+            'x_m': float(x),
+            'y_m': 5.0,
+            'vx': 0.0,
+            'vy': 0.0,
+            'speed': 0.0,
+            'interpolated': False,
+        }
+        for i, frame in enumerate(frames)
+        for p, x in frame
+    ]
+    return pl.DataFrame(rows, schema_overrides={'team': pl.Utf8})
 
 
 def test_defender_pressing_owner_does_not_take_the_ball():
@@ -206,7 +276,7 @@ def test_defender_pressing_owner_does_not_take_the_ball():
     frames = [[(A1, 10.1)]] * 5 + [[(A1, 10.6), (B1, 9.9)]] * 10 + [[(A1, 10.1)]] * 5
     passes = detect_passes(_ball([10] * 20), _crowd(frames))
 
-    assert passes["passes_total"] == {"A": 0, "B": 0}
+    assert passes['passes_total'] == {'A': 0, 'B': 0}
 
 
 def test_tackle_counts_once_owner_loses_contact():
@@ -216,8 +286,8 @@ def test_tackle_counts_once_owner_loses_contact():
     frames = [[(A1, 10.1)]] * 5 + [[(A1, 6.5), (B1, 10.1)]] * 6
     passes = detect_passes(_ball([10] * 11), _crowd(frames))
 
-    assert passes["passes_total"] == {"A": 1, "B": 0}
-    assert passes["passes_completed"] == {"A": 0, "B": 0}
+    assert passes['passes_total'] == {'A': 1, 'B': 0}
+    assert passes['passes_completed'] == {'A': 0, 'B': 0}
 
 
 def test_receiver_owns_the_ball_after_two_frames_at_15_fps():
@@ -227,7 +297,7 @@ def test_receiver_owns_the_ball_after_two_frames_at_15_fps():
     frames = [[(A1, 10.1), (A2, 20.1)]] * 10
     owners = ball_owners(_ball([10] * 5 + [20] * 5, dt=1 / 15), _crowd(frames, dt=1 / 15))
 
-    assert owners.filter(pl.col("track_id") == A2[0])["frame_id"].min() == 7
+    assert owners.filter(pl.col('track_id') == A2[0])['frame_id'].min() == 7
 
 
 def test_one_touch_owner_between_two_owners_is_not_a_pass():
@@ -237,7 +307,7 @@ def test_one_touch_owner_between_two_owners_is_not_a_pass():
     frames = [[(A1, 10.1), (B1, 15.1)]] * 17
     passes = detect_passes(_ball([10] * 7 + [15] * 3 + [10] * 7, dt=1 / 15), _crowd(frames, dt=1 / 15))
 
-    assert passes["passes_total"] == {"A": 0, "B": 0}
+    assert passes['passes_total'] == {'A': 0, 'B': 0}
 
 
 def test_owner_needs_to_be_close_to_take_the_ball():

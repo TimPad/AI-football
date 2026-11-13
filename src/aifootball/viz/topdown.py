@@ -7,7 +7,7 @@ PX_PER_M = 20
 MARGIN_M = 2.0
 FLOOR_BGR = (55, 55, 55)
 LINE_BGR = (235, 235, 235)
-TEAM_BGR = {"A": (80, 200, 80), "B": (200, 90, 230)}
+TEAM_BGR = {'A': (80, 200, 80), 'B': (200, 90, 230)}
 UNKNOWN_BGR = (160, 160, 160)
 CENTER_CIRCLE_R_M = 3.0
 GOAL_WIDTH_M = 3.0
@@ -24,11 +24,13 @@ def canvas_size(length_m: float, width_m: float) -> tuple[int, int]:
 
 def meters_to_canvas(width_m: float) -> np.ndarray:
     """Матрица 3x3: метры поля -> пиксели холста. Дальняя боковая линия — сверху."""
-    return np.array([
-        [PX_PER_M, 0.0, MARGIN_M * PX_PER_M],
-        [0.0, -PX_PER_M, (MARGIN_M + width_m) * PX_PER_M],
-        [0.0, 0.0, 1.0],
-    ])
+    return np.array(
+        [
+            [PX_PER_M, 0.0, MARGIN_M * PX_PER_M],
+            [0.0, -PX_PER_M, (MARGIN_M + width_m) * PX_PER_M],
+            [0.0, 0.0, 1.0],
+        ]
+    )
 
 
 def to_canvas(x_m: float, y_m: float, width_m: float) -> tuple[int, int]:
@@ -59,11 +61,17 @@ def draw_players(pitch: np.ndarray, rows, width_m: float) -> np.ndarray:
     """rows — словари с x_m, y_m, team, track_id. Рисует на копии."""
     img = pitch.copy()
     for row in rows:
-        center = to_canvas(row["x_m"], row["y_m"], width_m)
-        color = TEAM_BGR.get(row["team"], UNKNOWN_BGR)
+        center = to_canvas(row['x_m'], row['y_m'], width_m)
+        color = TEAM_BGR.get(row['team'], UNKNOWN_BGR)
         cv2.circle(img, center, int(0.45 * PX_PER_M), color, -1)
         cv2.putText(
-            img, str(row["track_id"]), (center[0] + 10, center[1] - 10),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.45, LINE_BGR, 1, cv2.LINE_AA,
+            img,
+            str(row['track_id']),
+            (center[0] + 10, center[1] - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            LINE_BGR,
+            1,
+            cv2.LINE_AA,
         )
     return img

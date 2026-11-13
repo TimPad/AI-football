@@ -1,4 +1,5 @@
 """Bounded XLSX values for review; formulas are never evaluated."""
+
 from datetime import date, datetime
 from io import BytesIO
 from zipfile import ZipFile, BadZipFile
@@ -32,12 +33,16 @@ def read_workbook(content: bytes, filename: str) -> dict:
             count = 0
             for sheet_index, sheet in enumerate(workbook.worksheets):
                 if sheet.max_row and sheet.max_row > PHYSICAL_ROW_LIMIT:
-                    raise DomainError('xlsx_rows', 'В книге слишком большие пропуски строк (не более 10 000 строк листа)')
+                    raise DomainError(
+                        'xlsx_rows', 'В книге слишком большие пропуски строк (не более 10 000 строк листа)'
+                    )
                 if sheet.max_column and sheet.max_column > COLUMN_LIMIT:
                     raise DomainError('xlsx_columns', 'Оставьте не более 64 столбцов в листе состава')
                 sheet.reset_dimensions()
                 rows = []
-                for source_row, cells in enumerate(sheet.iter_rows(max_row=PHYSICAL_ROW_LIMIT, max_col=COLUMN_LIMIT), 1):
+                for source_row, cells in enumerate(
+                    sheet.iter_rows(max_row=PHYSICAL_ROW_LIMIT, max_col=COLUMN_LIMIT), 1
+                ):
                     values, formulas, errors = [], [], []
                     for column, cell in enumerate(cells):
                         value = cell.value
@@ -61,8 +66,15 @@ def read_workbook(content: bytes, filename: str) -> dict:
                         count += 1
                     if count > ROW_LIMIT:
                         raise DomainError('xlsx_rows', 'В книге разрешено не более 1 000 непустых строк состава')
-                    rows.append({'id': f'{sheet_index}:{source_row}', 'source_row': source_row,
-                                 'cells': values, 'formulas': formulas, 'errors': errors})
+                    rows.append(
+                        {
+                            'id': f'{sheet_index}:{source_row}',
+                            'source_row': source_row,
+                            'cells': values,
+                            'formulas': formulas,
+                            'errors': errors,
+                        }
+                    )
                 if rows:
                     result.append({'name': sheet.title, 'rows': rows})
             if not result:
@@ -73,7 +85,9 @@ def read_workbook(content: bytes, filename: str) -> dict:
     except DomainError:
         raise
     except Exception as exc:
-        raise DomainError('xlsx_invalid', 'Не удалось прочитать Excel. Проверьте, что книга не повреждена и не защищена паролем.') from exc
+        raise DomainError(
+            'xlsx_invalid', 'Не удалось прочитать Excel. Проверьте, что книга не повреждена и не защищена паролем.'
+        ) from exc
 
 
 def _export(headers, rows):
@@ -103,7 +117,16 @@ def template(scope: str) -> bytes:
 
 
 def report_workbook(rows: list[dict]) -> bytes:
-    return _export(['Строка Excel', 'Команда', 'ФИО', 'Действие', 'Проверка'], [
-        [row.get('source_row'), row.get('team_name', ''), row.get('name', ''),
-         'Пропущена' if row.get('excluded') else row.get('action', ''), '; '.join(row.get('issues', []))]
-        for row in rows])
+    return _export(
+        ['Строка Excel', 'Команда', 'ФИО', 'Действие', 'Проверка'],
+        [
+            [
+                row.get('source_row'),
+                row.get('team_name', ''),
+                row.get('name', ''),
+                'Пропущена' if row.get('excluded') else row.get('action', ''),
+                '; '.join(row.get('issues', [])),
+            ]
+            for row in rows
+        ],
+    )

@@ -10,13 +10,13 @@ class FrameAsset:
     video_ms: int
     path: Path
     sha256: str
-    crop: tuple[int,int,int,int] | None
+    crop: tuple[int, int, int, int] | None
 
 
 @dataclass(frozen=True)
 class MediaAsset:
     id: str
-    kind: Literal['video','audio']
+    kind: Literal['video', 'audio']
     path: Path
     sha256: str
     start_ms: int
@@ -29,10 +29,10 @@ class Window:
     id: str
     start_ms: int
     end_ms: int
-    frames: tuple[FrameAsset,...]
+    frames: tuple[FrameAsset, ...]
     media: MediaAsset | None
-    track_ids: tuple[int,...]
-    mode: Literal['frames','native']
+    track_ids: tuple[int, ...]
+    mode: Literal['frames', 'native']
 
 
 @dataclass(frozen=True)

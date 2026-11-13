@@ -20,17 +20,28 @@ def assignments(run, overlap=False):
 
 
 def save_assignments(client, match, run, values=None):
-    return client.put(f"/api/v1/matches/{match['id']}/analysis/runs/{run['id']}/assignments", json={
-        'request_id': str(uuid4()), 'expected_revision': run['revision'],
-        'side_map': {'A': 'home', 'B': 'away'}, 'assignments': values if values is not None else assignments(run)})
+    return client.put(
+        f'/api/v1/matches/{match["id"]}/analysis/runs/{run["id"]}/assignments',
+        json={
+            'request_id': str(uuid4()),
+            'expected_revision': run['revision'],
+            'side_map': {'A': 'home', 'B': 'away'},
+            'assignments': values if values is not None else assignments(run),
+        },
+    )
 
 
 def command(client, match, run, kind, request_id=None, analysis_revision=None):
     if analysis_revision is None:
-        analysis_revision = client.get(f"/api/v1/matches/{match['id']}/analysis").json()['analysis_revision']
-    return client.post(f"/api/v1/matches/{match['id']}/analysis/runs/{run['id']}/{kind}", json={
-        'request_id': request_id or str(uuid4()), 'expected_revision': run['revision'],
-        'expected_analysis_revision': analysis_revision})
+        analysis_revision = client.get(f'/api/v1/matches/{match["id"]}/analysis').json()['analysis_revision']
+    return client.post(
+        f'/api/v1/matches/{match["id"]}/analysis/runs/{run["id"]}/{kind}',
+        json={
+            'request_id': request_id or str(uuid4()),
+            'expected_revision': run['revision'],
+            'expected_analysis_revision': analysis_revision,
+        },
+    )
 
 
 def test_confirm_identity_aggregate_and_idempotence(admin_client, analytics_match):
@@ -49,19 +60,22 @@ def test_confirm_identity_aggregate_and_idempotence(admin_client, analytics_matc
     assert len(home['track_ids']) == 2
     assert command(admin_client, analytics_match, run, 'confirm', request_id, 0).json() == result
     assert save_assignments(admin_client, analytics_match, result).status_code == 409
-    history = admin_client.get(f"/api/v1/players/{home['player_id']}/analysis").json()
+    history = admin_client.get(f'/api/v1/players/{home["player_id"]}/analysis').json()
     assert history['match_count'] == 1
     assert history['matches'][0]['metrics']['distance_m'] == 210
 
 
 def test_overlapping_fragments_block_confirm_without_erasing_prior(admin_client, analytics_match):
-    def overlap(m, r, t, c): t['tracks'][1]['intervals'] = [[30, 150]]
+    def overlap(m, r, t, c):
+        t['tracks'][1]['intervals'] = [[30, 150]]
+
     run = import_run(admin_client, analytics_match, overlap)
     saved = save_assignments(admin_client, analytics_match, run)
     assert saved.status_code == 200, saved.text
     assert command(admin_client, analytics_match, saved.json(), 'confirm').status_code == 422
-    assert admin_client.get(f"/api/v1/matches/{analytics_match['id']}/analysis").json()['active_run_id'] is None
-    values = assignments(run); values[1] = {'track_id': 2, 'excluded_reason': 'Дублирующий трек'}
+    assert admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/analysis').json()['active_run_id'] is None
+    values = assignments(run)
+    values[1] = {'track_id': 2, 'excluded_reason': 'Дублирующий трек'}
     corrected = save_assignments(admin_client, analytics_match, saved.json(), values)
     assert corrected.status_code == 200
     assert command(admin_client, analytics_match, corrected.json(), 'confirm').status_code == 200
@@ -69,9 +83,11 @@ def test_overlapping_fragments_block_confirm_without_erasing_prior(admin_client,
 
 def test_foreign_identity_side_and_stale_revision(admin_client, analytics_match):
     run = import_run(admin_client, analytics_match)
-    values = assignments(run); values[0]['player_id'] = str(uuid4())
+    values = assignments(run)
+    values[0]['player_id'] = str(uuid4())
     assert save_assignments(admin_client, analytics_match, run, values).status_code == 422
-    values = assignments(run); values[0]['player_id'] = values[2]['player_id']
+    values = assignments(run)
+    values[0]['player_id'] = values[2]['player_id']
     assert save_assignments(admin_client, analytics_match, run, values).status_code == 422
     saved = save_assignments(admin_client, analytics_match, run)
     assert saved.status_code == 200
@@ -79,7 +95,9 @@ def test_foreign_identity_side_and_stale_revision(admin_client, analytics_match)
 
 
 def test_critical_quality_and_ordinary_admin_cannot_confirm(admin_client, analytics_match):
-    def bad(m, r, t, c): c.update(passed=False, critical_errors=['Камера не прошла проверку'])
+    def bad(m, r, t, c):
+        c.update(passed=False, critical_errors=['Камера не прошла проверку'])
+
     run = import_run(admin_client, analytics_match, bad)
     saved = save_assignments(admin_client, analytics_match, run).json()
     assert command(admin_client, analytics_match, saved, 'confirm').status_code == 422
@@ -89,6 +107,7 @@ def test_critical_quality_and_ordinary_admin_cannot_confirm(admin_client, analyt
 
 def test_average_from_sums_and_unknown_not_zero():
     from aifootball.service.analysis.aggregation import aggregate_player
+
     first = {'distance_m': 120, 'observed_s': 60, 'hsr_m': 10, 'sprints': 1, 'vmax_ms': 5}
     second = {'distance_m': 90, 'observed_s': 180, 'hsr_m': 10, 'sprints': 1, 'vmax_ms': 4}
     assert aggregate_player([first, second])['m_per_min'] == 52.5
@@ -107,8 +126,9 @@ def test_track_groups_are_shown_and_a_short_handoff_confirms(admin_client, analy
     def handoff(m, r, t, c):
         t['tracks'][1]['intervals'] = [[59.2, 240]]
         t['groups'] = [{'track_ids': [1, 2], 'links': [{'from': 1, 'to': 2, 'cost': 0.5}]}]
+
     run = import_run(admin_client, analytics_match, handoff)
-    view = admin_client.get(f"/api/v1/matches/{analytics_match['id']}/analysis/runs/{run['id']}").json()
+    view = admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/analysis/runs/{run["id"]}').json()
     assert view['groups'] == [[1, 2]]
     saved = save_assignments(admin_client, analytics_match, view)
     assert saved.status_code == 200, saved.text

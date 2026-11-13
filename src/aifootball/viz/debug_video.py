@@ -39,13 +39,19 @@ def render_debug_video(
             right = _fit_height(right, left.shape[0])
             canvas = np.hstack([left, right])
             cv2.putText(
-                canvas, f"t={ts:7.2f}s  frame={frame_id}", (10, 24),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA,
+                canvas,
+                f't={ts:7.2f}s  frame={frame_id}',
+                (10, 24),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2,
+                cv2.LINE_AA,
             )
             if writer is None:
                 height, width = canvas.shape[:2]
                 writer = cv2.VideoWriter(
-                    str(out_path), cv2.VideoWriter.fourcc(*"mp4v"), venue.target_fps, (width, height)
+                    str(out_path), cv2.VideoWriter.fourcc(*'mp4v'), venue.target_fps, (width, height)
                 )
             writer.write(canvas)
             written += 1
@@ -58,7 +64,7 @@ def render_debug_video(
 def _by_frame_groups(df: pl.DataFrame) -> dict[int, pl.DataFrame]:
     if df.is_empty():
         return {}
-    return {key[0]: group for key, group in df.partition_by("frame_id", as_dict=True).items()}
+    return {key[0]: group for key, group in df.partition_by('frame_id', as_dict=True).items()}
 
 
 def _get_frame_rows(groups: dict[int, pl.DataFrame], frame_id: int) -> list[dict]:

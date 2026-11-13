@@ -15,6 +15,7 @@ candidates — все кандидаты мяча от 0.05 на каждом к
 labeling — кадры для tools.label_ball --frames и подсказки --hints: половина равномерно, половина трудных для модели.
 replace — заменить мяч в готовом прогоне на кандидатов (порог conf_ball зала); игроки не пересчитываются.
 """
+
 import argparse
 import json
 import os
@@ -50,7 +51,10 @@ def cmd_crops(args) -> None:
         root = Path(root)
         for split, names in (('train', ('train',)), ('val', ('val', 'valid'))):
             for name in names:
-                for img_dir, lab_dir in ((root / 'images' / name, root / 'labels' / name), (root / name / 'images', root / name / 'labels')):
+                for img_dir, lab_dir in (
+                    (root / 'images' / name, root / 'labels' / name),
+                    (root / name / 'images', root / name / 'labels'),
+                ):
                     if img_dir.is_dir():
                         n, balls = _crop_dir(img_dir, lab_dir, args.out, split, tag, rng)
                         print(f'{tag:>6} {split:>5}: вырезок {n}, с мячом {balls}', flush=True)
@@ -86,16 +90,22 @@ def _crop_with_ball(img: np.ndarray, boxes: list, rng: random.Random):
         y0 = int(np.clip(cy * h - rng.uniform(0.15, 0.85) * CROP, 0, h - CROP))
     else:
         x0, y0 = rng.randint(0, max(0, w - CROP)), rng.randint(0, max(0, h - CROP))
-    kept = [(bx * w - x0, by * h - y0, bw * w, bh * h) for bx, by, bw, bh in boxes
-            if 0 <= bx * w - x0 < CROP and 0 <= by * h - y0 < CROP]
-    return img[y0:y0 + CROP, x0:x0 + CROP], kept
+    kept = [
+        (bx * w - x0, by * h - y0, bw * w, bh * h)
+        for bx, by, bw, bh in boxes
+        if 0 <= bx * w - x0 < CROP and 0 <= by * h - y0 < CROP
+    ]
+    return img[y0 : y0 + CROP, x0 : x0 + CROP], kept
 
 
 def _write_sample(out: Path, split: str, name: str, img: np.ndarray, boxes: list) -> None:
     (out / 'images' / split).mkdir(parents=True, exist_ok=True)
     (out / 'labels' / split).mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out / 'images' / split / f'{name}.jpg'), img, [cv2.IMWRITE_JPEG_QUALITY, 95])
-    lines = [f'0 {px / CROP:.6f} {py / CROP:.6f} {max(bw, MIN_BOX) / CROP:.6f} {max(bh, MIN_BOX) / CROP:.6f}' for px, py, bw, bh in boxes]
+    lines = [
+        f'0 {px / CROP:.6f} {py / CROP:.6f} {max(bw, MIN_BOX) / CROP:.6f} {max(bh, MIN_BOX) / CROP:.6f}'
+        for px, py, bw, bh in boxes
+    ]
     (out / 'labels' / split / f'{name}.txt').write_text(''.join(line + '\n' for line in lines))
 
 
@@ -109,7 +119,9 @@ def cmd_add_hall(args) -> None:
     base_n = _link_tree(args.base, args.out)
     tiles_n = _link_tree(args.tiles, args.out, f'{args.tag}_')
     # tools.ball_dataset пишет f<кадр>_n на каждый пригодный кадр: по нему узнаём, в какую часть попал кадр
-    split_of = {int(p.stem[1:7]): split for split in ('train', 'val') for p in (args.tiles / 'images' / split).glob('f*_n.jpg')}
+    split_of = {
+        int(p.stem[1:7]): split for split in ('train', 'val') for p in (args.tiles / 'images' / split).glob('f*_n.jpg')
+    }
     venue = load_venue(args.venue)
     labels = schemas.read(args.labels, 'ball_labels').filter(pl.col('status') != 'hidden')
     cand = pl.read_parquet(args.candidates).filter(pl.col('conf') >= HARD_CONF)
@@ -135,8 +147,12 @@ def cmd_add_hall(args) -> None:
         x0 = int(np.clip(cx[i] - rng.uniform(0.2, 0.8) * CROP, 0, w - CROP))
         y0 = int(np.clip(cy[i] - rng.uniform(0.2, 0.8) * CROP, 0, h - CROP))
         # настоящий мяч, попавший в вырезку, размечен: иначе модель училась бы, что он — фон
-        ball = [(x - x0, y - y0, MIN_BOX, MIN_BOX)] if status == 'visible' and x0 <= x < x0 + CROP and y0 <= y < y0 + CROP else []
-        _write_sample(args.out, split, f'{args.tag}_f{f:06d}_h', masked[y0:y0 + CROP, x0:x0 + CROP], ball)
+        ball = (
+            [(x - x0, y - y0, MIN_BOX, MIN_BOX)]
+            if status == 'visible' and x0 <= x < x0 + CROP and y0 <= y < y0 + CROP
+            else []
+        )
+        _write_sample(args.out, split, f'{args.tag}_f{f:06d}_h', masked[y0 : y0 + CROP, x0 : x0 + CROP], ball)
         hard[split] += 1
     cap.release()
     _write_yaml(args.out)
@@ -160,8 +176,22 @@ def cmd_train(args) -> None:
 
     # Рецепт v1: без смешанной точности и без разгона сдвига — иначе на MPS cls_loss уходил в NaN
     YOLO(str(args.models / args.base)).train(
-        data=str(args.data), imgsz=CROP, epochs=args.epochs, patience=8, batch=16, workers=4, device='mps', amp=False,
-        warmup_bias_lr=0.0, close_mosaic=5, project=str(args.out.parent), name=args.out.name, exist_ok=True, plots=False, seed=0)
+        data=str(args.data),
+        imgsz=CROP,
+        epochs=args.epochs,
+        patience=8,
+        batch=16,
+        workers=4,
+        device='mps',
+        amp=False,
+        warmup_bias_lr=0.0,
+        close_mosaic=5,
+        project=str(args.out.parent),
+        name=args.out.name,
+        exist_ok=True,
+        plots=False,
+        seed=0,
+    )
 
 
 def cmd_candidates(args) -> None:
@@ -172,7 +202,15 @@ def cmd_candidates(args) -> None:
     cap = cv2.VideoCapture(str(args.video))
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     shape = (int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
-    det = BallDetector(args.weights, venue.require_polygon(), shape, venue.ball_tile, venue.ball_margin_px, CANDIDATE_CONF, pick_device())
+    det = BallDetector(
+        args.weights,
+        venue.require_polygon(),
+        shape,
+        venue.ball_tile,
+        venue.ball_margin_px,
+        CANDIDATE_CONF,
+        pick_device(),
+    )
     rows, f, started = [], 0, time.time()
     while True:
         ok, frame = cap.read()
@@ -184,7 +222,14 @@ def cmd_candidates(args) -> None:
         if f % 500 == 0:
             print(f'{f}/{total} кадров, {time.time() - started:.0f} с', flush=True)
     cap.release()
-    schema = {'frame_id': pl.Int32, 'x1': pl.Float64, 'y1': pl.Float64, 'x2': pl.Float64, 'y2': pl.Float64, 'conf': pl.Float64}
+    schema = {
+        'frame_id': pl.Int32,
+        'x1': pl.Float64,
+        'y1': pl.Float64,
+        'x2': pl.Float64,
+        'y2': pl.Float64,
+        'conf': pl.Float64,
+    }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     pl.DataFrame(rows, schema=schema, orient='row').write_parquet(args.out)
     print(f'{f} кадров, кандидатов {len(rows)} -> {args.out}')
@@ -236,19 +281,28 @@ def cmd_replace(args) -> None:
     venue = load_venue(args.venue)
     meta = json.loads((args.match / 'meta.json').read_text())
     det = schemas.read(args.match / 'detections.parquet', 'detections')
-    backup = args.match / f"detections_{Path(meta.get('ball_model') or 'none/x').parent.name}.parquet"
+    backup = args.match / f'detections_{Path(meta.get("ball_model") or "none/x").parent.name}.parquet'
     if not backup.exists():
         shutil.copy2(args.match / 'detections.parquet', backup)
     persons = det.filter(pl.col('cls') != 'ball')
     frames = det.select('frame_id', 'ts').unique().sort('frame_id')
     c = pl.read_parquet(args.candidates).filter(pl.col('conf') >= venue.conf_ball)
     ts = np.interp(c['frame_id'].to_numpy(), frames['frame_id'].to_numpy(), frames['ts'].to_numpy())
-    balls = c.with_columns(ts=pl.Series(ts), cls=pl.lit('ball'), torso_l=pl.lit(np.nan), torso_a=pl.lit(np.nan),
-                           torso_b=pl.lit(np.nan)).select(persons.columns).cast(dict(persons.schema))
+    balls = (
+        c.with_columns(
+            ts=pl.Series(ts), cls=pl.lit('ball'), torso_l=pl.lit(np.nan), torso_a=pl.lit(np.nan), torso_b=pl.lit(np.nan)
+        )
+        .select(persons.columns)
+        .cast(dict(persons.schema))
+    )
     schemas.write(pl.concat([persons, balls]).sort('frame_id'), args.match / 'detections.parquet', 'detections')
-    meta.update(ball_model=venue.ball_model, conf_ball=venue.conf_ball, ball_replaced='мяч заменён кандидатами; игроки прежние')
+    meta.update(
+        ball_model=venue.ball_model, conf_ball=venue.conf_ball, ball_replaced='мяч заменён кандидатами; игроки прежние'
+    )
     (args.match / 'meta.json').write_text(json.dumps(meta, ensure_ascii=False, indent=2))
-    print(f'{args.match.name}: мячей было {det.filter(pl.col("cls") == "ball").height}, стало {len(balls)}; копия -> {backup.name}')
+    print(
+        f'{args.match.name}: мячей было {det.filter(pl.col("cls") == "ball").height}, стало {len(balls)}; копия -> {backup.name}'
+    )
 
 
 def main() -> None:
@@ -278,8 +332,14 @@ def main() -> None:
     for name in ('match', 'candidates', 'venue'):
         p.add_argument(f'--{name}', type=Path, required=True)
     args = parser.parse_args()
-    {'crops': cmd_crops, 'add-hall': cmd_add_hall, 'train': cmd_train, 'candidates': cmd_candidates,
-     'labeling': cmd_labeling, 'replace': cmd_replace}[args.cmd](args)
+    {
+        'crops': cmd_crops,
+        'add-hall': cmd_add_hall,
+        'train': cmd_train,
+        'candidates': cmd_candidates,
+        'labeling': cmd_labeling,
+        'replace': cmd_replace,
+    }[args.cmd](args)
 
 
 if __name__ == '__main__':

@@ -21,30 +21,62 @@ def import_result(db, match_id, actor_id, request_id, result, root, created_path
     lock_request(db, UUID(manifest['run_id']))
     current = build_context(db, match_id)
     job = get_entity(db, AnalysisJob, UUID(manifest['job_id']))
-    if job.match_id != match_id or manifest['context_hash'] != job.context_hash or context_hash(current) != job.context_hash:
+    if (
+        job.match_id != match_id
+        or manifest['context_hash'] != job.context_hash
+        or context_hash(current) != job.context_hash
+    ):
         raise DomainError('analysis_context', 'Состав или камера изменились. Создайте новое задание.')
-    camera = job.context['camera']; pitch = result.report['pitch']; source = manifest['source_video']
-    if manifest['camera_profile_id'] != camera['id'] or source['width'] != camera['frame_width'] or source['height'] != camera['frame_height'] or any(pitch[k] != job.context['pitch'][k] for k in ['length_m', 'width_m']):
+    camera = job.context['camera']
+    pitch = result.report['pitch']
+    source = manifest['source_video']
+    if (
+        manifest['camera_profile_id'] != camera['id']
+        or source['width'] != camera['frame_width']
+        or source['height'] != camera['frame_height']
+        or any(pitch[k] != job.context['pitch'][k] for k in ['length_m', 'width_m'])
+    ):
         raise DomainError('analysis_geometry', 'Разрешение и геометрия отчёта не совпадают с заданием')
     if result.understanding is not None:
         from aifootball.understanding.schema import validate_understanding
+
         try:
-            validate_understanding(result.understanding, manifest=manifest, tracks=result.tracks, rosters=job.context['rosters'])
+            validate_understanding(
+                result.understanding, manifest=manifest, tracks=result.tracks, rosters=job.context['rosters']
+            )
         except ValueError as exc:
             raise DomainError('understanding_roster', 'Наблюдения не соответствуют снимку состава') from exc
     by_id = db.get(AnalysisRun, UUID(manifest['run_id']))
     if by_id and (by_id.job_id != job.id or by_id.content_hash != result.content_hash):
         raise DomainError('run_conflict', 'UUID прогона уже используется другим результатом', status=409)
-    run = db.scalar(select(AnalysisRun).where(AnalysisRun.job_id == job.id,
-                                            AnalysisRun.content_hash == result.content_hash, AnalysisRun.source_run_id.is_(None)))
+    run = db.scalar(
+        select(AnalysisRun).where(
+            AnalysisRun.job_id == job.id,
+            AnalysisRun.content_hash == result.content_hash,
+            AnalysisRun.source_run_id.is_(None),
+        )
+    )
     if run is None:
         key, created = put_package(root, result)
-        if created: created_paths.append(created)
-        run = AnalysisRun(id=UUID(manifest['run_id']), job_id=job.id, match_id=match_id, created_by=actor_id,
-                          content_hash=result.content_hash, storage_key=key, manifest=manifest,
-                          report=result.report, tracks=result.tracks, checks=result.checks, understanding=result.understanding,
-                          events=result.events)
-        db.add(run); db.flush()
+        if created:
+            created_paths.append(created)
+        run = AnalysisRun(
+            id=UUID(manifest['run_id']),
+            job_id=job.id,
+            match_id=match_id,
+            created_by=actor_id,
+            content_hash=result.content_hash,
+            storage_key=key,
+            manifest=manifest,
+            report=result.report,
+            tracks=result.tracks,
+            checks=result.checks,
+            understanding=result.understanding,
+            events=result.events,
+        )
+        db.add(run)
+        db.flush()
         from aifootball.service.analysis.team_review.queries import obsolete_prior_tasks
-        obsolete_prior_tasks(db,run)
+
+        obsolete_prior_tasks(db, run)
     return remember(db, match_id, actor_id, request_id, hashed, run_view(db, run))

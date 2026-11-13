@@ -2,8 +2,12 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 from sqlalchemy import event, select, func
 from sqlalchemy.orm import Session
-from aifootball.service.ratings.models import (TournamentRatingState, RatingMatchPublication,
-    RatingPolicyVersion, RatingCommand)
+from aifootball.service.ratings.models import (
+    TournamentRatingState,
+    RatingMatchPublication,
+    RatingPolicyVersion,
+    RatingCommand,
+)
 from .test_analysis_jobs import grant, analytics_match
 from .test_ratings_snapshots import prepare, publish_sources
 
@@ -14,8 +18,10 @@ def url(match):
 
 def counts(client):
     with Session(client.app.state.engine) as db:
-        return {model.__name__: db.scalar(select(func.count()).select_from(model))
-                for model in (TournamentRatingState, RatingMatchPublication, RatingPolicyVersion, RatingCommand)}
+        return {
+            model.__name__: db.scalar(select(func.count()).select_from(model))
+            for model in (TournamentRatingState, RatingMatchPublication, RatingPolicyVersion, RatingCommand)
+        }
 
 
 def test_read_absent_publication_creates_nothing(admin_client, match_factory):
@@ -24,9 +30,13 @@ def test_read_absent_publication_creates_nothing(admin_client, match_factory):
     for _ in range(2):
         r = admin_client.get(url(m))
         assert r.status_code == 200
-        assert r.json() == {'revision': 0, 'match_id': m['id'],
-            'participation_version_id': None, 'action_version_id': None,
-            'policy_approved': False}
+        assert r.json() == {
+            'revision': 0,
+            'match_id': m['id'],
+            'participation_version_id': None,
+            'action_version_id': None,
+            'policy_approved': False,
+        }
     assert set(counts(admin_client).values()) == {0}
 
 
@@ -41,8 +51,10 @@ def test_read_returns_tournament_revision_and_selected_sources(admin_client, ana
         db.commit()
     before = counts(admin_client)
     statements = []
+
     def record(conn, cursor, statement, *args):
         statements.append(statement.lstrip().split(None, 1)[0].upper())
+
     engine = admin_client.app.state.engine
     event.listen(engine, 'before_cursor_execute', record)
     try:

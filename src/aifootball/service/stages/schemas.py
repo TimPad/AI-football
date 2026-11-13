@@ -1,4 +1,5 @@
 """Настройки этапов, шаблоны форматов, тела запросов и представления таблиц."""
+
 from datetime import datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
@@ -6,7 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from aifootball.service.tournaments.schemas import Input
 from aifootball.service.matches.schemas import BroadcastFields, MatchCreate
 
-Criterion = Literal['points', 'h2h_points', 'h2h_goal_diff', 'h2h_goals', 'goal_diff', 'goals_for', 'wins', 'buchholz', 'lot']
+Criterion = Literal[
+    'points', 'h2h_points', 'h2h_goal_diff', 'h2h_goals', 'goal_diff', 'goals_for', 'wins', 'buchholz', 'lot'
+]
 Kind = Literal['round_robin', 'groups', 'single_elim', 'double_elim', 'swiss']
 Template = Literal['league', 'groups_playoff', 'playoff', 'double_elim', 'swiss']
 DrawMethod = Literal['pots', 'snake', 'seeded', 'random', 'scheme', 'manual']
@@ -37,26 +40,33 @@ class StageConfig(Input):
     grand_final_reset: bool = False
     rounds: Annotated[int, Field(ge=1, le=15)] | None = None
     # Счёт технической победы: победитель, проигравший.
-    walkover_score: list[Annotated[int, Field(ge=0, le=50)]] = Field(default_factory=lambda: [5, 0], min_length=2, max_length=2)
+    walkover_score: list[Annotated[int, Field(ge=0, le=50)]] = Field(
+        default_factory=lambda: [5, 0], min_length=2, max_length=2
+    )
 
     @field_validator('source')
     @classmethod
     def known_source(cls, value):
-        if value not in ({'entries': 'all'}, {'previous': True}): raise ValueError('Неизвестный источник участников')
+        if value not in ({'entries': 'all'}, {'previous': True}):
+            raise ValueError('Неизвестный источник участников')
         return value
 
     @model_validator(mode='after')
     def coherent(self):
-        if self.kind == 'groups' and self.group_count is None: raise ValueError('Укажите число групп')
+        if self.kind == 'groups' and self.group_count is None:
+            raise ValueError('Укажите число групп')
         if self.criteria is not None:
-            if not self.criteria or self.criteria[0] != 'points': raise ValueError('Первым критерием должны быть очки')
-            if len(set(self.criteria)) != len(self.criteria): raise ValueError('Критерии повторяются')
+            if not self.criteria or self.criteria[0] != 'points':
+                raise ValueError('Первым критерием должны быть очки')
+            if len(set(self.criteria)) != len(self.criteria):
+                raise ValueError('Критерии повторяются')
             if 'buchholz' in self.criteria and self.kind != 'swiss':
                 raise ValueError('Бухгольц — только для швейцарской системы')
         return self
 
     def effective_criteria(self):
         from aifootball.service.stages.rules.standings import DEFAULT_CRITERIA, SWISS_CRITERIA
+
         return tuple(self.criteria or (SWISS_CRITERIA if self.kind == 'swiss' else DEFAULT_CRITERIA))
 
 
@@ -92,26 +102,49 @@ class FormatCreate(Input):
 def template_stages(template, params):
     """Этапы шаблона: [{'name', 'kind', 'config', 'playoff'}]; playoff — брать регламент плей-офф."""
     get = params.get
-    playoff = {'name': 'Плей-офф', 'kind': 'single_elim', 'playoff': True,
-               'config': {'kind': 'single_elim', 'third_place': bool(get('third_place')), 'source': {'previous': True}}}
+    playoff = {
+        'name': 'Плей-офф',
+        'kind': 'single_elim',
+        'playoff': True,
+        'config': {'kind': 'single_elim', 'third_place': bool(get('third_place')), 'source': {'previous': True}},
+    }
     if template == 'league':
         stages = [{'name': 'Лига', 'kind': 'round_robin', 'config': {'kind': 'round_robin', 'legs': get('legs', 1)}}]
     elif template == 'groups_playoff':
         best = [{'place': get('per_group', 2) + 1, 'count': get('best_thirds')}] if get('best_thirds') else []
-        stages = [{'name': 'Групповой этап', 'kind': 'groups', 'config': {
-            'kind': 'groups', 'legs': get('legs', 1), 'group_count': get('group_count', 2),
-            'advance': {'per_group': get('per_group', 2), 'best': best}}}, playoff]
+        stages = [
+            {
+                'name': 'Групповой этап',
+                'kind': 'groups',
+                'config': {
+                    'kind': 'groups',
+                    'legs': get('legs', 1),
+                    'group_count': get('group_count', 2),
+                    'advance': {'per_group': get('per_group', 2), 'best': best},
+                },
+            },
+            playoff,
+        ]
     elif template == 'playoff':
         stages = [{**playoff, 'config': {**playoff['config'], 'source': {'entries': 'all'}}}]
     elif template == 'double_elim':
-        stages = [{'name': 'Двойное выбывание', 'kind': 'double_elim', 'playoff': True,
-                   'config': {'kind': 'double_elim', 'grand_final_reset': bool(get('grand_final_reset'))}}]
+        stages = [
+            {
+                'name': 'Двойное выбывание',
+                'kind': 'double_elim',
+                'playoff': True,
+                'config': {'kind': 'double_elim', 'grand_final_reset': bool(get('grand_final_reset'))},
+            }
+        ]
     else:
-        stages = [{'name': 'Швейцарская система', 'kind': 'swiss', 'config': {'kind': 'swiss', 'rounds': get('rounds')}}]
+        stages = [
+            {'name': 'Швейцарская система', 'kind': 'swiss', 'config': {'kind': 'swiss', 'rounds': get('rounds')}}
+        ]
     if template in ('league', 'swiss') and get('playoff_teams'):
         stages[0]['config']['playoff_teams'] = get('playoff_teams')
         stages.append(playoff)
-    for stage in stages: StageConfig.model_validate(stage['config'])
+    for stage in stages:
+        StageConfig.model_validate(stage['config'])
     return stages
 
 
@@ -125,8 +158,18 @@ class EstimateInput(Input):
     @field_validator('params')
     @classmethod
     def known_params(cls, value):
-        allowed = {'group_count', 'per_group', 'best_thirds', 'legs', 'playoff_teams', 'third_place', 'grand_final_reset', 'rounds'}
-        if not set(value) <= allowed: raise ValueError('Неизвестный параметр формата')
+        allowed = {
+            'group_count',
+            'per_group',
+            'best_thirds',
+            'legs',
+            'playoff_teams',
+            'third_place',
+            'grand_final_reset',
+            'rounds',
+        }
+        if not set(value) <= allowed:
+            raise ValueError('Неизвестный параметр формата')
         return value
 
 
@@ -187,6 +230,7 @@ class FixtureReplace(Input):
 
 
 # Представления: поля со значением по умолчанию в ответе всегда есть.
+
 
 class View(BaseModel):
     model_config = ConfigDict(json_schema_serialization_defaults_required=True)

@@ -24,10 +24,10 @@ from aifootball.tools.ball_labels import render_view
 from aifootball.tools.fit_field import FIELD_POINTS
 
 POINTS = [(name, spec[0]) for name, spec in FIELD_POINTS.items()]
-KEY_ESC, KEY_SKIP = 27, ord("1")
+KEY_ESC, KEY_SKIP = 27, ord('1')
 KEY_ENTER = {10, 13}
 KEY_BACKSPACE = {8, 127}
-WINDOW = "mark_field"
+WINDOW = 'mark_field'
 
 
 def background(video: Path, samples: int = 40) -> np.ndarray:
@@ -42,29 +42,29 @@ def background(video: Path, samples: int = 40) -> np.ndarray:
             frames.append(frame)
     cap.release()
     if not frames:
-        sys.exit(f"не читаются кадры: {video}")
+        sys.exit(f'не читаются кадры: {video}')
     return np.median(np.stack(frames), axis=0).astype(np.uint8)
 
 
 def save_points(path: Path, points: dict[str, tuple[float, float] | None]) -> None:
     data = {name: None if p is None else [round(p[0], 1), round(p[1], 1)] for name, p in points.items()}
-    path.write_text(json.dumps({"points_px": data}, ensure_ascii=False, indent=2), encoding="utf-8")
+    path.write_text(json.dumps({'points_px': data}, ensure_ascii=False, indent=2), encoding='utf-8')
 
 
 def load_points(path: Path) -> dict[str, tuple[float, float] | None]:
-    data = json.loads(path.read_text(encoding="utf-8"))["points_px"]
+    data = json.loads(path.read_text(encoding='utf-8'))['points_px']
     return {name: None if p is None else (float(p[0]), float(p[1])) for name, p in data.items()}
 
 
 def collect(frame: np.ndarray, scale: float, previous: dict | None = None) -> dict | None:
     previous = previous or {}
     placed: dict[str, tuple[float, float] | None] = {}
-    ui = {"cursor": None, "click": None}
+    ui = {'cursor': None, 'click': None}
 
     def on_mouse(event, x, y, flags, param):
-        ui["cursor"] = (int(x / scale), int(y / scale))
+        ui['cursor'] = (int(x / scale), int(y / scale))
         if event == cv2.EVENT_LBUTTONDOWN:
-            ui["click"] = (x / scale, y / scale)
+            ui['click'] = (x / scale, y / scale)
 
     cv2.namedWindow(WINDOW, cv2.WINDOW_AUTOSIZE)
     cv2.setMouseCallback(WINDOW, on_mouse)
@@ -73,13 +73,13 @@ def collect(frame: np.ndarray, scale: float, previous: dict | None = None) -> di
         if idx != announced:
             if idx < len(POINTS):
                 prev = previous.get(POINTS[idx][0])
-                hint = " (Enter — оставить прежнюю)" if prev is not None else ""
-                print(f"\n{idx + 1}/{len(POINTS)}: {POINTS[idx][1]}{hint}")
+                hint = ' (Enter — оставить прежнюю)' if prev is not None else ''
+                print(f'\n{idx + 1}/{len(POINTS)}: {POINTS[idx][1]}{hint}')
             else:
-                print("\nвсе точки пройдены: Enter — сохранить, Backspace — поправить последнюю")
+                print('\nвсе точки пройдены: Enter — сохранить, Backspace — поправить последнюю')
             announced = idx
-        header = f"{min(idx + 1, len(POINTS))}/{len(POINTS)} {POINTS[idx][0] if idx < len(POINTS) else 'done: Enter'}"
-        shown = render_view(frame, scale, None, ui["cursor"], header)
+        header = f'{min(idx + 1, len(POINTS))}/{len(POINTS)} {POINTS[idx][0] if idx < len(POINTS) else "done: Enter"}'
+        shown = render_view(frame, scale, None, ui['cursor'], header)
         if idx < len(POINTS) and previous.get(POINTS[idx][0]) is not None:
             p = previous[POINTS[idx][0]]
             cv2.circle(shown, (int(p[0] * scale), int(p[1] * scale)), 9, (0, 255, 255), 2)
@@ -91,25 +91,25 @@ def collect(frame: np.ndarray, scale: float, previous: dict | None = None) -> di
                 cv2.putText(shown, str(i + 1), (c[0] + 8, c[1] - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         cv2.imshow(WINDOW, shown)
         key = cv2.waitKey(30) & 0xFF
-        if ui["click"] is not None:
-            point, ui["click"] = ui["click"], None
+        if ui['click'] is not None:
+            point, ui['click'] = ui['click'], None
             if idx < len(POINTS):
                 placed[POINTS[idx][0]] = point
-                print(f"   поставлена ({point[0]:.0f}, {point[1]:.0f})")
+                print(f'   поставлена ({point[0]:.0f}, {point[1]:.0f})')
                 idx += 1
         elif key == KEY_ESC:
             cv2.destroyAllWindows()
             return None
         elif key == KEY_SKIP and idx < len(POINTS):
             placed[POINTS[idx][0]] = None
-            print("   пропущена: не видно")
+            print('   пропущена: не видно')
             idx += 1
         elif key in KEY_BACKSPACE and idx > 0:
             idx -= 1
             placed.pop(POINTS[idx][0], None)
         elif key in KEY_ENTER and idx < len(POINTS) and previous.get(POINTS[idx][0]) is not None:
             placed[POINTS[idx][0]] = previous[POINTS[idx][0]]
-            print("   оставлена прежняя")
+            print('   оставлена прежняя')
             idx += 1
         elif key in KEY_ENTER and idx >= len(POINTS):
             cv2.destroyAllWindows()
@@ -118,23 +118,23 @@ def collect(frame: np.ndarray, scale: float, previous: dict | None = None) -> di
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--video", type=Path, required=True)
-    parser.add_argument("--venue", type=Path, required=True)
-    parser.add_argument("--scale", type=float, default=1.0, help="масштаб окна")
+    parser.add_argument('--video', type=Path, required=True)
+    parser.add_argument('--venue', type=Path, required=True)
+    parser.add_argument('--scale', type=float, default=1.0, help='масштаб окна')
     args = parser.parse_args(argv)
 
-    print("строю фон без игроков (медиана 40 кадров)...")
+    print('строю фон без игроков (медиана 40 кадров)...')
     frame = background(args.video)
-    print(__doc__.split("\n\n", 2)[2])
-    path = args.venue / "field_points.json"
+    print(__doc__.split('\n\n', 2)[2])
+    path = args.venue / 'field_points.json'
     previous = load_points(path) if path.exists() else {}
     points = collect(frame, args.scale, previous)
     if points is None:
-        print("выход без сохранения")
+        print('выход без сохранения')
         return
     save_points(path, points)
-    print(f"сохранено -> {path}; дальше: python -m aifootball.tools.fit_field --venue {args.venue}")
+    print(f'сохранено -> {path}; дальше: python -m aifootball.tools.fit_field --venue {args.venue}')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

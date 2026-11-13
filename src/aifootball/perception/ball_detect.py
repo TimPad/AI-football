@@ -66,7 +66,7 @@ def detect_ball_in_frame(
     """Боксы мяча (xyxy в координатах кадра) и уверенности на одном кадре."""
     masked = frame.copy()
     masked[keep == 0] = FILL_BGR
-    crops = [masked[y0:y0 + tile, x0:x0 + tile] for x0, y0 in tiles]
+    crops = [masked[y0 : y0 + tile, x0 : x0 + tile] for x0, y0 in tiles]
     all_boxes, all_confs = [], []
     for (x0, y0), (boxes, confs) in zip(tiles, predict(crops)):
         if len(boxes):
@@ -80,19 +80,28 @@ def detect_ball_in_frame(
 class BallDetector:
     """Дообученная модель мяча, настроенная на кадр определённого размера и установку."""
 
-    def __init__(self, weights: Path, polygon: np.ndarray, frame_shape: tuple[int, int], tile: int,
-                 margin_px: int, conf: float, device: str):
+    def __init__(
+        self,
+        weights: Path,
+        polygon: np.ndarray,
+        frame_shape: tuple[int, int],
+        tile: int,
+        margin_px: int,
+        conf: float,
+        device: str,
+    ):
         from ultralytics import YOLO  # тяжёлый импорт — только когда реально детектируем
 
         if not weights.exists():
-            raise FileNotFoundError(f"нет весов модели мяча: {weights}")
+            raise FileNotFoundError(f'нет весов модели мяча: {weights}')
         self.model = YOLO(str(weights))
         self.tile, self.conf, self.device = tile, conf, device
         height, width = frame_shape
         self.keep = pitch_keep_mask(frame_shape, polygon, margin_px)
         ys, xs = np.nonzero(self.keep)
-        self.tiles = cover_tiles((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1),
-                                 tile, width, height)
+        self.tiles = cover_tiles(
+            (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1), tile, width, height
+        )
 
     def __call__(self, frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         return detect_ball_in_frame(frame, self.keep, self.tiles, self.tile, self._predict)

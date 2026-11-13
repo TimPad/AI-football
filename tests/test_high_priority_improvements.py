@@ -10,13 +10,15 @@ from aifootball.state.smooth import _clip_kinematic_outliers, smooth_tracks
 
 def test_robust_foot_points_restores_clipped_boxes():
     # Создаём синтетический трек, где на 5-м кадре бокс обрезан по пояс (h = 40 вместо 100)
-    df = pl.DataFrame({
-        "track_id": [1] * 10,
-        "x1": [10.0] * 10,
-        "y1": [100.0] * 10,  # верх головы стабилен
-        "x2": [30.0] * 10,
-        "y2": [200.0, 200.0, 200.0, 200.0, 140.0, 200.0, 200.0, 200.0, 200.0, 200.0],
-    })
+    df = pl.DataFrame(
+        {
+            'track_id': [1] * 10,
+            'x1': [10.0] * 10,
+            'y1': [100.0] * 10,  # верх головы стабилен
+            'x2': [30.0] * 10,
+            'y2': [200.0, 200.0, 200.0, 200.0, 140.0, 200.0, 200.0, 200.0, 200.0, 200.0],
+        }
+    )
 
     foot_x, foot_y = _compute_robust_foot_points(df)
 
@@ -31,8 +33,16 @@ def test_robust_foot_points_keep_feet_of_player_walking_away():
     # ноги остаются на нижней грани (медиана по всему треку опускала их на десятки пикселей)
     n = 40
     h = np.linspace(150.0, 60.0, n)
-    df = pl.DataFrame({"frame_id": list(range(n)), "track_id": [1] * n, "x1": [10.0] * n, "y1": [100.0] * n,
-                       "x2": [30.0] * n, "y2": (100.0 + h).tolist()})
+    df = pl.DataFrame(
+        {
+            'frame_id': list(range(n)),
+            'track_id': [1] * n,
+            'x1': [10.0] * n,
+            'y1': [100.0] * n,
+            'x2': [30.0] * n,
+            'y2': (100.0 + h).tolist(),
+        }
+    )
 
     _, foot_y = _compute_robust_foot_points(df)
 
@@ -56,27 +66,31 @@ def test_kinematic_outlier_filtering_removes_impossible_jumps():
 def test_smooth_tracks_caps_speed_at_physical_limit():
     # Создаём скачок позиции, дающий 30 м/с
     ts = np.arange(10) / 10.0
-    df = pl.DataFrame({
-        "frame_id": np.arange(10, dtype=np.int32),
-        "ts": ts,
-        "track_id": [1] * 10,
-        "role": ["player"] * 10,
-        "team": ["A"] * 10,
-        "x_m": [0.0, 3.0, 6.0, 9.0, 25.0, 28.0, 31.0, 34.0, 37.0, 40.0],
-        "y_m": np.zeros(10),
-    })
+    df = pl.DataFrame(
+        {
+            'frame_id': np.arange(10, dtype=np.int32),
+            'ts': ts,
+            'track_id': [1] * 10,
+            'role': ['player'] * 10,
+            'team': ['A'] * 10,
+            'x_m': [0.0, 3.0, 6.0, 9.0, 25.0, 28.0, 31.0, 34.0, 37.0, 40.0],
+            'y_m': np.zeros(10),
+        }
+    )
 
     smoothed = smooth_tracks(df)
 
-    assert smoothed["speed"].max() <= 10.0
+    assert smoothed['speed'].max() <= 10.0
 
 
 def test_heatmap_clips_boundary_points():
     # Игрок стоял слегка за линией поля (x_m = -0.2)
-    state = pl.DataFrame({
-        "x_m": [-0.2, 40.1, 10.0],
-        "y_m": [5.0, 15.2, 5.0],
-    })
+    state = pl.DataFrame(
+        {
+            'x_m': [-0.2, 40.1, 10.0],
+            'y_m': [5.0, 15.2, 5.0],
+        }
+    )
 
     heatmap = _heatmap(state, length_m=40.0, width_m=15.0, sample_s=0.1)
 

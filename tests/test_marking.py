@@ -11,7 +11,7 @@ TRUE_H = np.array([[0.05, 0.01, -3.0], [0.002, 0.08, -10.0], [0.0001, 0.0009, 1.
 
 
 def test_polygon_saved_and_loaded(tmp_path):
-    root = make_venue_dir(tmp_path / "v")
+    root = make_venue_dir(tmp_path / 'v')
 
     save_polygon(root, [(0, 0), (10, 0), (10, 10)])
 
@@ -19,18 +19,18 @@ def test_polygon_saved_and_loaded(tmp_path):
 
 
 def test_polygon_needs_three_points(tmp_path):
-    with pytest.raises(ValueError, match="минимум 3"):
-        save_polygon(make_venue_dir(tmp_path / "v"), [(0, 0), (1, 1)])
+    with pytest.raises(ValueError, match='минимум 3'):
+        save_polygon(make_venue_dir(tmp_path / 'v'), [(0, 0), (1, 1)])
 
 
 def test_homography_saved_with_honest_error(tmp_path):
-    root = make_venue_dir(tmp_path / "v")
+    root = make_venue_dir(tmp_path / 'v')
     meters = apply_homography(TRUE_H, np.array(PIXELS, float))
 
     info = save_homography(root, PIXELS, meters, calib=None)
 
-    assert info["reprojection_error_m"] < 1e-3
-    assert info["leave_one_out_error_m"] < 1e-3
+    assert info['reprojection_error_m'] < 1e-3
+    assert info['leave_one_out_error_m'] < 1e-3
     np.testing.assert_allclose(apply_homography(load_venue(root).H, np.array(PIXELS, float)), meters, atol=1e-4)
 
 
@@ -42,29 +42,29 @@ def test_preview_has_canvas_size():
 
 
 def test_self_intersecting_polygon_rejected(tmp_path):
-    root = make_venue_dir(tmp_path / "v")
+    root = make_venue_dir(tmp_path / 'v')
 
-    with pytest.raises(ValueError, match="пересекает сам себя"):
+    with pytest.raises(ValueError, match='пересекает сам себя'):
         save_polygon(root, [(0, 0), (10, 10), (10, 0), (0, 10)])
-    assert not (root / "pitch_polygon.json").exists()
+    assert not (root / 'pitch_polygon.json').exists()
 
 
 @pytest.mark.parametrize(
-    "text, expected",
+    'text, expected',
     [
-        ("40 8.5", (40.0, 8.5)),
-        ("40 8,5", (40.0, 8.5)),  # десятичная запятая
-        ("4,5 9,25", (4.5, 9.25)),
-        ("40, 8.5", (40.0, 8.5)),
-        ("40; 8,5", (40.0, 8.5)),
-        ("  20   20 ", (20.0, 20.0)),
+        ('40 8.5', (40.0, 8.5)),
+        ('40 8,5', (40.0, 8.5)),  # десятичная запятая
+        ('4,5 9,25', (4.5, 9.25)),
+        ('40, 8.5', (40.0, 8.5)),
+        ('40; 8,5', (40.0, 8.5)),
+        ('  20   20 ', (20.0, 20.0)),
     ],
 )
 def test_parse_meters(text, expected):
     assert parse_meters(text) == expected
 
 
-@pytest.mark.parametrize("text", ["4,9", "40", "40 8 1", "", "сорок 8"])
+@pytest.mark.parametrize('text', ['4,9', '40', '40 8 1', '', 'сорок 8'])
 def test_parse_meters_rejects_ambiguous_input(text):
     # «4,9» по-русски — одно число 4.9, а не пара (4, 9): переспрашиваем
     with pytest.raises(ValueError):
@@ -75,19 +75,19 @@ def test_finish_problem_blocks_bad_markup_before_window_closes():
     square = [(0, 0), (10, 0), (10, 10), (0, 10)]
 
     assert finish_problem(square, homography=False) is None
-    assert "пересекает" in finish_problem([(0, 0), (10, 10), (10, 0), (0, 10)], homography=False)
-    assert "минимум 3" in finish_problem([(0, 0), (1, 1)], homography=False)
-    assert "минимум 4" in finish_problem([(0, 0)], homography=True)
+    assert 'пересекает' in finish_problem([(0, 0), (10, 10), (10, 0), (0, 10)], homography=False)
+    assert 'минимум 3' in finish_problem([(0, 0), (1, 1)], homography=False)
+    assert 'минимум 4' in finish_problem([(0, 0)], homography=True)
     assert finish_problem(square, homography=True) is None
 
 
 def test_field_points_roundtrip_keeps_skipped(tmp_path):
     from aifootball.tools.mark_field import load_points, save_points
 
-    path = tmp_path / "field_points.json"
-    save_points(path, {"far_bench": (10.04, 20.0), "near_stands": None})
+    path = tmp_path / 'field_points.json'
+    save_points(path, {'far_bench': (10.04, 20.0), 'near_stands': None})
 
-    assert load_points(path) == {"far_bench": (10.0, 20.0), "near_stands": None}
+    assert load_points(path) == {'far_bench': (10.0, 20.0), 'near_stands': None}
 
 
 def test_background_removes_moving_object(tmp_path):
@@ -96,8 +96,8 @@ def test_background_removes_moving_object(tmp_path):
     from aifootball.tools.mark_field import background
 
     # «игрок» в каждом кадре в своём месте — на медиане его не остаётся
-    path = tmp_path / "v.mp4"
-    writer = cv2.VideoWriter(str(path), cv2.VideoWriter.fourcc(*"mp4v"), 10.0, (160, 120))
+    path = tmp_path / 'v.mp4'
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter.fourcc(*'mp4v'), 10.0, (160, 120))
     for i in range(30):
         frame = np.full((120, 160, 3), 100, np.uint8)
         cv2.rectangle(frame, (i * 5, 40), (i * 5 + 10, 80), (255, 255, 255), -1)

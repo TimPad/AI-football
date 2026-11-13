@@ -1,44 +1,551 @@
-import {useEffect,useState,type FormEvent} from 'react';import {api,all} from '../../api/client';import type {Match,DraftCommand,Protocol,Version} from '../../api/domain';import {sections} from '../../api/domain';import {ErrorBox,Field,Check,useLoad,Loading,downloadJson} from '../../components/ui';import {MoreMenu,ConfirmDialog} from '../../components/MoreMenu';import {useDraft} from './drafts';import {useAuth} from '../auth/Auth';
-function validTotalsDraft(v:unknown):v is {reported_totals:Protocol['reported_totals'],shootout_totals:Protocol['shootout_totals'],result_type:Protocol['result_type'],technical_reason:Protocol['technical_reason']}{
- if(!v||typeof v!=='object')return false;const x=v as {reported_totals?:Record<string,unknown>,shootout_totals?:Record<string,unknown>,result_type?:string};const count=(n:unknown)=>n===null||Number.isSafeInteger(n)&&Number(n)>=0;
- return ['played','technical'].includes(x.result_type??'')&&!!x.shootout_totals&&['home','away'].every(side=>{const t=x.reported_totals?.[side];if(!t||typeof t!=='object')return false;const row=t as Record<string,unknown>;return ['score','fouls','yellow_cards','dismissals'].every(k=>count(row[k]))&&!!row.period_scores&&typeof row.period_scores==='object'&&Object.values(row.period_scores).every(count)&&count(x.shootout_totals?.[side])});
+import { useEffect, useState, type FormEvent } from 'react';
+import { api, all } from '../../api/client';
+import type { Match, DraftCommand, Protocol, Version } from '../../api/domain';
+import { sections } from '../../api/domain';
+import { ErrorBox, Field, Check, useLoad, Loading, downloadJson } from '../../components/ui';
+import { MoreMenu, ConfirmDialog } from '../../components/MoreMenu';
+import { useDraft } from './drafts';
+import { useAuth } from '../auth/Auth';
+function validTotalsDraft(
+  v: unknown,
+): v is {
+  reported_totals: Protocol['reported_totals'];
+  shootout_totals: Protocol['shootout_totals'];
+  result_type: Protocol['result_type'];
+  technical_reason: Protocol['technical_reason'];
+} {
+  if (!v || typeof v !== 'object') return false;
+  const x = v as {
+    reported_totals?: Record<string, unknown>;
+    shootout_totals?: Record<string, unknown>;
+    result_type?: string;
+  };
+  const count = (n: unknown) => n === null || (Number.isSafeInteger(n) && Number(n) >= 0);
+  return (
+    ['played', 'technical'].includes(x.result_type ?? '') &&
+    !!x.shootout_totals &&
+    ['home', 'away'].every((side) => {
+      const t = x.reported_totals?.[side];
+      if (!t || typeof t !== 'object') return false;
+      const row = t as Record<string, unknown>;
+      return (
+        ['score', 'fouls', 'yellow_cards', 'dismissals'].every((k) => count(row[k])) &&
+        !!row.period_scores &&
+        typeof row.period_scores === 'object' &&
+        Object.values(row.period_scores).every(count) &&
+        count(x.shootout_totals?.[side])
+      );
+    })
+  );
 }
-type Dispatch=(d:DraftCommand)=>Promise<unknown>;
-export function TotalsForm({match,dispatch,disabled,heading=true}:{match:Match,dispatch:Dispatch,disabled:boolean,heading?:boolean}){
- const {session}=useAuth();const draft=useDraft(`aifootball:totals:v1:${session!.id}:${match.id}`,{reported_totals:match.protocol.reported_totals,shootout_totals:match.protocol.shootout_totals,result_type:match.protocol.result_type,technical_reason:match.protocol.technical_reason},(v):v is {reported_totals:Protocol['reported_totals'],shootout_totals:Protocol['shootout_totals'],result_type:Protocol['result_type'],technical_reason:Protocol['technical_reason']}=>validTotalsDraft(v));
- const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);const value=draft.value;const {reported_totals:totals}=value;
- function set(side:'home'|'away',key:'score'|'fouls'|'yellow_cards'|'dismissals',text:string){draft.change({...value,reported_totals:{...totals,[side]:{...totals[side],[key]:text===''?null:Number(text)}}})}
- async function save(e:FormEvent){e.preventDefault();setBusy(true);setError(undefined);try{await dispatch({kind:'set_totals',payload:value});draft.markSaved(value)}catch(e){setError(e)}finally{setBusy(false)}}
- return <form onSubmit={save} className="totals-form">{heading&&<h3>Итог по протоколу</h3>}<p className="muted">Пустое поле = неизвестно. Ноль указывается явно.</p><div className="totals-grid"><div/><b>{match.home.team.name}</b><b>{match.away.team.name}</b>{(['score','fouls','yellow_cards','dismissals'] as const).map((key,i)=><div className="totals-line" key={key}><span>{['Счёт','Фолы','Жёлтые','Удаления'][i]}</span>{(['home','away'] as const).map((side,j)=><input key={side} type="number" min="0" max="100000" aria-label={`${['Счёт','Фолы','Жёлтые','Удаления'][i]} ${j?'гостей':'хозяев'}`} value={totals[side][key]??''} onChange={e=>set(side,key,e.target.value)}/>)}</div>)}</div><details><summary>Счёт по таймам</summary>{match.regulation.rules.periods_s.concat(match.regulation.rules.extra.enabled?match.regulation.rules.extra.periods_s:[]).map((_,i)=><div key={i} className="form-grid">{(['home','away'] as const).map(side=><Field key={side} label={`Тайм ${i+1} · ${side==='home'?'хозяева':'гости'}`}><input type="number" min="0" value={totals[side].period_scores[i+1]??''} onChange={e=>draft.change({...value,reported_totals:{...totals,[side]:{...totals[side],period_scores:{...totals[side].period_scores,[i+1]:e.target.value===''?null:Number(e.target.value)}}}})}/></Field>)}</div>)}</details>{match.regulation.rules.shootout.enabled&&<><h3>Серия пенальти (отдельно)</h3><div className="form-grid">{(['home','away'] as const).map(side=><Field key={side} label={`Серия · ${side==='home'?'хозяева':'гости'}`}><input type="number" min="0" value={value.shootout_totals[side]??''} onChange={e=>draft.change({...value,shootout_totals:{...value.shootout_totals,[side]:e.target.value===''?null:Number(e.target.value)}})}/></Field>)}</div></>}<Field label="Тип результата"><select value={value.result_type} onChange={e=>draft.change({...value,result_type:e.target.value as 'played'|'technical'})}><option value="played">Сыгранный матч</option><option value="technical">Технический результат</option></select></Field>{value.result_type==='technical'&&<Field label="Причина технического результата"><textarea required value={value.technical_reason??''} onChange={e=>draft.change({...value,technical_reason:e.target.value})}/></Field>}<ErrorBox error={error||draft.error}/>{draft.corrupt&&<button type="button" onClick={()=>{downloadJson(draft.raw);draft.clear()}}>Скачать и очистить повреждённый ввод</button>}<button className="primary" disabled={disabled||busy||draft.corrupt}>Сохранить итоги</button>{draft.dirty&&<button className="quiet" type="button" onClick={()=>downloadJson(value)}>Скачать ввод</button>}</form>
+type Dispatch = (d: DraftCommand) => Promise<unknown>;
+export function TotalsForm({
+  match,
+  dispatch,
+  disabled,
+  heading = true,
+}: {
+  match: Match;
+  dispatch: Dispatch;
+  disabled: boolean;
+  heading?: boolean;
+}) {
+  const { session } = useAuth();
+  const draft = useDraft(
+    `aifootball:totals:v1:${session!.id}:${match.id}`,
+    {
+      reported_totals: match.protocol.reported_totals,
+      shootout_totals: match.protocol.shootout_totals,
+      result_type: match.protocol.result_type,
+      technical_reason: match.protocol.technical_reason,
+    },
+    (
+      v,
+    ): v is {
+      reported_totals: Protocol['reported_totals'];
+      shootout_totals: Protocol['shootout_totals'];
+      result_type: Protocol['result_type'];
+      technical_reason: Protocol['technical_reason'];
+    } => validTotalsDraft(v),
+  );
+  const [error, setError] = useState<unknown>();
+  const [busy, setBusy] = useState(false);
+  const value = draft.value;
+  const { reported_totals: totals } = value;
+  function set(side: 'home' | 'away', key: 'score' | 'fouls' | 'yellow_cards' | 'dismissals', text: string) {
+    draft.change({
+      ...value,
+      reported_totals: { ...totals, [side]: { ...totals[side], [key]: text === '' ? null : Number(text) } },
+    });
+  }
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(undefined);
+    try {
+      await dispatch({ kind: 'set_totals', payload: value });
+      draft.markSaved(value);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form onSubmit={save} className="totals-form">
+      {heading && <h3>Итог по протоколу</h3>}
+      <p className="muted">Пустое поле = неизвестно. Ноль указывается явно.</p>
+      <div className="totals-grid">
+        <div />
+        <b>{match.home.team.name}</b>
+        <b>{match.away.team.name}</b>
+        {(['score', 'fouls', 'yellow_cards', 'dismissals'] as const).map((key, i) => (
+          <div className="totals-line" key={key}>
+            <span>{['Счёт', 'Фолы', 'Жёлтые', 'Удаления'][i]}</span>
+            {(['home', 'away'] as const).map((side, j) => (
+              <input
+                key={side}
+                type="number"
+                min="0"
+                max="100000"
+                aria-label={`${['Счёт', 'Фолы', 'Жёлтые', 'Удаления'][i]} ${j ? 'гостей' : 'хозяев'}`}
+                value={totals[side][key] ?? ''}
+                onChange={(e) => set(side, key, e.target.value)}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+      <details>
+        <summary>Счёт по таймам</summary>
+        {match.regulation.rules.periods_s
+          .concat(match.regulation.rules.extra.enabled ? match.regulation.rules.extra.periods_s : [])
+          .map((_, i) => (
+            <div key={i} className="form-grid">
+              {(['home', 'away'] as const).map((side) => (
+                <Field key={side} label={`Тайм ${i + 1} · ${side === 'home' ? 'хозяева' : 'гости'}`}>
+                  <input
+                    type="number"
+                    min="0"
+                    value={totals[side].period_scores[i + 1] ?? ''}
+                    onChange={(e) =>
+                      draft.change({
+                        ...value,
+                        reported_totals: {
+                          ...totals,
+                          [side]: {
+                            ...totals[side],
+                            period_scores: {
+                              ...totals[side].period_scores,
+                              [i + 1]: e.target.value === '' ? null : Number(e.target.value),
+                            },
+                          },
+                        },
+                      })
+                    }
+                  />
+                </Field>
+              ))}
+            </div>
+          ))}
+      </details>
+      {match.regulation.rules.shootout.enabled && (
+        <>
+          <h3>Серия пенальти (отдельно)</h3>
+          <div className="form-grid">
+            {(['home', 'away'] as const).map((side) => (
+              <Field key={side} label={`Серия · ${side === 'home' ? 'хозяева' : 'гости'}`}>
+                <input
+                  type="number"
+                  min="0"
+                  value={value.shootout_totals[side] ?? ''}
+                  onChange={(e) =>
+                    draft.change({
+                      ...value,
+                      shootout_totals: {
+                        ...value.shootout_totals,
+                        [side]: e.target.value === '' ? null : Number(e.target.value),
+                      },
+                    })
+                  }
+                />
+              </Field>
+            ))}
+          </div>
+        </>
+      )}
+      <Field label="Тип результата">
+        <select
+          value={value.result_type}
+          onChange={(e) => draft.change({ ...value, result_type: e.target.value as 'played' | 'technical' })}
+        >
+          <option value="played">Сыгранный матч</option>
+          <option value="technical">Технический результат</option>
+        </select>
+      </Field>
+      {value.result_type === 'technical' && (
+        <Field label="Причина технического результата">
+          <textarea
+            required
+            value={value.technical_reason ?? ''}
+            onChange={(e) => draft.change({ ...value, technical_reason: e.target.value })}
+          />
+        </Field>
+      )}
+      <ErrorBox error={error || draft.error} />
+      {draft.corrupt && (
+        <button
+          type="button"
+          onClick={() => {
+            downloadJson(draft.raw);
+            draft.clear();
+          }}
+        >
+          Скачать и очистить повреждённый ввод
+        </button>
+      )}
+      <button className="primary" disabled={disabled || busy || draft.corrupt}>
+        Сохранить итоги
+      </button>
+      {draft.dirty && (
+        <button className="quiet" type="button" onClick={() => downloadJson(value)}>
+          Скачать ввод
+        </button>
+      )}
+    </form>
+  );
 }
-type Section=keyof Protocol['completeness'];
-const SECTIONS=Object.keys(sections) as Section[];
+type Section = keyof Protocol['completeness'];
+const SECTIONS = Object.keys(sections) as Section[];
 // Полнота: в режиме событий — один вопрос «всё внесено?»; разделы по отдельности — в свёрнутом блоке.
 // Без отметки «полностью» счёт и итоги по событиям не считаются официальными (неизвестное ≠ ноль).
-export function Completeness({match,dispatch,disabled,quick=true}:{match:Match,dispatch:Dispatch,disabled:boolean,quick?:boolean}){
- const [error,setError]=useState<unknown>();const c=match.protocol.completeness;
- const missing=SECTIONS.filter(k=>c[k]!=='complete');
- async function set(payload:Partial<Record<Section,'unknown'|'partial'|'complete'>>){try{await dispatch({kind:'set_completeness',payload});setError(undefined)}catch(e){setError(e)}}
- const selects=SECTIONS.map(key=><Field key={key} label={sections[key]}><select disabled={disabled} value={c[key]} onChange={e=>void set({[key]:e.target.value as 'unknown'|'partial'|'complete'})}><option value="unknown">Неизвестно</option><option value="partial">Частично</option><option value="complete">Полностью</option></select></Field>);
- if(!quick)return <div className="completeness"><h3>Заполненность протокола</h3>{selects}<ErrorBox error={error}/></div>;
- return <div className="completeness"><h3>Все события внесены?</h3>
-  {missing.length?<><p className="muted">Когда внесены все голы, фолы, карточки и состав, отметьте это — счёт и итоги будут считаться по событиям.</p>
-   <button type="button" className="primary" disabled={disabled} onClick={()=>void set(Object.fromEntries(missing.map(k=>[k,'complete'])))}>Да, протокол полный</button></>
-   :<p className="completeness-done">Протокол отмечен как полный.</p>}
-  <details className="completeness-detail"><summary>Уточнить по разделам{missing.length>0&&missing.length<SECTIONS.length?` · не отмечено: ${missing.map(k=>sections[k].toLowerCase()).join(', ')}`:''}</summary>{selects}</details>
-  <ErrorBox error={error}/></div>;
+export function Completeness({
+  match,
+  dispatch,
+  disabled,
+  quick = true,
+}: {
+  match: Match;
+  dispatch: Dispatch;
+  disabled: boolean;
+  quick?: boolean;
+}) {
+  const [error, setError] = useState<unknown>();
+  const c = match.protocol.completeness;
+  const missing = SECTIONS.filter((k) => c[k] !== 'complete');
+  async function set(payload: Partial<Record<Section, 'unknown' | 'partial' | 'complete'>>) {
+    try {
+      await dispatch({ kind: 'set_completeness', payload });
+      setError(undefined);
+    } catch (e) {
+      setError(e);
+    }
+  }
+  const selects = SECTIONS.map((key) => (
+    <Field key={key} label={sections[key]}>
+      <select
+        disabled={disabled}
+        value={c[key]}
+        onChange={(e) => void set({ [key]: e.target.value as 'unknown' | 'partial' | 'complete' })}
+      >
+        <option value="unknown">Неизвестно</option>
+        <option value="partial">Частично</option>
+        <option value="complete">Полностью</option>
+      </select>
+    </Field>
+  ));
+  if (!quick)
+    return (
+      <div className="completeness">
+        <h3>Заполненность протокола</h3>
+        {selects}
+        <ErrorBox error={error} />
+      </div>
+    );
+  return (
+    <div className="completeness">
+      <h3>Все события внесены?</h3>
+      {missing.length ? (
+        <>
+          <p className="muted">
+            Когда внесены все голы, фолы, карточки и состав, отметьте это — счёт и итоги будут считаться по событиям.
+          </p>
+          <button
+            type="button"
+            className="primary"
+            disabled={disabled}
+            onClick={() => void set(Object.fromEntries(missing.map((k) => [k, 'complete'])))}
+          >
+            Да, протокол полный
+          </button>
+        </>
+      ) : (
+        <p className="completeness-done">Протокол отмечен как полный.</p>
+      )}
+      <details className="completeness-detail">
+        <summary>
+          Уточнить по разделам
+          {missing.length > 0 && missing.length < SECTIONS.length
+            ? ` · не отмечено: ${missing.map((k) => sections[k].toLowerCase()).join(', ')}`
+            : ''}
+        </summary>
+        {selects}
+      </details>
+      <ErrorBox error={error} />
+    </div>
+  );
 }
-export function NotesPanel({match,dispatch,disabled}:{match:Match,dispatch:Dispatch,disabled:boolean}){
- const {session}=useAuth();const draft=useDraft(`aifootball:notes:v1:${session!.id}:${match.id}`,{notes:match.protocol.notes,public_notes:match.protocol.public_notes},(v):v is {notes:string,public_notes:string}=>!!v&&typeof v==='object'&&'notes' in v&&typeof v.notes==='string'&&'public_notes' in v&&typeof v.public_notes==='string');const [error,setError]=useState<unknown>();const [saved,setSaved]=useState('');
- useEffect(()=>{if(!draft.dirty||disabled||draft.corrupt)return;const timer=setTimeout(()=>{dispatch({kind:'set_notes',payload:draft.value}).then(()=>{setSaved('Сохранено');setError(undefined);draft.markSaved(draft.value)}).catch(setError)},500);return()=>clearTimeout(timer)},[draft.value,draft.dirty,disabled]);
- return <section className="surface notes-panel"><h2>Примечания</h2><Field label="Внутренние заметки"><textarea maxLength={20000} disabled={!match.protocol.draft} value={draft.value.notes} onChange={e=>{draft.change({...draft.value,notes:e.target.value});setSaved('Сохраняем…')}}/></Field><Field label="Публичное примечание"><textarea maxLength={20000} disabled={!match.protocol.draft} value={draft.value.public_notes} onChange={e=>{draft.change({...draft.value,public_notes:e.target.value});setSaved('Сохраняем…')}}/></Field><p className="muted" role="status">{saved} · Внутренние заметки не попадают в публичную версию.</p><ErrorBox error={error||draft.error}/>{draft.corrupt&&<button type="button" onClick={()=>{downloadJson(draft.raw);draft.clear()}}>Скачать и очистить повреждённый ввод</button>}{draft.dirty&&<button onClick={()=>downloadJson(draft.value)}>Скачать заметки</button>}</section>
+export function NotesPanel({ match, dispatch, disabled }: { match: Match; dispatch: Dispatch; disabled: boolean }) {
+  const { session } = useAuth();
+  const draft = useDraft(
+    `aifootball:notes:v1:${session!.id}:${match.id}`,
+    { notes: match.protocol.notes, public_notes: match.protocol.public_notes },
+    (v): v is { notes: string; public_notes: string } =>
+      !!v &&
+      typeof v === 'object' &&
+      'notes' in v &&
+      typeof v.notes === 'string' &&
+      'public_notes' in v &&
+      typeof v.public_notes === 'string',
+  );
+  const [error, setError] = useState<unknown>();
+  const [saved, setSaved] = useState('');
+  useEffect(() => {
+    if (!draft.dirty || disabled || draft.corrupt) return;
+    const timer = setTimeout(() => {
+      dispatch({ kind: 'set_notes', payload: draft.value })
+        .then(() => {
+          setSaved('Сохранено');
+          setError(undefined);
+          draft.markSaved(draft.value);
+        })
+        .catch(setError);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [draft.value, draft.dirty, disabled]);
+  return (
+    <section className="surface notes-panel">
+      <h2>Примечания</h2>
+      <Field label="Внутренние заметки">
+        <textarea
+          maxLength={20000}
+          disabled={!match.protocol.draft}
+          value={draft.value.notes}
+          onChange={(e) => {
+            draft.change({ ...draft.value, notes: e.target.value });
+            setSaved('Сохраняем…');
+          }}
+        />
+      </Field>
+      <Field label="Публичное примечание">
+        <textarea
+          maxLength={20000}
+          disabled={!match.protocol.draft}
+          value={draft.value.public_notes}
+          onChange={(e) => {
+            draft.change({ ...draft.value, public_notes: e.target.value });
+            setSaved('Сохраняем…');
+          }}
+        />
+      </Field>
+      <p className="muted" role="status">
+        {saved} · Внутренние заметки не попадают в публичную версию.
+      </p>
+      <ErrorBox error={error || draft.error} />
+      {draft.corrupt && (
+        <button
+          type="button"
+          onClick={() => {
+            downloadJson(draft.raw);
+            draft.clear();
+          }}
+        >
+          Скачать и очистить повреждённый ввод
+        </button>
+      )}
+      {draft.dirty && <button onClick={() => downloadJson(draft.value)}>Скачать заметки</button>}
+    </section>
+  );
 }
-export function VersionsPanel({match,dispatch,disabled}:{match:Match,dispatch:Dispatch,disabled:boolean}){
- const state=useLoad(()=>all<Version>(`/matches/${match.id}/versions`),`${match.id}:${match.revision}`);const [ack,setAck]=useState(false);const [withdraw,setWithdraw]=useState(false);const [error,setError]=useState<unknown>();const [busy,setBusy]=useState(false);
- async function send(d:DraftCommand){setBusy(true);setError(undefined);try{await dispatch(d);state.reload()}catch(e){setError(e)}finally{setBusy(false)}}
- return <section className="surface versions-panel"><div className="panel-head"><div><h2>{match.protocol.draft?'Черновик протокола':'Подтверждённый протокол'}</h2><p className="muted">Подтверждение сохраняет неизменяемую версию. Публикация — отдельное действие.</p></div></div>{match.protocol.draft?<><p>Не полностью заполнено: {match.projection.incomplete_sections.map(s=>sections[s as keyof Protocol['completeness']]??s).join(', ')||'нет пропусков по отметкам'}</p><Check label="Подтверждаю протокол с указанными пропусками" checked={ack} onChange={setAck}/><div className="row"><button disabled={disabled||busy||match.clock.phase==='running'||['cancelled','postponed'].includes(match.status)} onClick={()=>send({kind:'set_status',payload:{status:'ended'}})}>Завершить матч</button><button className="primary" disabled={disabled||busy||match.status!=='ended'||match.clock.phase==='running'} onClick={()=>send({kind:'confirm',payload:{acknowledge_incomplete:ack}})}>Подтвердить протокол</button></div></>:<button disabled={disabled||busy} onClick={()=>send({kind:'reopen',payload:{}})}>Открыть для исправления</button>}<ErrorBox error={error}/>{state.data?<div className="version-list">{state.data.map(v=>{const score=v.snapshot.projection.effective_score;const other=score.home!==match.projection.effective_score.home||score.away!==match.projection.effective_score.away;const live=match.published_version_id===v.id;
-  return <div className="version-row" key={v.id}><div><b>Версия {v.number}</b><small className="muted"> · {new Date(v.confirmed_at).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</small><p className="muted">{[other?`счёт ${score.home??'—'} : ${score.away??'—'}`:null,live?'на сайте':null].filter(Boolean).join(' · ')}</p></div>
-   <div className="row">{live&&v.public_id?<a target="_blank" rel="noreferrer" href={`/protocols/${v.public_id}`}>Публичная версия ↗</a>:<button disabled={disabled||busy} onClick={()=>send({kind:'publish',payload:{version_id:v.id}})}>Опубликовать версию {v.number}</button>}
-    <MoreMenu label={`Ещё действия с версией ${v.number}`} items={[{label:'Скачать версию',onSelect:()=>downloadJson(v.snapshot,`протокол-версия-${v.number}.json`)},...(live?[{label:'Снять протокол с сайта',danger:true,disabled:disabled||busy,onSelect:()=>setWithdraw(true)}]:[])]}/></div></div>})}</div>:<Loading error={state.error}/>}{withdraw&&<ConfirmDialog title="Снять протокол с сайта?" confirm="Снять с сайта" onClose={()=>setWithdraw(false)} onConfirm={async()=>{await send({kind:'unpublish',payload:{}});setWithdraw(false)}}><p>Зрители перестанут видеть счёт, события и состав этого матча. Подтверждённые версии сохранятся, опубликовать можно снова.</p></ConfirmDialog>}</section>
+export function VersionsPanel({ match, dispatch, disabled }: { match: Match; dispatch: Dispatch; disabled: boolean }) {
+  const state = useLoad(() => all<Version>(`/matches/${match.id}/versions`), `${match.id}:${match.revision}`);
+  const [ack, setAck] = useState(false);
+  const [withdraw, setWithdraw] = useState(false);
+  const [error, setError] = useState<unknown>();
+  const [busy, setBusy] = useState(false);
+  async function send(d: DraftCommand) {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await dispatch(d);
+      state.reload();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="surface versions-panel">
+      <div className="panel-head">
+        <div>
+          <h2>{match.protocol.draft ? 'Черновик протокола' : 'Подтверждённый протокол'}</h2>
+          <p className="muted">Подтверждение сохраняет неизменяемую версию. Публикация — отдельное действие.</p>
+        </div>
+      </div>
+      {match.protocol.draft ? (
+        <>
+          <p>
+            Не полностью заполнено:{' '}
+            {match.projection.incomplete_sections
+              .map((s) => sections[s as keyof Protocol['completeness']] ?? s)
+              .join(', ') || 'нет пропусков по отметкам'}
+          </p>
+          <Check label="Подтверждаю протокол с указанными пропусками" checked={ack} onChange={setAck} />
+          <div className="row">
+            <button
+              disabled={
+                disabled || busy || match.clock.phase === 'running' || ['cancelled', 'postponed'].includes(match.status)
+              }
+              onClick={() => send({ kind: 'set_status', payload: { status: 'ended' } })}
+            >
+              Завершить матч
+            </button>
+            <button
+              className="primary"
+              disabled={disabled || busy || match.status !== 'ended' || match.clock.phase === 'running'}
+              onClick={() => send({ kind: 'confirm', payload: { acknowledge_incomplete: ack } })}
+            >
+              Подтвердить протокол
+            </button>
+          </div>
+        </>
+      ) : (
+        <button disabled={disabled || busy} onClick={() => send({ kind: 'reopen', payload: {} })}>
+          Открыть для исправления
+        </button>
+      )}
+      <ErrorBox error={error} />
+      {state.data ? (
+        <div className="version-list">
+          {state.data.map((v) => {
+            const score = v.snapshot.projection.effective_score;
+            const other =
+              score.home !== match.projection.effective_score.home ||
+              score.away !== match.projection.effective_score.away;
+            const live = match.published_version_id === v.id;
+            return (
+              <div className="version-row" key={v.id}>
+                <div>
+                  <b>Версия {v.number}</b>
+                  <small className="muted">
+                    {' '}
+                    ·{' '}
+                    {new Date(v.confirmed_at).toLocaleString('ru-RU', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </small>
+                  <p className="muted">
+                    {[other ? `счёт ${score.home ?? '—'} : ${score.away ?? '—'}` : null, live ? 'на сайте' : null]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                </div>
+                <div className="row">
+                  {live && v.public_id ? (
+                    <a target="_blank" rel="noreferrer" href={`/protocols/${v.public_id}`}>
+                      Публичная версия ↗
+                    </a>
+                  ) : (
+                    <button
+                      disabled={disabled || busy}
+                      onClick={() => send({ kind: 'publish', payload: { version_id: v.id } })}
+                    >
+                      Опубликовать версию {v.number}
+                    </button>
+                  )}
+                  <MoreMenu
+                    label={`Ещё действия с версией ${v.number}`}
+                    items={[
+                      {
+                        label: 'Скачать версию',
+                        onSelect: () => downloadJson(v.snapshot, `протокол-версия-${v.number}.json`),
+                      },
+                      ...(live
+                        ? [
+                            {
+                              label: 'Снять протокол с сайта',
+                              danger: true,
+                              disabled: disabled || busy,
+                              onSelect: () => setWithdraw(true),
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <Loading error={state.error} />
+      )}
+      {withdraw && (
+        <ConfirmDialog
+          title="Снять протокол с сайта?"
+          confirm="Снять с сайта"
+          onClose={() => setWithdraw(false)}
+          onConfirm={async () => {
+            await send({ kind: 'unpublish', payload: {} });
+            setWithdraw(false);
+          }}
+        >
+          <p>
+            Зрители перестанут видеть счёт, события и состав этого матча. Подтверждённые версии сохранятся, опубликовать
+            можно снова.
+          </p>
+        </ConfirmDialog>
+      )}
+    </section>
+  );
 }
-export function HistoryPanel({match}:{match:Match}){const state=useLoad(()=>api<{items:{id:string,created_at:string,after_revision:number,body:{kind:string}}[]}>(`/matches/${match.id}/history?limit=100`),`${match.id}:${match.revision}`);return <section className="surface"><h2>История изменений</h2>{state.data?<table><thead><tr><th>Ревизия</th><th>Изменение</th><th>Время</th></tr></thead><tbody>{state.data.items.map(h=><tr key={h.id}><td>{h.after_revision}</td><td>{h.body.kind}</td><td>{new Date(h.created_at).toLocaleString('ru-RU')}</td></tr>)}</tbody></table>:<Loading error={state.error}/>}</section>}
+export function HistoryPanel({ match }: { match: Match }) {
+  const state = useLoad(
+    () =>
+      api<{ items: { id: string; created_at: string; after_revision: number; body: { kind: string } }[] }>(
+        `/matches/${match.id}/history?limit=100`,
+      ),
+    `${match.id}:${match.revision}`,
+  );
+  return (
+    <section className="surface">
+      <h2>История изменений</h2>
+      {state.data ? (
+        <table>
+          <thead>
+            <tr>
+              <th>Ревизия</th>
+              <th>Изменение</th>
+              <th>Время</th>
+            </tr>
+          </thead>
+          <tbody>
+            {state.data.items.map((h) => (
+              <tr key={h.id}>
+                <td>{h.after_revision}</td>
+                <td>{h.body.kind}</td>
+                <td>{new Date(h.created_at).toLocaleString('ru-RU')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <Loading error={state.error} />
+      )}
+    </section>
+  );
+}

@@ -1,1 +1,1 @@
-export {PublicPlayerPage as PublicPlayerHistoryPage} from './PublicPlayerPage';
+export { PublicPlayerPage as PublicPlayerHistoryPage } from './PublicPlayerPage';

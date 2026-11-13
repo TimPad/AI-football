@@ -4,8 +4,14 @@ import numpy as np
 import polars as pl
 import pytest
 
-from aifootball.understanding.per_second_pilot import (VERSION, cv_hints, follow_keys, per_second_prompt,
-                                                       project_per_second, window_seconds)
+from aifootball.understanding.per_second_pilot import (
+    VERSION,
+    cv_hints,
+    follow_keys,
+    per_second_prompt,
+    project_per_second,
+    window_seconds,
+)
 
 
 def test_window_seconds_round_partial_last_second():
@@ -31,8 +37,9 @@ def test_follow_keys_ignore_a_single_spike_and_clamp_at_the_frame_edge():
     t = np.arange(0, 4, 1 / 15)
     xs = np.full(len(t), 200.0)
     xs[30] = 2500.0  # одна ложная детекция
-    follow = follow_keys(points(t, xs, np.full(len(t), 100.0)), np.zeros((0, 3)), start_s=0.0, duration_s=4.0,
-                         frame_w=2592, frame_h=1944)
+    follow = follow_keys(
+        points(t, xs, np.full(len(t), 100.0)), np.zeros((0, 3)), start_s=0.0, duration_s=4.0, frame_w=2592, frame_h=1944
+    )
     assert all(x == 0 and y == 0 for _, x, y in follow['keys'])
 
 
@@ -49,13 +56,21 @@ def test_prompt_asks_for_one_answer_per_second_and_adds_cv_hints_only_when_given
     plain = json.loads(per_second_prompt(11948))
     assert plain['schema_version'] == VERSION and plain['seconds'] == 12 and 'cv_hints' not in plain
     assert 'json' in plain['instruction'].lower() and '12' in plain['response_format']['ball_in_play']
-    hints = [{'t': 0, 'players_speed_p80_m_s': 2.1, 'ball_seen_share': 0.5, 'ball_xy_m': [3.0, 4.0],
-              'ball_outside_pitch': False}]
+    hints = [
+        {
+            't': 0,
+            'players_speed_p80_m_s': 2.1,
+            'ball_seen_share': 0.5,
+            'ball_xy_m': [3.0, 4.0],
+            'ball_outside_pitch': False,
+        }
+    ]
     with_cv = json.loads(per_second_prompt(11948, hints=hints))
     assert with_cv['cv_hints'] == hints and len(with_cv['instruction']) > len(plain['instruction'])
     # Варианты с подсказками и без отличаются только подсказками и их описанием.
-    assert {k: v for k, v in with_cv.items() if k not in ('cv_hints', 'instruction')} == \
-           {k: v for k, v in plain.items() if k != 'instruction'}
+    assert {k: v for k, v in with_cv.items() if k not in ('cv_hints', 'instruction')} == {
+        k: v for k, v in plain.items() if k != 'instruction'
+    }
     assert with_cv['instruction'].startswith(plain['instruction'])
 
 
@@ -82,26 +97,34 @@ def test_projection_fills_only_missing_metadata_and_empty_shot_list_with_audit()
     assert projected['events'] == [] and 'schema_version' not in doc
 
 
-@pytest.mark.parametrize('doc', [
-    answer(['playing'] * 11, []),
-    answer(['playing'] * 11 + ['dead'], []),
-    answer(['playing'] * 12, [{'ms': 12000, 'outcome': 'saved'}]),
-    answer(['playing'] * 12, [{'ms': 100, 'outcome': 'offside'}]),
-    answer(['playing'] * 12, [], notes='лишнее поле'),
-    {**answer(['playing'] * 12, []), 'schema_version': 'joint-pilot-v1'},
-    [],
-])
+@pytest.mark.parametrize(
+    'doc',
+    [
+        answer(['playing'] * 11, []),
+        answer(['playing'] * 11 + ['dead'], []),
+        answer(['playing'] * 12, [{'ms': 12000, 'outcome': 'saved'}]),
+        answer(['playing'] * 12, [{'ms': 100, 'outcome': 'offside'}]),
+        answer(['playing'] * 12, [], notes='лишнее поле'),
+        {**answer(['playing'] * 12, []), 'schema_version': 'joint-pilot-v1'},
+        [],
+    ],
+)
 def test_projection_rejects_answers_that_cannot_be_scored_without_guessing(doc):
     with pytest.raises(ValueError):
         project_per_second(doc, 11948)
 
 
 def test_cv_hints_report_speed_ball_share_position_and_outside_flag():
-    state = pl.DataFrame({'ts': [t / 10 for t in range(20)], 'role': ['player'] * 20,
-                          'speed': [1.0] * 10 + [4.0] * 10})
+    state = pl.DataFrame({'ts': [t / 10 for t in range(20)], 'role': ['player'] * 20, 'speed': [1.0] * 10 + [4.0] * 10})
     frames = pl.DataFrame({'ts': [t / 10 for t in range(20)]})
-    ball = pl.DataFrame({'ts': [0.1, 0.2, 1.1], 'x_m': [10.0, 10.2, 40.0], 'y_m': [5.0, 5.0, 8.0],
-                         'interpolated': [False, False, False]})
+    ball = pl.DataFrame(
+        {
+            'ts': [0.1, 0.2, 1.1],
+            'x_m': [10.0, 10.2, 40.0],
+            'y_m': [5.0, 5.0, 8.0],
+            'interpolated': [False, False, False],
+        }
+    )
     hints = cv_hints(state, ball, frames, start_ms=0, seconds=3, length_m=37.32, width_m=17.68)
     assert [h['t'] for h in hints] == [0, 1, 2]
     assert hints[0]['ball_seen_share'] == 0.2 and hints[0]['ball_xy_m'] == [10.1, 5.0]

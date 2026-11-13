@@ -9,14 +9,17 @@ from .test_team_profiles import create, update, player
 def upload_png(client, color='blue'):
     image = BytesIO()
     Image.new('RGB', (12, 12), color).save(image, format='PNG')
-    response = client.post('/api/v1/catalog/images', files={'file': ('logo.png', image.getvalue(), 'image/png')},
-                           headers={'X-Request-ID': str(uuid4())})
+    response = client.post(
+        '/api/v1/catalog/images',
+        files={'file': ('logo.png', image.getvalue(), 'image/png')},
+        headers={'X-Request-ID': str(uuid4())},
+    )
     assert response.status_code == 201, response.text
     return response.json()['id']
 
 
 def enter(client, tournament, team):
-    response = client.post(f"/api/v1/tournaments/{tournament['id']}/entries", json={'team_id': team['id']})
+    response = client.post(f'/api/v1/tournaments/{tournament["id"]}/entries', json={'team_id': team['id']})
     assert response.status_code == 201, response.text
 
 
@@ -26,9 +29,10 @@ def guest_get(client, image_id):
 
 
 def archive_tournament(client, tournament):
-    current = client.get(f"/api/v1/tournaments/{tournament['id']}").json()
-    response = client.patch(f"/api/v1/tournaments/{tournament['id']}",
-                            json={'expected_revision': current['revision'], 'archived': True})
+    current = client.get(f'/api/v1/tournaments/{tournament["id"]}').json()
+    response = client.patch(
+        f'/api/v1/tournaments/{tournament["id"]}', json={'expected_revision': current['revision'], 'archived': True}
+    )
     assert response.status_code == 200, response.text
 
 
@@ -78,7 +82,7 @@ def test_archived_links_close_logo_on_next_request(admin_client, tournament_fact
     team, _ = create(admin_client, name='Запад', logo_id=other)
     enter(admin_client, tournament_factory(name='Третий'), team)
     assert guest_get(admin_client, other).status_code == 200
-    assert admin_client.patch(f"/api/v1/teams/{team['id']}", json={'archived': True}).status_code == 200
+    assert admin_client.patch(f'/api/v1/teams/{team["id"]}', json={'archived': True}).status_code == 200
     assert guest_get(admin_client, other).status_code == 404
 
 
@@ -96,7 +100,7 @@ def test_replaced_logo_is_no_longer_public(admin_client, tournament_factory):
     team, _ = create(admin_client, logo_id=old)
     enter(admin_client, tournament_factory(), team)
     new = upload_png(admin_client, 'black')
-    response = update(admin_client, admin_client.get(f"/api/v1/teams/{team['id']}").json(), logo_id=new)
+    response = update(admin_client, admin_client.get(f'/api/v1/teams/{team["id"]}').json(), logo_id=new)
     assert response.status_code == 200, response.text
     assert guest_get(admin_client, old).status_code == 404
     assert guest_get(admin_client, new).status_code == 200

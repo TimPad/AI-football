@@ -1,4 +1,5 @@
 """Serialize setup mutations and replay their exact committed response."""
+
 import json
 from hashlib import sha256
 from sqlalchemy import select, func

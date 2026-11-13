@@ -34,7 +34,8 @@ class AssignmentInput(BaseModel):
     @field_validator('excluded_reason')
     @classmethod
     def nonblank_reason(cls, value):
-        if value is not None and not value.strip(): raise ValueError('Укажите причину исключения')
+        if value is not None and not value.strip():
+            raise ValueError('Укажите причину исключения')
         return value.strip() if value else value
 
 
@@ -42,7 +43,9 @@ class AssignmentsUpdate(Mutation):
     side_map: dict[str, Literal['home', 'away']]
     assignments: list[AssignmentInput] = Field(max_length=50000)
 
+
 from typing import Any
+
 
 class RosterPerson(BaseModel):
     player_id: UUID
@@ -50,9 +53,11 @@ class RosterPerson(BaseModel):
     display_name: str
     shirt_number: str | None
 
+
 class TeamSnapshot(BaseModel):
     id: UUID
     name: str
+
 
 class AnalysisContext(BaseModel):
     match_id: UUID
@@ -63,8 +68,9 @@ class AnalysisContext(BaseModel):
     camera: dict[str, Any]
     units: dict[str, str]
 
+
 class RunSummary(BaseModel):
-    identity_workflow: Literal['admin','team'] = 'admin'
+    identity_workflow: Literal['admin', 'team'] = 'admin'
     has_understanding: bool = False
     has_events: bool = False
     id: UUID
@@ -76,6 +82,7 @@ class RunSummary(BaseModel):
     partial: bool
     passed: bool
 
+
 class TrackView(BaseModel):
     track_id: int
     team: Literal['A', 'B'] | None
@@ -83,6 +90,7 @@ class TrackView(BaseModel):
     intervals: list[list[float]]
     thumb: str | None
     has_metrics: bool
+
 
 class MetricValues(BaseModel):
     distance_m: float | None = None
@@ -95,6 +103,7 @@ class MetricValues(BaseModel):
     metric_notes: dict[str, str] = Field(default_factory=dict)
     missing_track_ids: list[int] = Field(default_factory=list)
 
+
 class PlayerMetric(BaseModel):
     player_id: UUID
     display_name: str
@@ -103,8 +112,10 @@ class PlayerMetric(BaseModel):
     track_ids: list[int]
     metrics: MetricValues
 
+
 class AutoSources(BaseModel):
     """Версии для оценок, созданные из подтверждённого видеоанализа; note — почему не создано или не опубликовано."""
+
     participation_version_id: UUID | None = None
     participation_revision: int | None = None
     players: int = 0
@@ -112,6 +123,7 @@ class AutoSources(BaseModel):
     action_revision: int | None = None
     passes: int = 0
     note: str | None = None
+
 
 class RunView(RunSummary):
     side_map_verified: bool = False
@@ -130,6 +142,7 @@ class RunView(RunSummary):
     players: list[PlayerMetric]
     auto_sources: AutoSources | None = None
 
+
 class Overview(BaseModel):
     match_id: UUID
     analysis_revision: int
@@ -137,6 +150,7 @@ class Overview(BaseModel):
     published_run_id: UUID | None
     jobs: list[JobView]
     runs: list[RunSummary]
+
 
 class HistoryMatch(PlayerMetric):
     match_id: UUID
@@ -146,11 +160,13 @@ class HistoryMatch(PlayerMetric):
     pitch: dict[str, Any]
     partial: bool
 
+
 class PlayerHistoryView(BaseModel):
     player_id: UUID
     match_count: int
     totals: MetricValues
     matches: list[HistoryMatch]
+
 
 class PublicMetrics(BaseModel):
     distance_m: float | None
@@ -161,12 +177,14 @@ class PublicMetrics(BaseModel):
     vmax_ms: float | None
     heatmap_s: list[list[float]] | None
 
+
 class PublicPlayer(BaseModel):
     player_id: UUID
     display_name: str
     shirt_number: str | None
     side: Literal['home', 'away']
     metrics: PublicMetrics
+
 
 class PublicAnalysis(BaseModel):
     match_id: UUID
@@ -183,17 +201,17 @@ class PublicAnalysis(BaseModel):
 
 
 class UnderstandingReviewUpdate(Mutation):
-    event_id: str = Field(min_length=1,max_length=100,pattern=r'^[A-Za-z0-9_-]+$')
-    decision: Literal['accepted','corrected','rejected']
+    event_id: str = Field(min_length=1, max_length=100, pattern=r'^[A-Za-z0-9_-]+$')
+    decision: Literal['accepted', 'corrected', 'rejected']
     correction: dict[str, Any] | None = None
-    reason: str = Field(default='',max_length=500)
+    reason: str = Field(default='', max_length=500)
 
 
 class UnderstandingView(BaseModel):
     run_id: UUID
     match_id: UUID
     source_run_id: UUID | None
-    status: Literal['review','confirmed']
+    status: Literal['review', 'confirmed']
     revision: int
     understanding: dict[str, Any] | None
     reviews: dict[str, Any]

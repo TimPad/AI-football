@@ -1,9 +1,19 @@
 import polars as pl
 import pytest
 
-from aifootball.understanding.per_second import (auc, ball_visible_seconds, dead_intervals, fit_threshold, match_shots,
-                                                 player_speed_seconds, predicted_seconds, reference_seconds,
-                                                 score_seconds, stoppage_interval_recall, wilson)
+from aifootball.understanding.per_second import (
+    auc,
+    ball_visible_seconds,
+    dead_intervals,
+    fit_threshold,
+    match_shots,
+    player_speed_seconds,
+    predicted_seconds,
+    reference_seconds,
+    score_seconds,
+    stoppage_interval_recall,
+    wilson,
+)
 
 
 def touches(*pairs):
@@ -23,8 +33,18 @@ def test_dead_interval_ends_at_next_player_touch_not_at_pass_or_shot_mark():
 def test_reference_labels_only_pure_seconds_inside_labelled_span():
     log = touches((0.5, 'A'), (5.4, 'dead'), (8.0, 'B'), (12.0, 'A'))
     labels, mixed = reference_seconds(log, start_s=0.0, end_s=100.0)
-    assert labels == {1: 'playing', 2: 'playing', 3: 'playing', 4: 'playing', 6: 'stoppage', 7: 'stoppage',
-                      8: 'playing', 9: 'playing', 10: 'playing', 11: 'playing'}
+    assert labels == {
+        1: 'playing',
+        2: 'playing',
+        3: 'playing',
+        4: 'playing',
+        6: 'stoppage',
+        7: 'stoppage',
+        8: 'playing',
+        9: 'playing',
+        10: 'playing',
+        11: 'playing',
+    }
     assert mixed == 1
 
 
@@ -35,10 +55,22 @@ def test_reference_is_clipped_to_requested_span():
 
 
 def test_predicted_second_takes_majority_known_state_and_needs_half_a_second():
-    states = [{'kind': 'playing', 'start_ms': 0, 'end_ms': 3400}, {'kind': 'stoppage', 'start_ms': 3400, 'end_ms': 6000},
-              {'kind': 'unknown', 'start_ms': 6000, 'end_ms': 7000}, {'kind': 'playing', 'start_ms': 7700, 'end_ms': 8000}]
-    assert predicted_seconds(states, range(8)) == {0: 'playing', 1: 'playing', 2: 'playing', 3: 'stoppage',
-                                                    4: 'stoppage', 5: 'stoppage', 6: 'unknown', 7: 'unknown'}
+    states = [
+        {'kind': 'playing', 'start_ms': 0, 'end_ms': 3400},
+        {'kind': 'stoppage', 'start_ms': 3400, 'end_ms': 6000},
+        {'kind': 'unknown', 'start_ms': 6000, 'end_ms': 7000},
+        {'kind': 'playing', 'start_ms': 7700, 'end_ms': 8000},
+    ]
+    assert predicted_seconds(states, range(8)) == {
+        0: 'playing',
+        1: 'playing',
+        2: 'playing',
+        3: 'stoppage',
+        4: 'stoppage',
+        5: 'stoppage',
+        6: 'unknown',
+        7: 'unknown',
+    }
 
 
 def test_break_and_match_boundaries_mean_ball_out_of_play():
@@ -57,8 +89,10 @@ def test_score_counts_unknown_as_missing_coverage_not_as_correct():
     assert score['stoppage_precision'] == 0.5 and score['stoppage_recall'] == 0.5
     assert score['playing_recall'] == pytest.approx(2 / 3)
     assert score['balanced_accuracy'] == pytest.approx((2 / 3 + 0.5) / 2)
-    assert score['confusion'] == {'playing': {'playing': 2, 'stoppage': 1, 'unknown': 0},
-                                  'stoppage': {'playing': 0, 'stoppage': 1, 'unknown': 1}}
+    assert score['confusion'] == {
+        'playing': {'playing': 2, 'stoppage': 1, 'unknown': 0},
+        'stoppage': {'playing': 0, 'stoppage': 1, 'unknown': 1},
+    }
 
 
 def test_score_without_predicted_stoppages_has_no_precision():
@@ -86,11 +120,18 @@ def test_wilson_interval_matches_known_values_and_handles_empty_samples():
 
 def test_match_shots_uses_only_shot_like_events_within_tolerance():
     shots = [{'ts': 6.91, 'certainty': 'sure'}, {'ts': 37.39, 'certainty': 'sure'}, {'ts': 20.0, 'certainty': 'maybe'}]
-    events = [{'kind': 'shot_candidate', 'start_ms': 36000, 'end_ms': 37000},
-              {'kind': 'kick_in', 'start_ms': 6800, 'end_ms': 7000},
-              {'kind': 'save_candidate', 'start_ms': 50000, 'end_ms': 51000}]
-    assert match_shots(shots, events, tolerance_ms=1500) == {'labelled': 3, 'labelled_sure': 2, 'predicted': 2,
-                                                             'matched': 1, 'matched_sure': 1}
+    events = [
+        {'kind': 'shot_candidate', 'start_ms': 36000, 'end_ms': 37000},
+        {'kind': 'kick_in', 'start_ms': 6800, 'end_ms': 7000},
+        {'kind': 'save_candidate', 'start_ms': 50000, 'end_ms': 51000},
+    ]
+    assert match_shots(shots, events, tolerance_ms=1500) == {
+        'labelled': 3,
+        'labelled_sure': 2,
+        'predicted': 2,
+        'matched': 1,
+        'matched_sure': 1,
+    }
 
 
 def test_auc_and_threshold_treat_low_values_as_stoppage():

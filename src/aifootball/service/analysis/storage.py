@@ -7,8 +7,13 @@ from aifootball.service.errors import DomainError
 
 
 def limits(settings):
-    return Limits(settings.analysis_zip_limit, settings.analysis_unpacked_limit, settings.analysis_file_limit,
-                  settings.analysis_json_limit, settings.analysis_thumb_limit)
+    return Limits(
+        settings.analysis_zip_limit,
+        settings.analysis_unpacked_limit,
+        settings.analysis_file_limit,
+        settings.analysis_json_limit,
+        settings.analysis_thumb_limit,
+    )
 
 
 def read_upload(stream, settings):
@@ -19,14 +24,16 @@ def read_upload(stream, settings):
 
 
 def put_package(root, result):
-    root = Path(root) / 'analysis'; root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    key = f"{result.manifest['run_id']}-{result.content_hash[:16]}.zip"
+    root = Path(root) / 'analysis'
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    key = f'{result.manifest["run_id"]}-{result.content_hash[:16]}.zip'
     path = root / key
     # Store validated files only; timestamps/order do not depend on the submitted container.
     buffer = BytesIO()
     with ZipFile(buffer, 'w') as archive:
         for name, raw in sorted(result.files.items()):
-            info = ZipInfo(name, (2026, 1, 1, 0, 0, 0)); info.compress_type = ZIP_DEFLATED
+            info = ZipInfo(name, (2026, 1, 1, 0, 0, 0))
+            info.compress_type = ZIP_DEFLATED
             archive.writestr(info, raw)
     raw = buffer.getvalue()
     if path.exists():
@@ -34,7 +41,8 @@ def put_package(root, result):
             raise DomainError('storage_conflict', 'Сохранённый пакет повреждён', status=409)
         return key, None
     with path.open('xb') as target:
-        os.chmod(path, 0o600); target.write(raw)
+        os.chmod(path, 0o600)
+        target.write(raw)
     return key, path
 
 

@@ -53,5 +53,10 @@ def points_near_polygon(points: np.ndarray, polygon: np.ndarray, margin_px: floa
     if margin_px <= 0:
         return points_in_polygon(points, polygon)
     contour = np.asarray(polygon, np.float32).reshape(-1, 1, 2)
-    return np.array([cv2.pointPolygonTest(contour, (float(x), float(y)), True) >= -margin_px
-                     for x, y in np.asarray(points, float).reshape(-1, 2)], dtype=bool)
+    return np.array(
+        [
+            cv2.pointPolygonTest(contour, (float(x), float(y)), True) >= -margin_px
+            for x, y in np.asarray(points, float).reshape(-1, 2)
+        ],
+        dtype=bool,
+    )

@@ -7,15 +7,22 @@ from aifootball.service.stages.generate import participants_placement, fixtures_
 
 def test_config_validation():
     StageConfig.model_validate({'kind': 'groups', 'group_count': 4, 'advance': {'per_group': 2, 'best': []}})
-    with pytest.raises(ValidationError): StageConfig.model_validate({'kind': 'groups'})
-    with pytest.raises(ValidationError): StageConfig.model_validate({'kind': 'groups', 'group_count': 1})
-    with pytest.raises(ValidationError): StageConfig.model_validate({'kind': 'round_robin', 'criteria': ['points', 'magic']})
-    with pytest.raises(ValidationError): StageConfig.model_validate({'kind': 'round_robin', 'criteria': ['goal_diff']})
-    with pytest.raises(ValidationError): StageConfig.model_validate({'kind': 'round_robin', 'criteria': ['points', 'buchholz']})
+    with pytest.raises(ValidationError):
+        StageConfig.model_validate({'kind': 'groups'})
+    with pytest.raises(ValidationError):
+        StageConfig.model_validate({'kind': 'groups', 'group_count': 1})
+    with pytest.raises(ValidationError):
+        StageConfig.model_validate({'kind': 'round_robin', 'criteria': ['points', 'magic']})
+    with pytest.raises(ValidationError):
+        StageConfig.model_validate({'kind': 'round_robin', 'criteria': ['goal_diff']})
+    with pytest.raises(ValidationError):
+        StageConfig.model_validate({'kind': 'round_robin', 'criteria': ['points', 'buchholz']})
 
 
 def test_templates():
-    stages = template_stages('groups_playoff', {'group_count': 2, 'per_group': 2, 'third_place': True, 'best_thirds': 2})
+    stages = template_stages(
+        'groups_playoff', {'group_count': 2, 'per_group': 2, 'third_place': True, 'best_thirds': 2}
+    )
     assert [s['kind'] for s in stages] == ['groups', 'single_elim']
     assert stages[1]['config']['source'] == {'previous': True}
     assert stages[0]['config']['advance']['best'] == [{'place': 3, 'count': 2}]
@@ -29,14 +36,19 @@ def test_groups_fixtures_have_group_numbers():
     placement = participants_placement(config, 'snake', list('ABCDEFGH'), 0)
     specs = fixtures_for(config, placement)
     assert {s.group_no for s in specs} == {1, 2} and len(specs) == 12
-    with pytest.raises(DomainError): participants_placement(config, 'seeded', list('ABCDEFGH'), 0)
-    with pytest.raises(DomainError): participants_placement(config, 'pots', list('ABC'), 0)
+    with pytest.raises(DomainError):
+        participants_placement(config, 'seeded', list('ABCDEFGH'), 0)
+    with pytest.raises(DomainError):
+        participants_placement(config, 'pots', list('ABC'), 0)
 
 
 def test_swiss_first_round_top_half_vs_bottom():
     specs = fixtures_for(StageConfig(kind='swiss', rounds=3), list('ABCDE'))
     assert [(s.home, s.away, s.bye) for s in specs] == [
-        ({'entry': 'A'}, {'entry': 'C'}, False), ({'entry': 'B'}, {'entry': 'D'}, False), ({'entry': 'E'}, None, True)]
+        ({'entry': 'A'}, {'entry': 'C'}, False),
+        ({'entry': 'B'}, {'entry': 'D'}, False),
+        ({'entry': 'E'}, None, True),
+    ]
 
 
 def test_scheme_after_groups_and_league():

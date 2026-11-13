@@ -14,31 +14,36 @@ class _Venue:
 
 def _data():
     state, tracks = synthetic_match()
-    return build_report(state, tracks, _Venue(), [(0.0, 100.0), (100.0, 200.0)],
-                        {"A": "Зелёные <script>", "B": "Оранжевые"}, video_s=200.0)
+    return build_report(
+        state,
+        tracks,
+        _Venue(),
+        [(0.0, 100.0), (100.0, 200.0)],
+        {'A': 'Зелёные <script>', 'B': 'Оранжевые'},
+        video_s=200.0,
+    )
 
 
 def test_render_has_tabs_periods_and_escapes_names():
     html = render_html(_data(), images={})
-    for key in ("all", "h1", "h2"):
-        for tab in ("stats", "players", "moments"):
+    for key in ('all', 'h1', 'h2'):
+        for tab in ('stats', 'players', 'moments'):
             assert f'data-period="{key}" data-tab="{tab}"' in html
-    assert "Зелёные &lt;script&gt;" in html and "Зелёные <script>" not in html
-    assert "<img" not in html  # без видео картинок нет
+    assert 'Зелёные &lt;script&gt;' in html and 'Зелёные <script>' not in html
+    assert '<img' not in html  # без видео картинок нет
 
 
 def test_image_requests_cover_thumbs_and_moments():
     data = _data()
     req = image_requests(data)
-    assert "thumb:11" in req
-    assert any(k.startswith("moment:all:") for k in req)
+    assert 'thumb:11' in req
+    assert any(k.startswith('moment:all:') for k in req)
 
 
 def test_render_inlines_images():
     data = _data()
-    html = render_html(data, images={"thumb:11": "data:image/jpeg;base64,AAAA"})
+    html = render_html(data, images={'thumb:11': 'data:image/jpeg;base64,AAAA'})
     assert 'src="data:image/jpeg;base64,AAAA"' in html
-
 
 
 def test_report_explains_estimated_duration():
@@ -51,15 +56,17 @@ def test_report_explains_estimated_duration():
 def test_ball_card_includes_pass_accuracy():
     data = _data()
     for p in data['periods']:
-        p['ball'] = {'possession': {'possession_pct': {'A': 40., 'B': 60.}},
-                     'passes': {'passes_total': {'A': 10, 'B': 20}, 'pass_accuracy_pct': {'A': 80., 'B': 90.}},
-                     'caveat': 'Приблизительно'}
+        p['ball'] = {
+            'possession': {'possession_pct': {'A': 40.0, 'B': 60.0}},
+            'passes': {'passes_total': {'A': 10, 'B': 20}, 'pass_accuracy_pct': {'A': 80.0, 'B': 90.0}},
+            'caveat': 'Приблизительно',
+        }
     html = render_html(data, {})
     assert 'Точность передач' in html and '80%' in html and '90%' in html
 
 
 def test_input_quality_warning_visible_for_bad_trajectories():
     data = _data()
-    data['periods'][0]['input_quality'] = {'suspect_steps':2}
+    data['periods'][0]['input_quality'] = {'suspect_steps': 2}
     html = render_html(data, {})
     assert 'траекториях есть резкие скачки' in html

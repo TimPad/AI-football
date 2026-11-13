@@ -12,25 +12,27 @@ def _track(track_id, start_ts, duration=2.0, a=100.0, b=100.0, foot_x=100.0, foo
     for i in range(n):
         ts = start_ts + i * 0.1
         f = int(ts * 10)
-        rows.append({
-            "frame_id": f,
-            "ts": ts,
-            "cls": "person",
-            "x1": foot_x - 10.0,
-            "y1": foot_y - 30.0,
-            "x2": foot_x + 10.0,
-            "y2": foot_y,
-            "conf": 0.9,
-            "torso_l": 120.0,
-            "torso_a": a,
-            "torso_b": b,
-            "track_id": track_id,
-            "foot_x": foot_x + i * 0.5,
-            "foot_y": foot_y,
-            "in_pitch": True,
-            "role": "player",
-            "team": "A",
-        })
+        rows.append(
+            {
+                'frame_id': f,
+                'ts': ts,
+                'cls': 'person',
+                'x1': foot_x - 10.0,
+                'y1': foot_y - 30.0,
+                'x2': foot_x + 10.0,
+                'y2': foot_y,
+                'conf': 0.9,
+                'torso_l': 120.0,
+                'torso_a': a,
+                'torso_b': b,
+                'track_id': track_id,
+                'foot_x': foot_x + i * 0.5,
+                'foot_y': foot_y,
+                'in_pitch': True,
+                'role': 'player',
+                'team': 'A',
+            }
+        )
     return rows
 
 
@@ -43,8 +45,8 @@ def test_stitches_matching_tracks():
     stitched = stitch_tracks(df, max_gap_s=2.0, max_color_dist=10.0)
 
     # Должен остаться один единый track_id (1)
-    assert stitched["track_id"].n_unique() == 1
-    assert stitched["track_id"].unique().to_list() == [1]
+    assert stitched['track_id'].n_unique() == 1
+    assert stitched['track_id'].unique().to_list() == [1]
 
 
 def test_does_not_stitch_overlapping_tracks():
@@ -55,7 +57,7 @@ def test_does_not_stitch_overlapping_tracks():
 
     stitched = stitch_tracks(df, max_gap_s=2.0)
 
-    assert stitched["track_id"].n_unique() == 2
+    assert stitched['track_id'].n_unique() == 2
 
 
 def test_does_not_stitch_different_colors():
@@ -66,7 +68,7 @@ def test_does_not_stitch_different_colors():
 
     stitched = stitch_tracks(df, max_gap_s=2.0, max_color_dist=15.0)
 
-    assert stitched["track_id"].n_unique() == 2
+    assert stitched['track_id'].n_unique() == 2
 
 
 def test_does_not_stitch_far_positions():
@@ -77,7 +79,7 @@ def test_does_not_stitch_far_positions():
 
     stitched = stitch_tracks(df, max_gap_s=2.0, max_spatial_dist_px=100.0)
 
-    assert stitched["track_id"].n_unique() == 2
+    assert stitched['track_id'].n_unique() == 2
 
 
 CENTERS = np.array([[100.0, 100.0], [180.0, 100.0]])  # цвет формы команд A и B
@@ -85,7 +87,7 @@ CENTERS = np.array([[100.0, 100.0], [180.0, 100.0]])  # цвет формы ко
 
 def _recolor(rows, start, a, b=100.0, end=None):
     for row in rows[start:end]:
-        row["torso_a"], row["torso_b"] = a, b
+        row['torso_a'], row['torso_b'] = a, b
     return rows
 
 
@@ -96,7 +98,7 @@ def test_splits_track_when_color_changes_for_good():
 
     split = split_on_color_change(df, CENTERS)
 
-    ids = split.sort("frame_id")["track_id"].to_list()
+    ids = split.sort('frame_id')['track_id'].to_list()
     assert ids[:20] == [1] * 20
     assert len(set(ids[20:])) == 1 and ids[20] != 1
 
@@ -105,7 +107,7 @@ def test_does_not_split_on_short_color_noise():
     rows = _recolor(_track(1, start_ts=0.0, duration=4.0, a=100.0), start=20, end=25, a=180.0)
     df = pl.DataFrame(rows, schema=schemas.TRACKS)
 
-    assert split_on_color_change(df, CENTERS)["track_id"].unique().to_list() == [1]
+    assert split_on_color_change(df, CENTERS)['track_id'].unique().to_list() == [1]
 
 
 def test_ignores_color_while_torso_is_covered_by_another_box():
@@ -116,8 +118,8 @@ def test_ignores_color_while_torso_is_covered_by_another_box():
 
     split = split_on_color_change(df, CENTERS)
 
-    assert split.filter(pl.col("x1") == 90.0)["track_id"].unique().to_list() == [1]
-    assert split["track_id"].n_unique() == 2
+    assert split.filter(pl.col('x1') == 90.0)['track_id'].unique().to_list() == [1]
+    assert split['track_id'].n_unique() == 2
 
 
 def test_does_not_split_when_color_drifts_within_team():
@@ -125,4 +127,4 @@ def test_does_not_split_when_color_drifts_within_team():
     rows = _recolor(_track(1, start_ts=0.0, duration=4.0, a=200.0), start=20, a=160.0)
     df = pl.DataFrame(rows, schema=schemas.TRACKS)
 
-    assert split_on_color_change(df, CENTERS)["track_id"].unique().to_list() == [1]
+    assert split_on_color_change(df, CENTERS)['track_id'].unique().to_list() == [1]

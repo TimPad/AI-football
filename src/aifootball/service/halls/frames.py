@@ -3,6 +3,7 @@
 По нему обработчик сверяет, не сдвинута ли камера к моменту записи (geometry.camera_drift).
 Кадр задаётся один раз: перенастроенной камере нужна новая версия профиля.
 """
+
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -42,8 +43,10 @@ def normalized_jpeg(raw: bytes, content_type: str | None) -> tuple[bytes, int, i
                 if image.width * image.height > MAX_PIXELS:
                     raise DomainError('image_size', 'Кадр слишком большой: максимум 40 миллионов пикселей')
                 image.load()
-                clean = Image.new('RGB', image.size); clean.paste(image.convert('RGB'))
-                output = BytesIO(); clean.save(output, format='JPEG', quality=95)
+                clean = Image.new('RGB', image.size)
+                clean.paste(image.convert('RGB'))
+                output = BytesIO()
+                clean.save(output, format='JPEG', quality=95)
                 return output.getvalue(), clean.width, clean.height
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning):
         raise DomainError('file_type', 'Не удалось прочитать кадр. Загрузите корректный JPEG, PNG или WebP')
@@ -57,8 +60,14 @@ def _profile(db, hid, pid, lock=False):
 
 
 @router.put('/halls/{hid}/camera-profiles/{pid}/reference-frame', response_model=CameraProfileView)
-def upload_reference(hid: UUID, pid: UUID, request: Request, file: UploadFile = File(),
-                     db: Session = Depends(get_session), actor=Depends(require_csrf)):
+def upload_reference(
+    hid: UUID,
+    pid: UUID,
+    request: Request,
+    file: UploadFile = File(),
+    db: Session = Depends(get_session),
+    actor=Depends(require_csrf),
+):
     raw = file.file.read(MAX_BYTES + 1)
     if len(raw) > MAX_BYTES:
         raise DomainError('file_size', 'Кадр должен быть не больше 16 МБ')
@@ -67,21 +76,29 @@ def upload_reference(hid: UUID, pid: UUID, request: Request, file: UploadFile = 
     with db.begin():
         profile = _profile(db, hid, pid, lock=True)
         if (width, height) != (profile.frame_width, profile.frame_height):
-            raise DomainError('image_size', f'Кадр {width} × {height} px, а профиль камеры — {profile.frame_width} × {profile.frame_height} px. '
-                                            'Загрузите кадр той же камеры в том же разрешении')
+            raise DomainError(
+                'image_size',
+                f'Кадр {width} × {height} px, а профиль камеры — {profile.frame_width} × {profile.frame_height} px. '
+                'Загрузите кадр той же камеры в том же разрешении',
+            )
         hall = get_entity(db, Hall, hid)
         if profile.reference_sha256:
             if profile.reference_sha256 != digest:
-                raise DomainError('reference_set', 'Эталонный кадр этой версии уже задан. Если камеру перенастроили, создайте новую версию профиля',
-                                  status=409)
+                raise DomainError(
+                    'reference_set',
+                    'Эталонный кадр этой версии уже задан. Если камеру перенастроили, создайте новую версию профиля',
+                    status=409,
+                )
             return camera_view(profile, hall)
         target = reference_path(request.app.state.settings.attachment_root, profile.id)
         target.parent.mkdir(parents=True, exist_ok=True)
         with NamedTemporaryFile(dir=target.parent, delete=False) as temporary:
             path = Path(temporary.name)
             try:
-                temporary.write(encoded); temporary.flush()
-                os.replace(path, target); target.chmod(0o600)
+                temporary.write(encoded)
+                temporary.flush()
+                os.replace(path, target)
+                target.chmod(0o600)
             finally:
                 path.unlink(missing_ok=True)
         profile.reference_sha256 = digest
@@ -95,4 +112,8 @@ def reference_frame(hid: UUID, pid: UUID, request: Request, db: Session = Depend
     path = reference_path(request.app.state.settings.attachment_root, profile.id)
     if not profile.reference_sha256 or not path.is_file():
         raise DomainError('not_found', 'Эталонный кадр не загружен', status=404)
-    return FileResponse(path, media_type='image/jpeg', headers={'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, max-age=3600'})
+    return FileResponse(
+        path,
+        media_type='image/jpeg',
+        headers={'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, max-age=3600'},
+    )

@@ -24,12 +24,23 @@ def manifest(tmp_path, *, windows=2):
     cv.mkdir()
     for name in ('tracks.parquet', 'state.parquet', 'detections.parquet', 'meta.json'):
         (cv / name).write_bytes(name.encode())
-    return {'cases': [{'id': 'case1', 'video': str(video), 'cv': str(cv), 'venue': str(tmp_path / 'venue'),
-                       'start_ms': 0, 'end_ms': windows * 12000}]}
+    return {
+        'cases': [
+            {
+                'id': 'case1',
+                'video': str(video),
+                'cv': str(cv),
+                'venue': str(tmp_path / 'venue'),
+                'start_ms': 0,
+                'end_ms': windows * 12000,
+            }
+        ]
+    }
 
 
 def prepare(case, begin, end, variant, output):
     from aifootball.understanding.types import MediaAsset, Window
+
     kind = 'full' if variant == 'fullframe' else 'follow'
     folder = output / 'media' / case['id'] / f'{begin}' / kind
     folder.mkdir(parents=True, exist_ok=True)
@@ -72,8 +83,13 @@ def test_each_variant_window_is_paid_once_then_replayed_from_frozen_plan(monkeyp
 
 def test_invalid_answer_is_kept_but_not_scored(monkeypatch, tmp_path):
     m = runner(monkeypatch)
-    reports = m.run(manifest(tmp_path, windows=1), tmp_path / 'out', apply=True,
-                    client=Client({'ball_in_play': ['playing'] * 3}), prepare=prepare)
+    reports = m.run(
+        manifest(tmp_path, windows=1),
+        tmp_path / 'out',
+        apply=True,
+        client=Client({'ball_in_play': ['playing'] * 3}),
+        prepare=prepare,
+    )
     window = reports['fullframe']['cases'][0]['windows'][0]
     assert window['status'] == 'invalid_response' and window['document'] == {'ball_in_play': ['playing'] * 3}
     assert 'projected_document' not in window

@@ -1,14 +1,73 @@
-import {test,expect} from '@playwright/test';import {login,createTournament,goal,totals} from './helpers';
-test('manual protocol snapshots, publication, recovery and responsive layouts',async({page,browser})=>{
- await login(page);const data=await createTournament(page);await goal(page);await totals(page,3,2);await expect(page.getByText('Известные голы: 1 : 0',{exact:true})).toBeVisible();
- await page.getByLabel('Прикрепить документ',{exact:true}).setInputFiles({name:'protocol.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/mNcAAAAASUVORK5CYII=','base64')});await page.getByRole('button',{name:'Загрузить',exact:true}).click();await expect(page.getByRole('link',{name:'protocol.png',exact:true})).toBeVisible();
- await page.getByLabel('Внутренние заметки').fill('PRIVATE-ONLY-NOTE');await expect(page.getByText(/Сохранено · Внутренние/)).toBeVisible();
- await page.getByRole('button',{name:'Завершить матч',exact:true}).click();await expect(page.getByRole('button',{name:'Подтвердить протокол',exact:true})).toBeEnabled();await page.getByLabel('Подтверждаю протокол с указанными пропусками').check();await page.getByRole('button',{name:'Подтвердить протокол',exact:true}).click();await expect(page.getByRole('button',{name:'Открыть для исправления'})).toBeVisible();await page.getByRole('button',{name:'Опубликовать версию 1',exact:true}).click();const publicLink=page.getByRole('link',{name:'Публичная версия ↗',exact:true});await expect(publicLink).toBeVisible();const url=await publicLink.getAttribute('href');
- const guest=await browser.newContext();const publicPage=await guest.newPage();const requests:string[]=[];publicPage.on('request',r=>{if(r.url().includes('/api/'))requests.push(r.url())});await publicPage.goto(url!);await expect(publicPage.locator('.public-score')).toHaveText('3 : 2');await expect(publicPage.getByText('PRIVATE-ONLY-NOTE')).toHaveCount(0);expect(requests.every(u=>u.includes('/public/protocols/'))).toBe(true);
- await page.getByRole('button',{name:'Открыть для исправления'}).click();await totals(page,4,2);await publicPage.reload();await expect(publicPage.locator('.public-score')).toHaveText('3 : 2');
- await page.getByRole('button',{name:'Гол',exact:true}).click();await page.getByLabel('Внутреннее примечание к событию').fill('Ввод после обновления');await page.reload();await page.getByRole('button',{name:'Продолжить заполнение'}).click();await expect(page.getByLabel('Внутреннее примечание к событию')).toHaveValue('Ввод после обновления');await page.getByRole('button',{name:'Закрыть',exact:true}).click();
- for(const width of [1440,768,375]){await page.setViewportSize({width,height:1000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(page.getByRole('button',{name:'Гол',exact:true})).toBeVisible();if(width===375){await page.getByRole('button',{name:'Меню',exact:true}).click();await expect(page.getByRole('navigation',{name:'Турнир'}).getByRole('link',{name:'Все турниры',exact:true})).toBeVisible();await page.getByRole('button',{name:'Меню',exact:true}).click()}}
- await page.goto(`/tournaments/${data.tid}?tab=rules`);await page.getByLabel('Длительность тайма 1, минут').fill('15');await page.getByLabel('Длительность тайма 2, минут').fill('15');await page.getByRole('button',{name:'Сохранить регламент',exact:true}).click();await expect(page.getByLabel('Версия / вариант')).toContainText('версия 2');// Часы завершённого матча скрыты; регламент самого матча остаётся прежним (тайм 20 минут).
- expect((await (await page.request.get('/api/v1'+data.path)).json()).regulation.rules.periods_s[0]).toBe(1200);
- await publicPage.goto(data.path);await expect(publicPage.getByRole('heading',{name:'Кабинет организатора'})).toBeVisible();await guest.close();
+import { test, expect } from '@playwright/test';
+import { login, createTournament, goal, totals } from './helpers';
+test('manual protocol snapshots, publication, recovery and responsive layouts', async ({ page, browser }) => {
+  await login(page);
+  const data = await createTournament(page);
+  await goal(page);
+  await totals(page, 3, 2);
+  await expect(page.getByText('Известные голы: 1 : 0', { exact: true })).toBeVisible();
+  await page
+    .getByLabel('Прикрепить документ', { exact: true })
+    .setInputFiles({
+      name: 'protocol.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/mNcAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    });
+  await page.getByRole('button', { name: 'Загрузить', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'protocol.png', exact: true })).toBeVisible();
+  await page.getByLabel('Внутренние заметки').fill('PRIVATE-ONLY-NOTE');
+  await expect(page.getByText(/Сохранено · Внутренние/)).toBeVisible();
+  await page.getByRole('button', { name: 'Завершить матч', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Подтвердить протокол', exact: true })).toBeEnabled();
+  await page.getByLabel('Подтверждаю протокол с указанными пропусками').check();
+  await page.getByRole('button', { name: 'Подтвердить протокол', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Открыть для исправления' })).toBeVisible();
+  await page.getByRole('button', { name: 'Опубликовать версию 1', exact: true }).click();
+  const publicLink = page.getByRole('link', { name: 'Публичная версия ↗', exact: true });
+  await expect(publicLink).toBeVisible();
+  const url = await publicLink.getAttribute('href');
+  const guest = await browser.newContext();
+  const publicPage = await guest.newPage();
+  const requests: string[] = [];
+  publicPage.on('request', (r) => {
+    if (r.url().includes('/api/')) requests.push(r.url());
+  });
+  await publicPage.goto(url!);
+  await expect(publicPage.locator('.public-score')).toHaveText('3 : 2');
+  await expect(publicPage.getByText('PRIVATE-ONLY-NOTE')).toHaveCount(0);
+  expect(requests.every((u) => u.includes('/public/protocols/'))).toBe(true);
+  await page.getByRole('button', { name: 'Открыть для исправления' }).click();
+  await totals(page, 4, 2);
+  await publicPage.reload();
+  await expect(publicPage.locator('.public-score')).toHaveText('3 : 2');
+  await page.getByRole('button', { name: 'Гол', exact: true }).click();
+  await page.getByLabel('Внутреннее примечание к событию').fill('Ввод после обновления');
+  await page.reload();
+  await page.getByRole('button', { name: 'Продолжить заполнение' }).click();
+  await expect(page.getByLabel('Внутреннее примечание к событию')).toHaveValue('Ввод после обновления');
+  await page.getByRole('button', { name: 'Закрыть', exact: true }).click();
+  for (const width of [1440, 768, 375]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expect(page.getByRole('button', { name: 'Гол', exact: true })).toBeVisible();
+    if (width === 375) {
+      await page.getByRole('button', { name: 'Меню', exact: true }).click();
+      await expect(
+        page.getByRole('navigation', { name: 'Турнир' }).getByRole('link', { name: 'Все турниры', exact: true }),
+      ).toBeVisible();
+      await page.getByRole('button', { name: 'Меню', exact: true }).click();
+    }
+  }
+  await page.goto(`/tournaments/${data.tid}?tab=rules`);
+  await page.getByLabel('Длительность тайма 1, минут').fill('15');
+  await page.getByLabel('Длительность тайма 2, минут').fill('15');
+  await page.getByRole('button', { name: 'Сохранить регламент', exact: true }).click();
+  await expect(page.getByLabel('Версия / вариант')).toContainText('версия 2'); // Часы завершённого матча скрыты; регламент самого матча остаётся прежним (тайм 20 минут).
+  expect((await (await page.request.get('/api/v1' + data.path)).json()).regulation.rules.periods_s[0]).toBe(1200);
+  await publicPage.goto(data.path);
+  await expect(publicPage.getByRole('heading', { name: 'Кабинет организатора' })).toBeVisible();
+  await guest.close();
 });
