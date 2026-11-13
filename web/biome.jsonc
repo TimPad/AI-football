@@ -1,0 +1,60 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.7/schema.json",
+  "files": {
+    // types.ts создаёт openapi-typescript; CI сверяет его с OpenAPI побайтно.
+    "includes": [
+      "**",
+      "!!**/dist",
+      "!!**/test-results",
+      "!!**/playwright-report",
+      "!src/api/types.ts",
+      "!package-lock.json"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      // Долг на момент подключения линтера (14.11.2026). Исправление меняет поведение или разметку,
+      // поэтому правила пока предупреждают и сборку не роняют. Число — замечаний на момент подключения.
+      // Закрыли класс замечаний — уберите строку, правило снова станет ошибкой.
+      "a11y": {
+        "useButtonType": "warn", // 223: кнопка без type внутри формы отправляет её
+        "useSemanticElements": "warn", // 27
+        "useAriaPropsSupportedByRole": "warn", // 14
+        "useFocusableInteractive": "warn", // 5
+        "useKeyWithClickEvents": "warn", // 4
+        "noStaticElementInteractions": "warn", // 3
+        "noNoninteractiveTabindex": "warn", // 3
+        "noAutofocus": "warn", // 3
+        "noNoninteractiveElementToInteractiveRole": "warn" // 2
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "warn", // 54: эффекты с неполным списком зависимостей
+        "noComponentHookFactories": "warn" // 13
+      },
+      "suspicious": {
+        "noArrayIndexKey": "warn" // 36
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
+}
