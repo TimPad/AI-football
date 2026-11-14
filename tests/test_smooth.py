@@ -73,3 +73,36 @@ def test_single_point_track():
 
 def test_empty_input():
     assert smooth_tracks(_positions([], []).clear()).is_empty()
+
+
+def _standing_jitter_distance(fps):
+    """Путь «стоящего» игрока за 20 с: детектор дрожит на 10 см в каждом кадре."""
+    rng = np.random.default_rng(0)
+    ts = np.arange(20 * fps) / fps
+    state = smooth_tracks(_positions(ts, 5 + rng.normal(0, 0.1, len(ts)), 5 + rng.normal(0, 0.1, len(ts))))
+    return float(np.hypot(np.diff(state['x_m'].to_numpy()), np.diff(state['y_m'].to_numpy())).sum())
+
+
+def test_detector_jitter_does_not_add_distance_at_higher_frame_rate():
+    # Независимый шум в каждом кадре: за то же окно 25 fps даёт больше отсчётов, поэтому путь может быть
+    # только меньше. С окном в отсчётах было наоборот: 9,2 м против 3,7 м при 10 fps.
+    at_10, at_25 = _standing_jitter_distance(10), _standing_jitter_distance(25)
+
+    assert 0.5 * at_10 < at_25 <= at_10
+
+
+def test_position_step_is_smoothed_over_same_time_at_any_frame_rate():
+    def peak_speed(fps):
+        ts = np.arange(4 * fps) / fps
+        return smooth_tracks(_positions(ts, np.where(ts < 2, 0.0, 0.3)))['speed'].max()
+
+    assert peak_speed(25) == pytest.approx(peak_speed(10), rel=0.25)
+
+
+@pytest.mark.parametrize(
+    ('fps', 'samples'), [(5, 3), (10, 3), (14.9, 5), (15, 5), (25, 9), (29.97, 9), (30, 9), (60, 19)]
+)
+def test_window_covers_third_of_second_at_any_frame_rate(fps, samples):
+    from aifootball.state.smooth import window_samples
+
+    assert window_samples(1 / fps) == samples
