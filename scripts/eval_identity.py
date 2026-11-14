@@ -4,6 +4,7 @@
 кандидатов нет; "?" — не уверен, в замер не входит. Состояние берётся из data/matches/<фрагмент>-v2.
 Запуск: .venv/bin/python scripts/eval_identity.py
 """
+
 import json
 from pathlib import Path
 
@@ -12,7 +13,10 @@ import yaml
 
 from aifootball.analytics.track_groups import link_tracks, track_ends
 
-FRAGMENTS = {'yaroslavl-60-240': 'data/matches/yaroslavl-60-240-v2', 'yaroslavl-600-780': 'data/matches/yaroslavl-600-780-v2'}
+FRAGMENTS = {
+    'yaroslavl-60-240': 'data/matches/yaroslavl-60-240-v2',
+    'yaroslavl-600-780': 'data/matches/yaroslavl-600-780-v2',
+}
 
 
 def score(predicted: dict[int, int], truth: dict[str, int | None | str]) -> dict:
@@ -24,15 +28,23 @@ def score(predicted: dict[int, int], truth: dict[str, int | None | str]) -> dict
         got = predicted.get(int(end))
         if expected is None:
             if got is not None:
-                fp += 1; errors.append((int(end), got, None))
+                fp += 1
+                errors.append((int(end), got, None))
         elif got == expected:
             tp += 1
         else:
             fn += 1
             if got is not None:
-                fp += 1; errors.append((int(end), got, expected))
-    return {'links': tp + fn, 'found': tp, 'false': fp, 'precision': round(tp / max(1, tp + fp), 2),
-            'recall': round(tp / max(1, tp + fn), 2), 'errors': errors}
+                fp += 1
+                errors.append((int(end), got, expected))
+    return {
+        'links': tp + fn,
+        'found': tp,
+        'false': fp,
+        'precision': round(tp / max(1, tp + fp), 2),
+        'recall': round(tp / max(1, tp + fn), 2),
+        'errors': errors,
+    }
 
 
 def main():

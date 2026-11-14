@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+
 from .test_confirmation import finish
 
 
@@ -8,7 +9,7 @@ def test_guest_calendar_is_narrow_and_filters_local_day(admin_client, match_fact
         tournaments = guest.get('/api/v1/public/tournaments')
         assert tournaments.status_code == 200
         assert tournaments.json()['items'][0]['id'] == m['tournament_id']
-        url = f"/api/v1/public/tournaments/{m['tournament_id']}/matches"
+        url = f'/api/v1/public/tournaments/{m["tournament_id"]}/matches'
         assert guest.get(url + '?day=2026-10-19').json()['total'] == 0
         response = guest.get(url + '?day=2026-10-20')
         assert response.status_code == 200
@@ -24,7 +25,7 @@ def test_public_result_uses_only_published_snapshot(admin_client, match_factory,
     m = finish(send_command, match_factory())
     m = send_command(m, 'set_notes', {'notes': 'PRIVATE SECRET'}).json()
     m = send_command(m, 'confirm', {'acknowledge_incomplete': True}).json()
-    version = admin_client.get(f"/api/v1/matches/{m['id']}/versions").json()['items'][0]
+    version = admin_client.get(f'/api/v1/matches/{m["id"]}/versions').json()['items'][0]
     m = send_command(m, 'publish', {'version_id': version['id']}).json()
     m = send_command(m, 'reopen', {}).json()
     m = send_command(m, 'set_totals', {'reported_totals': {'home': {'score': 9}, 'away': {'score': 2}}}).json()
@@ -37,7 +38,12 @@ def test_public_result_uses_only_published_snapshot(admin_client, match_factory,
         assert 'PRIVATE SECRET' not in response.text
         assert send_command(m, 'unpublish', {}).status_code == 200
         assert guest.get(url).json()['score'] == {'home': None, 'away': None}
-    assert admin_client.patch('/api/v1/tournaments/' + m['tournament_id'], json={'expected_revision': 0, 'archived': True}).status_code == 200
+    assert (
+        admin_client.patch(
+            '/api/v1/tournaments/' + m['tournament_id'], json={'expected_revision': 0, 'archived': True}
+        ).status_code
+        == 200
+    )
     with TestClient(admin_client.app) as guest:
         assert guest.get('/api/v1/public/tournaments').json()['total'] == 0
         assert guest.get('/api/v1/public/matches/' + m['id']).status_code == 404
@@ -48,6 +54,7 @@ def test_broadcast_urls_validate_persist_clear_and_retry(admin_client, match_fac
     url = 'https://vk.com/video-123_456'
     embed = 'https://vk.com/video_ext.php?oid=-123&id=456&hash=abc'
     from uuid import uuid4
+
     key = str(uuid4())
     payload = {'broadcast_url': url, 'broadcast_embed_url': embed}
     first = send_command(m, 'update_match', payload, key)
@@ -57,7 +64,13 @@ def test_broadcast_urls_validate_persist_clear_and_retry(admin_client, match_fac
     with TestClient(admin_client.app) as guest:
         item = guest.get('/api/v1/public/matches/' + m['id']).json()
         assert item['broadcast_url'] == url and item['broadcast_embed_url'] == embed
-    for bad in ['javascript:alert(1)', 'https://vk.com.evil.test/video_ext.php?oid=1&id=2', 'https://vk.com/feed', 'https://user@vk.com/video_ext.php?oid=1&id=2', 'https://vk.com/video_ext.php?oid=x&id=2']:
+    for bad in [
+        'javascript:alert(1)',
+        'https://vk.com.evil.test/video_ext.php?oid=1&id=2',
+        'https://vk.com/feed',
+        'https://user@vk.com/video_ext.php?oid=1&id=2',
+        'https://vk.com/video_ext.php?oid=x&id=2',
+    ]:
         assert send_command(saved, 'update_match', {'broadcast_embed_url': bad}).status_code == 422
     assert send_command(saved, 'update_match', {'broadcast_url': 'https://example.com'}).status_code == 422
     cleared = send_command(saved, 'update_match', {'broadcast_url': None, 'broadcast_embed_url': None})

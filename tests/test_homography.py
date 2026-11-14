@@ -18,7 +18,7 @@ def test_recovers_known_homography():
 
 
 def test_needs_four_points():
-    with pytest.raises(ValueError, match="минимум 4"):
+    with pytest.raises(ValueError, match='минимум 4'):
         fit_homography(PIXELS[:3], PIXELS[:3])
 
 

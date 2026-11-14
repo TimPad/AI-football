@@ -25,9 +25,9 @@ def track_people(detections: pl.DataFrame, venue: Venue) -> pl.DataFrame:
     Их заполняет perception.teams.assign_teams.
     """
     polygon = venue.require_polygon()
-    people = detections.filter(pl.col("cls") == "person").sort("frame_id").with_row_index("row")
+    people = detections.filter(pl.col('cls') == 'person').sort('frame_id').with_row_index('row')
     if people.is_empty():
-        return schemas.empty("tracks")
+        return schemas.empty('tracks')
 
     tracker = ByteTrackTracker(
         lost_track_buffer=venue.lost_buffer_30fps,
@@ -36,12 +36,12 @@ def track_people(detections: pl.DataFrame, venue: Venue) -> pl.DataFrame:
         high_conf_det_threshold=HIGH_CONF,
         minimum_consecutive_frames=2,
     )
-    by_frame = {key[0]: group for key, group in people.partition_by("frame_id", as_dict=True).items()}
+    by_frame = {key[0]: group for key, group in people.partition_by('frame_id', as_dict=True).items()}
     # Кадры берём из всех детекций, включая мяч: трекер должен «увидеть» каждый
     # обработанный кадр, иначе неправильно отсчитает время жизни потерянных треков.
     # Кадр, где не нашлось вообще ничего, сюда не попадёт — на футзале с
     # 10 игроками в кадре такого не бывает.
-    frames = detections.select("frame_id", "ts").unique("frame_id").sort("frame_id")
+    frames = detections.select('frame_id', 'ts').unique('frame_id').sort('frame_id')
 
     rows: list[int] = []
     track_ids: list[int] = []
@@ -52,23 +52,21 @@ def track_people(detections: pl.DataFrame, venue: Venue) -> pl.DataFrame:
         else:
             tracked = tracker.update(
                 sv.Detections(
-                    xyxy=group.select("x1", "y1", "x2", "y2").to_numpy().astype(np.float32),
-                    confidence=group["conf"].to_numpy().astype(np.float32),
+                    xyxy=group.select('x1', 'y1', 'x2', 'y2').to_numpy().astype(np.float32),
+                    confidence=group['conf'].to_numpy().astype(np.float32),
                     class_id=np.zeros(len(group), dtype=int),
-                    data={"row": group["row"].to_numpy()},
+                    data={'row': group['row'].to_numpy()},
                 ),
                 timestamp=ts,
             )
         if len(tracked) == 0:
             continue
         confirmed = tracked.tracker_id >= 0  # -1 — трек ещё не подтверждён
-        rows.extend(tracked.data["row"][confirmed].tolist())
+        rows.extend(tracked.data['row'][confirmed].tolist())
         track_ids.extend(tracked.tracker_id[confirmed].tolist())
 
-    assigned = pl.DataFrame(
-        {"row": rows, "track_id": track_ids}, schema={"row": pl.UInt32, "track_id": pl.Int32}
-    )
-    tracked_people = people.join(assigned, on="row", how="inner").drop("row")
+    assigned = pl.DataFrame({'row': rows, 'track_id': track_ids}, schema={'row': pl.UInt32, 'track_id': pl.Int32})
+    tracked_people = people.join(assigned, on='row', how='inner').drop('row')
 
     foot_x, foot_y = _compute_robust_foot_points(tracked_people)
     foot = np.column_stack([foot_x, foot_y])
@@ -77,9 +75,9 @@ def track_people(detections: pl.DataFrame, venue: Venue) -> pl.DataFrame:
         foot_x=pl.Series(foot_x, dtype=pl.Float32),
         foot_y=pl.Series(foot_y, dtype=pl.Float32),
         in_pitch=pl.Series(points_in_polygon(foot, polygon)),
-        role=pl.lit("unknown"),
+        role=pl.lit('unknown'),
         team=pl.lit(None, dtype=pl.Utf8),
-    ).sort("frame_id", "track_id")
+    ).sort('frame_id', 'track_id')
 
 
 FOOT_WINDOW = 15  # кадров (~1 с при 15 fps) для медианы высоты бокса
@@ -95,12 +93,12 @@ def _compute_robust_foot_points(df: pl.DataFrame) -> tuple[np.ndarray, np.ndarra
     вдвое ниже, и медиана за весь трек опускала ноги дальнего игрока на 40–80 px,
     то есть на несколько метров к камере (Ярославль, 12% строк).
     """
-    x1 = df["x1"].to_numpy().astype(np.float64)
-    y1 = df["y1"].to_numpy().astype(np.float64)
-    x2 = df["x2"].to_numpy().astype(np.float64)
-    y2 = df["y2"].to_numpy().astype(np.float64)
-    track_ids = df["track_id"].to_numpy()
-    frames = df["frame_id"].to_numpy() if "frame_id" in df.columns else np.arange(len(df))
+    x1 = df['x1'].to_numpy().astype(np.float64)
+    y1 = df['y1'].to_numpy().astype(np.float64)
+    x2 = df['x2'].to_numpy().astype(np.float64)
+    y2 = df['y2'].to_numpy().astype(np.float64)
+    track_ids = df['track_id'].to_numpy()
+    frames = df['frame_id'].to_numpy() if 'frame_id' in df.columns else np.arange(len(df))
 
     foot_x = (x1 + x2) / 2.0
     foot_y = y2.copy()
@@ -110,7 +108,7 @@ def _compute_robust_foot_points(df: pl.DataFrame) -> tuple[np.ndarray, np.ndarra
         idx = np.flatnonzero(track_ids == tid)
         if len(idx) < 3:
             continue
-        idx = idx[np.argsort(frames[idx], kind="stable")]
+        idx = idx[np.argsort(frames[idx], kind='stable')]
         h = y2[idx] - y1[idx]
         padded = np.pad(h, half, constant_values=np.nan)
         h_local = np.nanmedian(np.lib.stride_tricks.sliding_window_view(padded, FOOT_WINDOW), axis=1)

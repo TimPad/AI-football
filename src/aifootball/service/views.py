@@ -1,22 +1,39 @@
 """Public HTTP response contracts; OpenAPI is the frontend's source of types."""
+
 from datetime import date, datetime
+from typing import Generic, Literal, TypeVar
 from uuid import UUID
-from typing import Generic, TypeVar, Literal
+
 from pydantic import BaseModel
-from aifootball.service.tournaments.schemas import Regulation
-from aifootball.service.protocol.schemas import ProtocolDocument, ClockState, ReportedTotals, ShootoutTotals, Completeness
+
 from aifootball.service.protocol.projection import Projection
+from aifootball.service.protocol.schemas import (
+    ClockState,
+    Completeness,
+    ProtocolDocument,
+    ReportedTotals,
+    ShootoutTotals,
+)
+from aifootball.service.tournaments.schemas import Regulation
 
 T = TypeVar('T')
-class Page(BaseModel, Generic[T]):
+
+
+class Page(BaseModel, Generic[T]):  # noqa: UP046 — синтаксис PEP 695 меняет имена схем в OpenAPI
     items: list[T]
     total: int
+
+
 class EntityView(BaseModel):
     id: UUID
     created_at: datetime
+
+
 class NamedView(EntityView):
     name: str
     archived: bool
+
+
 class HallView(NamedView):
     revision: int
     address: str
@@ -28,6 +45,8 @@ class HallView(NamedView):
     longitude: float | None = None
     surface: str
     description: str
+
+
 class CameraProfileView(EntityView):
     hall_id: UUID
     name: str
@@ -45,6 +64,8 @@ class CameraProfileView(EntityView):
     leave_one_out_error_m: float | None = None
     reference_sha256: str | None = None
     matches_current_dimensions: bool
+
+
 class PublicHall(BaseModel):
     id: UUID
     name: str
@@ -53,29 +74,41 @@ class PublicHall(BaseModel):
     longitude: float | None = None
     pitch_length_m: float
     pitch_width_m: float
+
+
 class TeamView(NamedView):
     revision: int = 0
     description: str = ''
     logo_id: UUID | None = None
+
+
 class PlayerView(NamedView):
     revision: int = 0
     photo_id: UUID | None = None
     birth_date: date | None = None
-    position: Literal['goalkeeper','defender','winger','forward','universal'] | None = None
+    position: Literal['goalkeeper', 'defender', 'winger', 'forward', 'universal'] | None = None
     height_cm: int | None = None
     weight_kg: float | None = None
+
+
 class TeamMemberView(EntityView):
     team_id: UUID
     player_id: UUID
     shirt_number: str | None
     active: bool
     player: PlayerView
+
+
 class TeamProfile(TeamView):
     players: list[TeamMemberView]
+
+
 class CatalogImageView(EntityView):
     size: int
+
+
 class TournamentView(NamedView):
-    visibility: Literal['draft','public']
+    visibility: Literal['draft', 'public']
     season: str
     starts_on: date
     ends_on: date
@@ -84,35 +117,49 @@ class TournamentView(NamedView):
     applications_open: bool = True
     applications_deadline: datetime | None = None
     standings_public: bool = True
+
+
 class RegulationView(EntityView):
     tournament_id: UUID
     variant_name: str
     version: int
     rules: Regulation
     total_s: int | None = None
+
+
 class Preset(BaseModel):
     name: str
     rules: Regulation
+
+
 class EntryView(EntityView):
     tournament_id: UUID
     team_id: UUID
     revision: int
     team: TeamView
+
+
 class RosterPlayer(EntityView):
     entry_id: UUID
     player_id: UUID
     shirt_number: str | None
     active: bool
     player: PlayerView
+
+
 class RosterView(EntryView):
     players: list[RosterPlayer]
+
+
 class LineupView(EntityView):
     match_id: UUID
     entry_player_id: UUID
     player_id: UUID
-    side: Literal['home','away']
+    side: Literal['home', 'away']
     shirt_number: str | None
     display_name: str
+
+
 class MatchView(EntityView):
     stage_label: str | None = None
     match_id: UUID
@@ -130,7 +177,7 @@ class MatchView(EntityView):
     broadcast_url: str | None = None
     broadcast_embed_url: str | None = None
     referees: list[str]
-    status: Literal['scheduled','live','ended','postponed','cancelled']
+    status: Literal['scheduled', 'live', 'ended', 'postponed', 'cancelled']
     revision: int
     protocol: ProtocolDocument
     clock: ClockState
@@ -143,11 +190,15 @@ class MatchView(EntityView):
     home: EntryView
     away: EntryView
     server_now_ms: int
+
+
 class SessionView(BaseModel):
     can_manage_analytics: bool = False
     id: UUID
     login: str
     csrf_token: str
+
+
 class VersionView(EntityView):
     match_id: UUID
     number: int
@@ -157,34 +208,49 @@ class VersionView(EntityView):
     published_at: datetime | None
     public_id: UUID | None
 
+
 # Build a separate, narrow public event schema. Serialization never supplies
 # private note/time fields omitted by the public snapshot endpoint.
-from typing import Annotated, Union, get_args
-from pydantic import Field, create_model, ConfigDict
-from aifootball.service.protocol.events import Event
-_public_events=[]
+from typing import Annotated, Union, get_args  # noqa: E402
+
+from pydantic import ConfigDict, Field, create_model  # noqa: E402
+
+from aifootball.service.protocol.events import Event  # noqa: E402
+
+_public_events = []
 for event_type in get_args(get_args(Event)[0]):
-    fields={name:(field.annotation,Field()) for name,field in event_type.model_fields.items()
-            if name not in {'notes','video_ms','created_at'}}
-    _public_events.append(create_model('Public'+event_type.__name__,__config__=ConfigDict(extra='forbid'),**fields))
-PublicEvent=Annotated[Union[tuple(_public_events)],Field(discriminator='kind')]
+    fields = {
+        name: (field.annotation, Field())
+        for name, field in event_type.model_fields.items()
+        if name not in {'notes', 'video_ms', 'created_at'}
+    }
+    _public_events.append(create_model('Public' + event_type.__name__, __config__=ConfigDict(extra='forbid'), **fields))
+PublicEvent = Annotated[Union[tuple(_public_events)], Field(discriminator='kind')]  # noqa: UP007 — состав объединения собирается в цикле
+
+
 class PublicLineup(BaseModel):
     player_id: UUID
     display_name: str
     shirt_number: str | None
-    side: Literal['home','away']
+    side: Literal['home', 'away']
+
+
 class PublicDocument(BaseModel):
     events: list[PublicEvent]
     reported_totals: ReportedTotals
     shootout_totals: ShootoutTotals
     completeness: Completeness
-    result_type: Literal['played','technical']
+    result_type: Literal['played', 'technical']
     technical_reason: str | None
     public_notes: str
     draft: bool
+
+
 class PublicRegulation(BaseModel):
     rules: Regulation
     total_s: int
+
+
 class PublicProtocol(BaseModel):
     number: int
     confirmed_at: datetime
@@ -227,7 +293,7 @@ class PublicMatch(BaseModel):
     scheduled_at: datetime
     venue_label: str
     hall: PublicHall | None = None
-    status: Literal['scheduled','live','ended','postponed','cancelled']
+    status: Literal['scheduled', 'live', 'ended', 'postponed', 'cancelled']
     schedule_slot_s: int
     broadcast_url: str | None
     broadcast_embed_url: str | None

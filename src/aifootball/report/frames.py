@@ -20,15 +20,15 @@ def grab_images(video: Path, requests: dict[str, dict]) -> dict[str, str]:
     cap = cv2.VideoCapture(str(video))
     out = {}
     try:
-        for key, req in sorted(requests.items(), key=lambda kv: kv[1]["frame_id"]):
-            cap.set(cv2.CAP_PROP_POS_FRAMES, req["frame_id"])
+        for key, req in sorted(requests.items(), key=lambda kv: kv[1]['frame_id']):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, req['frame_id'])
             ok, frame = cap.read()
             if not ok:
                 continue
-            image = _thumb(frame, req["box"]) if req["kind"] == "thumb" else _still(frame, req["box"])
-            ok, buf = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
+            image = _thumb(frame, req['box']) if req['kind'] == 'thumb' else _still(frame, req['box'])
+            ok, buf = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
             if ok:
-                out[key] = "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode("ascii")
+                out[key] = 'data:image/jpeg;base64,' + base64.b64encode(buf.tobytes()).decode('ascii')
     finally:
         cap.release()
     return out
@@ -38,7 +38,7 @@ def _clip(frame: np.ndarray, x1: float, y1: float, x2: float, y2: float) -> np.n
     h, w = frame.shape[:2]
     x1, x2 = int(max(0, x1)), int(min(w, x2))
     y1, y2 = int(max(0, y1)), int(min(h, y2))
-    return frame[y1:max(y2, y1 + 1), x1:max(x2, x1 + 1)]
+    return frame[y1 : max(y2, y1 + 1), x1 : max(x2, x1 + 1)]
 
 
 def _thumb(frame: np.ndarray, box) -> np.ndarray:

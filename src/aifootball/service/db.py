@@ -1,12 +1,13 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
+
+from fastapi import Request
 from sqlalchemy import Column, DateTime, Uuid, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session
-from fastapi import Request
 
 
 def utcnow():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Base(DeclarativeBase):

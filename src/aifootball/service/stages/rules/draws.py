@@ -1,7 +1,9 @@
 """Жеребьёвка: корзины, змейка и схема выхода из групп в сетку."""
+
 import random
 from itertools import permutations
-from aifootball.service.stages.rules.brackets import seed_positions, bracket_size
+
+from aifootball.service.stages.rules.brackets import bracket_size, seed_positions
 
 
 def group_sizes(count, groups):
@@ -10,10 +12,13 @@ def group_sizes(count, groups):
 
 def pots_draw(seeding, groups, seed):
     """Корзины по посеву; из каждой корзины в каждую группу случайно одна команда."""
-    rng = random.Random(seed); result = [[] for _ in range(groups)]
+    rng = random.Random(seed)
+    result = [[] for _ in range(groups)]
     for start in range(0, len(seeding), groups):
-        pot = list(seeding[start:start + groups]); rng.shuffle(pot)
-        for g, team in enumerate(pot): result[g].append(team)
+        pot = list(seeding[start : start + groups])
+        rng.shuffle(pot)
+        for g, team in enumerate(pot):
+            result[g].append(team)
     return result
 
 
@@ -26,7 +31,9 @@ def snake_draw(seeding, groups):
 
 
 def random_order(seeding, seed):
-    order = list(seeding); random.Random(seed).shuffle(order); return order
+    order = list(seeding)
+    random.Random(seed).shuffle(order)
+    return order
 
 
 def meeting_round(size, a, b):
@@ -40,7 +47,9 @@ def group_scheme(group_count, per_group, best=()):
     tiers = [[{'group': g, 'place': p} for g in range(1, group_count + 1)] for p in range(1, per_group + 1)]
     for item in best:
         tiers.append([{'best': item['place'], 'rank': r} for r in range(1, item['count'] + 1)])
-    size = bracket_size(sum(map(len, tiers))); rounds = size.bit_length() - 1
+    size = bracket_size(sum(map(len, tiers)))
+    rounds = size.bit_length() - 1
+
     def cost(seq):
         total = 0
         for i, a in enumerate(seq):
@@ -48,6 +57,7 @@ def group_scheme(group_count, per_group, best=()):
                 if 'group' in a and a.get('group') == seq[j].get('group'):
                     total += 4 ** (rounds - meeting_round(size, i + 1, j + 1))
         return total
+
     placed = list(tiers[0])
     for tier in tiers[1:]:
         options = permutations(tier) if len(tier) <= 8 else [tier]

@@ -1,5 +1,6 @@
 """Таблица и порядок мест: личные встречи по правилу УЕФА, затем общие показатели, затем жребий."""
-from dataclasses import dataclass, field
+
+from dataclasses import dataclass
 from fractions import Fraction
 
 H2H = ('h2h_points', 'h2h_goal_diff', 'h2h_goals')
@@ -31,33 +32,53 @@ class Row:
     tied: bool = False
 
     @property
-    def goal_diff(self): return self.goals_for - self.goals_against
+    def goal_diff(self):
+        return self.goals_for - self.goals_against
 
 
 def _table(teams, results, byes=()):
     rows = {t: Row(t) for t in teams}
     for r in results:
-        if r.home not in rows or r.away not in rows: continue
+        if r.home not in rows or r.away not in rows:
+            continue
         win, draw, loss = r.points
         for side, gf, ga in ((r.home, r.home_goals, r.away_goals), (r.away, r.away_goals, r.home_goals)):
-            row = rows[side]; row.played += 1; row.goals_for += gf; row.goals_against += ga
-            if gf > ga: row.won += 1; row.points += win
-            elif gf == ga: row.drawn += 1; row.points += draw
-            else: row.lost += 1; row.points += loss
+            row = rows[side]
+            row.played += 1
+            row.goals_for += gf
+            row.goals_against += ga
+            if gf > ga:
+                row.won += 1
+                row.points += win
+            elif gf == ga:
+                row.drawn += 1
+                row.points += draw
+            else:
+                row.lost += 1
+                row.points += loss
     for team, win_points in byes:
         # Отдых в швейцарке — победа без мячей.
-        if team in rows: rows[team].played += 1; rows[team].won += 1; rows[team].points += win_points
+        if team in rows:
+            rows[team].played += 1
+            rows[team].won += 1
+            rows[team].points += win_points
     return rows
 
 
 def _value(row, criterion):
-    return {'points': row.points, 'goal_diff': row.goal_diff, 'goals_for': row.goals_for,
-            'wins': row.won, 'buchholz': row.buchholz}[criterion]
+    return {
+        'points': row.points,
+        'goal_diff': row.goal_diff,
+        'goals_for': row.goals_for,
+        'wins': row.won,
+        'buchholz': row.buchholz,
+    }[criterion]
 
 
 def _split(group, key):
     parts = {}
-    for team in group: parts.setdefault(key(team), []).append(team)
+    for team in group:
+        parts.setdefault(key(team), []).append(team)
     return [parts[k] for k in sorted(parts, reverse=True)]
 
 
@@ -67,11 +88,13 @@ def rank(teams, results, criteria=DEFAULT_CRITERIA, lot=(), byes=()):
     if 'buchholz' in criteria:
         for r in results:
             if r.home in rows and r.away in rows:
-                rows[r.home].buchholz += rows[r.away].points; rows[r.away].buchholz += rows[r.home].points
+                rows[r.home].buchholz += rows[r.away].points
+                rows[r.away].buchholz += rows[r.home].points
     lot_index = {team: i for i, team in enumerate(lot)}
 
     def order(group, start):
-        if len(group) <= 1: return [group]
+        if len(group) <= 1:
+            return [group]
         i = start
         while i < len(criteria):
             criterion = criteria[i]
@@ -81,26 +104,32 @@ def rank(teams, results, criteria=DEFAULT_CRITERIA, lot=(), byes=()):
                 return [group]
             if criterion in H2H:
                 end = i
-                while end < len(criteria) and criteria[end] in H2H: end += 1
+                while end < len(criteria) and criteria[end] in H2H:
+                    end += 1
                 block = criteria[i:end]
                 mini = _table(group, [r for r in results if r.home in group and r.away in group])
                 names = {'h2h_points': 'points', 'h2h_goal_diff': 'goal_diff', 'h2h_goals': 'goals_for'}
-                parts = _split(group, lambda t: tuple(_value(mini[t], names[c]) for c in block))
+                parts = _split(group, lambda t: tuple(_value(mini[t], names[c]) for c in block))  # noqa: B023
                 if len(parts) > 1:
                     # Разделившиеся подгруппы заново проходят личные встречи только между собой.
                     return [sub for part in parts for sub in order(part, i)]
-                i = end; continue
-            parts = _split(group, lambda t: _value(rows[t], criterion))
+                i = end
+                continue
+            parts = _split(group, lambda t: _value(rows[t], criterion))  # noqa: B023
             if len(parts) > 1:
                 return [sub for part in parts for sub in order(part, i + 1)]
             i += 1
         return [group]
 
     blocks = order(sorted(teams), 0)
-    ranked = []; place = 1
+    ranked = []
+    place = 1
     for block in blocks:
         for team in block:
-            row = rows[team]; row.place = place; row.tied = len(block) > 1; ranked.append(row)
+            row = rows[team]
+            row.place = place
+            row.tied = len(block) > 1
+            ranked.append(row)
         place += len(block)
     return ranked
 
@@ -109,12 +138,17 @@ def rank_across(rows, lot=()):
     """Команды одного места из разных групп: очки, разница и забитые за матч, затем жребий.
     Возвращает порядок и функцию «граница после count мест зависит от жребия»."""
     lot_index = {team: i for i, team in enumerate(lot)}
+
     def key(row):
         games = max(row.played, 1)
         return (Fraction(row.points, games), Fraction(row.goal_diff, games), Fraction(row.goals_for, games))
+
     ordered = sorted(rows, key=lambda r: (tuple(-v for v in key(r)), lot_index.get(r.team, len(lot_index)), r.team))
+
     def cutoff_tied(count):
-        if count >= len(ordered): return False
+        if count >= len(ordered):
+            return False
         a, b = ordered[count - 1], ordered[count]
         return key(a) == key(b) and not (a.team in lot_index and b.team in lot_index)
+
     return ordered, cutoff_tied

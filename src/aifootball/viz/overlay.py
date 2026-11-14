@@ -13,13 +13,15 @@ OFF_PITCH_BGR = (110, 110, 110)
 # 2: Goalkeeper (бирюзовый)
 # 3: Referee (ярко-желтый)
 # 4: Unknown (серый)
-TEAM_PALETTE = sv.ColorPalette([
-    sv.Color(r=80, g=200, b=80),
-    sv.Color(r=230, g=90, b=200),
-    sv.Color(r=255, g=220, b=0),
-    sv.Color(r=0, g=220, b=255),
-    sv.Color(r=160, g=160, b=160),
-])
+TEAM_PALETTE = sv.ColorPalette(
+    [
+        sv.Color(r=80, g=200, b=80),
+        sv.Color(r=230, g=90, b=200),
+        sv.Color(r=255, g=220, b=0),
+        sv.Color(r=0, g=220, b=255),
+        sv.Color(r=160, g=160, b=160),
+    ]
+)
 
 
 class TrackAnnotator:
@@ -47,51 +49,57 @@ class TrackAnnotator:
         if not rows:
             return img
 
-        on_pitch_rows = [r for r in rows if r["in_pitch"]]
-        off_pitch_rows = [r for r in rows if not r["in_pitch"]]
+        on_pitch_rows = [r for r in rows if r['in_pitch']]
+        off_pitch_rows = [r for r in rows if not r['in_pitch']]
 
         # Для объектов вне поля рисуем тонкую серую рамку
         for row in off_pitch_rows:
-            p1 = (int(row["x1"]), int(row["y1"]))
-            p2 = (int(row["x2"]), int(row["y2"]))
+            p1 = (int(row['x1']), int(row['y1']))
+            p2 = (int(row['x2']), int(row['y2']))
             cv2.rectangle(img, p1, p2, OFF_PITCH_BGR, 1)
             cv2.putText(
-                img, f"#{row['track_id']}", (p1[0], max(p1[1] - 4, 10)),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.4, OFF_PITCH_BGR, 1, cv2.LINE_AA
+                img,
+                f'#{row["track_id"]}',
+                (p1[0], max(p1[1] - 4, 10)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                OFF_PITCH_BGR,
+                1,
+                cv2.LINE_AA,
             )
 
         if not on_pitch_rows:
             return img
 
-        xyxy = np.array([[r["x1"], r["y1"], r["x2"], r["y2"]] for r in on_pitch_rows], dtype=np.float32)
-        track_ids = np.array([r["track_id"] for r in on_pitch_rows], dtype=int)
+        xyxy = np.array([[r['x1'], r['y1'], r['x2'], r['y2']] for r in on_pitch_rows], dtype=np.float32)
+        track_ids = np.array([r['track_id'] for r in on_pitch_rows], dtype=int)
 
         class_ids = []
         labels = []
         for r in on_pitch_rows:
-            tid = r["track_id"]
-            role = r.get("role", "player")
-            team = r.get("team")
+            tid = r['track_id']
+            role = r.get('role', 'player')
+            team = r.get('team')
 
-            if role == "goalkeeper":
+            if role == 'goalkeeper':
                 class_ids.append(2)
-                labels.append(f"#{tid} GK ({team})")
-            elif role == "referee":
+                labels.append(f'#{tid} GK ({team})')
+            elif role == 'referee':
                 class_ids.append(3)
-                labels.append(f"#{tid} REF")
-            elif team == "A":
+                labels.append(f'#{tid} REF')
+            elif team == 'A':
                 class_ids.append(0)
-                labels.append(f"#{tid} A")
-            elif team == "B":
+                labels.append(f'#{tid} A')
+            elif team == 'B':
                 class_ids.append(1)
-                labels.append(f"#{tid} B")
+                labels.append(f'#{tid} B')
             else:
                 class_ids.append(4)
-                labels.append(f"#{tid}")
+                labels.append(f'#{tid}')
 
         detections = sv.Detections(
             xyxy=xyxy,
-            confidence=np.array([r.get("conf", 1.0) for r in on_pitch_rows], dtype=np.float32),
+            confidence=np.array([r.get('conf', 1.0) for r in on_pitch_rows], dtype=np.float32),
             class_id=np.array(class_ids, dtype=int),
             tracker_id=track_ids,
         )

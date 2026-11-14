@@ -21,20 +21,18 @@ def assign_teams(tracks: pl.DataFrame, min_observations: int = MIN_OBSERVATIONS)
     """Заполняет role и team. Длинные треки на поле — player A/B, остальные — unknown."""
     per_track = _track_colors(tracks, min_observations)
     if len(per_track) < 2:
-        return tracks.with_columns(role=pl.lit("unknown"), team=pl.lit(None, dtype=pl.Utf8))
+        return tracks.with_columns(role=pl.lit('unknown'), team=pl.lit(None, dtype=pl.Utf8))
 
-    labels, _ = _two_clusters(per_track.select("a", "b").to_numpy().astype(np.float32))
+    labels, _ = _two_clusters(per_track.select('a', 'b').to_numpy().astype(np.float32))
     teams = pl.DataFrame(
-        {"track_id": per_track["track_id"], "team_new": labels},
-        schema={"track_id": pl.Int32, "team_new": pl.Utf8},
+        {'track_id': per_track['track_id'], 'team_new': labels},
+        schema={'track_id': pl.Int32, 'team_new': pl.Utf8},
     )
     return (
-        tracks.drop("role", "team")
-        .join(teams, on="track_id", how="left")
-        .rename({"team_new": "team"})
-        .with_columns(
-            role=pl.when(pl.col("team").is_null()).then(pl.lit("unknown")).otherwise(pl.lit("player"))
-        )
+        tracks.drop('role', 'team')
+        .join(teams, on='track_id', how='left')
+        .rename({'team_new': 'team'})
+        .with_columns(role=pl.when(pl.col('team').is_null()).then(pl.lit('unknown')).otherwise(pl.lit('player')))
         .select(tracks.columns)
     )
 
@@ -44,7 +42,7 @@ def team_color_centers(tracks: pl.DataFrame, min_observations: int = MIN_OBSERVA
     per_track = _track_colors(tracks, min_observations)
     if len(per_track) < 2:
         return None
-    _, centers = _two_clusters(per_track.select("a", "b").to_numpy().astype(np.float32))
+    _, centers = _two_clusters(per_track.select('a', 'b').to_numpy().astype(np.float32))
     return centers
 
 
@@ -55,15 +53,15 @@ def _track_colors(tracks: pl.DataFrame, min_observations: int) -> pl.DataFrame:
     а цвет формы от него почти не зависит.
     """
     return (
-        tracks.filter(pl.col("in_pitch") & pl.col("torso_a").is_not_nan())
-        .group_by("track_id")
+        tracks.filter(pl.col('in_pitch') & pl.col('torso_a').is_not_nan())
+        .group_by('track_id')
         .agg(
             n=pl.len(),
-            a=pl.col("torso_a").median(),
-            b=pl.col("torso_b").median(),
+            a=pl.col('torso_a').median(),
+            b=pl.col('torso_b').median(),
         )
-        .filter(pl.col("n") >= min_observations)
-        .sort("track_id")
+        .filter(pl.col('n') >= min_observations)
+        .sort('track_id')
     )
 
 
@@ -79,14 +77,14 @@ def assign_roles(tracks: pl.DataFrame, venue) -> pl.DataFrame:
     from aifootball.geometry.homography import apply_homography
     from aifootball.geometry.undistort import undistort_points
 
-    on_pitch = tracks.filter(pl.col("in_pitch"))
+    on_pitch = tracks.filter(pl.col('in_pitch'))
     if on_pitch.is_empty():
         return tracks
 
-    pixels = on_pitch.select("foot_x", "foot_y").to_numpy()
+    pixels = on_pitch.select('foot_x', 'foot_y').to_numpy()
     meters = apply_homography(venue.H, undistort_points(pixels, venue.calib))
 
-    pos_df = on_pitch.select("frame_id", "ts", "track_id", "team", "role", "in_pitch").with_columns(
+    pos_df = on_pitch.select('frame_id', 'ts', 'track_id', 'team', 'role', 'in_pitch').with_columns(
         x_m=pl.Series(meters[:, 0]),
         y_m=pl.Series(meters[:, 1]),
     )
@@ -96,15 +94,15 @@ def assign_roles(tracks: pl.DataFrame, venue) -> pl.DataFrame:
 
     spans = find_halves(tracks)
     if not spans:
-        spans = [(float(tracks["ts"].min()), float(tracks["ts"].max()) + 1e-6)]
+        spans = [(float(tracks['ts'].min()), float(tracks['ts'].max()) + 1e-6)]
     # Роль одна на трек; направление и команда вратаря определяются по каждому тайму.
     gk_tracks = {}
     ref_tracks = set()
     for span in spans:
         part = in_period(pos_df, [span])
         candidates = {}
-        for (tid,), g in part.sort("track_id", "ts").group_by("track_id", maintain_order=True):
-            x, y, ts = (g[c].to_numpy() for c in ("x_m", "y_m", "ts"))
+        for (tid,), g in part.sort('track_id', 'ts').group_by('track_id', maintain_order=True):
+            x, y, ts = (g[c].to_numpy() for c in ('x_m', 'y_m', 'ts'))
             if len(ts) < 5:
                 continue
             y_med = float(np.median(y))
@@ -114,41 +112,51 @@ def assign_roles(tracks: pl.DataFrame, venue) -> pl.DataFrame:
             dt = np.diff(ts)
             continuous = (dt > 0) & (dt <= MAX_GAP_S)
             for side, near in (
-                ("left", (x < GOAL_ZONE_M) & (abs(y - venue.width_m / 2) < GOAL_CENTER_M)),
-                ("right", (x > venue.length_m - GOAL_ZONE_M) & (abs(y - venue.width_m / 2) < GOAL_CENTER_M)),
+                ('left', (x < GOAL_ZONE_M) & (abs(y - venue.width_m / 2) < GOAL_CENTER_M)),
+                ('right', (x > venue.length_m - GOAL_ZONE_M) & (abs(y - venue.width_m / 2) < GOAL_CENTER_M)),
             ):
                 observed = float(dt[continuous & near[:-1] & near[1:]].sum())
-                stays_on_side = np.all(x < venue.length_m / 2) if side == "left" else np.all(x > venue.length_m / 2)
+                stays_on_side = np.all(x < venue.length_m / 2) if side == 'left' else np.all(x > venue.length_m / 2)
                 if observed >= GOALKEEPER_MIN_S and stays_on_side:
                     candidates[tid] = side
-        field = part.filter(~pl.col("track_id").is_in([*candidates, *ref_tracks]))
+        field = part.filter(~pl.col('track_id').is_in([*candidates, *ref_tracks]))
         sides = defending_sides(field)
         for tid, side in candidates.items():
-            original = part.filter(pl.col("track_id") == tid)["team"].mode().first()
-            gk_tracks[tid] = (sides[0 if side == "left" else 1] if sides else original)
+            original = part.filter(pl.col('track_id') == tid)['team'].mode().first()
+            gk_tracks[tid] = sides[0 if side == 'left' else 1] if sides else original
 
     if not gk_tracks and not ref_tracks:
         return tracks
     return tracks.with_columns(
-        role=pl.Series([
-            "referee" if tid in ref_tracks else "goalkeeper" if tid in gk_tracks else role
-            for tid, role in tracks.select("track_id", "role").iter_rows()
-        ], dtype=pl.Utf8),
-        team=pl.Series([
-            None if tid in ref_tracks else gk_tracks.get(tid, team)
-            for tid, team in tracks.select("track_id", "team").iter_rows()
-        ], dtype=pl.Utf8),
+        role=pl.Series(
+            [
+                'referee' if tid in ref_tracks else 'goalkeeper' if tid in gk_tracks else role
+                for tid, role in tracks.select('track_id', 'role').iter_rows()
+            ],
+            dtype=pl.Utf8,
+        ),
+        team=pl.Series(
+            [
+                None if tid in ref_tracks else gk_tracks.get(tid, team)
+                for tid, team in tracks.select('track_id', 'team').iter_rows()
+            ],
+            dtype=pl.Utf8,
+        ),
     )
 
 
 def defending_sides(positions: pl.DataFrame) -> tuple[str, str] | None:
     """Команды у левых и правых ворот по медиане полевых игроков; None — данных недостаточно."""
-    med = (positions.filter(pl.col("team").is_in(["A", "B"]) & (pl.col("role") == "player"))
-           .group_by("team").agg(pl.col("x_m").median()).sort("x_m"))
-    if med.height != 2 or abs(med["x_m"][0] - med["x_m"][1]) < 1e-6:
+    med = (
+        positions.filter(pl.col('team').is_in(['A', 'B']) & (pl.col('role') == 'player'))
+        .group_by('team')
+        .agg(pl.col('x_m').median())
+        .sort('x_m')
+    )
+    if med.height != 2 or abs(med['x_m'][0] - med['x_m'][1]) < 1e-6:
         return None
-    left = med["team"][0]
-    return left, "B" if left == "A" else "A"
+    left = med['team'][0]
+    return left, 'B' if left == 'A' else 'A'
 
 
 def _two_clusters(features: np.ndarray) -> tuple[list[str], np.ndarray]:
@@ -157,5 +165,5 @@ def _two_clusters(features: np.ndarray) -> tuple[list[str], np.ndarray]:
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 50, 0.1)
     _, labels, centers = cv2.kmeans(features, 2, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
     first = int(np.argmin(centers[:, 0]))
-    names = ["A" if label == first else "B" for label in labels.ravel()]
+    names = ['A' if label == first else 'B' for label in labels.ravel()]
     return names, centers[[first, 1 - first]].astype(float)

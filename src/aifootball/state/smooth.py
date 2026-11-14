@@ -22,19 +22,18 @@ MAX_PHYSICAL_SPEED = 10.0
 def smooth_tracks(positions: pl.DataFrame) -> pl.DataFrame:
     """positions: frame_id, ts, track_id, role, team, x_m, y_m -> таблица схемы STATE."""
     if positions.is_empty():
-        return schemas.empty("state")
+        return schemas.empty('state')
     parts = [
-        _smooth_track(group)
-        for _, group in positions.sort("track_id", "ts").group_by("track_id", maintain_order=True)
+        _smooth_track(group) for _, group in positions.sort('track_id', 'ts').group_by('track_id', maintain_order=True)
     ]
-    return pl.concat(parts).sort("frame_id", "track_id")
+    return pl.concat(parts).sort('frame_id', 'track_id')
 
 
 def _smooth_track(g: pl.DataFrame) -> pl.DataFrame:
-    ts = g["ts"].to_numpy().astype(np.float64)
-    x = g["x_m"].to_numpy().astype(np.float64)
-    y = g["y_m"].to_numpy().astype(np.float64)
-    frame_id = g["frame_id"].to_numpy().astype(np.int64)
+    ts = g['ts'].to_numpy().astype(np.float64)
+    x = g['x_m'].to_numpy().astype(np.float64)
+    y = g['y_m'].to_numpy().astype(np.float64)
+    frame_id = g['frame_id'].to_numpy().astype(np.int64)
 
     ts, x, y, frame_id, interpolated = _fill_short_gaps(ts, x, y, frame_id)
 
@@ -59,17 +58,17 @@ def _smooth_track(g: pl.DataFrame) -> pl.DataFrame:
     speed = np.hypot(vx, vy)
     return pl.DataFrame(
         {
-            "frame_id": frame_id,
-            "ts": ts,
-            "track_id": np.full(n, g["track_id"][0]),
-            "role": [g["role"][0]] * n,
-            "team": [g["team"][0]] * n,
-            "x_m": xs,
-            "y_m": ys,
-            "vx": vx,
-            "vy": vy,
-            "speed": speed,
-            "interpolated": interpolated,
+            'frame_id': frame_id,
+            'ts': ts,
+            'track_id': np.full(n, g['track_id'][0]),
+            'role': [g['role'][0]] * n,
+            'team': [g['team'][0]] * n,
+            'x_m': xs,
+            'y_m': ys,
+            'vx': vx,
+            'vy': vy,
+            'speed': speed,
+            'interpolated': interpolated,
         },
         schema=schemas.STATE,
     )
@@ -107,26 +106,29 @@ def _fill_short_gaps(ts, x, y, frame_id):
     if len(ts) < 2:
         return ts, x, y, frame_id, interpolated
     step = float(np.median(np.diff(ts)))
-    out = {"ts": [ts[0]], "x": [x[0]], "y": [y[0]], "f": [frame_id[0]], "i": [False]}
+    out = {'ts': [ts[0]], 'x': [x[0]], 'y': [y[0]], 'f': [frame_id[0]], 'i': [False]}
     for i in range(1, len(ts)):
         dt = ts[i] - ts[i - 1]
         if 1.5 * step < dt <= MAX_GAP_S:
             missing = int(round(dt / step)) - 1
             for k in range(1, missing + 1):
                 w = k / (missing + 1)
-                out["ts"].append(ts[i - 1] + w * dt)
-                out["x"].append(x[i - 1] + w * (x[i] - x[i - 1]))
-                out["y"].append(y[i - 1] + w * (y[i] - y[i - 1]))
-                out["f"].append(int(round(frame_id[i - 1] + w * (frame_id[i] - frame_id[i - 1]))))
-                out["i"].append(True)
-        out["ts"].append(ts[i])
-        out["x"].append(x[i])
-        out["y"].append(y[i])
-        out["f"].append(frame_id[i])
-        out["i"].append(False)
+                out['ts'].append(ts[i - 1] + w * dt)
+                out['x'].append(x[i - 1] + w * (x[i] - x[i - 1]))
+                out['y'].append(y[i - 1] + w * (y[i] - y[i - 1]))
+                out['f'].append(int(round(frame_id[i - 1] + w * (frame_id[i] - frame_id[i - 1]))))
+                out['i'].append(True)
+        out['ts'].append(ts[i])
+        out['x'].append(x[i])
+        out['y'].append(y[i])
+        out['f'].append(frame_id[i])
+        out['i'].append(False)
     return (
-        np.array(out["ts"]), np.array(out["x"]), np.array(out["y"]),
-        np.array(out["f"], dtype=np.int64), np.array(out["i"], dtype=bool),
+        np.array(out['ts']),
+        np.array(out['x']),
+        np.array(out['y']),
+        np.array(out['f'], dtype=np.int64),
+        np.array(out['i'], dtype=bool),
     )
 
 
@@ -140,7 +142,7 @@ def _segments(ts: np.ndarray) -> list[slice]:
 def _pad(v: np.ndarray) -> np.ndarray:
     # «Нечётное» отражение сохраняет линейный тренд на краях: иначе края
     # траектории тянутся к первой точке и скорость на них занижается.
-    return np.pad(v, WINDOW // 2, mode="reflect", reflect_type="odd")
+    return np.pad(v, WINDOW // 2, mode='reflect', reflect_type='odd')
 
 
 def _rolling_median(v: np.ndarray) -> np.ndarray:

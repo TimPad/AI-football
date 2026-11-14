@@ -16,9 +16,9 @@ def test_mask_outside_pitch_keeps_margin():
     masked = mask_outside_pitch(frame, polygon, margin_px=10)
 
     assert (masked[50, 100] == 200).all()  # поле
-    assert (masked[50, 45] == 200).all()   # запас у линии
-    assert (masked[50, 20] == 114).all()   # дальше запаса — закрашено серым
-    assert (frame[50, 20] == 200).all()    # исходный кадр не тронут
+    assert (masked[50, 45] == 200).all()  # запас у линии
+    assert (masked[50, 20] == 114).all()  # дальше запаса — закрашено серым
+    assert (frame[50, 20] == 200).all()  # исходный кадр не тронут
 
 
 def test_cover_tiles_cover_box_with_overlap():
@@ -28,7 +28,7 @@ def test_cover_tiles_cover_box_with_overlap():
     covered = np.zeros((1944, 2592), bool)
     for x0, y0 in tiles:
         assert 0 <= x0 <= 2592 - 1280 and 0 <= y0 <= 1944 - 1280
-        covered[y0:y0 + 1280, x0:x0 + 1280] = True
+        covered[y0 : y0 + 1280, x0 : x0 + 1280] = True
     assert covered[230:1944, 48:2425].all()
 
 
@@ -65,5 +65,5 @@ def test_detect_ball_in_frame_masks_and_maps_back_to_frame():
 
     np.testing.assert_allclose(boxes, [[345, 155, 355, 165]])
     assert confs.tolist() == [0.8]
-    assert (seen[0][20, 20] == 114).all()   # за контуром — серая заливка, как при обучении
+    assert (seen[0][20, 20] == 114).all()  # за контуром — серая заливка, как при обучении
     assert (seen[0][150, 150] == 200).all()  # поле не тронуто

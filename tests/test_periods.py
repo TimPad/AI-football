@@ -10,18 +10,35 @@ def _crowd(seconds, people_at):
     rows = []
     for t in range(seconds):
         for k in range(people_at(t)):
-            rows.append({"frame_id": t, "ts": float(t), "cls": "person", "x1": 0.0, "y1": 0.0, "x2": 10.0,
-                         "y2": 30.0, "conf": 0.9, "torso_l": 0.0, "torso_a": 0.0, "torso_b": 0.0,
-                         "track_id": k, "foot_x": 5.0, "foot_y": 30.0, "in_pitch": True,
-                         "role": "player", "team": "A"})
+            rows.append(
+                {
+                    'frame_id': t,
+                    'ts': float(t),
+                    'cls': 'person',
+                    'x1': 0.0,
+                    'y1': 0.0,
+                    'x2': 10.0,
+                    'y2': 30.0,
+                    'conf': 0.9,
+                    'torso_l': 0.0,
+                    'torso_a': 0.0,
+                    'torso_b': 0.0,
+                    'track_id': k,
+                    'foot_x': 5.0,
+                    'foot_y': 30.0,
+                    'in_pitch': True,
+                    'role': 'player',
+                    'team': 'A',
+                }
+            )
     return pl.DataFrame(rows, schema=schemas.TRACKS)
 
 
 def test_parse_halves():
-    assert parse_halves("0:40-21:50, 27:10-46:00", 3000) == [(40.0, 1310.0), (1630.0, 2760.0)]
+    assert parse_halves('0:40-21:50, 27:10-46:00', 3000) == [(40.0, 1310.0), (1630.0, 2760.0)]
 
 
-@pytest.mark.parametrize("text", ["0:00-10:00,9:00-20:00", "0:00-60:00", "5:00-1:00"])
+@pytest.mark.parametrize('text', ['0:00-10:00,9:00-20:00', '0:00-60:00', '5:00-1:00'])
 def test_parse_halves_rejects_bad_spans(text):
     with pytest.raises(ValueError):
         parse_halves(text, 1500)
@@ -47,11 +64,11 @@ def test_find_halves_ignores_short_stoppage():
 
 def test_make_periods_and_filter():
     periods = make_periods([(0.0, 10.0), (20.0, 30.0)])
-    assert [p.key for p in periods] == ["all", "h1", "h2"]
+    assert [p.key for p in periods] == ['all', 'h1', 'h2']
     assert periods[0].duration_s == 20.0
-    df = pl.DataFrame({"ts": [1.0, 15.0, 25.0]})
-    assert in_period(df, periods[0].spans)["ts"].to_list() == [1.0, 25.0]
-    assert [p.key for p in make_periods([(0.0, 10.0)])] == ["all"]
+    df = pl.DataFrame({'ts': [1.0, 15.0, 25.0]})
+    assert in_period(df, periods[0].spans)['ts'].to_list() == [1.0, 25.0]
+    assert [p.key for p in make_periods([(0.0, 10.0)])] == ['all']
 
 
 @pytest.mark.parametrize('text', ['', '0:60-2:00', '0:00-0:nan', '0:00-0:inf', '0:00-1:00,1:00-2:00,2:00-3:00'])

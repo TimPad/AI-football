@@ -11,7 +11,10 @@ def aggregate_player(fragments):
     observed, distance = result['observed_s'], result['distance_m']
     result['m_per_min'] = distance / observed * 60 if observed and distance is not None else None
     maps = [f.get('heatmap_s') for f in fragments]
-    result['heatmap_s'] = [[sum(row) for row in zip(*rows)] for rows in zip(*maps)] if maps and all(m is not None for m in maps) else None
-    result['metric_notes'] = {key: 'Недостаточно данных по одному или нескольким фрагментам'
-                              for key, value in result.items() if value is None}
+    result['heatmap_s'] = (
+        [[sum(row) for row in zip(*rows)] for rows in zip(*maps)] if maps and all(m is not None for m in maps) else None
+    )
+    result['metric_notes'] = {
+        key: 'Недостаточно данных по одному или нескольким фрагментам' for key, value in result.items() if value is None
+    }
     return result

@@ -1,19 +1,24 @@
 """Apply a reviewed import in one transaction, preserving unrelated data."""
+
 from collections import defaultdict
 from hashlib import sha256
 from uuid import UUID
-from sqlalchemy import select, func
-from aifootball.service.common import get_entity
-from aifootball.service.errors import DomainError
-from aifootball.service.catalog.models import Team, Player, TeamMember, Entry, EntryPlayer
-from aifootball.service.catalog.schemas import ProfilePlayer, RosterUpdate, RosterPlayer
+
+from sqlalchemy import func, select
+
+from aifootball.service.catalog.models import Entry, EntryPlayer, Player, Team, TeamMember
 from aifootball.service.catalog.operations import set_roster
+from aifootball.service.catalog.schemas import ProfilePlayer, RosterPlayer, RosterUpdate
+from aifootball.service.errors import DomainError
+
 from .models import RosterImport
-from .preview import owned_import, target_entity, import_view
+from .preview import import_view, owned_import, target_entity
 
 
 def conflict():
-    raise DomainError('import_conflict', 'Данные изменились после проверки. Обновите предпросмотр: ввод сохранён.', status=409)
+    raise DomainError(
+        'import_conflict', 'Данные изменились после проверки. Обновите предпросмотр: ввод сохранён.', status=409
+    )
 
 
 def apply_import(db, identifier, actor_id, data, actor_kind='admin'):
@@ -64,10 +69,13 @@ def apply_import(db, identifier, actor_id, data, actor_kind='admin'):
         team = db.get(Team, UUID(team_id))
         if team is None:
             team = Team(id=UUID(team_id), name=rows[0]['team_name'])
-            db.add(team); db.flush()
+            db.add(team)
+            db.flush()
         if session.scope == 'team':
-            old = {str(member.player_id): member for member in db.scalars(select(TeamMember)
-                .where(TeamMember.team_id == team.id))}
+            old = {
+                str(member.player_id): member
+                for member in db.scalars(select(TeamMember).where(TeamMember.team_id == team.id))
+            }
             for row in rows:
                 member = old.get(row['player_id'])
                 if member is None:
@@ -76,22 +84,48 @@ def apply_import(db, identifier, actor_id, data, actor_kind='admin'):
                 member.active = True
                 member.shirt_number = row['shirt_number'] or member.shirt_number
             team.revision += 1
-            links.append({'team_id': team_id, 'label': team.name, 'path': f'{"/captain" if actor_kind=="captain" else ""}/teams/{team_id}'})
+            links.append(
+                {
+                    'team_id': team_id,
+                    'label': team.name,
+                    'path': f'{"/captain" if actor_kind == "captain" else ""}/teams/{team_id}',
+                }
+            )
         else:
             entry = db.scalar(select(Entry).where(Entry.tournament_id == target.id, Entry.team_id == team.id))
             if entry is not None and str(entry.id) not in expected['entries']:
                 conflict()
             if entry is None:
                 entry = Entry(tournament_id=target.id, team_id=team.id)
-                db.add(entry); db.flush()
-            previous = {str(member.player_id): member.shirt_number for member in db.scalars(select(EntryPlayer)
-                .where(EntryPlayer.entry_id == entry.id, EntryPlayer.active))}
+                db.add(entry)
+                db.flush()
+            previous = {
+                str(member.player_id): member.shirt_number
+                for member in db.scalars(
+                    select(EntryPlayer).where(EntryPlayer.entry_id == entry.id, EntryPlayer.active)
+                )
+            }
             for row in rows:
                 previous[row['player_id']] = row['shirt_number'] or previous.get(row['player_id'])
-            set_roster(db, entry, RosterUpdate(expected_revision=entry.revision, players=[
-                RosterPlayer(player_id=identifier, shirt_number=number) for identifier, number in previous.items()]))
-            links.append({'team_id': team_id, 'entry_id': str(entry.id), 'label': team.name,
-                          'path': f'/tournaments/{target.id}/teams/{entry.id}'})
+            set_roster(
+                db,
+                entry,
+                RosterUpdate(
+                    expected_revision=entry.revision,
+                    players=[
+                        RosterPlayer(player_id=identifier, shirt_number=number)
+                        for identifier, number in previous.items()
+                    ],
+                ),
+            )
+            links.append(
+                {
+                    'team_id': team_id,
+                    'entry_id': str(entry.id),
+                    'label': team.name,
+                    'path': f'/tournaments/{target.id}/teams/{entry.id}',
+                }
+            )
     session.result = {key: value for key, value in session.summary.items() if key != 'errors'} | {'links': links}
     session.status = 'committed'
     session.commit_request_id = data.request_id

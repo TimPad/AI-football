@@ -5,7 +5,6 @@
 деление не зависит от того, с какой стороны и под каким углом стоит камера.
 """
 
-import math
 import numpy as np
 import polars as pl
 
@@ -21,7 +20,7 @@ def evaluate_detections(
     Отдельно для ближней и дальней половины поля — по точке касания пола (низ бокса).
     """
     if gt_df.is_empty():
-        return {"precision": 1.0, "recall": 1.0, "f1": 1.0, "near_f1": 1.0, "far_f1": 1.0}
+        return {'precision': 1.0, 'recall': 1.0, 'f1': 1.0, 'near_f1': 1.0, 'far_f1': 1.0}
 
     overall = _eval_box_matches(pred_df, gt_df, iou_threshold)
 
@@ -34,18 +33,18 @@ def evaluate_detections(
     far = _eval_box_matches(pred_far, gt_far, iou_threshold)
 
     return {
-        "precision": round(overall["precision"], 4),
-        "recall": round(overall["recall"], 4),
-        "f1": round(overall["f1"], 4),
-        "near_half": {
-            "precision": round(near["precision"], 4),
-            "recall": round(near["recall"], 4),
-            "f1": round(near["f1"], 4),
+        'precision': round(overall['precision'], 4),
+        'recall': round(overall['recall'], 4),
+        'f1': round(overall['f1'], 4),
+        'near_half': {
+            'precision': round(near['precision'], 4),
+            'recall': round(near['recall'], 4),
+            'f1': round(near['f1'], 4),
         },
-        "far_half": {
-            "precision": round(far["precision"], 4),
-            "recall": round(far["recall"], 4),
-            "f1": round(far["f1"], 4),
+        'far_half': {
+            'precision': round(far['precision'], 4),
+            'recall': round(far['recall'], 4),
+            'f1': round(far['f1'], 4),
         },
     }
 
@@ -53,21 +52,19 @@ def evaluate_detections(
 def evaluate_tracking(pred_df: pl.DataFrame, gt_df: pl.DataFrame) -> dict:
     """Вычисляет метрики качества трекинга: ID Swaps, IDF1, MOTA."""
     if gt_df.is_empty() or pred_df.is_empty():
-        return {"id_swaps": 0, "idf1": 0.0, "mota": 0.0}
+        return {'id_swaps': 0, 'idf1': 0.0, 'mota': 0.0}
 
     # Подсчет переключений ID (ID Swaps)
     id_swaps = 0
-    gt_frames = gt_df.select("frame_id", "track_id").unique()
-    pred_frames = pred_df.select("frame_id", "track_id").unique()
 
     # Сопоставление треков по кадрам
-    joined = gt_df.join(pred_df, on="frame_id", suffix="_pred")
+    joined = gt_df.join(pred_df, on='frame_id', suffix='_pred')
     if joined.is_empty():
-        return {"id_swaps": 0, "idf1": 0.0, "mota": 0.0}
+        return {'id_swaps': 0, 'idf1': 0.0, 'mota': 0.0}
 
     # Маппинг между GT track_id и PRED track_id
     last_mapping = {}
-    for frame_id, gt_tid, pred_tid in joined.select("frame_id", "track_id", "track_id_pred").iter_rows():
+    for frame_id, gt_tid, pred_tid in joined.select('frame_id', 'track_id', 'track_id_pred').iter_rows():
         if gt_tid in last_mapping and last_mapping[gt_tid] != pred_tid:
             id_swaps += 1
         last_mapping[gt_tid] = pred_tid
@@ -81,9 +78,9 @@ def evaluate_tracking(pred_df: pl.DataFrame, gt_df: pl.DataFrame) -> dict:
     idf1 = (2 * tp) / max(1, (2 * tp + fp + fn))
 
     return {
-        "id_swaps": id_swaps,
-        "idf1": round(float(idf1), 4),
-        "mota": round(float(mota), 4),
+        'id_swaps': id_swaps,
+        'idf1': round(float(idf1), 4),
+        'mota': round(float(mota), 4),
     }
 
 
@@ -97,17 +94,17 @@ def evaluate_projection_error(
     Отдельно для ближней и дальней половины поля — по эталонной позиции.
     """
     if gt_state.is_empty() or pred_state.is_empty():
-        return {"mae_m": 0.0, "rmse_m": 0.0, "near_half_mae_m": 0.0, "far_half_mae_m": 0.0}
+        return {'mae_m': 0.0, 'rmse_m': 0.0, 'near_half_mae_m': 0.0, 'far_half_mae_m': 0.0}
 
-    joined = gt_state.join(pred_state, on=["frame_id", "track_id"], suffix="_pred")
+    joined = gt_state.join(pred_state, on=['frame_id', 'track_id'], suffix='_pred')
     if joined.is_empty():
-        return {"mae_m": 0.0, "rmse_m": 0.0, "near_half_mae_m": 0.0, "far_half_mae_m": 0.0}
+        return {'mae_m': 0.0, 'rmse_m': 0.0, 'near_half_mae_m': 0.0, 'far_half_mae_m': 0.0}
 
-    dx = joined["x_m"].to_numpy() - joined["x_m_pred"].to_numpy()
-    dy = joined["y_m"].to_numpy() - joined["y_m_pred"].to_numpy()
+    dx = joined['x_m'].to_numpy() - joined['x_m_pred'].to_numpy()
+    dy = joined['y_m'].to_numpy() - joined['y_m_pred'].to_numpy()
     dist = np.hypot(dx, dy)
 
-    near_mask = near_camera(joined.select("x_m", "y_m").to_numpy(), venue)
+    near_mask = near_camera(joined.select('x_m', 'y_m').to_numpy(), venue)
     far_mask = ~near_mask
 
     mae = float(np.mean(dist))
@@ -117,10 +114,10 @@ def evaluate_projection_error(
     far_mae = float(np.mean(dist[far_mask])) if np.any(far_mask) else 0.0
 
     return {
-        "mae_m": round(mae, 3),
-        "rmse_m": round(rmse, 3),
-        "near_half_mae_m": round(near_mae, 3),
-        "far_half_mae_m": round(far_mae, 3),
+        'mae_m': round(mae, 3),
+        'rmse_m': round(rmse, 3),
+        'near_half_mae_m': round(near_mae, 3),
+        'far_half_mae_m': round(far_mae, 3),
     }
 
 
@@ -138,19 +135,19 @@ def _boxes_near_camera(boxes: pl.DataFrame, venue) -> np.ndarray:
 
     if boxes.is_empty():
         return np.zeros(0, dtype=bool)
-    feet = np.column_stack([((boxes["x1"] + boxes["x2"]) / 2).to_numpy(), boxes["y2"].to_numpy()])
+    feet = np.column_stack([((boxes['x1'] + boxes['x2']) / 2).to_numpy(), boxes['y2'].to_numpy()])
     return near_camera(apply_homography(venue.H, undistort_points(feet.astype(float), venue.calib)), venue)
 
 
 def _eval_box_matches(pred: pl.DataFrame, gt: pl.DataFrame, iou_thresh: float) -> dict:
     if gt.is_empty():
-        return {"precision": 1.0 if pred.is_empty() else 0.0, "recall": 1.0, "f1": 1.0}
+        return {'precision': 1.0 if pred.is_empty() else 0.0, 'recall': 1.0, 'f1': 1.0}
     if pred.is_empty():
-        return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
+        return {'precision': 0.0, 'recall': 0.0, 'f1': 0.0}
 
     tp, fp, fn = 0, 0, 0
-    gt_by_frame = {k[0]: g for k, g in gt.partition_by("frame_id", as_dict=True).items()}
-    pred_by_frame = {k[0]: g for k, g in pred.partition_by("frame_id", as_dict=True).items()}
+    gt_by_frame = {k[0]: g for k, g in gt.partition_by('frame_id', as_dict=True).items()}
+    pred_by_frame = {k[0]: g for k, g in pred.partition_by('frame_id', as_dict=True).items()}
 
     all_frames = set(gt_by_frame.keys()) | set(pred_by_frame.keys())
     for fid in all_frames:
@@ -163,8 +160,8 @@ def _eval_box_matches(pred: pl.DataFrame, gt: pl.DataFrame, iou_thresh: float) -
             fn += len(g_df)
             continue
 
-        g_boxes = g_df.select("x1", "y1", "x2", "y2").to_numpy()
-        p_boxes = p_df.select("x1", "y1", "x2", "y2").to_numpy()
+        g_boxes = g_df.select('x1', 'y1', 'x2', 'y2').to_numpy()
+        p_boxes = p_df.select('x1', 'y1', 'x2', 'y2').to_numpy()
 
         matched_gt = set()
         for p_box in p_boxes:
@@ -187,7 +184,7 @@ def _eval_box_matches(pred: pl.DataFrame, gt: pl.DataFrame, iou_thresh: float) -
     prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
     rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
     f1 = (2 * prec * rec) / (prec + rec) if (prec + rec) > 0 else 0.0
-    return {"precision": prec, "recall": rec, "f1": f1}
+    return {'precision': prec, 'recall': rec, 'f1': f1}
 
 
 def _box_iou(box1: np.ndarray, box2: np.ndarray) -> float:
@@ -208,7 +205,7 @@ def _box_iou(box1: np.ndarray, box2: np.ndarray) -> float:
 
 BALL_DIAMETER_M = 0.2  # футзальный мяч №4: окружность 62–64 см
 BALL_HIT_TOL_PX = 4.0  # клик по мячу 5 px неточен на пару пикселей
-BALL_SIZE_BINS = (("<6px", 0.0, 6.0), ("6-10px", 6.0, 10.0), (">=10px", 10.0, np.inf))
+BALL_SIZE_BINS = (('<6px', 0.0, 6.0), ('6-10px', 6.0, 10.0), ('>=10px', 10.0, np.inf))
 
 
 def evaluate_ball(detections: pl.DataFrame, labels: pl.DataFrame, venue, conf_min: float) -> dict:
@@ -222,61 +219,63 @@ def evaluate_ball(detections: pl.DataFrame, labels: pl.DataFrame, venue, conf_mi
     """
     from aifootball.geometry.polygons import points_near_polygon
 
-    balls = detections.filter((pl.col("cls") == "ball") & (pl.col("conf") >= conf_min))
+    balls = detections.filter((pl.col('cls') == 'ball') & (pl.col('conf') >= conf_min))
     if not balls.is_empty() and venue.pitch_polygon_px is not None:
-        centers = np.column_stack([
-            ((balls["x1"] + balls["x2"]) / 2).to_numpy(),
-            ((balls["y1"] + balls["y2"]) / 2).to_numpy(),
-        ])
+        centers = np.column_stack(
+            [
+                ((balls['x1'] + balls['x2']) / 2).to_numpy(),
+                ((balls['y1'] + balls['y2']) / 2).to_numpy(),
+            ]
+        )
         balls = balls.filter(pl.Series(points_near_polygon(centers, venue.pitch_polygon_px, venue.ball_margin_px)))
     by_frame = {
-        key[0]: g.sort("conf", descending=True).select("x1", "y1", "x2", "y2").to_numpy()
-        for key, g in balls.partition_by("frame_id", as_dict=True).items()
+        key[0]: g.sort('conf', descending=True).select('x1', 'y1', 'x2', 'y2').to_numpy()
+        for key, g in balls.partition_by('frame_id', as_dict=True).items()
     }
 
     def covers(box, x, y) -> bool:
         t = BALL_HIT_TOL_PX
         return box[0] - t <= x <= box[2] + t and box[1] - t <= y <= box[3] + t
 
-    visible = labels.filter(pl.col("status") == "visible")
-    absent = labels.filter(pl.col("status") == "absent")
+    visible = labels.filter(pl.col('status') == 'visible')
+    absent = labels.filter(pl.col('status') == 'absent')
     found = np.zeros(len(visible), dtype=bool)
     top_right = top_wrong = 0
     for i, row in enumerate(visible.iter_rows(named=True)):
-        boxes = by_frame.get(row["frame_id"])
+        boxes = by_frame.get(row['frame_id'])
         if boxes is None:
             continue
-        found[i] = any(covers(b, row["x"], row["y"]) for b in boxes)
-        if covers(boxes[0], row["x"], row["y"]):
+        found[i] = any(covers(b, row['x'], row['y']) for b in boxes)
+        if covers(boxes[0], row['x'], row['y']):
             top_right += 1
         else:
             top_wrong += 1
-    false_alarms = sum(frame_id in by_frame for frame_id in absent["frame_id"].to_list())
+    false_alarms = sum(frame_id in by_frame for frame_id in absent['frame_id'].to_list())
     top_wrong += false_alarms
 
     by_size = None  # без гомографии размер мяча в пикселях не посчитать
     if venue.H is not None:
         by_size = {}
-        sizes = ball_size_px(visible.select("x", "y").to_numpy(), venue) if len(visible) else np.zeros(0)
+        sizes = ball_size_px(visible.select('x', 'y').to_numpy(), venue) if len(visible) else np.zeros(0)
         for name, lo, hi in BALL_SIZE_BINS:
             in_bin = (sizes >= lo) & (sizes < hi)
             by_size[name] = {
-                "visible": int(in_bin.sum()),
-                "found": int(found[in_bin].sum()),
-                "recall": _ratio(found[in_bin].sum(), in_bin.sum()),
+                'visible': int(in_bin.sum()),
+                'found': int(found[in_bin].sum()),
+                'recall': _ratio(found[in_bin].sum(), in_bin.sum()),
             }
 
     return {
-        "conf_min": conf_min,
-        "visible": len(visible),
-        "found": int(found.sum()),
-        "recall": _ratio(found.sum(), len(visible)),
-        "absent": len(absent),
-        "false_alarm_frames": false_alarms,
-        "false_alarm_rate": _ratio(false_alarms, len(absent)),
-        "hidden": int((labels["status"] == "hidden").sum()),
-        "precision": _ratio(top_right, top_right + top_wrong),
-        "by_size": by_size,
+        'conf_min': conf_min,
+        'visible': len(visible),
+        'found': int(found.sum()),
+        'recall': _ratio(found.sum(), len(visible)),
+        'absent': len(absent),
+        'false_alarm_frames': false_alarms,
+        'false_alarm_rate': _ratio(false_alarms, len(absent)),
+        'hidden': int((labels['status'] == 'hidden').sum()),
+        'precision': _ratio(top_right, top_right + top_wrong),
+        'by_size': by_size,
     }
 
 
@@ -311,116 +310,143 @@ def truth_from_touches(touches: pl.DataFrame) -> tuple[list[tuple[float, float, 
     Иначе передача — две отметки игроков подряд: своему — точная, сопернику — «lost» (пас или отбор).
     Отметка shot (удар по воротам) владение не меняет, и смена команды после неё — не передача.
     """
-    ev = touches.sort("ts").to_dicts()
-    teams = ("A", "B")
-    owned = [e for e in ev if e["event"] in (*teams, "dead")]
-    intervals = [(a["ts"], b["ts"], a["event"] if a["event"] in teams else None) for a, b in zip(owned, owned[1:])]
-    if any(e["event"] == "pass" for e in ev):
+    ev = touches.sort('ts').to_dicts()
+    teams = ('A', 'B')
+    owned = [e for e in ev if e['event'] in (*teams, 'dead')]
+    intervals = [(a['ts'], b['ts'], a['event'] if a['event'] in teams else None) for a, b in zip(owned, owned[1:])]
+    if any(e['event'] == 'pass' for e in ev):
         return intervals, _passes_from_pass_marks(ev)
     passes = []
     for a, b in zip(ev, ev[1:]):
-        if a["event"] in teams and b["event"] in teams:
-            completed = b["event"] == a["event"]
-            passes.append({"team": a["event"], "completed": completed, "outcome": "completed" if completed else "lost",
-                           "ts_pass": None, "ts_receive": b["ts"]})
+        if a['event'] in teams and b['event'] in teams:
+            completed = b['event'] == a['event']
+            passes.append(
+                {
+                    'team': a['event'],
+                    'completed': completed,
+                    'outcome': 'completed' if completed else 'lost',
+                    'ts_pass': None,
+                    'ts_receive': b['ts'],
+                }
+            )
     return intervals, passes
 
 
 def _passes_from_pass_marks(ev: list[dict]) -> list[dict]:
     passes, owner, pending = [], None, None
     for e in ev:
-        if e["event"] in ("A", "B", "dead") and pending is not None:
-            outcome = "out" if e["event"] == "dead" else "completed" if e["event"] == pending["team"] else "intercepted"
-            passes.append({**pending, "completed": outcome == "completed", "outcome": outcome, "ts_receive": e["ts"]})
+        if e['event'] in ('A', 'B', 'dead') and pending is not None:
+            outcome = 'out' if e['event'] == 'dead' else 'completed' if e['event'] == pending['team'] else 'intercepted'
+            passes.append({**pending, 'completed': outcome == 'completed', 'outcome': outcome, 'ts_receive': e['ts']})
             pending = None
-        if e["event"] in ("A", "B"):
-            owner = e["event"]
-        elif e["event"] == "dead":
+        if e['event'] in ('A', 'B'):
+            owner = e['event']
+        elif e['event'] == 'dead':
             owner = None
-        elif e["event"] == "pass":
+        elif e['event'] == 'pass':
             # повторный pass без приёма: кто принял первый, неизвестно — его не считаем
-            pending = {"team": owner, "ts_pass": e["ts"]} if owner is not None else None
-        elif e["event"] == "shot":
+            pending = {'team': owner, 'ts_pass': e['ts']} if owner is not None else None
+        elif e['event'] == 'shot':
             pending = None
-    return [{"team": p["team"], "completed": p["completed"], "outcome": p["outcome"], "ts_pass": p["ts_pass"],
-             "ts_receive": p["ts_receive"]} for p in passes]
+    return [
+        {
+            'team': p['team'],
+            'completed': p['completed'],
+            'outcome': p['outcome'],
+            'ts_pass': p['ts_pass'],
+            'ts_receive': p['ts_receive'],
+        }
+        for p in passes
+    ]
 
 
 def shots_from_touches(touches: pl.DataFrame) -> list[dict]:
     """Удары по воротам из журнала: команда владельца на момент отметки shot и время."""
     shots, owner = [], None
-    for e in touches.sort("ts").to_dicts():
-        if e["event"] in ("A", "B"):
-            owner = e["event"]
-        elif e["event"] == "dead":
+    for e in touches.sort('ts').to_dicts():
+        if e['event'] in ('A', 'B'):
+            owner = e['event']
+        elif e['event'] == 'dead':
             owner = None
-        elif e["event"] == "shot" and owner is not None:
-            shots.append({"team": owner, "ts": e["ts"]})
+        elif e['event'] == 'shot' and owner is not None:
+            shots.append({'team': owner, 'ts': e['ts']})
     return shots
 
 
-def evaluate_possession(ball_state: pl.DataFrame, player_state: pl.DataFrame, touches: pl.DataFrame,
-                        tol_s: float = PASS_MATCH_TOL_S) -> dict:
+def evaluate_possession(
+    ball_state: pl.DataFrame, player_state: pl.DataFrame, touches: pl.DataFrame, tol_s: float = PASS_MATCH_TOL_S
+) -> dict:
     """Сравнивает владение и передачи пайплайна с ручным журналом на отрезке от первой до последней отметки."""
     from aifootball.perception.ball import ball_owners, compute_possession, pass_events
 
     intervals, truth_passes = truth_from_touches(touches)
     if not intervals:
-        raise ValueError("в журнале меньше двух отметок")
+        raise ValueError('в журнале меньше двух отметок')
     t0, t1 = intervals[0][0], intervals[-1][1]
-    in_span = (pl.col("ts") >= t0) & (pl.col("ts") < t1)
+    in_span = (pl.col('ts') >= t0) & (pl.col('ts') < t1)
     ball = ball_state.filter(in_span)
     players = player_state.filter(in_span)
 
-    truth_s = {"A": 0.0, "B": 0.0, "dead": 0.0}
+    truth_s = {'A': 0.0, 'B': 0.0, 'dead': 0.0}
     for start, end, team in intervals:
-        truth_s[team or "dead"] += end - start
-    in_play = truth_s["A"] + truth_s["B"]
-    truth_pct = {t: round(truth_s[t] / in_play * 100, 1) if in_play else 0.0 for t in ("A", "B")}
+        truth_s[team or 'dead'] += end - start
+    in_play = truth_s['A'] + truth_s['B']
+    truth_pct = {t: round(truth_s[t] / in_play * 100, 1) if in_play else 0.0 for t in ('A', 'B')}
     pipe = compute_possession(ball, players)
 
     # Покадрово: чья команда у мяча по журналу и по пайплайну (ball_owners, как в compute_possession)
-    frames = players.select("frame_id", "ts").unique().sort("frame_id")
+    frames = players.select('frame_id', 'ts').unique().sort('frame_id')
     starts = np.array([s for s, _, _ in intervals])
-    truth_team = [intervals[max(0, np.searchsorted(starts, ts, side="right") - 1)][2] for ts in frames["ts"]]
+    truth_team = [intervals[max(0, np.searchsorted(starts, ts, side='right') - 1)][2] for ts in frames['ts']]
     owners = ball_owners(ball, players)
-    owner = dict(zip(owners["frame_id"].to_list(), owners["team"].to_list()))
-    step = float(np.median(np.diff(frames["ts"].to_numpy()))) if frames.height > 1 else 0.0
-    agreement = {g: {"A": 0.0, "B": 0.0, "none": 0.0} for g in ("A", "B", "dead")}
-    for fid, g in zip(frames["frame_id"].to_list(), truth_team):
+    owner = dict(zip(owners['frame_id'].to_list(), owners['team'].to_list()))
+    step = float(np.median(np.diff(frames['ts'].to_numpy()))) if frames.height > 1 else 0.0
+    agreement = {g: {'A': 0.0, 'B': 0.0, 'none': 0.0} for g in ('A', 'B', 'dead')}
+    for fid, g in zip(frames['frame_id'].to_list(), truth_team):
         p = owner.get(fid)
-        agreement[g or "dead"][p if p in ("A", "B") else "none"] += step
+        agreement[g or 'dead'][p if p in ('A', 'B') else 'none'] += step
     agreement = {g: {p: round(v, 1) for p, v in row.items()} for g, row in agreement.items()}
 
     # Передачи: пара «эталон — пайплайн» с той же командой отдающего и приёмом в пределах tol_s
-    pipe_passes = [p for p in pass_events(ball_state, player_state) if t0 <= p["ts_receive"] < t1]
+    pipe_passes = [p for p in pass_events(ball_state, player_state) if t0 <= p['ts_receive'] < t1]
     used, matched = set(), []
     for tp in truth_passes:
         best = None
         for i, pp in enumerate(pipe_passes):
-            dt = abs(pp["ts_receive"] - tp["ts_receive"])
-            if i not in used and pp["team"] == tp["team"] and dt <= tol_s and (best is None or dt < best[1]):
+            dt = abs(pp['ts_receive'] - tp['ts_receive'])
+            if i not in used and pp['team'] == tp['team'] and dt <= tol_s and (best is None or dt < best[1]):
                 best = (i, dt)
         if best is not None:
             used.add(best[0])
             matched.append((tp, pipe_passes[best[0]]))
 
     def counts(passes):
-        return {t: {"total": sum(p["team"] == t for p in passes),
-                    "completed": sum(p["team"] == t and p["completed"] for p in passes)} for t in ("A", "B")}
+        return {
+            t: {
+                'total': sum(p['team'] == t for p in passes),
+                'completed': sum(p['team'] == t and p['completed'] for p in passes),
+            }
+            for t in ('A', 'B')
+        }
 
     matched_ids = {id(tp) for tp, _ in matched}
     return {
-        "span_s": [round(t0, 2), round(t1, 2)],
-        "possession": {"truth_s": {k: round(v, 1) for k, v in truth_s.items()}, "truth_pct": truth_pct,
-                       "pipeline_s": pipe["possession_s"], "pipeline_pct": pipe["possession_pct"]},
-        "possession_by_time_s": agreement,
-        "passes": {
-            "truth": counts(truth_passes), "pipeline": counts(pipe_passes),
-            "matched": len(matched), "recall": _ratio(len(matched), len(truth_passes)),
-            "precision": _ratio(len(matched), len(pipe_passes)),
-            "completed_agree": sum(tp["completed"] == pp["completed"] for tp, pp in matched),
-            "missed_ts": [round(tp["ts_receive"], 1) for tp in truth_passes if id(tp) not in matched_ids],
-            "false_ts": [round(pp["ts_receive"], 1) for i, pp in enumerate(pipe_passes) if i not in used],
+        'span_s': [round(t0, 2), round(t1, 2)],
+        'possession': {
+            'truth_s': {k: round(v, 1) for k, v in truth_s.items()},
+            'truth_pct': truth_pct,
+            'pipeline_s': pipe['possession_s'],
+            'pipeline_pct': pipe['possession_pct'],
+        },
+        'possession_by_time_s': agreement,
+        'passes': {
+            'truth': counts(truth_passes),
+            'pipeline': counts(pipe_passes),
+            'matched': len(matched),
+            'recall': _ratio(len(matched), len(truth_passes)),
+            'precision': _ratio(len(matched), len(pipe_passes)),
+            'completed_agree': sum(tp['completed'] == pp['completed'] for tp, pp in matched),
+            'missed_ts': [round(tp['ts_receive'], 1) for tp in truth_passes if id(tp) not in matched_ids],
+            'false_ts': [round(pp['ts_receive'], 1) for i, pp in enumerate(pipe_passes) if i not in used],
         },
     }

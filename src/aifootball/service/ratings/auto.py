@@ -15,19 +15,28 @@
 Ручная версия главнее автоматической (inputs.selected_inputs). Методика оценки не меняется:
 по неполной категории показатель в оценку не входит, минуты и известные действия видны в разборе.
 """
+
 from collections import defaultdict
 from math import ceil, floor
 from uuid import NAMESPACE_URL, UUID, uuid5
+
 from pydantic import ValidationError
-from sqlalchemy import select, func, update
+from sqlalchemy import func, select, update
+
 from aifootball.analytics.track_groups import MAX_GAP_S
 from aifootball.service.analysis.models import AnalysisAssignment
 from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.operations import get_match_view
 from aifootball.service.protocol.models import ProtocolVersion
-from aifootball.service.ratings.models import (AUTO_SOURCE, ActionVersion, ParticipationVersion, RatingMatchPublication,
-                                               TournamentRatingState, is_auto)
+from aifootball.service.ratings.models import (
+    AUTO_SOURCE,
+    ActionVersion,
+    ParticipationVersion,
+    RatingMatchPublication,
+    TournamentRatingState,
+    is_auto,
+)
 
 GAP_FILL_S = MAX_GAP_S
 AUTO_CATEGORIES = {'pass': 'passes'}  # вид события по мячу -> категория полноты действий
@@ -73,15 +82,19 @@ def _trim(group, limit):
         if not excess:
             return
         a, b = excess[0]
-        edge = lambda pid: min(min(abs(s - a), abs(e - b)) for s, e in group[pid] if s < b and e > a)
+        edge = lambda pid: min(min(abs(s - a), abs(e - b)) for s, e in group[pid] if s < b and e > a)  # noqa: B023
         pid = min((p for p in group if any(s < b and e > a for s, e in group[p])), key=lambda p: (edge(p), p))
         group[pid] = _cut(group[pid], a, b)
 
 
 def _fill(group, limit, gap_ms):
     """Короткие разрывы — время на площадке, если это не даёт перебора игроков; сначала самые короткие."""
-    gaps = sorted((b0 - a1, pid, a1, b0) for pid, spans in group.items()
-                  for (_, a1), (b0, _) in zip(spans, spans[1:]) if b0 - a1 <= gap_ms)
+    gaps = sorted(
+        (b0 - a1, pid, a1, b0)
+        for pid, spans in group.items()
+        for (_, a1), (b0, _) in zip(spans, spans[1:])
+        if b0 - a1 <= gap_ms
+    )
     for _, pid, a, b in gaps:
         before = group[pid]
         group[pid] = _merge(before + [[a, b]])
@@ -118,25 +131,46 @@ def participation_document(run, job, lineup, protocol_id, assigned, players_on_p
     video = {p['player_id']: p['side'] for p in job.context['rosters']}
     sides = {p['player_id']: p['side'] for p in lineup if video.get(p['player_id']) == p['side']}
     tracks = {t['track_id']: t for t in run.tracks['tracks']}
-    people = presence(tracks, {tid: pid for tid, pid in assigned.items() if pid in sides and tid in tracks}, sides,
-                      duration, players_on_pitch)
-    players = [{'player_id': pid, 'presence': people[pid], 'completeness': 'complete', 'appeared': True, 'roles': []}
-               if pid in people else {'player_id': pid, 'presence': None, 'completeness': 'unknown', 'appeared': None, 'roles': []}
-               for pid in sides]
-    return {'clock_basis': 'video', 'time_basis': 'running_clock', 'analysis_scope': video_scope(run), 'duration_ms': duration,
-            'source_analysis_run_id': str(run.id), 'source_protocol_version_id': protocol_id,
-            'initial_five': {'home': [], 'away': []}, 'players': players, 'play_intervals': None,
-            'possession_intervals': {'home': None, 'away': None}, 'manpower': [],
-            'notes': 'Автоматически по видео: время на площадке по фрагментам, назначенным игрокам.'}
+    people = presence(
+        tracks,
+        {tid: pid for tid, pid in assigned.items() if pid in sides and tid in tracks},
+        sides,
+        duration,
+        players_on_pitch,
+    )
+    players = [
+        {'player_id': pid, 'presence': people[pid], 'completeness': 'complete', 'appeared': True, 'roles': []}
+        if pid in people
+        else {'player_id': pid, 'presence': None, 'completeness': 'unknown', 'appeared': None, 'roles': []}
+        for pid in sides
+    ]
+    return {
+        'clock_basis': 'video',
+        'time_basis': 'running_clock',
+        'analysis_scope': video_scope(run),
+        'duration_ms': duration,
+        'source_analysis_run_id': str(run.id),
+        'source_protocol_version_id': protocol_id,
+        'initial_five': {'home': [], 'away': []},
+        'players': players,
+        'play_intervals': None,
+        'possession_intervals': {'home': None, 'away': None},
+        'manpower': [],
+        'notes': 'Автоматически по видео: время на площадке по фрагментам, назначенным игрокам.',
+    }
 
 
 def actions_document(run, job, part, assigned):
     """Передачи прогона как действия игроков; события без назначенного фрагмента — с неизвестным автором."""
-    doc = part.document; duration = doc['duration_ms']
+    doc = part.document
+    duration = doc['duration_ms']
     sides = {p['player_id']: p['side'] for p in part.lineup}
     on_pitch = {p['player_id']: p['presence'] or [] for p in doc['players']}
     pitch = job.context['pitch']
-    point = lambda xy: [min(max(float(xy[0]), 0.0), float(pitch['length_m'])), min(max(float(xy[1]), 0.0), float(pitch['width_m']))]
+    point = lambda xy: [
+        min(max(float(xy[0]), 0.0), float(pitch['length_m'])),
+        min(max(float(xy[1]), 0.0), float(pitch['width_m'])),
+    ]
     events = run.events or {}
     kinds = [k for k in events.get('kinds', []) if k in AUTO_CATEGORIES]
     actions = []
@@ -144,40 +178,83 @@ def actions_document(run, job, part, assigned):
         side = run.side_map.get(e.get('team'))
         if e['kind'] not in kinds or side is None:
             continue
-        start = max(0, round(e['start_s'] * 1000)); end = max(start, round(e['end_s'] * 1000))
+        start = max(0, round(e['start_s'] * 1000))
+        end = max(start, round(e['end_s'] * 1000))
         if end >= duration:
             continue
         author = assigned.get(e['track_id'])
-        if author is not None and (sides.get(author) != side or not any(a <= start < b for a, b in on_pitch.get(author, []))):
+        if author is not None and (
+            sides.get(author) != side or not any(a <= start < b for a, b in on_pitch.get(author, []))
+        ):
             author = None
         recipient = assigned.get(e.get('recipient_track_id')) if e['success'] else None
         if recipient is not None and (recipient == author or sides.get(recipient) != side):
             recipient = None
-        actions.append({'id': str(uuid5(NAMESPACE_URL, f'aifootball:cv-auto:{run.id}:{index}')), 'kind': e['kind'],
-                        'player_id': author, 'recipient_id': recipient, 'opponent_id': None, 'side': side, 'role': None,
-                        'start_ms': start, 'end_ms': end, 'success': bool(e['success']), 'on_target': None,
-                        'outcome': 'success' if e['success'] else 'failure', 'possession_id': None,
-                        'start_xy': point(e['start_xy']), 'end_xy': point(e['end_xy']), 'attacking_direction': 'unknown',
-                        'penalty_conceded': False, 'source_episode_id': None, 'source_video_ms': None, 'shot_id': None,
-                        'decision': 'accepted', 'notes': ''})
+        actions.append(
+            {
+                'id': str(uuid5(NAMESPACE_URL, f'aifootball:cv-auto:{run.id}:{index}')),
+                'kind': e['kind'],
+                'player_id': author,
+                'recipient_id': recipient,
+                'opponent_id': None,
+                'side': side,
+                'role': None,
+                'start_ms': start,
+                'end_ms': end,
+                'success': bool(e['success']),
+                'on_target': None,
+                'outcome': 'success' if e['success'] else 'failure',
+                'possession_id': None,
+                'start_xy': point(e['start_xy']),
+                'end_xy': point(e['end_xy']),
+                'attacking_direction': 'unknown',
+                'penalty_conceded': False,
+                'source_episode_id': None,
+                'source_video_ms': None,
+                'shot_id': None,
+                'decision': 'accepted',
+                'notes': '',
+            }
+        )
     primary = next(p for p in run.report['periods'] if p['key'] == run.manifest['primary_period_key'])
     spans = _merge([[max(0, floor(a * 1000)), min(duration, ceil(b * 1000))] for a, b in primary['spans'] if a < b])
     spans = [s for s in spans if s[0] < s[1]]
-    completeness = {AUTO_CATEGORIES[k]: [{'status': 'partial', 'intervals': spans, 'player_ids': None}] for k in kinds} if spans else {}
-    return {'clock_basis': 'video', 'analysis_scope': doc['analysis_scope'], 'duration_ms': duration,
-            'source_participation_version_id': str(part.id), 'source_analysis_run_id': str(run.id),
-            'source_protocol_version_id': doc['source_protocol_version_id'], 'actions': actions, 'links': [],
-            'completeness': completeness,
-            'notes': 'Автоматически по видео: передачи по мячу; распознаётся не каждая передача.'}
+    completeness = (
+        {AUTO_CATEGORIES[k]: [{'status': 'partial', 'intervals': spans, 'player_ids': None}] for k in kinds}
+        if spans
+        else {}
+    )
+    return {
+        'clock_basis': 'video',
+        'analysis_scope': doc['analysis_scope'],
+        'duration_ms': duration,
+        'source_participation_version_id': str(part.id),
+        'source_analysis_run_id': str(run.id),
+        'source_protocol_version_id': doc['source_protocol_version_id'],
+        'actions': actions,
+        'links': [],
+        'completeness': completeness,
+        'notes': 'Автоматически по видео: передачи по мячу; распознаётся не каждая передача.',
+    }
 
 
 def _existing(db, run, protocol_id):
-    parts = db.scalars(select(ParticipationVersion).where(ParticipationVersion.source_analysis_run_id == run.id,
-                                                         ParticipationVersion.status == 'confirmed')
-                       .order_by(ParticipationVersion.revision.desc())).all()
+    parts = db.scalars(
+        select(ParticipationVersion)
+        .where(ParticipationVersion.source_analysis_run_id == run.id, ParticipationVersion.status == 'confirmed')
+        .order_by(ParticipationVersion.revision.desc())
+    ).all()
     part = next((v for v in parts if is_auto(v) and v.source_protocol_version_id == protocol_id), None)
-    action = db.scalar(select(ActionVersion).where(ActionVersion.source_participation_version_id == part.id)
-                       .order_by(ActionVersion.revision.desc()).limit(1)) if part else None
+    action = (
+        db.scalar(
+            select(ActionVersion)
+            .where(ActionVersion.source_participation_version_id == part.id)
+            .order_by(ActionVersion.revision.desc())
+            .limit(1)
+        )
+        if part
+        else None
+    )
     return part, action if is_auto(action) else None
 
 
@@ -198,44 +275,83 @@ def ensure_auto_versions(db, match, run, job, actor_id, protocol_id):
     from aifootball.service.ratings.actions import save_actions
     from aifootball.service.ratings.operations import save_participation
     from aifootball.service.ratings.schemas import ActionsSave, ParticipationSave
+
     part, action = _existing(db, run, protocol_id)
-    assigned = {a.track_id: str(a.player_id) for a in db.scalars(select(AnalysisAssignment).where(
-        AnalysisAssignment.run_id == run.id, AnalysisAssignment.player_id.is_not(None)))}
+    assigned = {
+        a.track_id: str(a.player_id)
+        for a in db.scalars(
+            select(AnalysisAssignment).where(
+                AnalysisAssignment.run_id == run.id, AnalysisAssignment.player_id.is_not(None)
+            )
+        )
+    }
     note = None
     if part is None:
         protocol = get_entity(db, ProtocolVersion, protocol_id) if protocol_id else None
         view = None if protocol else get_match_view(db, match.id)
         lineup = protocol.snapshot['lineup'] if protocol else view['lineup']
         rules = protocol.snapshot['regulation']['rules'] if protocol else view['regulation']['rules']
-        doc = participation_document(run, job, lineup, str(protocol_id) if protocol_id else None, assigned, rules['players_on_pitch'])
+        doc = participation_document(
+            run, job, lineup, str(protocol_id) if protocol_id else None, assigned, rules['players_on_pitch']
+        )
         if not any(p['presence'] for p in doc['players']):
             return None, None, 'Ни одному игроку протокола не назначен фрагмент записи'
 
         def build_participation():
-            latest = db.scalar(select(func.max(ParticipationVersion.revision)).where(ParticipationVersion.match_id == match.id)) or 0
-            saved = save_participation(db, match.id, actor_id, ParticipationSave(
-                request_id=uuid5(NAMESPACE_URL, f'aifootball:auto-participation:{run.id}:{protocol_id}'),
-                expected_revision=latest, expected_match_revision=match.revision, status='confirmed', document=doc),
-                source_kind=AUTO_SOURCE)
+            latest = (
+                db.scalar(
+                    select(func.max(ParticipationVersion.revision)).where(ParticipationVersion.match_id == match.id)
+                )
+                or 0
+            )
+            saved = save_participation(
+                db,
+                match.id,
+                actor_id,
+                ParticipationSave(
+                    request_id=uuid5(NAMESPACE_URL, f'aifootball:auto-participation:{run.id}:{protocol_id}'),
+                    expected_revision=latest,
+                    expected_match_revision=match.revision,
+                    status='confirmed',
+                    document=doc,
+                ),
+                source_kind=AUTO_SOURCE,
+            )
             return db.get(ParticipationVersion, UUID(str(saved['id'])))
+
         part, note = _attempt(db, build_participation)
         if part is None:
             return None, None, note
     if action is None and run.events:
+
         def build_actions():
             latest = db.scalar(select(func.max(ActionVersion.revision)).where(ActionVersion.match_id == match.id)) or 0
-            saved = save_actions(db, match.id, actor_id, ActionsSave(
-                request_id=uuid5(NAMESPACE_URL, f'aifootball:auto-actions:{part.id}'),
-                expected_revision=latest, expected_match_revision=match.revision, status='confirmed',
-                document=actions_document(run, job, part, assigned)), source_kind=AUTO_SOURCE)
+            saved = save_actions(
+                db,
+                match.id,
+                actor_id,
+                ActionsSave(
+                    request_id=uuid5(NAMESPACE_URL, f'aifootball:auto-actions:{part.id}'),
+                    expected_revision=latest,
+                    expected_match_revision=match.revision,
+                    status='confirmed',
+                    document=actions_document(run, job, part, assigned),
+                ),
+                source_kind=AUTO_SOURCE,
+            )
             return db.get(ActionVersion, UUID(str(saved['id'])))
+
         action, note = _attempt(db, build_actions)
     return part, action, note
 
 
 def latest_protocol_id(db, match_id):
-    return db.scalar(select(ProtocolVersion.id).where(ProtocolVersion.match_id == match_id)
-                     .order_by(ProtocolVersion.number.desc()).limit(1))
+    return db.scalar(
+        select(ProtocolVersion.id)
+        .where(ProtocolVersion.match_id == match_id)
+        .order_by(ProtocolVersion.number.desc())
+        .limit(1)
+    )
 
 
 def confirm_auto_sources(db, match, run, job, actor_id):
@@ -246,8 +362,18 @@ def confirm_auto_sources(db, match, run, job, actor_id):
 def publish_auto_sources(db, match, run, job, actor_id):
     """Опубликованный видеоанализ становится источником оценок на сайте, если вручную не выбраны другие версии."""
     pub = db.scalar(select(RatingMatchPublication).where(RatingMatchPublication.match_id == match.id))
-    chosen = [db.get(model, value) for model, value in ((ParticipationVersion, pub.participation_version_id),
-                                                        (ActionVersion, pub.action_version_id)) if value] if pub else []
+    chosen = (
+        [
+            db.get(model, value)
+            for model, value in (
+                (ParticipationVersion, pub.participation_version_id),
+                (ActionVersion, pub.action_version_id),
+            )
+            if value
+        ]
+        if pub
+        else []
+    )
     if any(not is_auto(v) for v in chosen):
         return None
     part = action = note = None
@@ -265,23 +391,43 @@ def publish_auto_sources(db, match, run, job, actor_id):
     pub.participation_version_id, pub.action_version_id = target
     pub.revision += 1
     # Источники рейтинга изменились: прежний расчёт для сайта устареет по отпечатку, ревизия — для открытых страниц.
-    db.execute(update(TournamentRatingState).where(TournamentRatingState.tournament_id == match.tournament_id)
-               .values(revision=TournamentRatingState.revision + 1))
+    db.execute(
+        update(TournamentRatingState)
+        .where(TournamentRatingState.tournament_id == match.tournament_id)
+        .values(revision=TournamentRatingState.revision + 1)
+    )
     db.flush()
     return note
 
 
 def auto_sources_view(db, run):
     """Последние автоматические версии прогона для экрана видеоанализа."""
-    part = db.scalar(select(ParticipationVersion).where(ParticipationVersion.source_analysis_run_id == run.id,
-                                                       ParticipationVersion.provenance['source_kind'].astext == AUTO_SOURCE)
-                     .order_by(ParticipationVersion.revision.desc()).limit(1))
+    part = db.scalar(
+        select(ParticipationVersion)
+        .where(
+            ParticipationVersion.source_analysis_run_id == run.id,
+            ParticipationVersion.provenance['source_kind'].astext == AUTO_SOURCE,
+        )
+        .order_by(ParticipationVersion.revision.desc())
+        .limit(1)
+    )
     if part is None:
         return None
-    action = db.scalar(select(ActionVersion).where(ActionVersion.source_participation_version_id == part.id,
-                                                   ActionVersion.provenance['source_kind'].astext == AUTO_SOURCE)
-                       .order_by(ActionVersion.revision.desc()).limit(1))
+    action = db.scalar(
+        select(ActionVersion)
+        .where(
+            ActionVersion.source_participation_version_id == part.id,
+            ActionVersion.provenance['source_kind'].astext == AUTO_SOURCE,
+        )
+        .order_by(ActionVersion.revision.desc())
+        .limit(1)
+    )
     players = sum(1 for p in part.document['players'] if p['presence'])
-    return {'participation_version_id': part.id, 'participation_revision': part.revision, 'players': players,
-            'action_version_id': action.id if action else None, 'action_revision': action.revision if action else None,
-            'passes': sum(1 for a in action.document['actions'] if a['kind'] == 'pass') if action else 0}
+    return {
+        'participation_version_id': part.id,
+        'participation_revision': part.revision,
+        'players': players,
+        'action_version_id': action.id if action else None,
+        'action_revision': action.revision if action else None,
+        'passes': sum(1 for a in action.document['actions'] if a['kind'] == 'pass') if action else 0,
+    }

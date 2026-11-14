@@ -13,24 +13,42 @@ def field(t0, t1, speed, *, tracks=range(1, 7), y=None):
     rows = []
     for tid in tracks:
         for t in ts:
-            rows.append({'frame_id': round(t / DT), 'ts': t, 'track_id': tid, 'role': 'player', 'team': 'A' if tid < 4 else 'B',
-                         'x_m': 10.0 + (speed * t) % 4.0, 'y_m': float(y if y is not None else 2 + 2 * tid), 'speed': float(speed)})
+            rows.append(
+                {
+                    'frame_id': round(t / DT),
+                    'ts': t,
+                    'track_id': tid,
+                    'role': 'player',
+                    'team': 'A' if tid < 4 else 'B',
+                    'x_m': 10.0 + (speed * t) % 4.0,
+                    'y_m': float(y if y is not None else 2 + 2 * tid),
+                    'speed': float(speed),
+                }
+            )
     return pl.DataFrame(rows)
 
 
 def ball_seen(t0, t1, every=1, x=20.0, y=10.0, speed=3.0):
     ts = [round(t0 + i * DT, 3) for i in range(round((t1 - t0) / DT))]
-    return pl.DataFrame({'frame_id': [round(t / DT) for t in ts], 'ts': ts, 'x_m': [x] * len(ts), 'y_m': [y] * len(ts),
-                         'speed': [speed] * len(ts), 'interpolated': [i % every != 0 for i in range(len(ts))]})
+    return pl.DataFrame(
+        {
+            'frame_id': [round(t / DT) for t in ts],
+            'ts': ts,
+            'x_m': [x] * len(ts),
+            'y_m': [y] * len(ts),
+            'speed': [speed] * len(ts),
+            'interpolated': [i % every != 0 for i in range(len(ts))],
+        }
+    )
 
 
 def test_second_features_are_relative_to_the_match_and_count_seen_ball():
     players = field(0, 10, 2.0)
     feats = sm.second_features(players, ball_seen(0, 10, every=2), L, W, viterbi=[])
     row = dict(zip(sm.FEATURES, feats[5]))
-    assert row['speed_p50'] == pytest.approx(1.0)       # скорость в долях медианы матча
+    assert row['speed_p50'] == pytest.approx(1.0)  # скорость в долях медианы матча
     assert row['speed_spread'] == pytest.approx(0.0)
-    assert row['player_edge_m'] == pytest.approx(4.0)   # ближайший к линии игрок — y = 4 м
+    assert row['player_edge_m'] == pytest.approx(4.0)  # ближайший к линии игрок — y = 4 м
     assert row['ball_seen'] == pytest.approx(0.5, abs=0.05)
     assert row['ball_speed'] == pytest.approx(3.0)
     assert row['ball_edge_m'] == pytest.approx(10.0)
@@ -46,8 +64,13 @@ def test_second_without_ball_uses_neutral_ball_features():
 
 def test_spans_merge_consecutive_stoppage_seconds():
     # Модель, которая верит только Витерби: отрезки должны совпасть с его секундами и склеиться.
-    only_viterbi = {'features': sm.FEATURES, 'mean': [0.0] * len(sm.FEATURES), 'std': [1.0] * len(sm.FEATURES),
-                    'weights': [0.0] * (len(sm.FEATURES) - 1) + [10.0], 'bias': -5.0}
+    only_viterbi = {
+        'features': sm.FEATURES,
+        'mean': [0.0] * len(sm.FEATURES),
+        'std': [1.0] * len(sm.FEATURES),
+        'weights': [0.0] * (len(sm.FEATURES) - 1) + [10.0],
+        'bias': -5.0,
+    }
     spans = sm.stoppage_spans(field(0, 20, 2.0), None, L, W, viterbi=[(5.0, 8.0), (12.0, 13.0)], model=only_viterbi)
     assert spans == [(5.0, 8.0), (12.0, 13.0)]
 
@@ -56,7 +79,11 @@ def test_spans_merge_consecutive_stoppage_seconds():
 def test_shipped_models_find_a_team_wide_pause(with_ball):
     # 0–20 с игра (2.5 м/с), 20–35 с все стоят (0.3 м/с), 35–50 с снова игра
     players = pl.concat([field(0, 20, 2.5), field(20, 35, 0.3), field(35, 50, 2.5)])
-    ball = pl.concat([ball_seen(0, 20, speed=6.0), ball_seen(20, 35, every=5, speed=0.5), ball_seen(35, 50, speed=6.0)]) if with_ball else None
+    ball = (
+        pl.concat([ball_seen(0, 20, speed=6.0), ball_seen(20, 35, every=5, speed=0.5), ball_seen(35, 50, speed=6.0)])
+        if with_ball
+        else None
+    )
     spans = stoppages(players, L, W, ball)
     assert len(spans) == 1 and 19 <= spans[0][0] <= 22 and 33 <= spans[0][1] <= 36
 

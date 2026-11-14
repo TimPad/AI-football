@@ -7,10 +7,17 @@ class DomainError(Exception):
 
 class RevisionConflict(DomainError):
     def __init__(self, revision):
-        super().__init__('revision_conflict', 'Матч изменён в другом окне. Сверьте изменения.',
-                         status=409, current_revision=revision)
+        super().__init__(
+            'revision_conflict', 'Матч изменён в другом окне. Сверьте изменения.', status=409, current_revision=revision
+        )
 
 
 def error_body(error):
-    return {'error': {'code': error.code, 'message': error.message, 'fields': error.fields,
-                      'current_revision': error.current_revision}}
+    return {
+        'error': {
+            'code': error.code,
+            'message': error.message,
+            'fields': error.fields,
+            'current_revision': error.current_revision,
+        }
+    }

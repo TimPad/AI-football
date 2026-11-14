@@ -18,7 +18,7 @@ def _rows(classes, confs):
 def test_each_class_has_own_threshold():
     rows = _rows([PERSON, PERSON, BALL, BALL], [0.9, 0.15, 0.15, 0.05])
 
-    assert [(r["cls"], r["conf"]) for r in rows] == [("person", 0.9), ("ball", 0.15)]
+    assert [(r['cls'], r['conf']) for r in rows] == [('person', 0.9), ('ball', 0.15)]
 
 
 def test_other_classes_dropped():
@@ -28,9 +28,9 @@ def test_other_classes_dropped():
 def test_person_gets_torso_color_ball_does_not():
     person, ball = _rows([PERSON, BALL], [0.9, 0.5])
 
-    assert not math.isnan(person["torso_l"])
-    assert math.isnan(ball["torso_l"])
-    assert (person["frame_id"], person["ts"]) == (5, 0.5)
+    assert not math.isnan(person['torso_l'])
+    assert math.isnan(ball['torso_l'])
+    assert (person['frame_id'], person['ts']) == (5, 0.5)
 
 
 class _Arr:
@@ -61,9 +61,9 @@ def test_detect_video_takes_ball_from_own_detector(monkeypatch, tmp_path, venue,
 
     from aifootball.perception.detect import detect_video
 
-    monkeypatch.setattr(ultralytics, "YOLO", _FakeYOLO)
-    weights = tmp_path / "w.pt"
-    weights.write_bytes(b"")
+    monkeypatch.setattr(ultralytics, 'YOLO', _FakeYOLO)
+    weights = tmp_path / 'w.pt'
+    weights.write_bytes(b'')
     _FakeYOLO.calls.clear()
 
     def ball_detector(frame):
@@ -71,7 +71,7 @@ def test_detect_video_takes_ball_from_own_detector(monkeypatch, tmp_path, venue,
 
     det = detect_video(tiny_video, venue, weights, ball_detector=ball_detector)
 
-    assert all(call["classes"] == [0] for call in _FakeYOLO.calls)  # общая модель — только люди
-    balls = det.filter(pl.col("cls") == "ball")
-    assert balls.height == det["frame_id"].n_unique() == 20  # 50 кадров 25 fps -> 20 при 10 fps
-    assert balls["conf"].to_list() == pytest.approx([0.7] * 20)
+    assert all(call['classes'] == [0] for call in _FakeYOLO.calls)  # общая модель — только люди
+    balls = det.filter(pl.col('cls') == 'ball')
+    assert balls.height == det['frame_id'].n_unique() == 20  # 50 кадров 25 fps -> 20 при 10 fps
+    assert balls['conf'].to_list() == pytest.approx([0.7] * 20)

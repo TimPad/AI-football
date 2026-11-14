@@ -62,6 +62,12 @@ jobs:
         run: web/node_modules/.bin/playwright install --with-deps chromium
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Lint and format check (Python)
+        run: |
+          .venv/bin/ruff check src tests scripts migrations
+          .venv/bin/ruff format --check src tests scripts migrations
+      - name: Lint and format check (frontend)
+        run: npm --prefix web run lint
       - name: Check API type generation
         run: |
           .venv/bin/python scripts/export_service_openapi.py --output data/service/openapi.json

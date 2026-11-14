@@ -11,12 +11,12 @@ def fit_homography(px: np.ndarray, m: np.ndarray) -> tuple[np.ndarray, float]:
     px = np.asarray(px, dtype=np.float64).reshape(-1, 2)
     m = np.asarray(m, dtype=np.float64).reshape(-1, 2)
     if len(px) != len(m):
-        raise ValueError(f"разное число точек: {len(px)} пикселей и {len(m)} метров")
+        raise ValueError(f'разное число точек: {len(px)} пикселей и {len(m)} метров')
     if len(px) < MIN_POINTS:
-        raise ValueError(f"нужно минимум {MIN_POINTS} точки, дано {len(px)}")
+        raise ValueError(f'нужно минимум {MIN_POINTS} точки, дано {len(px)}')
     H, _ = cv2.findHomography(px, m, 0)
     if H is None:
-        raise ValueError("точки вырождены (например, три на одной прямой): гомография не считается")
+        raise ValueError('точки вырождены (например, три на одной прямой): гомография не считается')
     return H, _mean_error(H, px, m)
 
 
@@ -54,7 +54,7 @@ def leave_one_out_error(px: np.ndarray, m: np.ndarray) -> float:
     px = np.asarray(px, dtype=np.float64).reshape(-1, 2)
     m = np.asarray(m, dtype=np.float64).reshape(-1, 2)
     if len(px) <= MIN_POINTS:
-        raise ValueError(f"для проверки нужно больше {MIN_POINTS} точек, дано {len(px)}")
+        raise ValueError(f'для проверки нужно больше {MIN_POINTS} точек, дано {len(px)}')
     errors = []
     for i in range(len(px)):
         rest = np.arange(len(px)) != i

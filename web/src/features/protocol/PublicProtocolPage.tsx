@@ -1,4 +1,51 @@
-import {YandexMapsLink} from '../../components/YandexMapsLink';
-import {Link,useParams} from 'react-router-dom';import {api} from '../../api/client';import type {components} from '../../api/types';import {useLoad,Loading} from '../../components/ui';import {PublicProtocolContent,PublicLineups} from './PublicProtocolContent';
-type Public=components['schemas']['PublicProtocol'];
-export function PublicProtocolPage(){const {publicId}=useParams();const state=useLoad(()=>api<Public>(`/public/protocols/${publicId}`),publicId!);if(!state.data)return <main className="public-page"><Loading error={state.error}/></main>;const p=state.data;return <main className="public-page"><Link className="login-brand" to="/">AI <b>Football</b></Link><p className="muted">Подтверждённый ручной протокол · версия {p.number}</p><h1>{p.home_name} — {p.away_name}</h1><p className="muted">{new Date(p.scheduled_at).toLocaleString('ru-RU')} · {p.venue_label}</p>{p.hall&&<><p className="muted">{p.hall.address} · поле {p.hall.pitch_length_m} × {p.hall.pitch_width_m} м</p><YandexMapsLink address={p.hall.address}/></>}<section className="surface"><div className="public-score">{p.projection.effective_score.home??'—'} : {p.projection.effective_score.away??'—'}</div><PublicProtocolContent value={p}/></section><section className="surface"><h2>Составы</h2><PublicLineups value={p}/></section></main>}
+import { Link, useParams } from 'react-router-dom';
+import { api } from '../../api/client';
+import type { components } from '../../api/types';
+import { Loading, useLoad } from '../../components/ui';
+import { YandexMapsLink } from '../../components/YandexMapsLink';
+import { PublicLineups, PublicProtocolContent } from './PublicProtocolContent';
+
+type Public = components['schemas']['PublicProtocol'];
+export function PublicProtocolPage() {
+  const { publicId } = useParams();
+  const state = useLoad(() => api<Public>(`/public/protocols/${publicId}`), publicId!);
+  if (!state.data)
+    return (
+      <main className="public-page">
+        <Loading error={state.error} />
+      </main>
+    );
+  const p = state.data;
+  return (
+    <main className="public-page">
+      <Link className="login-brand" to="/">
+        AI <b>Football</b>
+      </Link>
+      <p className="muted">Подтверждённый ручной протокол · версия {p.number}</p>
+      <h1>
+        {p.home_name} — {p.away_name}
+      </h1>
+      <p className="muted">
+        {new Date(p.scheduled_at).toLocaleString('ru-RU')} · {p.venue_label}
+      </p>
+      {p.hall && (
+        <>
+          <p className="muted">
+            {p.hall.address} · поле {p.hall.pitch_length_m} × {p.hall.pitch_width_m} м
+          </p>
+          <YandexMapsLink address={p.hall.address} />
+        </>
+      )}
+      <section className="surface">
+        <div className="public-score">
+          {p.projection.effective_score.home ?? '—'} : {p.projection.effective_score.away ?? '—'}
+        </div>
+        <PublicProtocolContent value={p} />
+      </section>
+      <section className="surface">
+        <h2>Составы</h2>
+        <PublicLineups value={p} />
+      </section>
+    </main>
+  );
+}

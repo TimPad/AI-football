@@ -14,22 +14,23 @@ OVERLAP_S в той же точке), переход физически возм
 трек с неверной командой в данных. Пропуски — перекрытия длиннее OVERLAP_S, где хвост трека уже
 перескочил на другого человека: такие куски администратор объединяет вручную.
 """
+
 from dataclasses import dataclass
 
 import numpy as np
 import polars as pl
 from scipy.optimize import linear_sum_assignment
 
-MAX_GAP_S = 20.0        # дольше игрок не пропадает, пока остаётся на площадке
-OVERLAP_S = 1.0         # дубль трекера при передаче игрока между треками
-DUP_NEAR_S = 0.6        # короткое перекрытие — до DUP_M (дальняя бровка: пиксель ≈ 0,17 м)
+MAX_GAP_S = 20.0  # дольше игрок не пропадает, пока остаётся на площадке
+OVERLAP_S = 1.0  # дубль трекера при передаче игрока между треками
+DUP_NEAR_S = 0.6  # короткое перекрытие — до DUP_M (дальняя бровка: пиксель ≈ 0,17 м)
 DUP_M = 3.5
-SLACK_M = 1.5           # шум точки ног на концах трека
-VMAX_MS = 9.0           # с запасом к спринту: концы треков в толпе неточны
-TOUCHLINE_M = 0.6       # концы у боковой линии
-CUT = 12.0              # дороже — «продолжения нет»
-MARGIN = 2.0            # второй кандидат почти так же хорош — не склеиваем
-EDGE_S = 0.5            # конец/начало — медиана позиции за полсекунды: одиночный кадр шумный
+SLACK_M = 1.5  # шум точки ног на концах трека
+VMAX_MS = 9.0  # с запасом к спринту: концы треков в толпе неточны
+TOUCHLINE_M = 0.6  # концы у боковой линии
+CUT = 12.0  # дороже — «продолжения нет»
+MARGIN = 2.0  # второй кандидат почти так же хорош — не склеиваем
+EDGE_S = 0.5  # конец/начало — медиана позиции за полсекунды: одиночный кадр шумный
 
 
 @dataclass(frozen=True)
@@ -53,9 +54,15 @@ def track_ends(state: pl.DataFrame) -> dict[int, Track]:
             continue
         head = g.filter(pl.col('ts') <= g['ts'][0] + EDGE_S)
         tail = g.filter(pl.col('ts') >= g['ts'][-1] - EDGE_S)
-        out[int(tid)] = Track(int(tid), team[0], g['role'].mode()[0], float(g['ts'][0]), float(g['ts'][-1]),
-                              np.array([head['x_m'].median(), head['y_m'].median()]),
-                              np.array([tail['x_m'].median(), tail['y_m'].median()]))
+        out[int(tid)] = Track(
+            int(tid),
+            team[0],
+            g['role'].mode()[0],
+            float(g['ts'][0]),
+            float(g['ts'][-1]),
+            np.array([head['x_m'].median(), head['y_m'].median()]),
+            np.array([tail['x_m'].median(), tail['y_m'].median()]),
+        )
     return out
 
 

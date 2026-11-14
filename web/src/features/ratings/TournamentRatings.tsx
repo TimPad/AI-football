@@ -1,86 +1,452 @@
-import {useState,type ReactNode} from 'react';
-import {CircleHelp,SlidersHorizontal} from 'lucide-react';
-import {Link} from 'react-router-dom';
-import {all,api} from '../../api/client';
-import {Field,Loading,useLoad,Empty,Modal} from '../../components/ui';
-import type {Entry} from '../../api/domain';
-import {CommandStatus,useRatingCommand} from './commands';
-import {roles,num,pct,timeBases,type Analytics,type RatingSnapshot,type RatingPage,type RatingSummary} from './types';
-import {MetricTable} from './MatchRating';
-export function TournamentRatings({tournamentId,actorId,publicView=false,initialSnapshot=''}:{tournamentId:string,actorId?:string,publicView?:boolean,initialSnapshot?:string}){
- const [snapshot,setSnapshot]=useState(initialSnapshot);const [tick,setTick]=useState(0);
- return <div className="ratings">{!publicView&&actorId&&<AnalyticsControls tournamentId={tournamentId} actorId={actorId} onSnapshot={id=>{setSnapshot(id);setTick(n=>n+1)}}/>}<Rankings key={`${snapshot}:${tick}`} tournamentId={tournamentId} snapshotId={snapshot} publicView={publicView}/></div>
+import { CircleHelp, SlidersHorizontal } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { all, api } from '../../api/client';
+import type { Entry } from '../../api/domain';
+import { Empty, Field, Loading, Modal, useLoad } from '../../components/ui';
+import { CommandStatus, useRatingCommand } from './commands';
+import { MetricTable } from './MatchRating';
+import {
+  type Analytics,
+  num,
+  pct,
+  type RatingPage,
+  type RatingSnapshot,
+  type RatingSummary,
+  roles,
+  timeBases,
+} from './types';
+export function TournamentRatings({
+  tournamentId,
+  actorId,
+  publicView = false,
+  initialSnapshot = '',
+}: {
+  tournamentId: string;
+  actorId?: string;
+  publicView?: boolean;
+  initialSnapshot?: string;
+}) {
+  const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [tick, setTick] = useState(0);
+  return (
+    <div className="ratings">
+      {!publicView && actorId && (
+        <AnalyticsControls
+          tournamentId={tournamentId}
+          actorId={actorId}
+          onSnapshot={(id) => {
+            setSnapshot(id);
+            setTick((n) => n + 1);
+          }}
+        />
+      )}
+      <Rankings key={`${snapshot}:${tick}`} tournamentId={tournamentId} snapshotId={snapshot} publicView={publicView} />
+    </div>
+  );
 }
 // База времени по умолчанию — та, в которой записано участие большинства матчей:
 // участие из видео — «время присутствия с паузами», ручное — обычно «время мяча в игре».
-export function defaultBasis(sources:{time_basis?:string|null}[]){
- const counts=new Map<string,number>();for(const s of sources)if(s.time_basis)counts.set(s.time_basis,(counts.get(s.time_basis)??0)+1);
- let best='reviewed_effective';for(const [k,n] of counts)if(n>(counts.get(best)??0))best=k;return best;
+export function defaultBasis(sources: { time_basis?: string | null }[]) {
+  const counts = new Map<string, number>();
+  for (const s of sources) if (s.time_basis) counts.set(s.time_basis, (counts.get(s.time_basis) ?? 0) + 1);
+  let best = 'reviewed_effective';
+  for (const [k, n] of counts) if (n > (counts.get(best) ?? 0)) best = k;
+  return best;
 }
-const PROFILES:Record<string,string>={per10:'на 10 минут','per10-possession':'на 10 минут с учётом владения'};
-const when=(iso:string)=>new Date(iso).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+const PROFILES: Record<string, string> = { per10: 'на 10 минут', 'per10-possession': 'на 10 минут с учётом владения' };
+const when = (iso: string) =>
+  new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 // Два действия на виду: пересчитать в кабинете и обновить рейтинг на сайте. Настройки методики и прежние версии свёрнуты.
-function AnalyticsControls({tournamentId,actorId,onSnapshot}:{tournamentId:string,actorId:string,onSnapshot:(id:string)=>void}){
- const state=useLoad(()=>api<Analytics>(`/tournaments/${tournamentId}/analytics`),tournamentId);
- const [profile,setProfile]=useState('per10');const [chosen,setBasis]=useState<string|null>(null);const [cutoff,setCutoff]=useState('');
- const command=useRatingCommand<RatingSnapshot>(`aifootball:rating-command:${actorId}:${tournamentId}`,v=>{onSnapshot(v.snapshot_id);state.reload()});
- if(!state.data)return <Loading error={state.error} retry={state.reload}/>;const data=state.data;const locked=command.locked;
- const basis=chosen??defaultBasis(data.sources as {time_basis?:string|null}[]);
- const cabinet=data.snapshots.find(s=>s.scope==='private');const latestPublic=data.snapshots.find(s=>s.scope==='public');
- const published=data.snapshots.find(s=>s.snapshot_id===data.public_snapshot_id&&s.published_at);
- const candidate=latestPublic&&!latestPublic.published_at?latestPublic:null;
- const calculate=(scope:'private'|'public')=>void command.execute(`/tournaments/${tournamentId}/analytics/calculate`,{expected_revision:data.revision,scope,profile_id:profile,time_basis:basis,level:'amateur',cutoff:cutoff?`${cutoff}T23:59:59Z`:null});
- return <section className="surface"><h3>Расчёт рейтинга</h3><div className="rating-actions">
-   <div><b>В кабинете</b><p className="muted">{cabinet?`Рассчитан ${when(cabinet.calculated_at)}`:'Ещё не рассчитан'} · по подтверждённым данным матчей</p>
-    <div className="row"><button className="primary" disabled={locked} onClick={()=>calculate('private')}>Пересчитать</button>{cabinet&&<button disabled={locked} onClick={()=>onSnapshot(cabinet.snapshot_id)}>Показать</button>}</div></div>
-   <div><b>На сайте</b><p className="muted">{published?`Опубликован ${when(published.published_at!)}`:'Не опубликован'}{candidate?` · новый расчёт от ${when(candidate.calculated_at)} ждёт публикации`:''}</p>
-    <div className="row"><button disabled={locked} onClick={()=>calculate('public')}>Рассчитать для сайта</button>{candidate&&<button className="primary" disabled={locked||candidate.stale} onClick={()=>void command.execute(`/tournaments/${tournamentId}/analytics/publish`,{expected_revision:data.revision,snapshot_id:candidate.snapshot_id})}>Опубликовать рейтинг</button>}</div>
-    <p className="muted small">Для сайта учитываются только опубликованные матчи: протокол и выбранные данные об участии и действиях.</p></div>
-  </div>
-  {candidate?.stale&&<p className="warning">Данные матчей изменились — рассчитайте рейтинг для сайта заново.</p>}
-  <details className="rating-settings"><summary>Настройки расчёта · {PROFILES[profile]}, {(timeBases[basis as keyof typeof timeBases]??basis).toLowerCase()}{cutoff?`, база до ${cutoff}`:''}</summary><div className="form-grid">
-   <Field label="Нормировка"><select disabled={locked} value={profile} onChange={e=>setProfile(e.target.value)}>{Object.entries(PROFILES).map(([k,v])=><option key={k} value={k}>{v[0].toUpperCase()+v.slice(1)}</option>)}</select></Field>
-   <Field label="База времени рейтинга"><select disabled={locked} value={basis} onChange={e=>setBasis(e.target.value)}>{Object.entries(timeBases).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></Field>
-   <Field label="Дата отсечения базы, UTC"><input type="date" disabled={locked} value={cutoff} onChange={e=>setCutoff(e.target.value)}/></Field></div></details>
-  {data.snapshots.length>0&&<details className="rating-settings"><summary>Прежние версии рейтинга · {data.snapshots.length}</summary><Field label="Прежняя версия"><select value="" onChange={e=>{if(e.target.value)onSnapshot(e.target.value)}}><option value="">Выберите версию</option>{data.snapshots.map(s=><option key={s.snapshot_id} value={s.snapshot_id}>{s.scope==='public'?'Сайт':'Кабинет'} · {when(s.calculated_at)}{s.published_at?' · опубликован':''}</option>)}</select></Field></details>}
-  <CommandStatus command={command}/></section>;
+function AnalyticsControls({
+  tournamentId,
+  actorId,
+  onSnapshot,
+}: {
+  tournamentId: string;
+  actorId: string;
+  onSnapshot: (id: string) => void;
+}) {
+  const state = useLoad(() => api<Analytics>(`/tournaments/${tournamentId}/analytics`), tournamentId);
+  const [profile, setProfile] = useState('per10');
+  const [chosen, setBasis] = useState<string | null>(null);
+  const [cutoff, setCutoff] = useState('');
+  const command = useRatingCommand<RatingSnapshot>(`aifootball:rating-command:${actorId}:${tournamentId}`, (v) => {
+    onSnapshot(v.snapshot_id);
+    state.reload();
+  });
+  if (!state.data) return <Loading error={state.error} retry={state.reload} />;
+  const data = state.data;
+  const locked = command.locked;
+  const basis = chosen ?? defaultBasis(data.sources as { time_basis?: string | null }[]);
+  const cabinet = data.snapshots.find((s) => s.scope === 'private');
+  const latestPublic = data.snapshots.find((s) => s.scope === 'public');
+  const published = data.snapshots.find((s) => s.snapshot_id === data.public_snapshot_id && s.published_at);
+  const candidate = latestPublic && !latestPublic.published_at ? latestPublic : null;
+  const calculate = (scope: 'private' | 'public') =>
+    void command.execute(`/tournaments/${tournamentId}/analytics/calculate`, {
+      expected_revision: data.revision,
+      scope,
+      profile_id: profile,
+      time_basis: basis,
+      level: 'amateur',
+      cutoff: cutoff ? `${cutoff}T23:59:59Z` : null,
+    });
+  return (
+    <section className="surface">
+      <h3>Расчёт рейтинга</h3>
+      <div className="rating-actions">
+        <div>
+          <b>В кабинете</b>
+          <p className="muted">
+            {cabinet ? `Рассчитан ${when(cabinet.calculated_at)}` : 'Ещё не рассчитан'} · по подтверждённым данным
+            матчей
+          </p>
+          <div className="row">
+            <button className="primary" disabled={locked} onClick={() => calculate('private')}>
+              Пересчитать
+            </button>
+            {cabinet && (
+              <button disabled={locked} onClick={() => onSnapshot(cabinet.snapshot_id)}>
+                Показать
+              </button>
+            )}
+          </div>
+        </div>
+        <div>
+          <b>На сайте</b>
+          <p className="muted">
+            {published ? `Опубликован ${when(published.published_at!)}` : 'Не опубликован'}
+            {candidate ? ` · новый расчёт от ${when(candidate.calculated_at)} ждёт публикации` : ''}
+          </p>
+          <div className="row">
+            <button disabled={locked} onClick={() => calculate('public')}>
+              Рассчитать для сайта
+            </button>
+            {candidate && (
+              <button
+                className="primary"
+                disabled={locked || candidate.stale}
+                onClick={() =>
+                  void command.execute(`/tournaments/${tournamentId}/analytics/publish`, {
+                    expected_revision: data.revision,
+                    snapshot_id: candidate.snapshot_id,
+                  })
+                }
+              >
+                Опубликовать рейтинг
+              </button>
+            )}
+          </div>
+          <p className="muted small">
+            Для сайта учитываются только опубликованные матчи: протокол и выбранные данные об участии и действиях.
+          </p>
+        </div>
+      </div>
+      {candidate?.stale && <p className="warning">Данные матчей изменились — рассчитайте рейтинг для сайта заново.</p>}
+      <details className="rating-settings">
+        <summary>
+          Настройки расчёта · {PROFILES[profile]}, {(timeBases[basis as keyof typeof timeBases] ?? basis).toLowerCase()}
+          {cutoff ? `, база до ${cutoff}` : ''}
+        </summary>
+        <div className="form-grid">
+          <Field label="Нормировка">
+            <select disabled={locked} value={profile} onChange={(e) => setProfile(e.target.value)}>
+              {Object.entries(PROFILES).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v[0].toUpperCase() + v.slice(1)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="База времени рейтинга">
+            <select disabled={locked} value={basis} onChange={(e) => setBasis(e.target.value)}>
+              {Object.entries(timeBases).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Дата отсечения базы, UTC">
+            <input type="date" disabled={locked} value={cutoff} onChange={(e) => setCutoff(e.target.value)} />
+          </Field>
+        </div>
+      </details>
+      {data.snapshots.length > 0 && (
+        <details className="rating-settings">
+          <summary>Прежние версии рейтинга · {data.snapshots.length}</summary>
+          <Field label="Прежняя версия">
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) onSnapshot(e.target.value);
+              }}
+            >
+              <option value="">Выберите версию</option>
+              {data.snapshots.map((s) => (
+                <option key={s.snapshot_id} value={s.snapshot_id}>
+                  {s.scope === 'public' ? 'Сайт' : 'Кабинет'} · {when(s.calculated_at)}
+                  {s.published_at ? ' · опубликован' : ''}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </details>
+      )}
+      <CommandStatus command={command} />
+    </section>
+  );
 }
 // Сначала лидеры: амплуа — чипами, остальные условия — в «Фильтры», методика — за «?».
-function Rankings({tournamentId,snapshotId,publicView}:{tournamentId:string,snapshotId:string,publicView:boolean}){
- const [position,setPosition]=useState('');const [team,setTeam]=useState('');const [stage,setStage]=useState('');const [qualification,setQualification]=useState('');const [offset,setOffset]=useState(0);const [fixed,setFixed]=useState(snapshotId);
- const [sheet,setSheet]=useState<'filters'|'method'|null>(null);
- const entries=useLoad(()=>publicView?Promise.resolve([] as Entry[]):all<Entry>(`/tournaments/${tournamentId}/entries`),tournamentId);
- const query=new URLSearchParams({limit:'20',offset:String(offset)});if(fixed)query.set('snapshot_id',fixed);if(position)query.set('position',position);if(team)query.set('team_id',team);if(stage.trim())query.set('stage_label',stage.trim());if(qualification)query.set('qualification',qualification);
- const state=useLoad(async()=>{const result=await api<RatingPage>(`${publicView?'/public':''}/tournaments/${tournamentId}/ratings?${query}`);if(!fixed&&result.snapshot_id)setFixed(result.snapshot_id);return result},query.toString());
- function filter(set:(v:string)=>void,value:string){set(value);setOffset(0)}
- const data=state.data;const teams=entries.data?.map(e=>({id:e.team_id,name:e.team.name}))??[];
- const publicTeams=data?.items.flatMap(r=>r.teams??[])??[];const options=[...new Map([...teams,...publicTeams].map(t=>[t.id,t])).values()];
- const active=[team,stage.trim(),qualification].filter(Boolean).length;
- const edition=data?.edition?`${PROFILES[data.edition.profile_id]??data.edition.profile_id}, ${(timeBases[data.edition.time_basis as keyof typeof timeBases]??data.edition.time_basis).toLowerCase()}`:null;
- const body=():ReactNode=>{
-  if(!data)return <Loading error={state.error} retry={state.reload}/>;
-  if(!data.snapshot_id)return <Empty>{publicView?'Рейтинг ещё не опубликован.':'Рейтинг ещё не рассчитан.'}</Empty>;
-  if(!data.total)return <Empty>Нет игроков с такими условиями.</Empty>;
-  return <><RankingTable rows={data.items} publicView={publicView} tournamentId={tournamentId} snapshotId={data.snapshot_id}/>
-   {data.total>20&&<div className="table-foot"><button disabled={offset===0} onClick={()=>setOffset(n=>Math.max(0,n-20))}>Назад</button><span>{offset+1}–{Math.min(offset+20,data.total)} из {data.total}</span><button disabled={offset+20>=data.total} onClick={()=>setOffset(n=>n+20)}>Далее</button></div>}</>;
- };
- return <section className="surface rating-board"><div className="row rating-board-head"><h2>Рейтинг турнира</h2>
-   <button type="button" className="quiet icon-button" aria-label="Как считается рейтинг" onClick={()=>setSheet('method')}><CircleHelp aria-hidden="true"/></button></div>
-  <div className="rating-filters"><div className="chips" role="group" aria-label="Амплуа">{[['','Все'] as const,...Object.entries(roles).filter(([k])=>k!=='unknown')].map(([k,v])=>
-    <button type="button" key={k} aria-pressed={position===k} onClick={()=>filter(setPosition,k)}>{v}</button>)}</div>
-   <button type="button" className="rating-filter-button" onClick={()=>setSheet('filters')}><SlidersHorizontal aria-hidden="true"/>Фильтры{active>0&&<span className="center-filter-count" aria-label={`активно: ${active}`}>{active}</span>}</button></div>
-  {body()}
-  {sheet==='filters'&&<Modal title="Фильтры рейтинга" sheet onClose={()=>setSheet(null)}>
-   <Field label="Команда в матче"><select value={team} onChange={e=>filter(setTeam,e.target.value)}><option value="">Все команды</option>{options.map(t=><option value={t.id} key={t.id}>{t.name}</option>)}</select></Field>
-   <Field label="Стадия турнира"><input value={stage} placeholder="Например, Группа A" onChange={e=>filter(setStage,e.target.value)}/></Field>
-   <Field label="Список"><select value={qualification} onChange={e=>filter(setQualification,e.target.value)}><option value="">Все игроки</option><option value="qualified">Основной список</option><option value="preliminary">Предварительный</option><option value="unknown">Участие неизвестно</option></select></Field>
-   <div className="row">{active>0&&<button type="button" onClick={()=>{setTeam('');setStage('');setQualification('');setOffset(0)}}>Сбросить</button>}<button type="button" className="primary" onClick={()=>setSheet(null)}>Готово</button></div></Modal>}
-  {sheet==='method'&&<Modal title="Как считается рейтинг" sheet onClose={()=>setSheet(null)}><Method edition={edition}/><button type="button" className="primary" onClick={()=>setSheet(null)}>Понятно</button></Modal>}
- </section>
+function Rankings({
+  tournamentId,
+  snapshotId,
+  publicView,
+}: {
+  tournamentId: string;
+  snapshotId: string;
+  publicView: boolean;
+}) {
+  const [position, setPosition] = useState('');
+  const [team, setTeam] = useState('');
+  const [stage, setStage] = useState('');
+  const [qualification, setQualification] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [fixed, setFixed] = useState(snapshotId);
+  const [sheet, setSheet] = useState<'filters' | 'method' | null>(null);
+  const entries = useLoad(
+    () => (publicView ? Promise.resolve([] as Entry[]) : all<Entry>(`/tournaments/${tournamentId}/entries`)),
+    tournamentId,
+  );
+  const query = new URLSearchParams({ limit: '20', offset: String(offset) });
+  if (fixed) query.set('snapshot_id', fixed);
+  if (position) query.set('position', position);
+  if (team) query.set('team_id', team);
+  if (stage.trim()) query.set('stage_label', stage.trim());
+  if (qualification) query.set('qualification', qualification);
+  const state = useLoad(async () => {
+    const result = await api<RatingPage>(`${publicView ? '/public' : ''}/tournaments/${tournamentId}/ratings?${query}`);
+    if (!fixed && result.snapshot_id) setFixed(result.snapshot_id);
+    return result;
+  }, query.toString());
+  function filter(set: (v: string) => void, value: string) {
+    set(value);
+    setOffset(0);
+  }
+  const data = state.data;
+  const teams = entries.data?.map((e) => ({ id: e.team_id, name: e.team.name })) ?? [];
+  const publicTeams = data?.items.flatMap((r) => r.teams ?? []) ?? [];
+  const options = [...new Map([...teams, ...publicTeams].map((t) => [t.id, t])).values()];
+  const active = [team, stage.trim(), qualification].filter(Boolean).length;
+  const edition = data?.edition
+    ? `${PROFILES[data.edition.profile_id] ?? data.edition.profile_id}, ${(timeBases[data.edition.time_basis as keyof typeof timeBases] ?? data.edition.time_basis).toLowerCase()}`
+    : null;
+  const body = (): ReactNode => {
+    if (!data) return <Loading error={state.error} retry={state.reload} />;
+    if (!data.snapshot_id)
+      return <Empty>{publicView ? 'Рейтинг ещё не опубликован.' : 'Рейтинг ещё не рассчитан.'}</Empty>;
+    if (!data.total) return <Empty>Нет игроков с такими условиями.</Empty>;
+    return (
+      <>
+        <RankingTable
+          rows={data.items}
+          publicView={publicView}
+          tournamentId={tournamentId}
+          snapshotId={data.snapshot_id}
+        />
+        {data.total > 20 && (
+          <div className="table-foot">
+            <button disabled={offset === 0} onClick={() => setOffset((n) => Math.max(0, n - 20))}>
+              Назад
+            </button>
+            <span>
+              {offset + 1}–{Math.min(offset + 20, data.total)} из {data.total}
+            </span>
+            <button disabled={offset + 20 >= data.total} onClick={() => setOffset((n) => n + 20)}>
+              Далее
+            </button>
+          </div>
+        )}
+      </>
+    );
+  };
+  return (
+    <section className="surface rating-board">
+      <div className="row rating-board-head">
+        <h2>Рейтинг турнира</h2>
+        <button
+          type="button"
+          className="quiet icon-button"
+          aria-label="Как считается рейтинг"
+          onClick={() => setSheet('method')}
+        >
+          <CircleHelp aria-hidden="true" />
+        </button>
+      </div>
+      <div className="rating-filters">
+        <div className="chips" role="group" aria-label="Амплуа">
+          {[['', 'Все'] as const, ...Object.entries(roles).filter(([k]) => k !== 'unknown')].map(([k, v]) => (
+            <button type="button" key={k} aria-pressed={position === k} onClick={() => filter(setPosition, k)}>
+              {v}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="rating-filter-button" onClick={() => setSheet('filters')}>
+          <SlidersHorizontal aria-hidden="true" />
+          Фильтры
+          {active > 0 && (
+            <span className="center-filter-count" aria-label={`активно: ${active}`}>
+              {active}
+            </span>
+          )}
+        </button>
+      </div>
+      {body()}
+      {sheet === 'filters' && (
+        <Modal title="Фильтры рейтинга" sheet onClose={() => setSheet(null)}>
+          <Field label="Команда в матче">
+            <select value={team} onChange={(e) => filter(setTeam, e.target.value)}>
+              <option value="">Все команды</option>
+              {options.map((t) => (
+                <option value={t.id} key={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Стадия турнира">
+            <input value={stage} placeholder="Например, Группа A" onChange={(e) => filter(setStage, e.target.value)} />
+          </Field>
+          <Field label="Список">
+            <select value={qualification} onChange={(e) => filter(setQualification, e.target.value)}>
+              <option value="">Все игроки</option>
+              <option value="qualified">Основной список</option>
+              <option value="preliminary">Предварительный</option>
+              <option value="unknown">Участие неизвестно</option>
+            </select>
+          </Field>
+          <div className="row">
+            {active > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTeam('');
+                  setStage('');
+                  setQualification('');
+                  setOffset(0);
+                }}
+              >
+                Сбросить
+              </button>
+            )}
+            <button type="button" className="primary" onClick={() => setSheet(null)}>
+              Готово
+            </button>
+          </div>
+        </Modal>
+      )}
+      {sheet === 'method' && (
+        <Modal title="Как считается рейтинг" sheet onClose={() => setSheet(null)}>
+          <Method edition={edition} />
+          <button type="button" className="primary" onClick={() => setSheet(null)}>
+            Понятно
+          </button>
+        </Modal>
+      )}
+    </section>
+  );
 }
-function Method({edition}:{edition:string|null}){return <div className="rating-method">
- <p>Оценка строится по проверенной статистике матчей и сравнивает игрока с другими игроками того же амплуа.</p>
- <p>В основной список попадают игроки с 3 оценёнными матчами, 20 минутами на поле и данными хотя бы по 80% игрового времени. Остальные пока в предварительном списке.</p>
- <p>Если данных о действии нет, оно не считается нулём: такой показатель просто не входит в оценку.</p>
- {edition&&<p className="muted">Этот расчёт: {edition}.</p>}</div>}
-export function RankingTable({rows,publicView=false,tournamentId,snapshotId}:{rows:RatingSummary[],publicView?:boolean,tournamentId?:string,snapshotId?:string}){return !rows.length?<Empty>Игроков с такими условиями пока нет.</Empty>:<div className="table-scroll"><table className="rating-table"><thead><tr><th>Место</th><th>Игрок</th><th>Оценка</th><th>Матчи</th><th>Минуты</th><th>Покрытие</th><th>Данные</th></tr></thead><tbody>{rows.map(r=><tr key={r.player_id}><td>{r.rank??'—'}</td><td>{publicView?(tournamentId?<Link to={`/watch/players/${r.player_id}?${new URLSearchParams({tournament_id:tournamentId,...(snapshotId?{snapshot_id:snapshotId}:{})})}`}>{r.display_name}</Link>:<span>{r.display_name}</span>):<Link to={`/players/${r.player_id}/analysis${tournamentId?`?tournament_id=${encodeURIComponent(tournamentId)}${snapshotId?`&snapshot_id=${encodeURIComponent(snapshotId)}`:''}`:''}`}>{r.display_name}</Link>}<small>{r.teams?.map(t=>t.name).join(' · ')}</small><small>{r.qualification==='qualified'?'Основной список':r.qualification==='unknown'?'Участие неизвестно':'Предварительный список'}</small></td><td><b>{r.display_rating?.toFixed(1)??'Нет оценки'}</b></td><td>{r.rated_match_count} / {r.match_count}</td><td>{num(r.eligible_play_minutes)}</td><td>{pct(r.coverage)}</td><td><details><summary>Показатели</summary><p>Влияние исходного уровня: {pct(r.baseline_influence)}</p><MetricTable facts={r.facts??{}}/></details></td></tr>)}</tbody></table></div>}
+function Method({ edition }: { edition: string | null }) {
+  return (
+    <div className="rating-method">
+      <p>Оценка строится по проверенной статистике матчей и сравнивает игрока с другими игроками того же амплуа.</p>
+      <p>
+        В основной список попадают игроки с 3 оценёнными матчами, 20 минутами на поле и данными хотя бы по 80% игрового
+        времени. Остальные пока в предварительном списке.
+      </p>
+      <p>Если данных о действии нет, оно не считается нулём: такой показатель просто не входит в оценку.</p>
+      {edition && <p className="muted">Этот расчёт: {edition}.</p>}
+    </div>
+  );
+}
+export function RankingTable({
+  rows,
+  publicView = false,
+  tournamentId,
+  snapshotId,
+}: {
+  rows: RatingSummary[];
+  publicView?: boolean;
+  tournamentId?: string;
+  snapshotId?: string;
+}) {
+  return !rows.length ? (
+    <Empty>Игроков с такими условиями пока нет.</Empty>
+  ) : (
+    <div className="table-scroll">
+      <table className="rating-table">
+        <thead>
+          <tr>
+            <th>Место</th>
+            <th>Игрок</th>
+            <th>Оценка</th>
+            <th>Матчи</th>
+            <th>Минуты</th>
+            <th>Покрытие</th>
+            <th>Данные</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.player_id}>
+              <td>{r.rank ?? '—'}</td>
+              <td>
+                {publicView ? (
+                  tournamentId ? (
+                    <Link
+                      to={`/watch/players/${r.player_id}?${new URLSearchParams({ tournament_id: tournamentId, ...(snapshotId ? { snapshot_id: snapshotId } : {}) })}`}
+                    >
+                      {r.display_name}
+                    </Link>
+                  ) : (
+                    <span>{r.display_name}</span>
+                  )
+                ) : (
+                  <Link
+                    to={`/players/${r.player_id}/analysis${tournamentId ? `?tournament_id=${encodeURIComponent(tournamentId)}${snapshotId ? `&snapshot_id=${encodeURIComponent(snapshotId)}` : ''}` : ''}`}
+                  >
+                    {r.display_name}
+                  </Link>
+                )}
+                <small>{r.teams?.map((t) => t.name).join(' · ')}</small>
+                <small>
+                  {r.qualification === 'qualified'
+                    ? 'Основной список'
+                    : r.qualification === 'unknown'
+                      ? 'Участие неизвестно'
+                      : 'Предварительный список'}
+                </small>
+              </td>
+              <td>
+                <b>{r.display_rating?.toFixed(1) ?? 'Нет оценки'}</b>
+              </td>
+              <td>
+                {r.rated_match_count} / {r.match_count}
+              </td>
+              <td>{num(r.eligible_play_minutes)}</td>
+              <td>{pct(r.coverage)}</td>
+              <td>
+                <details>
+                  <summary>Показатели</summary>
+                  <p>Влияние исходного уровня: {pct(r.baseline_influence)}</p>
+                  <MetricTable facts={r.facts ?? {}} />
+                </details>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

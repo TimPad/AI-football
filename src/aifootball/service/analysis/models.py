@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Uuid, String, Integer, ForeignKey, UniqueConstraint, Index, Boolean, text
+from sqlalchemy import Boolean, Column, ForeignKey, Index, Integer, String, UniqueConstraint, Uuid, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import deferred
+
 from aifootball.service.db import Base, Entity
 
 
@@ -11,7 +12,7 @@ class AnalysisJob(Entity, Base):
     context_hash = Column(String(64), nullable=False)
     context = Column(JSONB, nullable=False)
     cv_files = Column(JSONB, nullable=False)
-    __table_args__=(Index('ix_analysis_job_match_created','match_id','created_at','id'),)
+    __table_args__ = (Index('ix_analysis_job_match_created', 'match_id', 'created_at', 'id'),)
 
 
 class AnalysisRun(Entity, Base):
@@ -35,9 +36,16 @@ class AnalysisRun(Entity, Base):
     revision = Column(Integer, nullable=False, default=0)
     side_map = Column(JSONB, nullable=False, default=lambda: {'A': 'home', 'B': 'away'})
     confirmed_by = Column(Uuid, ForeignKey('admins.id'))
-    __table_args__ = (Index('uq_analysis_import_content', 'job_id', 'content_hash', unique=True,
-                           postgresql_where=text('source_run_id IS NULL')),
-                     Index('ix_analysis_run_job_created','job_id','created_at','id'))
+    __table_args__ = (
+        Index(
+            'uq_analysis_import_content',
+            'job_id',
+            'content_hash',
+            unique=True,
+            postgresql_where=text('source_run_id IS NULL'),
+        ),
+        Index('ix_analysis_run_job_created', 'job_id', 'created_at', 'id'),
+    )
 
 
 class AnalysisAssignment(Base):
@@ -78,5 +86,7 @@ class AnalysisUnderstandingDecision(Entity, Base):
     revision = Column(Integer, nullable=False)
     before = Column(JSONB)
     after = Column(JSONB, nullable=False)
-    __table_args__ = (UniqueConstraint('run_id','revision',name='uq_understanding_run_revision'),
-                     Index('ix_understanding_run_event','run_id','event_id'))
+    __table_args__ = (
+        UniqueConstraint('run_id', 'revision', name='uq_understanding_run_revision'),
+        Index('ix_understanding_run_event', 'run_id', 'event_id'),
+    )

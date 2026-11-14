@@ -1,11 +1,14 @@
 """Serialize setup mutations and replay their exact committed response."""
+
 import json
 from hashlib import sha256
-from sqlalchemy import select, func
+
 from fastapi.encoders import jsonable_encoder
-from aifootball.service.errors import DomainError, RevisionConflict
+from sqlalchemy import func, select
+
 from aifootball.service.common import get_entity
-from aifootball.service.tournaments.models import Tournament, SetupCommand
+from aifootball.service.errors import DomainError, RevisionConflict
+from aifootball.service.tournaments.models import SetupCommand, Tournament
 
 
 def setup_command(db, actor_id, request_id, kind, payload, execute):

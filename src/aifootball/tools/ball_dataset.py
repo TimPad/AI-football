@@ -33,9 +33,9 @@ def fit_person_height(persons: pl.DataFrame) -> np.ndarray:
 
     Сидящие, наклонённые и склеенные боксы дают выбросы — отбрасываем их итеративно.
     """
-    fx = ((persons["x1"] + persons["x2"]) / 2).to_numpy().astype(float)
-    fy = persons["y2"].to_numpy().astype(float)
-    h = (persons["y2"] - persons["y1"]).to_numpy().astype(float)
+    fx = ((persons['x1'] + persons['x2']) / 2).to_numpy().astype(float)
+    fy = persons['y2'].to_numpy().astype(float)
+    h = (persons['y2'] - persons['y1']).to_numpy().astype(float)
     if len(h) < MIN_PERSONS_FOR_MAP:
         return np.array([np.median(h), 0, 0, 0, 0, 0])
     keep = np.ones(len(h), dtype=bool)
@@ -60,8 +60,9 @@ def yolo_label(x: float, y: float, diameter: float, width: int, height: int, min
     r = max(diameter, min_px) / 2
     x1, x2 = max(0.0, x - r), min(float(width), x + r)
     y1, y2 = max(0.0, y - r), min(float(height), y + r)
-    return (f"0 {(x1 + x2) / 2 / width:.6f} {(y1 + y2) / 2 / height:.6f} "
-            f"{(x2 - x1) / width:.6f} {(y2 - y1) / height:.6f}")
+    return (
+        f'0 {(x1 + x2) / 2 / width:.6f} {(y1 + y2) / 2 / height:.6f} {(x2 - x1) / width:.6f} {(y2 - y1) / height:.6f}'
+    )
 
 
 def crop_around(x: float, y: float, tile: int, width: int, height: int, edge_px: int, seed: int) -> tuple[int, int]:
@@ -77,8 +78,9 @@ def crop_around(x: float, y: float, tile: int, width: int, height: int, edge_px:
     return origin(x, width), origin(y, height)
 
 
-def crop_away_from(x: float | None, y: float | None, keep: np.ndarray, tile: int, seed: int,
-                   tries: int = 300, pad: int = 20) -> tuple[int, int]:
+def crop_away_from(
+    x: float | None, y: float | None, keep: np.ndarray, tile: int, seed: int, tries: int = 300, pad: int = 20
+) -> tuple[int, int]:
     """Вырезка без мяча, по возможности хотя бы наполовину на поле (keep > 0)."""
     rng = np.random.default_rng(seed)
     h, w = keep.shape
@@ -88,8 +90,9 @@ def crop_away_from(x: float | None, y: float | None, keep: np.ndarray, tile: int
         x0, y0 = int(rng.integers(0, w - tile + 1)), int(rng.integers(0, h - tile + 1))
         if x is not None and x0 - pad <= x <= x0 + tile + pad and y0 - pad <= y <= y0 + tile + pad:
             continue
-        share = (integral[y0 + tile, x0 + tile] - integral[y0, x0 + tile]
-                 - integral[y0 + tile, x0] + integral[y0, x0]) / tile ** 2
+        share = (
+            integral[y0 + tile, x0 + tile] - integral[y0, x0 + tile] - integral[y0 + tile, x0] + integral[y0, x0]
+        ) / tile**2
         if share >= 0.5:
             return x0, y0
         if share > best_share:
@@ -131,60 +134,69 @@ def export_dataset(
     polygon = venue.require_polygon()
     coef = fit_person_height(persons)
     cap = cv2.VideoCapture(str(video))
-    keep = pitch_keep_mask((int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))),
-                           polygon, margin_px)
+    keep = pitch_keep_mask(
+        (int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))), polygon, margin_px
+    )
 
     def in_kept_area(row) -> bool:
-        if row["status"] != "visible":
+        if row['status'] != 'visible':
             return True
-        x = min(max(int(row["x"]), 0), keep.shape[1] - 1)
-        y = min(max(int(row["y"]), 0), keep.shape[0] - 1)
+        x = min(max(int(row['x']), 0), keep.shape[1] - 1)
+        y = min(max(int(row['y']), 0), keep.shape[0] - 1)
         return keep[y, x] > 0
 
-    usable = labels.filter(pl.col("status") != "hidden").sort("frame_id")
-    by_frame = {r["frame_id"]: r for r in usable.iter_rows(named=True) if in_kept_area(r)}
+    usable = labels.filter(pl.col('status') != 'hidden').sort('frame_id')
+    by_frame = {r['frame_id']: r for r in usable.iter_rows(named=True) if in_kept_area(r)}
     train, val = time_blocks_split(list(by_frame), val_fraction, blocks)
-    split_of = {f: "train" for f in train} | {f: "val" for f in val}
-    for split in ("train", "val"):
-        (out / "images" / split).mkdir(parents=True, exist_ok=True)
-        (out / "labels" / split).mkdir(parents=True, exist_ok=True)
+    split_of = {f: 'train' for f in train} | {f: 'val' for f in val}
+    for split in ('train', 'val'):
+        (out / 'images' / split).mkdir(parents=True, exist_ok=True)
+        (out / 'labels' / split).mkdir(parents=True, exist_ok=True)
 
     balls = 0
     for frame_id, row in by_frame.items():
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
         ok, frame = cap.read()
         if not ok:
-            raise RuntimeError(f"{video}: не читается кадр {frame_id}")
+            raise RuntimeError(f'{video}: не читается кадр {frame_id}')
         h, w = frame.shape[:2]
         masked = mask_outside_pitch(frame, polygon, margin_px)
-        visible = row["status"] == "visible"
-        d = float(ball_diameter_px(coef, [row["x"]], [row["y"]])[0]) if visible else 0.0
-        name = f"f{frame_id:06d}"
+        visible = row['status'] == 'visible'
+        d = float(ball_diameter_px(coef, [row['x']], [row['y']])[0]) if visible else 0.0
+        name = f'f{frame_id:06d}'
         if tile is None:
-            samples = [(name, masked, yolo_label(row["x"], row["y"], d, w, h, min_box_px) if visible else None)]
+            samples = [(name, masked, yolo_label(row['x'], row['y'], d, w, h, min_box_px) if visible else None)]
         else:
             samples = []
             if visible:
-                x0, y0 = crop_around(row["x"], row["y"], tile, w, h, edge_px=max(int(d), 16), seed=frame_id)
-                samples.append((f"{name}_b", masked[y0:y0 + tile, x0:x0 + tile],
-                                yolo_label(row["x"] - x0, row["y"] - y0, d, tile, tile, min_box_px)))
-            x0, y0 = crop_away_from(row["x"] if visible else None, row["y"] if visible else None, keep, tile,
-                                    seed=frame_id + 1)
-            samples.append((f"{name}_n", masked[y0:y0 + tile, x0:x0 + tile], None))
+                x0, y0 = crop_around(row['x'], row['y'], tile, w, h, edge_px=max(int(d), 16), seed=frame_id)
+                samples.append(
+                    (
+                        f'{name}_b',
+                        masked[y0 : y0 + tile, x0 : x0 + tile],
+                        yolo_label(row['x'] - x0, row['y'] - y0, d, tile, tile, min_box_px),
+                    )
+                )
+            x0, y0 = crop_away_from(
+                row['x'] if visible else None, row['y'] if visible else None, keep, tile, seed=frame_id + 1
+            )
+            samples.append((f'{name}_n', masked[y0 : y0 + tile, x0 : x0 + tile], None))
         split = split_of[frame_id]
         for sample_name, image, label in samples:
-            cv2.imwrite(str(out / "images" / split / f"{sample_name}.jpg"), image, [cv2.IMWRITE_JPEG_QUALITY, 95])
-            (out / "labels" / split / f"{sample_name}.txt").write_text(label + "\n" if label else "")
+            cv2.imwrite(str(out / 'images' / split / f'{sample_name}.jpg'), image, [cv2.IMWRITE_JPEG_QUALITY, 95])
+            (out / 'labels' / split / f'{sample_name}.txt').write_text(label + '\n' if label else '')
         balls += int(visible)
     cap.release()
 
-    data = {"path": str(out.resolve()), "train": "images/train", "val": "images/val", "names": {0: "ball"}}
-    (out / "data.yaml").write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    data = {'path': str(out.resolve()), 'train': 'images/train', 'val': 'images/val', 'names': {0: 'ball'}}
+    (out / 'data.yaml').write_text(yaml.safe_dump(data, allow_unicode=True), encoding='utf-8')
     return {
-        "train": len(train), "val": len(val), "balls": balls,
-        "skipped_hidden": labels.height - usable.height,
-        "skipped_outside": usable.height - len(by_frame),
-        "height_coef": [round(float(c), 4) for c in coef],
+        'train': len(train),
+        'val': len(val),
+        'balls': balls,
+        'skipped_hidden': labels.height - usable.height,
+        'skipped_outside': usable.height - len(by_frame),
+        'height_coef': [round(float(c), 4) for c in coef],
     }
 
 
@@ -203,9 +215,21 @@ def detect_persons(video: Path, frame_ids: list[int], weights: Path, imgsz: int)
         ok, frame = cap.read()
         res = model.predict(frame, imgsz=imgsz, device=device, classes=[0], conf=0.5, verbose=False)[0]
         for (x1, y1, x2, y2), conf in zip(res.boxes.xyxy.cpu().numpy(), res.boxes.conf.cpu().numpy()):
-            rows.append({"frame_id": frame_id, "ts": 0.0, "cls": "person", "x1": float(x1), "y1": float(y1),
-                         "x2": float(x2), "y2": float(y2), "conf": float(conf),
-                         "torso_l": np.nan, "torso_a": np.nan, "torso_b": np.nan})
+            rows.append(
+                {
+                    'frame_id': frame_id,
+                    'ts': 0.0,
+                    'cls': 'person',
+                    'x1': float(x1),
+                    'y1': float(y1),
+                    'x2': float(x2),
+                    'y2': float(y2),
+                    'conf': float(conf),
+                    'torso_l': np.nan,
+                    'torso_a': np.nan,
+                    'torso_b': np.nan,
+                }
+            )
     cap.release()
     return pl.DataFrame(rows, schema=schemas.DETECTIONS)
 
@@ -217,32 +241,35 @@ def _design(x: np.ndarray, y: np.ndarray) -> np.ndarray:
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--video", type=Path, required=True)
-    parser.add_argument("--venue", type=Path, required=True)
-    parser.add_argument("--labels", type=Path, required=True)
-    parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--models", type=Path, default=Path("models"))
-    parser.add_argument("--val", type=float, default=0.15, help="доля кадров на проверку (целыми блоками)")
-    parser.add_argument("--blocks", type=int, default=20)
-    parser.add_argument("--margin", type=int, default=80, help="запас за контуром поля, px")
-    parser.add_argument("--tile", type=int, default=None, help="писать вырезки tile x tile в полном разрешении")
-    parser.add_argument("--min-box", type=float, default=0.0, help="бокс мяча не меньше, px")
+    parser.add_argument('--video', type=Path, required=True)
+    parser.add_argument('--venue', type=Path, required=True)
+    parser.add_argument('--labels', type=Path, required=True)
+    parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--models', type=Path, default=Path('models'))
+    parser.add_argument('--val', type=float, default=0.15, help='доля кадров на проверку (целыми блоками)')
+    parser.add_argument('--blocks', type=int, default=20)
+    parser.add_argument('--margin', type=int, default=80, help='запас за контуром поля, px')
+    parser.add_argument('--tile', type=int, default=None, help='писать вырезки tile x tile в полном разрешении')
+    parser.add_argument('--min-box', type=float, default=0.0, help='бокс мяча не меньше, px')
     args = parser.parse_args(argv)
 
     venue = load_venue(args.venue)
-    labels = schemas.read(args.labels, "ball_labels")
-    frame_ids = labels["frame_id"].to_list()
-    print(f"люди на {len(frame_ids)} кадрах для карты роста...", file=sys.stderr)
+    labels = schemas.read(args.labels, 'ball_labels')
+    frame_ids = labels['frame_id'].to_list()
+    print(f'люди на {len(frame_ids)} кадрах для карты роста...', file=sys.stderr)
     persons = detect_persons(args.video, frame_ids, args.models / venue.model, venue.imgsz)
     from aifootball.geometry.polygons import points_in_polygon
 
-    feet = np.column_stack([((persons["x1"] + persons["x2"]) / 2).to_numpy(), persons["y2"].to_numpy()])
+    feet = np.column_stack([((persons['x1'] + persons['x2']) / 2).to_numpy(), persons['y2'].to_numpy()])
     persons = persons.filter(pl.Series(points_in_polygon(feet, venue.require_polygon())))
-    info = export_dataset(args.video, args.venue, labels, persons, args.out, args.val, args.blocks, args.margin, args.tile,
-                          args.min_box)
-    print(f"набор -> {args.out}: обучение {info['train']} кадров, проверка {info['val']}, мячей {info['balls']}, "
-          f"пропущено «не видно» {info['skipped_hidden']}, мяч в закрашенной зоне {info['skipped_outside']}")
+    info = export_dataset(
+        args.video, args.venue, labels, persons, args.out, args.val, args.blocks, args.margin, args.tile, args.min_box
+    )
+    print(
+        f'набор -> {args.out}: обучение {info["train"]} кадров, проверка {info["val"]}, мячей {info["balls"]}, '
+        f'пропущено «не видно» {info["skipped_hidden"]}, мяч в закрашенной зоне {info["skipped_outside"]}'
+    )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

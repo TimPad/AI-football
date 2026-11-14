@@ -16,7 +16,10 @@ dependencies = [
 
 [project.optional-dependencies]
 vlm = ["httpx>=0.28,<1", "python-dotenv>=1,<2"]
-dev = ["pytest>=8"]
+dev = [
+    "pytest>=8",
+    "ruff>=0.17.5",
+]
 web = [
     "fastapi>=0.115,<1",
     "uvicorn>=0.34,<1",
@@ -44,3 +47,39 @@ packages = ["src/aifootball"]
 testpaths = ["tests"]
 markers = ["slow: прогон на настоящем видео с YOLO, минуты"]
 addopts = "-m 'not slow'"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",  # длину строки держит форматтер; остаются только неразрывные строковые литералы
+    # Долг на момент подключения линтера (14.11.2026), число — замечаний тогда.
+    # Закрыли класс замечаний — уберите строку.
+    "B905",  # 59: zip без strict; исправление меняет поведение
+    "E731",  # 24: лямбда, присвоенная имени
+    "B007",  # 15: неиспользуемая переменная цикла
+    "B904",  # 12: raise без from внутри except
+    "E741",  # 10: однобуквенные имена l/I/O
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# Зависимости и параметры FastAPI объявляются вызовом в значении по умолчанию.
+extend-immutable-calls = [
+    "fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.File",
+    "fastapi.Form", "fastapi.Body", "fastapi.Path", "fastapi.Cookie",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Импорт моделей регистрирует таблицы в metadata.
+"migrations/env.py" = ["F401"]
+# Фикстура pytest приходит аргументом с тем же именем, что и её импорт (сам импорт помечен noqa: F401).
+"tests/**" = ["F811"]
+# Скрипты замеров настраивают окружение до импорта и строят замыкания в циклах.
+"scripts/**" = ["E402", "B023"]

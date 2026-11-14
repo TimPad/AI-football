@@ -20,18 +20,18 @@ def test_pitch_lines_drawn():
 
 def test_player_drawn_in_team_color_on_copy():
     pitch = draw_pitch(40, 20)
-    img = draw_players(pitch, [{"x_m": 10.0, "y_m": 10.0, "team": "A", "track_id": 3}], 20)
+    img = draw_players(pitch, [{'x_m': 10.0, 'y_m': 10.0, 'team': 'A', 'track_id': 3}], 20)
     u, v = to_canvas(10, 10, 20)
 
-    assert tuple(int(c) for c in img[v, u]) == TEAM_BGR["A"]
+    assert tuple(int(c) for c in img[v, u]) == TEAM_BGR['A']
     assert not np.array_equal(img, pitch)
 
 
 def test_overlay_does_not_touch_input():
     frame = np.zeros((100, 100, 3), np.uint8)
-    row = {"x1": 10, "y1": 10, "x2": 40, "y2": 80, "in_pitch": True, "team": "B", "track_id": 1}
+    row = {'x1': 10, 'y1': 10, 'x2': 40, 'y2': 80, 'in_pitch': True, 'team': 'B', 'track_id': 1}
 
     img = draw_tracks(frame, [row])
 
     assert frame.sum() == 0
-    assert tuple(int(c) for c in img[40, 10]) == TEAM_BGR["B"]  # левая грань бокса
+    assert tuple(int(c) for c in img[40, 10]) == TEAM_BGR['B']  # левая грань бокса

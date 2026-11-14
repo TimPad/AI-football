@@ -27,7 +27,7 @@ from aifootball.venue import load_venue
 KEY_ENTER = {10, 13}
 KEY_BACKSPACE = {8, 127}
 KEY_ESC = 27
-WINDOW = "mark_points"
+WINDOW = 'mark_points'
 
 
 def read_frame(video: Path, at_seconds: float) -> np.ndarray:
@@ -36,7 +36,7 @@ def read_frame(video: Path, at_seconds: float) -> np.ndarray:
     ok, frame = cap.read()
     cap.release()
     if not ok:
-        sys.exit(f"не удалось прочитать кадр {at_seconds} с из {video}")
+        sys.exit(f'не удалось прочитать кадр {at_seconds} с из {video}')
     return frame
 
 
@@ -54,9 +54,9 @@ def collect_points(frame: np.ndarray, scale: float, ask_meters: bool):
             try:
                 xm, ym = parse_meters(answer)
             except ValueError as error:
-                print(f"  {error}. Точка не добавлена — кликните её ещё раз")
+                print(f'  {error}. Точка не добавлена — кликните её ещё раз')
                 return
-            print(f"  точка {len(pixels) + 1}: x = {xm} м, y = {ym} м")
+            print(f'  точка {len(pixels) + 1}: x = {xm} м, y = {ym} м')
             meters.append((xm, ym))
         pixels.append(point)
 
@@ -91,37 +91,40 @@ def collect_points(frame: np.ndarray, scale: float, ask_meters: bool):
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("mode", choices=["polygon", "homography"])
-    parser.add_argument("--video", type=Path, required=True)
-    parser.add_argument("--venue", type=Path, required=True)
-    parser.add_argument("--at", type=float, default=5.0, help="секунда видео, с которой брать кадр")
-    parser.add_argument("--scale", type=float, default=1.0, help="масштаб окна, если кадр не влезает в экран")
+    parser.add_argument('mode', choices=['polygon', 'homography'])
+    parser.add_argument('--video', type=Path, required=True)
+    parser.add_argument('--venue', type=Path, required=True)
+    parser.add_argument('--at', type=float, default=5.0, help='секунда видео, с которой брать кадр')
+    parser.add_argument('--scale', type=float, default=1.0, help='масштаб окна, если кадр не влезает в экран')
     args = parser.parse_args(argv)
 
     venue = load_venue(args.venue)
     frame = read_frame(args.video, args.at)
-    collected = collect_points(frame, args.scale, ask_meters=args.mode == "homography")
+    collected = collect_points(frame, args.scale, ask_meters=args.mode == 'homography')
     if collected is None:
-        print("выход без сохранения")
+        print('выход без сохранения')
         return
     pixels, meters = collected
 
-    if args.mode == "polygon":
+    if args.mode == 'polygon':
         path = save_polygon(args.venue, pixels)
-        print(f"сохранено {len(pixels)} вершин -> {path}")
+        print(f'сохранено {len(pixels)} вершин -> {path}')
         return
 
     info = save_homography(args.venue, pixels, meters, venue.calib)
-    print(f"точек: {len(pixels)}")
-    print(f"ошибка на своих точках: {info['reprojection_error_m']} м")
-    loo = info["leave_one_out_error_m"]
-    print(f"ошибка без каждой точки (честная): {loo} м" if loo is not None
-          else "честная ошибка не считается: нужно 5 точек или больше")
+    print(f'точек: {len(pixels)}')
+    print(f'ошибка на своих точках: {info["reprojection_error_m"]} м')
+    loo = info['leave_one_out_error_m']
+    print(
+        f'ошибка без каждой точки (честная): {loo} м'
+        if loo is not None
+        else 'честная ошибка не считается: нужно 5 точек или больше'
+    )
     preview = topdown_preview(frame, load_venue(args.venue).H, venue.length_m, venue.width_m, venue.calib)
-    cv2.imshow("topdown preview — любая клавиша", preview)
+    cv2.imshow('topdown preview — любая клавиша', preview)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

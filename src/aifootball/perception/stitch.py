@@ -30,18 +30,18 @@ def split_on_color_change(
     if tracks.is_empty() or centers is None:
         return tracks
 
-    df = tracks.with_row_index("_row")
-    color_a, color_b = df["torso_a"].to_numpy(), df["torso_b"].to_numpy()
+    df = tracks.with_row_index('_row')
+    color_a, color_b = df['torso_a'].to_numpy(), df['torso_b'].to_numpy()
     axis = centers[1] - centers[0]
     along = ((color_a - centers[0][0]) * axis[0] + (color_b - centers[0][1]) * axis[1]) / float(axis @ axis)
-    usable = df["in_pitch"].to_numpy() & ~np.isnan(color_a) & ~_torso_covered(df)
+    usable = df['in_pitch'].to_numpy() & ~np.isnan(color_a) & ~_torso_covered(df)
     side = np.where(usable & (along < 0.5 - margin), 0, np.where(usable & (along > 0.5 + margin), 1, -1))
 
-    new_ids = df["track_id"].to_numpy().copy()
+    new_ids = df['track_id'].to_numpy().copy()
     next_id = int(new_ids.max()) + 1
-    order = df.select("_row", "track_id", "frame_id").sort("track_id", "frame_id")
-    for (_,), group in order.partition_by("track_id", as_dict=True, maintain_order=True).items():
-        rows = group["_row"].to_numpy()
+    order = df.select('_row', 'track_id', 'frame_id').sort('track_id', 'frame_id')
+    for (_,), group in order.partition_by('track_id', as_dict=True, maintain_order=True).items():
+        rows = group['_row'].to_numpy()
         segment_id = int(new_ids[rows[0]])
         recent: list[int] = []  # стороны последних уверенных кадров куска
         run: list[int] = []  # позиции (в rows) подряд идущих кадров чужой стороны
@@ -57,28 +57,27 @@ def split_on_color_change(
             run.append(pos)
             if len(run) == min_frames:
                 segment_id, next_id = next_id, next_id + 1
-                new_ids[rows[run[0]:pos + 1]] = segment_id
+                new_ids[rows[run[0] : pos + 1]] = segment_id
                 recent = [int(side[row])] * min_frames
                 run = []
 
-    return tracks.with_columns(track_id=pl.Series(new_ids, dtype=tracks.schema["track_id"]))
+    return tracks.with_columns(track_id=pl.Series(new_ids, dtype=tracks.schema['track_id']))
 
 
 def _torso_covered(df: pl.DataFrame) -> np.ndarray:
     """Пересекается ли зона торса (как в color.torso_lab) с рамкой другого человека в том же кадре."""
     covered = np.zeros(df.height, dtype=bool)
-    for group in df.select("_row", "x1", "y1", "x2", "y2", "frame_id").partition_by("frame_id"):
+    for group in df.select('_row', 'x1', 'y1', 'x2', 'y2', 'frame_id').partition_by('frame_id'):
         if group.height < 2:
             continue
-        x1, y1, x2, y2 = (group[c].to_numpy() for c in ("x1", "y1", "x2", "y2"))
+        x1, y1, x2, y2 = (group[c].to_numpy() for c in ('x1', 'y1', 'x2', 'y2'))
         w, h = x2 - x1, y2 - y1
         tx1, tx2, ty1, ty2 = x1 + 0.3 * w, x1 + 0.7 * w, y1 + 0.2 * h, y1 + 0.5 * h
-        overlap = (
-            (np.minimum(tx2[:, None], x2[None, :]) > np.maximum(tx1[:, None], x1[None, :]))
-            & (np.minimum(ty2[:, None], y2[None, :]) > np.maximum(ty1[:, None], y1[None, :]))
+        overlap = (np.minimum(tx2[:, None], x2[None, :]) > np.maximum(tx1[:, None], x1[None, :])) & (
+            np.minimum(ty2[:, None], y2[None, :]) > np.maximum(ty1[:, None], y1[None, :])
         )
         np.fill_diagonal(overlap, False)
-        covered[group["_row"].to_numpy()] = overlap.any(axis=1)
+        covered[group['_row'].to_numpy()] = overlap.any(axis=1)
     return covered
 
 
@@ -97,19 +96,19 @@ def stitch_tracks(
         return tracks
 
     # Собираем метаданные по каждому треку
-    valid = tracks.filter(pl.col("in_pitch") & pl.col("torso_a").is_not_nan())
+    valid = tracks.filter(pl.col('in_pitch') & pl.col('torso_a').is_not_nan())
     if valid.is_empty():
         return tracks
 
     stats = (
-        valid.group_by("track_id")
+        valid.group_by('track_id')
         .agg(
-            start_ts=pl.col("ts").min(),
-            end_ts=pl.col("ts").max(),
-            a=pl.col("torso_a").median(),
-            b=pl.col("torso_b").median(),
+            start_ts=pl.col('ts').min(),
+            end_ts=pl.col('ts').max(),
+            a=pl.col('torso_a').median(),
+            b=pl.col('torso_b').median(),
         )
-        .sort("start_ts")
+        .sort('start_ts')
     )
 
     if len(stats) < 2:
@@ -117,27 +116,23 @@ def stitch_tracks(
 
     # Находим точки начала и конца каждого трека из исходного tracks
     start_pos = (
-        tracks.sort("ts")
-        .group_by("track_id", maintain_order=True)
+        tracks.sort('ts')
+        .group_by('track_id', maintain_order=True)
         .agg(
-            start_x=pl.col("foot_x").first(),
-            start_y=pl.col("foot_y").first(),
+            start_x=pl.col('foot_x').first(),
+            start_y=pl.col('foot_y').first(),
         )
     )
     end_pos = (
-        tracks.sort("ts")
-        .group_by("track_id", maintain_order=True)
+        tracks.sort('ts')
+        .group_by('track_id', maintain_order=True)
         .agg(
-            end_x=pl.col("foot_x").last(),
-            end_y=pl.col("foot_y").last(),
+            end_x=pl.col('foot_x').last(),
+            end_y=pl.col('foot_y').last(),
         )
     )
 
-    meta = (
-        stats.join(start_pos, on="track_id", how="inner")
-        .join(end_pos, on="track_id", how="inner")
-        .to_dicts()
-    )
+    meta = stats.join(start_pos, on='track_id', how='inner').join(end_pos, on='track_id', how='inner').to_dicts()
 
     # Составляем список кандидатов на сшивку (T_A -> T_B)
     candidates = []
@@ -145,22 +140,22 @@ def stitch_tracks(
         ta = meta[i]
         for j in range(i + 1, len(meta)):
             tb = meta[j]
-            dt = tb["start_ts"] - ta["end_ts"]
+            dt = tb['start_ts'] - ta['end_ts']
             if dt <= 0:
                 continue
             if dt > max_gap_s:
                 break  # meta отсортирован по start_ts
 
-            color_dist = float(np.hypot(ta["a"] - tb["a"], ta["b"] - tb["b"]))
+            color_dist = float(np.hypot(ta['a'] - tb['a'], ta['b'] - tb['b']))
             if color_dist > max_color_dist:
                 continue
 
-            spatial_dist = float(np.hypot(tb["start_x"] - ta["end_x"], tb["start_y"] - ta["end_y"]))
+            spatial_dist = float(np.hypot(tb['start_x'] - ta['end_x'], tb['start_y'] - ta['end_y']))
             if spatial_dist > max_spatial_dist_px:
                 continue
 
             cost = color_dist + 0.1 * spatial_dist + 2.0 * dt
-            candidates.append((cost, ta["track_id"], tb["track_id"]))
+            candidates.append((cost, ta['track_id'], tb['track_id']))
 
     if not candidates:
         return tracks
@@ -192,17 +187,17 @@ def stitch_tracks(
         return tracks
 
     mapping_df = pl.DataFrame(
-        {"track_id": list(mapping.keys()), "new_track_id": list(mapping.values())},
-        schema={"track_id": pl.Int32, "new_track_id": pl.Int32},
+        {'track_id': list(mapping.keys()), 'new_track_id': list(mapping.values())},
+        schema={'track_id': pl.Int32, 'new_track_id': pl.Int32},
     )
 
     return (
-        tracks.join(mapping_df, on="track_id", how="left")
+        tracks.join(mapping_df, on='track_id', how='left')
         .with_columns(
-            track_id=pl.when(pl.col("new_track_id").is_not_null())
-            .then(pl.col("new_track_id"))
-            .otherwise(pl.col("track_id"))
+            track_id=pl.when(pl.col('new_track_id').is_not_null())
+            .then(pl.col('new_track_id'))
+            .otherwise(pl.col('track_id'))
         )
-        .drop("new_track_id")
-        .sort("frame_id", "track_id")
+        .drop('new_track_id')
+        .sort('frame_id', 'track_id')
     )

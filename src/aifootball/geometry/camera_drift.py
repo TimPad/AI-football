@@ -6,6 +6,7 @@
 координатах — точная гомография, поэтому поправка считается там; смещение крепления на сантиметры
 при расстоянии до трибун в десятки метров даёт пренебрежимый параллакс.
 """
+
 from dataclasses import dataclass
 
 import cv2
@@ -13,17 +14,17 @@ import numpy as np
 
 from aifootball.geometry.undistort import undistort_points
 
-MAX_SIDE_PX = 1600          # кадр уменьшается для поиска особых точек: быстрее, точность — доли пикселя после пересчёта
-MIN_INLIERS = 40            # меньше совпавших точек фона — сверке не верим
-STILL_PX = 2.0              # контур сместился меньше — камера на месте, геометрия не трогается
-MAX_SHIFT_FRAC = 0.1        # контур сместился больше 10% ширины кадра — это другая установка, нужна новая калибровка
-CONSISTENT_PX = 4.0         # оценки по времени расходятся больше — камеру сдвинули во время записи
+MAX_SIDE_PX = 1600  # кадр уменьшается для поиска особых точек: быстрее, точность — доли пикселя после пересчёта
+MIN_INLIERS = 40  # меньше совпавших точек фона — сверке не верим
+STILL_PX = 2.0  # контур сместился меньше — камера на месте, геометрия не трогается
+MAX_SHIFT_FRAC = 0.1  # контур сместился больше 10% ширины кадра — это другая установка, нужна новая калибровка
+CONSISTENT_PX = 4.0  # оценки по времени расходятся больше — камеру сдвинули во время записи
 SAMPLE_EVERY_S = 60.0
 
 
 @dataclass(frozen=True)
 class Estimate:
-    H: np.ndarray            # выпрямленные пиксели текущего кадра -> выпрямленные пиксели эталона
+    H: np.ndarray  # выпрямленные пиксели текущего кадра -> выпрямленные пиксели эталона
     inliers: int
     matches: int
 
@@ -82,7 +83,9 @@ def estimate(reference, current, calib=None) -> Estimate | None:
 def _rotation(cur, ref, K):
     """Поворот камеры по парам точек (Кабш): лучи текущего кадра -> лучи эталона."""
     Ki = np.linalg.inv(K)
-    rays = lambda pts: (lambda r: r / np.linalg.norm(r, axis=1, keepdims=True))((Ki @ np.column_stack([pts, np.ones(len(pts))]).T).T)
+    rays = lambda pts: (lambda r: r / np.linalg.norm(r, axis=1, keepdims=True))(
+        (Ki @ np.column_stack([pts, np.ones(len(pts))]).T).T
+    )
     a, b = rays(cur), rays(ref)
     U, _, Vt = np.linalg.svd(a.T @ b)
     d = np.sign(np.linalg.det(Vt.T @ U.T))
@@ -141,8 +144,13 @@ def check_camera(video, reference, venue, duration_s: float, every_s: float = SA
         frame = read_frame(video, float(t))
         est = estimate(reference, frame, venue.calib) if frame is not None else None
         shift = polygon_shift_px(est, venue) if est else None
-        samples.append({'t_s': round(float(t), 1), 'inliers': est.inliers if est else 0,
-                        'shift_px': None if shift is None else round(shift, 1)})
+        samples.append(
+            {
+                't_s': round(float(t), 1),
+                'inliers': est.inliers if est else 0,
+                'shift_px': None if shift is None else round(shift, 1),
+            }
+        )
         if est:
             found.append((float(t), est, shift))
     out = {'samples': samples, 'reference_checked': len(found)}
@@ -160,8 +168,12 @@ def check_camera(video, reference, venue, duration_s: float, every_s: float = SA
         return {**out, 'status': 'too_large'}
     if shift < STILL_PX:
         return {**out, 'status': 'unchanged'}
-    return {**out, 'status': 'corrected', 'homography': corrected_homography(best, venue).tolist(),
-            'polygon_px': [[round(float(x), 2), round(float(y), 2)] for x, y in corrected_polygon(best, venue)]}
+    return {
+        **out,
+        'status': 'corrected',
+        'homography': corrected_homography(best, venue).tolist(),
+        'polygon_px': [[round(float(x), 2), round(float(y), 2)] for x, y in corrected_polygon(best, venue)],
+    }
 
 
 def alignment_messages(alignment: dict | None) -> tuple[list[str], list[str]]:
@@ -171,16 +183,22 @@ def alignment_messages(alignment: dict | None) -> tuple[list[str], list[str]]:
     status = alignment['status']
     error = (alignment.get('error_if_uncorrected_m') or {}).get('max')
     if status == 'corrected':
-        return [f"Камера сдвинута относительно калибровки на {alignment['shift_px']:.0f} px (без поправки ошибка до {error:.1f} м); "
-                'геометрия поправлена автоматически'], []
+        return [
+            f'Камера сдвинута относительно калибровки на {alignment["shift_px"]:.0f} px (без поправки ошибка до {error:.1f} м); '
+            'геометрия поправлена автоматически'
+        ], []
     if status == 'unverified':
         return ['Не удалось сверить положение камеры с эталонным кадром: использована калибровка профиля как есть'], []
     if status == 'too_large':
-        return [], [f"Камера сдвинута на {alignment['shift_px']:.0f} px относительно калибровки: создайте новую версию профиля камеры"]
+        return [], [
+            f'Камера сдвинута на {alignment["shift_px"]:.0f} px относительно калибровки: создайте новую версию профиля камеры'
+        ]
     if status == 'moved':
         moved = alignment['moved_at_s']
-        return [], [f'Камеру сдвинули во время записи (около {int(moved // 60)}:{int(moved % 60):02d}): '
-                    'координаты после сдвига неверны, нужна новая калибровка или обработка частями']
+        return [], [
+            f'Камеру сдвинули во время записи (около {int(moved // 60)}:{int(moved % 60):02d}): '
+            'координаты после сдвига неверны, нужна новая калибровка или обработка частями'
+        ]
     return [], []
 
 
@@ -189,5 +207,9 @@ def apply_alignment(venue, alignment: dict | None):
     if not alignment or alignment.get('status') != 'corrected':
         return venue
     from dataclasses import replace
-    return replace(venue, H=np.asarray(alignment['homography'], dtype=np.float64),
-                   pitch_polygon_px=np.asarray(alignment['polygon_px'], dtype=np.float64))
+
+    return replace(
+        venue,
+        H=np.asarray(alignment['homography'], dtype=np.float64),
+        pitch_polygon_px=np.asarray(alignment['polygon_px'], dtype=np.float64),
+    )

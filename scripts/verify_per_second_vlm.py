@@ -8,16 +8,18 @@ Manifest (локальный, вне Git): cases: [{id, video, cv, venue, start_
 не попадает. Отчёт каждого
 варианта — DIR/<вариант>/report.json в формате, который читает scripts/eval_vlm_per_second.py.
 """
+
 import argparse
-from hashlib import sha256
 import json
 import os
-from pathlib import Path
 import time
+from hashlib import sha256
+from pathlib import Path
 
-from dotenv import dotenv_values
 import numpy as np
 import polars as pl
+from dotenv import dotenv_values
+from verify_context_vlm import pack_window, unpack_window
 
 from aifootball.analytics.exchange import canonical
 from aifootball.geometry.polygons import points_near_polygon
@@ -27,11 +29,16 @@ from aifootball.processor.job import ball_settings, file_hash, video_info
 from aifootball.processor.media import make_window
 from aifootball.processor.qwen import QwenClient, QwenConfig
 from aifootball.processor.workspace import Workspace
-from aifootball.understanding.per_second_pilot import (VERSION, cv_hints, follow_keys, per_second_prompt, project_per_second,
-                                                       window_seconds)
+from aifootball.understanding.per_second_pilot import (
+    VERSION,
+    cv_hints,
+    follow_keys,
+    per_second_prompt,
+    project_per_second,
+    window_seconds,
+)
 from aifootball.understanding.pilot import OUTPUT_LIMIT, PilotStopped, joint_window, paid_once, request_key
 from aifootball.venue import load_venue
-from verify_context_vlm import pack_window, unpack_window
 
 VARIANTS = ('fullframe', 'follow', 'follow_cv')
 # Одобрено пользователем 18.10: до ~120 вызовов и ~1,5 CNY; план — 3 варианта × 30 окон.
@@ -44,7 +51,7 @@ def load_case(case):
     video, cv = Path(case['video']), Path(case['cv'])
     meta = json.loads((cv / 'meta.json').read_text())
     if not meta.get('ball_model'):
-        raise ValueError(f"{case['id']}: CV без своей модели мяча")
+        raise ValueError(f'{case["id"]}: CV без своей модели мяча')
     info = video_info(video)
     venue = load_venue(Path(case['venue']))
     venue = ball_settings(venue, venue.frame_width or info['width'])
@@ -52,10 +59,18 @@ def load_case(case):
     balls = detections.filter((pl.col('cls') == 'ball') & (pl.col('conf') >= venue.conf_ball))
     floor = np.column_stack([((balls['x1'] + balls['x2']) / 2).to_numpy(), balls['y2'].to_numpy()])
     balls = balls.filter(pl.Series(points_near_polygon(floor, venue.require_polygon(), venue.ball_margin_px)))
-    return {**case, 'info': info, 'venue': venue, 'tracks': pl.read_parquet(cv / 'tracks.parquet'),
-            'state': pl.read_parquet(cv / 'state.parquet'), 'ball_boxes': balls,
-            'frames': detections.select('frame_id', 'ts').unique('frame_id'),
-            'ball': process_ball_trajectory(detections.filter((pl.col('cls') != 'ball') | (pl.col('conf') >= venue.conf_ball)), venue)}
+    return {
+        **case,
+        'info': info,
+        'venue': venue,
+        'tracks': pl.read_parquet(cv / 'tracks.parquet'),
+        'state': pl.read_parquet(cv / 'state.parquet'),
+        'ball_boxes': balls,
+        'frames': detections.select('frame_id', 'ts').unique('frame_id'),
+        'ball': process_ball_trajectory(
+            detections.filter((pl.col('cls') != 'ball') | (pl.col('conf') >= venue.conf_ball)), venue
+        ),
+    }
 
 
 def window_follow(case, begin, end):
@@ -63,9 +78,17 @@ def window_follow(case, begin, end):
     # Один мяч на кадр — самый уверенный, как в process_ball_trajectory.
     balls = case['ball_boxes'].filter(span).sort('conf', descending=True).unique('frame_id', keep='first')
     players = case['tracks'].filter(span & (pl.col('role') == 'player') & pl.col('in_pitch'))
-    centre = lambda df: df.select('ts', ((pl.col('x1') + pl.col('x2')) / 2), ((pl.col('y1') + pl.col('y2')) / 2)).to_numpy()
-    return follow_keys(centre(balls), centre(players), start_s=begin / 1000, duration_s=(end - begin) / 1000,
-                       frame_w=case['info']['width'], frame_h=case['info']['height'])
+    centre = lambda df: df.select(
+        'ts', ((pl.col('x1') + pl.col('x2')) / 2), ((pl.col('y1') + pl.col('y2')) / 2)
+    ).to_numpy()
+    return follow_keys(
+        centre(balls),
+        centre(players),
+        start_s=begin / 1000,
+        duration_s=(end - begin) / 1000,
+        frame_w=case['info']['width'],
+        frame_h=case['info']['height'],
+    )
 
 
 def media_preparer():
@@ -81,21 +104,48 @@ def media_preparer():
         key = (case['id'], begin, end, kind)
         if key not in clips:
             folder = output / 'media' / case['id'] / f'{begin}-{end}' / kind
-            clips[key] = joint_window(make_window(Path(case['video']), start_ms=begin, end_ms=end, out=folder,
-                                                  mode='native', fps=1, crop=crop))
+            clips[key] = joint_window(
+                make_window(
+                    Path(case['video']), start_ms=begin, end_ms=end, out=folder, mode='native', fps=1, crop=crop
+                )
+            )
         window = clips[key]
-        hints = None if variant != 'follow_cv' else cv_hints(
-            c['state'], c['ball'], c['frames'], start_ms=window.start_ms, seconds=window_seconds(window.end_ms - window.start_ms),
-            length_m=c['venue'].length_m, width_m=c['venue'].width_m)
+        hints = (
+            None
+            if variant != 'follow_cv'
+            else cv_hints(
+                c['state'],
+                c['ball'],
+                c['frames'],
+                start_ms=window.start_ms,
+                seconds=window_seconds(window.end_ms - window.start_ms),
+                length_m=c['venue'].length_m,
+                width_m=c['venue'].width_m,
+            )
+        )
         return window, crop, hints
+
     return prepare
 
 
 def identity(cases, client):
-    return {'purpose': VERSION, 'preparation': 'per-second-follow-v1', 'variants': VARIANTS, 'limits': LIMITS,
-            'provider': {'model': client.config.model, 'endpoint': client.config.base_url},
-            'cases': [{'id': c['id'], 'source_sha256': file_hash(Path(c['video'])), 'start_ms': c['start_ms'],
-                       'end_ms': c['end_ms'], 'cv': {n: file_hash(Path(c['cv']) / n) for n in CV_FILES}} for c in cases]}
+    return {
+        'purpose': VERSION,
+        'preparation': 'per-second-follow-v1',
+        'variants': VARIANTS,
+        'limits': LIMITS,
+        'provider': {'model': client.config.model, 'endpoint': client.config.base_url},
+        'cases': [
+            {
+                'id': c['id'],
+                'source_sha256': file_hash(Path(c['video'])),
+                'start_ms': c['start_ms'],
+                'end_ms': c['end_ms'],
+                'cv': {n: file_hash(Path(c['cv']) / n) for n in CV_FILES},
+            }
+            for c in cases
+        ],
+    }
 
 
 def run(manifest, output, *, apply=False, cache_only=False, client=None, prepare=None):
@@ -122,22 +172,34 @@ def run(manifest, output, *, apply=False, cache_only=False, client=None, prepare
         for begin in range(case['start_ms'], case['end_ms'], WINDOW_MS):
             end = min(begin + WINDOW_MS, case['end_ms'])
             for variant in VARIANTS:
-                plan_key = 'plan:' + sha256(canonical([ident['source_sha256'], begin, end, variant, VERSION])).hexdigest()
+                plan_key = (
+                    'plan:' + sha256(canonical([ident['source_sha256'], begin, end, variant, VERSION])).hexdigest()
+                )
                 plan = workspace.get_json(plan_key)
                 if plan is None:
                     window, crop, hints = prepare(case, begin, end, variant, output)
                     prompt = per_second_prompt(window.end_ms - window.start_ms, hints=hints)
-                    plan = {'window': pack_window(window), 'crop': crop, 'prompt': prompt,
-                            'request_key': request_key(client, window, prompt, OUTPUT_LIMIT)}
+                    plan = {
+                        'window': pack_window(window),
+                        'crop': crop,
+                        'prompt': prompt,
+                        'request_key': request_key(client, window, prompt, OUTPUT_LIMIT),
+                    }
                     if apply:
                         workspace.put_json(plan_key, plan)
                 else:
                     window = unpack_window(plan['window'])
                 if request_key(client, window, plan['prompt'], OUTPUT_LIMIT) != plan['request_key']:
                     raise ValueError('frozen request mismatch')
-                row = {'start_ms': window.start_ms, 'end_ms': window.end_ms, 'crop': plan['crop'],
-                       'clip': str(window.media.path), 'request_key': plan['request_key'],
-                       'prompt_sha256': sha256(plan['prompt'].encode()).hexdigest(), 'prompt_bytes': len(plan['prompt'].encode())}
+                row = {
+                    'start_ms': window.start_ms,
+                    'end_ms': window.end_ms,
+                    'crop': plan['crop'],
+                    'clip': str(window.media.path),
+                    'request_key': plan['request_key'],
+                    'prompt_sha256': sha256(plan['prompt'].encode()).hexdigest(),
+                    'prompt_bytes': len(plan['prompt'].encode()),
+                }
                 if mode == 'dry_run':
                     row['status'] = 'dry_run'
                 else:
@@ -148,7 +210,9 @@ def run(manifest, output, *, apply=False, cache_only=False, client=None, prepare
                     else:
                         row.update(received)
                         try:
-                            projected, repairs = project_per_second(received['document'], window.end_ms - window.start_ms)
+                            projected, repairs = project_per_second(
+                                received['document'], window.end_ms - window.start_ms
+                            )
                         except (ValueError, KeyError, TypeError):
                             row['status'] = 'invalid_response'
                         else:
@@ -156,16 +220,34 @@ def run(manifest, output, *, apply=False, cache_only=False, client=None, prepare
                 rows[variant].append(row)
                 after = budget.snapshot()
                 for report in reports.values():
-                    report.update(budget=after, new_requests_this_run=after['requests'] - before['requests'],
-                                  wall_s=round(time.monotonic() - started, 3), sports_accuracy_validated=False)
+                    report.update(
+                        budget=after,
+                        new_requests_this_run=after['requests'] - before['requests'],
+                        wall_s=round(time.monotonic() - started, 3),
+                        sports_accuracy_validated=False,
+                    )
                 folder = output / variant
                 folder.mkdir(exist_ok=True)
                 (folder / 'report.json').write_text(json.dumps(reports[variant], ensure_ascii=False, indent=2))
                 usage = row.get('usage') or {}
-                print(json.dumps({'variant': variant, 'case': case['id'], 'start_ms': window.start_ms, 'status': row['status'],
-                                  'cache_hit': row.get('cache_hit'), 'follow': plan['crop'] is not None, 'prompt_bytes': row['prompt_bytes'],
-                                  'in': usage.get('prompt_tokens'), 'out': usage.get('completion_tokens'),
-                                  'requests': after['requests']}, ensure_ascii=False), flush=True)
+                print(
+                    json.dumps(
+                        {
+                            'variant': variant,
+                            'case': case['id'],
+                            'start_ms': window.start_ms,
+                            'status': row['status'],
+                            'cache_hit': row.get('cache_hit'),
+                            'follow': plan['crop'] is not None,
+                            'prompt_bytes': row['prompt_bytes'],
+                            'in': usage.get('prompt_tokens'),
+                            'out': usage.get('completion_tokens'),
+                            'requests': after['requests'],
+                        },
+                        ensure_ascii=False,
+                    ),
+                    flush=True,
+                )
     return reports
 
 

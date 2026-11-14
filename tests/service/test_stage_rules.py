@@ -1,13 +1,21 @@
-from collections import Counter
 import random
-import pytest
-from aifootball.service.stages.rules.brackets import (berger_rounds, round_robin, seed_positions,
-    single_elim, double_elim, entry, bracket_size, FixtureSpec)
-from aifootball.service.stages.rules.draws import pots_draw, snake_draw, group_scheme, group_sizes, meeting_round
-from aifootball.service.stages.rules.standings import rank, rank_across, Result as R, Row, SWISS_CRITERIA
-from aifootball.service.stages.rules.swiss import swiss_pairs
-from aifootball.service.stages.rules.progress import Leg, pair_winner, resolve_bracket, group_outcome
+from collections import Counter
 
+import pytest
+
+from aifootball.service.stages.rules.brackets import (
+    berger_rounds,
+    bracket_size,
+    double_elim,
+    entry,
+    seed_positions,
+    single_elim,
+)
+from aifootball.service.stages.rules.draws import group_scheme, group_sizes, meeting_round, pots_draw, snake_draw
+from aifootball.service.stages.rules.progress import Leg, group_outcome, pair_winner, resolve_bracket
+from aifootball.service.stages.rules.standings import SWISS_CRITERIA, Row, rank, rank_across
+from aifootball.service.stages.rules.standings import Result as R
+from aifootball.service.stages.rules.swiss import swiss_pairs
 
 
 @pytest.mark.parametrize('n', range(2, 17))
@@ -15,7 +23,8 @@ def test_berger_every_pair_once_and_home_balance(n):
     rounds = berger_rounds(range(n))
     pairs = Counter(frozenset(p) for r in rounds for p in r)
     assert len(pairs) == n * (n - 1) // 2 and set(pairs.values()) == {1}
-    home = Counter(a for r in rounds for a, _ in r); away = Counter(b for r in rounds for _, b in r)
+    home = Counter(a for r in rounds for a, _ in r)
+    away = Counter(b for r in rounds for _, b in r)
     assert max(abs(home[t] - away[t]) for t in range(n)) <= (0 if n % 2 else 1)
     assert all(len({t for p in r for t in p}) == 2 * len(r) for r in rounds)  # никто не играет дважды за тур
 
@@ -31,21 +40,31 @@ def test_seed_positions_standard():
 
 def simulate(specs, rng):
     win, lose, losses = {}, {}, Counter()
+
     def team(src):
-        if src is None: return None
-        if 'entry' in src: return src['entry']
+        if src is None:
+            return None
+        if 'entry' in src:
+            return src['entry']
         return (win if 'winner' in src else lose).get(src.get('winner') or src.get('loser'), '?')
+
     pending = list(specs)
     while pending:
         progressed = False
         for s in list(pending):
             h, a = team(s.home), team(s.away)
-            if '?' in (h, a): continue
-            pending.remove(s); progressed = True
-            if s.bye: win[s.key], lose[s.key] = h, None; continue
-            if s.bracket == 'final_reset' and win.get('F') == a: continue
-            w, l = (h, a) if rng.random() < .5 else (a, h)
-            win[s.key], lose[s.key] = w, l; losses[l] += 1
+            if '?' in (h, a):
+                continue
+            pending.remove(s)
+            progressed = True
+            if s.bye:
+                win[s.key], lose[s.key] = h, None
+                continue
+            if s.bracket == 'final_reset' and win.get('F') == a:
+                continue
+            w, l = (h, a) if rng.random() < 0.5 else (a, h)
+            win[s.key], lose[s.key] = w, l
+            losses[l] += 1
         assert progressed
     return win, losses
 
@@ -62,12 +81,19 @@ def test_single_elim_one_unbeaten_champion(n):
 
 def test_byes_go_to_top_seeds():
     first = [s for s in single_elim([entry(t) for t in 'ABCDE']) if s.round_no == 1]
-    assert [(s.home, s.bye) for s in first if s.bye] == [({'entry': 'A'}, True), ({'entry': 'B'}, True), ({'entry': 'C'}, True)]
+    assert [(s.home, s.bye) for s in first if s.bye] == [
+        ({'entry': 'A'}, True),
+        ({'entry': 'B'}, True),
+        ({'entry': 'C'}, True),
+    ]
 
 
 def test_two_leg_round_swaps_home_in_first_leg():
     legs = [s for s in single_elim([entry(t) for t in 'ABCD'], two_leg_rounds=(1,)) if s.key == 'U1-1']
-    assert [(s.leg, s.home, s.away) for s in legs] == [(1, {'entry': 'D'}, {'entry': 'A'}), (2, {'entry': 'A'}, {'entry': 'D'})]
+    assert [(s.leg, s.home, s.away) for s in legs] == [
+        (1, {'entry': 'D'}, {'entry': 'A'}),
+        (2, {'entry': 'A'}, {'entry': 'D'}),
+    ]
 
 
 @pytest.mark.parametrize('n', range(3, 33))
@@ -80,7 +106,8 @@ def test_double_elim_two_losses_out(n, reset):
     champion = win.get('F2') or win['F']
     assert losses[champion] <= 1
     for t in teams:
-        if t != champion: assert losses[t] == 2 or (losses[t] == 1 and not reset)
+        if t != champion:
+            assert losses[t] == 2 or (losses[t] == 1 and not reset)
 
 
 def test_pots_one_team_from_each_pot_and_reproducible():
@@ -98,7 +125,8 @@ def test_group_sizes_differ_by_one():
     assert group_sizes(10, 3) == [4, 3, 3]
 
 
-def label(s): return f"{'ABCDEFGH'[s['group'] - 1]}{s['place']}" if 'group' in s else f"3-{s['rank']}"
+def label(s):
+    return f'{"ABCDEFGH"[s["group"] - 1]}{s["place"]}' if 'group' in s else f'3-{s["rank"]}'
 
 
 def test_two_groups_cross():
@@ -109,18 +137,27 @@ def test_two_groups_cross():
 @pytest.mark.parametrize('groups', [4, 8])
 def test_group_mates_meet_only_in_final(groups):
     seeds = group_scheme(groups, 2)
-    size = bracket_size(len(seeds)); rounds = size.bit_length() - 1
+    size = bracket_size(len(seeds))
+    rounds = size.bit_length() - 1
     for i, a in enumerate(seeds):
         for j, b in enumerate(seeds):
             if i < j and a['group'] == b['group']:
                 assert meeting_round(size, i + 1, j + 1) == rounds
 
 
-def places(rows): return [(r.team, r.place, r.tied) for r in rows]
+def places(rows):
+    return [(r.team, r.place, r.tied) for r in rows]
 
 
 def test_head_to_head_beats_goal_difference():
-    res = [R('A', 'B', 1, 0), R('B', 'C', 9, 0), R('C', 'A', 1, 0), R('A', 'D', 1, 0), R('B', 'D', 0, 1), R('C', 'D', 1, 0)]
+    res = [
+        R('A', 'B', 1, 0),
+        R('B', 'C', 9, 0),
+        R('C', 'A', 1, 0),
+        R('A', 'D', 1, 0),
+        R('B', 'D', 0, 1),
+        R('C', 'D', 1, 0),
+    ]
     # A, B, C по 6? — нет: A 6, B 3, C 6. A и C равны; C выиграл личную встречу.
     assert [r.team for r in rank('ABCD', res)][:2] == ['C', 'A']
 
@@ -136,7 +173,14 @@ def test_three_way_cycle_falls_to_overall_then_lot():
 
 def test_subgroup_reapplies_head_to_head():
     # Все четверо по 4 очка; мини-таблица делит на {B, D} и {A, C}, внутри пар решает личная встреча.
-    res = [R('A', 'B', 1, 1), R('A', 'C', 0, 1), R('A', 'D', 2, 1), R('B', 'C', 2, 1), R('B', 'D', 1, 2), R('C', 'D', 1, 1)]
+    res = [
+        R('A', 'B', 1, 1),
+        R('A', 'C', 0, 1),
+        R('A', 'D', 2, 1),
+        R('B', 'C', 2, 1),
+        R('B', 'D', 1, 2),
+        R('C', 'D', 1, 1),
+    ]
     assert [r.team for r in rank('ABCD', res)] == ['D', 'B', 'C', 'A']
 
 
@@ -153,13 +197,22 @@ def test_best_thirds_per_match():
 
 @pytest.mark.parametrize('n', [7, 8, 9, 10])
 def test_swiss_four_rounds_without_rematches(n):
-    rng = random.Random(n); teams = [str(i) for i in range(n)]; played = set(); byes = []; homes = Counter(); results = []
+    rng = random.Random(n)
+    teams = [str(i) for i in range(n)]
+    played = set()
+    byes = []
+    homes = Counter()
+    results = []
     for _ in range(4):
         ranked = [r.team for r in rank(teams, results, SWISS_CRITERIA, byes=[(b, 3) for b in byes])]
         pairs, bye = swiss_pairs(ranked, played, set(byes), homes)
-        if bye: assert bye not in byes; byes.append(bye)
+        if bye:
+            assert bye not in byes
+            byes.append(bye)
         for h, a in pairs:
-            assert frozenset((h, a)) not in played; played.add(frozenset((h, a))); homes[h] += 1
+            assert frozenset((h, a)) not in played
+            played.add(frozenset((h, a)))
+            homes[h] += 1
             results.append(R(h, a, rng.randint(0, 4), rng.randint(0, 4)))
 
 
@@ -178,7 +231,8 @@ def test_bracket_resolves_from_groups_and_separates_thirds():
     specs = single_elim(group_scheme(3, 2, [{'place': 3, 'count': 2}]))
     pairs = resolve_bracket(specs, {}, outcome)
     for p in pairs.values():
-        if p.home and p.away: assert p.home[0] != p.away[0]   # никто не играет с одногруппником в первом раунде
+        if p.home and p.away:
+            assert p.home[0] != p.away[0]  # никто не играет с одногруппником в первом раунде
 
 
 def test_group_places_wait_for_all_results_and_lot():
@@ -190,9 +244,15 @@ def test_group_places_wait_for_all_results_and_lot():
 def test_grand_final_reset_only_after_lower_win():
     specs = double_elim([entry(t) for t in 'ABCD'], grand_final_reset=True)
     legs = {}
-    def play(key, home, away, hg, ag): legs[key] = [Leg(home, away, hg, ag)]
-    play('U1-1', 'A', 'D', 1, 0); play('U1-2', 'B', 'C', 1, 0); play('U2-1', 'A', 'B', 1, 0)
-    play('L1-1', 'D', 'C', 1, 0); play('L2-1', 'D', 'B', 1, 0)
+
+    def play(key, home, away, hg, ag):
+        legs[key] = [Leg(home, away, hg, ag)]
+
+    play('U1-1', 'A', 'D', 1, 0)
+    play('U1-2', 'B', 'C', 1, 0)
+    play('U2-1', 'A', 'B', 1, 0)
+    play('L1-1', 'D', 'C', 1, 0)
+    play('L2-1', 'D', 'B', 1, 0)
     play('F', 'A', 'D', 1, 0)
     assert resolve_bracket(specs, legs)['F2'].home is None
     play('F', 'A', 'D', 0, 1)
@@ -202,17 +262,27 @@ def test_grand_final_reset_only_after_lower_win():
 @pytest.mark.parametrize('n', range(3, 17))
 @pytest.mark.parametrize('kind', ['single', 'double'])
 def test_resolver_plays_whole_bracket(n, kind):
-    rng = random.Random(n); teams = [str(i) for i in range(n)]
-    specs = (single_elim([entry(t) for t in teams], third_place=True) if kind == 'single'
-             else double_elim([entry(t) for t in teams], grand_final_reset=True))
+    rng = random.Random(n)
+    teams = [str(i) for i in range(n)]
+    specs = (
+        single_elim([entry(t) for t in teams], third_place=True)
+        if kind == 'single'
+        else double_elim([entry(t) for t in teams], grand_final_reset=True)
+    )
     legs = {}
     for _ in range(200):
         pairs = resolve_bracket(specs, legs)
         todo = [p for p in pairs.values() if p.home and p.away and p.winner is None and p.key not in legs]
-        if not todo: break
-        for p in todo: legs[p.key] = [Leg(p.home, p.away, *rng.choice([(1, 0), (0, 1)]))]
+        if not todo:
+            break
+        for p in todo:
+            legs[p.key] = [Leg(p.home, p.away, *rng.choice([(1, 0), (0, 1)]))]
     pairs = resolve_bracket(specs, legs)
-    final = 'F2' if pairs.get('F2') and pairs['F2'].home else ('F' if kind == 'double' else f'U{bracket_size(n).bit_length() - 1}-1')
+    final = (
+        'F2'
+        if pairs.get('F2') and pairs['F2'].home
+        else ('F' if kind == 'double' else f'U{bracket_size(n).bit_length() - 1}-1')
+    )
     assert pairs[final].winner in teams
     assert all(p.winner or not (p.home and p.away) for p in pairs.values())
 
@@ -222,7 +292,14 @@ def test_group_outcome_removes_annulled_and_sinks_withdrawn():
     tables, _ = group_outcome(groups, {1: [R('A', 'B', 0, 3), R('C', 'D', 1, 0)]}, removed={'D'}, expected=[3])
     assert tables[0][0].team == 'B'
     assert 'D' not in [r.team for r in tables[0]]
-    full = [R('A', 'B', 3, 0), R('A', 'C', 3, 0), R('A', 'D', 3, 0), R('B', 'C', 1, 0), R('B', 'D', 1, 0), R('C', 'D', 1, 0)]
+    full = [
+        R('A', 'B', 3, 0),
+        R('A', 'C', 3, 0),
+        R('A', 'D', 3, 0),
+        R('B', 'C', 1, 0),
+        R('B', 'D', 1, 0),
+        R('C', 'D', 1, 0),
+    ]
     tables, outcome = group_outcome(groups, {1: full}, per_group=2, withdrawn={'A'}, expected=[6])
     assert [(r.team, r.place) for r in tables[0]] == [('B', 1), ('C', 2), ('D', 3), ('A', 4)]
     assert outcome.places[(1, 1)] == 'B' and outcome.places[(1, 2)] == 'C' and (1, 4) not in outcome.places

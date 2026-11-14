@@ -19,10 +19,10 @@ def parse_meters(text: str) -> tuple[float, float]:
     Запятая внутри числа — десятичная. Поэтому «4,9» — это одно число 4.9,
     а не пара (4, 9): такой ответ отвергается, чтобы не угадывать.
     """
-    tokens = text.replace(";", " ").split()
+    tokens = text.replace(';', ' ').split()
     if len(tokens) != 2:
         raise ValueError(f"нужно два числа через пробел: 'x y', получено {text.strip()!r}")
-    x, y = (float(token.rstrip(",").replace(",", ".")) for token in tokens)
+    x, y = (float(token.rstrip(',').replace(',', '.')) for token in tokens)
     return x, y
 
 
@@ -33,23 +33,23 @@ def finish_problem(pixels, homography: bool) -> str | None:
     """
     if homography:
         if len(pixels) < MIN_POINTS:
-            return f"для гомографии нужно минимум {MIN_POINTS} точки, поставлено {len(pixels)}"
+            return f'для гомографии нужно минимум {MIN_POINTS} точки, поставлено {len(pixels)}'
         return None
     if len(pixels) < 3:
-        return f"у контура нужно минимум 3 вершины, поставлено {len(pixels)}"
+        return f'у контура нужно минимум 3 вершины, поставлено {len(pixels)}'
     if not is_simple_polygon(pixels):
-        return "контур пересекает сам себя: ставьте вершины по порядку обхода (Backspace — убрать последние)"
+        return 'контур пересекает сам себя: ставьте вершины по порядку обхода (Backspace — убрать последние)'
     return None
 
 
 def save_polygon(venue_root: Path, points_px) -> Path:
     points = np.asarray(points_px, dtype=float).reshape(-1, 2)
     if len(points) < 3:
-        raise ValueError(f"у контура поля нужно минимум 3 вершины, дано {len(points)}")
+        raise ValueError(f'у контура поля нужно минимум 3 вершины, дано {len(points)}')
     if not is_simple_polygon(points):
-        raise ValueError("контур пересекает сам себя: вершины нужно ставить по порядку обхода")
-    path = venue_root / "pitch_polygon.json"
-    path.write_text(json.dumps({"points_px": points.round(1).tolist()}, indent=2), encoding="utf-8")
+        raise ValueError('контур пересекает сам себя: вершины нужно ставить по порядку обхода')
+    path = venue_root / 'pitch_polygon.json'
+    path.write_text(json.dumps({'points_px': points.round(1).tolist()}, indent=2), encoding='utf-8')
     return path
 
 
@@ -61,12 +61,12 @@ def save_homography(venue_root: Path, points_px, points_m, calib: Calibration | 
     H, error = fit_homography(undistorted, m)
     loo = leave_one_out_error(undistorted, m) if len(px) > 4 else None
     data = {
-        "H": H.tolist(),
-        "points": [{"px": p.tolist(), "m": q.tolist()} for p, q in zip(px, m)],
-        "reprojection_error_m": round(error, 3),
-        "leave_one_out_error_m": None if loo is None else round(loo, 3),
+        'H': H.tolist(),
+        'points': [{'px': p.tolist(), 'm': q.tolist()} for p, q in zip(px, m)],
+        'reprojection_error_m': round(error, 3),
+        'leave_one_out_error_m': None if loo is None else round(loo, 3),
     }
-    (venue_root / "homography.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
+    (venue_root / 'homography.json').write_text(json.dumps(data, indent=2), encoding='utf-8')
     return data
 
 

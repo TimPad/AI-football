@@ -1,6 +1,7 @@
 """Keep existing public URLs while new tournaments start privately."""
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 
 revision = '0016_tournament_visibility'
 down_revision = '0015_camera_reference'
