@@ -228,7 +228,7 @@ def test_ordinary_admin_cannot_read_private_stats(admin_client, analytics_match)
     assert admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').status_code == 403
 
 
-def _cv_run_with_passes(client, match, *, side_map=None, publish=True):
+def _cv_run_with_passes(client, match, *, side_map=None, publish=True, report=None):
     """Импорт пакета версии 3 (две передачи команды A: точная и неточная), подтверждение и публикация."""
     from uuid import uuid4
 
@@ -243,7 +243,11 @@ def _cv_run_with_passes(client, match, *, side_map=None, publish=True):
     run = upload(
         client,
         match,
-        result_zip(job, mutate=lambda m, r, t, c: m.update(contract_version='3'), extras={'events.json': events_doc()}),
+        result_zip(
+            job,
+            mutate=lambda m, r, t, c: (m.update(contract_version='3'), report and report(r)),
+            extras={'events.json': events_doc()},
+        ),
     )
     assert run.status_code == 200, run.text
     run = run.json()
@@ -374,3 +378,46 @@ def test_manual_passes_are_not_mixed_with_auto(admin_client, analytics_match, se
     assert stats['source']['kind'] == 'manual' and {r['source'] for r in stats['rows']} == {'manual'}
     assert _row(stats, 'passes_total')['home']['value'] == 4
     assert stats['passes'] == [] and stats['pass_players'][0]['total'] == 4  # ручные передачи без точек
+
+
+def _heat(pitch, *cells):
+    grid = [[0.0] * int(pitch['width_m'] + 0.999) for _ in range(int(pitch['length_m'] + 0.999))]
+    for x, y, seconds in cells:
+        grid[x][y] += seconds
+    return grid
+
+
+def _positions_report(report):
+    """Треки 1 и 2 (команда A) — у левых ворот, трек 3 (B) — справа; центры команд дают направление атаки."""
+    pitch = report['pitch']
+    period = report['periods'][0]
+    cells = {1: [(4, 5, 30)], 2: [(10, 8, 60)], 3: [(30, 12, 40)]}
+    for player in period['players']:
+        player['heatmap_s'] = _heat(pitch, *cells[player['track_id']])
+    period['teams'] = {'A': {'heatmap_s': _heat(pitch, (8, 7, 90))}, 'B': {'heatmap_s': _heat(pitch, (30, 12, 40))}}
+
+
+def test_video_positions_and_attack_direction_for_the_pass_network(admin_client, analytics_match):
+    _cv_run_with_passes(admin_client, analytics_match, report=_positions_report)
+    stats = admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').json()
+    # Хозяева (A) у левых ворот: атакуют вправо, у передач направление из видео.
+    assert stats['positions_orientation'] == 'attack'
+    assert {p['attacking_direction'] for p in stats['passes']} == {'right'}
+    home = next(p for p in stats['positions'] if p['side'] == 'home')
+    away = next(p for p in stats['positions'] if p['side'] == 'away')
+    # Оба трека команды A назначены одному игроку: средняя точка взвешена секундами.
+    assert (home['x'], home['y'], home['observed_s']) == (8.5, 7.5, 90.0)
+    assert (away['x'], away['y'], away['observed_s']) == (30.5, 12.5, 40.0)
+    public = admin_client.get(f'/api/v1/public/matches/{analytics_match["id"]}/action-stats').json()
+    assert public['positions'] == stats['positions']
+
+
+def test_manual_actions_take_positions_from_the_published_video_analysis(admin_client, analytics_match, send_command):
+    match, _, _, _ = _setup(
+        admin_client, analytics_match, send_command, _passes_with_points, {'passes': [{'status': 'complete'}]}
+    )
+    before = admin_client.get(f'/api/v1/matches/{match["id"]}/action-stats').json()
+    assert before['positions'] == [] and before['positions_orientation'] is None
+    _cv_run_with_passes(admin_client, match, report=_positions_report)
+    stats = admin_client.get(f'/api/v1/matches/{match["id"]}/action-stats').json()
+    assert stats['source']['kind'] == 'manual' and len(stats['positions']) == 2
