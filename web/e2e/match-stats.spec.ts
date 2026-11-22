@@ -41,6 +41,19 @@ test('guest reads FotMob-like match statistics from published protocol and revie
   await expect(passes.getByRole('status')).toContainText(`${player}: передач`);
   await passes.locator('g.pass').first().click();
   await expect(passes.locator('.shot-detail')).toContainText(player);
+  // Сеть передач: узлы — игроки команды по средней точке передач, связки — от порога, игрок — по нажатию.
+  const network = page.locator('.stat-card', { has: page.getByRole('heading', { name: 'Сеть передач' }) });
+  const graph = network.getByRole('img', { name: /^Сеть передач: Север .*, игроков 5, связок \d+$/ });
+  await expect(graph).toBeVisible();
+  await expect(network.getByText(/атакует вправо/)).toBeVisible();
+  const links = await graph.locator('line.network-link').count();
+  await network.getByLabel('Порог связки, передач').fill('1');
+  expect(await graph.locator('line.network-link').count()).toBeGreaterThan(links);
+  await network.screenshot({ path: 'test-results/pass-network-1440.png' });
+  await network.getByRole('list', { name: 'Игроки сети' }).getByRole('button').first().click();
+  await expect(network.getByRole('status')).toContainText('чаще всего: отдаёт →');
+  await network.getByRole('button', { name: /^Юг/ }).click();
+  await expect(network.getByRole('img', { name: /^Сеть передач: Юг .*, игроков 5/ })).toBeVisible();
   await page.getByRole('button', { name: '2-й тайм', exact: true }).click();
   await expect(page).toHaveURL(/period=2/);
   await expect(
@@ -53,7 +66,10 @@ test('guest reads FotMob-like match statistics from published protocol and revie
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
     ).toBe(true);
-    if (width === 390) await passes.screenshot({ path: 'test-results/pass-map-390.png' });
+    if (width === 390) {
+      await passes.screenshot({ path: 'test-results/pass-map-390.png' });
+      await network.screenshot({ path: 'test-results/pass-network-390.png' });
+    }
   }
   expect(api.every((url) => url.includes('/api/v1/public/'))).toBe(true);
 });

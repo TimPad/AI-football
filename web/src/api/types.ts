@@ -6398,6 +6398,28 @@ export interface components {
             /** Archived */
             archived?: boolean | null;
         };
+        /**
+         * PlayerPosition
+         * @description Средняя позиция игрока за период по видео, метры площадки (развёрнута по positions_orientation).
+         */
+        PlayerPosition: {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** Observed S */
+            observed_s: number;
+        };
         /** PlayerView */
         PlayerView: {
             /**
@@ -8825,6 +8847,10 @@ export interface components {
             passes: components["schemas"]["PassPoint"][];
             /** Pass Players */
             pass_players: components["schemas"]["PassPlayerStats"][];
+            /** Positions */
+            positions: components["schemas"]["PlayerPosition"][];
+            /** Positions Orientation */
+            positions_orientation: ("attack" | "halves" | "camera") | null;
             pitch: components["schemas"]["PitchSize"] | null;
         };
         /** TeamCreate */

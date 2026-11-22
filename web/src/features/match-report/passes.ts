@@ -111,3 +111,89 @@ export function formatAccuracy(a: Accuracy, approx: boolean) {
   const percent = a.percent == null ? '' : ` · ${approx ? '≈' : ''}${Math.round(a.percent)}%`;
   return `${a.accurate} / ${a.known}${percent}`;
 }
+
+// Сеть передач команды: узел — игрок в средней позиции, связь — точные передачи от одного к другому.
+export type NetworkNode = {
+  playerId: string;
+  x: number;
+  y: number;
+  made: number; // все передачи игрока за период, и без точек
+  received: number; // точные передачи ему (по передачам с точками)
+};
+export type NetworkEdge = { from: string; to: string; count: number };
+export type Network = {
+  nodes: NetworkNode[];
+  edges: NetworkEdge[];
+  maxCount: number;
+  source: 'video' | 'passes';
+  orientation: Orientation;
+  attackRight: boolean; // команда атакует вправо — направление известно
+  withoutPosition: number; // игроки с передачами, но без позиции на видео
+};
+
+// Позиции — средние по видео, если они есть у команды; иначе — средняя точка касаний: начал своих передач
+// и приёмов точных передач. Команда показывается атакующей вправо, когда направление известно.
+export function passNetwork(stats: TeamActionStats, side: Side): Network {
+  const pitch = stats.pitch ?? { length_m: 40, width_m: 20 };
+  const L = pitch.length_m,
+    W = pitch.width_m;
+  const oriented = orientPasses(stats.passes, L, W);
+  const own = oriented.passes.filter((p) => p.side === side);
+  const counts = new Map<string, number>();
+  const received = new Map<string, number>();
+  for (const p of own)
+    if (p.success === true && p.player_id && p.recipient_id && p.player_id !== p.recipient_id) {
+      const key = `${p.player_id}>${p.recipient_id}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+      received.set(p.recipient_id, (received.get(p.recipient_id) ?? 0) + 1);
+    }
+  const made = new Map(
+    stats.pass_players.filter((p) => p.side === side && p.player_id).map((p) => [p.player_id!, p.total]),
+  );
+  const video = stats.positions.filter((p) => p.side === side);
+  const source: Network['source'] = video.length ? 'video' : 'passes';
+  const orientation: Orientation = video.length ? (stats.positions_orientation ?? 'camera') : oriented.orientation;
+  // Направление известно: хозяева атакуют вправо, гостей разворачиваем, чтобы и они атаковали вправо.
+  const mirror = orientation === 'attack' && side === 'away';
+  const place = (x: number, y: number) => (mirror ? [L - x, W - y] : [x, y]);
+  const positions = new Map<string, [number, number]>();
+  if (video.length) for (const p of video) positions.set(p.player_id, [p.x, p.y]);
+  else {
+    const touches = new Map<string, number[][]>();
+    const add = (id: string, xy: number[]) => touches.set(id, [...(touches.get(id) ?? []), xy]);
+    for (const p of own) {
+      if (p.player_id) add(p.player_id, p.start_xy);
+      if (p.success === true && p.recipient_id) add(p.recipient_id, p.end_xy);
+    }
+    for (const [id, xy] of touches)
+      positions.set(id, [xy.reduce((s, v) => s + v[0], 0) / xy.length, xy.reduce((s, v) => s + v[1], 0) / xy.length]);
+  }
+  const players = new Set([...made.keys(), ...received.keys()]);
+  const nodes: NetworkNode[] = [];
+  for (const id of players) {
+    const at = positions.get(id);
+    if (!at) continue;
+    const [x, y] = place(at[0], at[1]);
+    nodes.push({ playerId: id, x, y, made: made.get(id) ?? 0, received: received.get(id) ?? 0 });
+  }
+  const placed = new Set(nodes.map((n) => n.playerId));
+  const edges = [...counts]
+    .map(([key, count]) => {
+      const [from, to] = key.split('>');
+      return { from, to, count };
+    })
+    .filter((e) => placed.has(e.from) && placed.has(e.to));
+  return {
+    nodes,
+    edges,
+    maxCount: edges.reduce((m, e) => Math.max(m, e.count), 0),
+    source,
+    orientation,
+    attackRight: orientation === 'attack',
+    withoutPosition: [...players].filter((id) => !placed.has(id)).length,
+  };
+}
+
+// Порог связи по умолчанию: у референса «от 5 передач» за 69 минут 11 на 11; в футзале передач меньше,
+// а по видео находится около двух третей — от 3, если такие связки есть, иначе самая частая.
+export const defaultThreshold = (maxCount: number) => Math.max(1, Math.min(3, maxCount));

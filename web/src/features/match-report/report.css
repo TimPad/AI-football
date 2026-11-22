@@ -839,3 +839,48 @@
 .player-passes p {
   margin: 0 0 8px;
 }
+.network-threshold {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  max-width: 100%;
+}
+.network-threshold input {
+  width: 140px;
+  max-width: 40vw;
+}
+.network-note {
+  margin: 0;
+}
+.network-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.network-legend .link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.network-dot {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+.network-dot.home {
+  background: var(--home, #488ee6);
+}
+.network-dot.away {
+  background: var(--away, #e9aa49);
+  color: #1d1a14;
+}
