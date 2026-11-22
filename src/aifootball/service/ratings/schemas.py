@@ -139,6 +139,9 @@ class ActionInput(Input):
     source_video_ms: Millis | None = None
     shot_id: UUID | None = None
     decision: Literal['accepted', 'rejected'] = 'accepted'
+    # Действие из видео: auto — найдено обработчиком и человеком ещё не проверено, checked — проверено
+    # (принято, исправлено или отклонено). None — внесено человеком.
+    review: Literal['auto', 'checked'] | None = None
     notes: str = Field(default='', max_length=500)
 
 
@@ -397,6 +400,8 @@ class PassPoint(BaseModel):
     start_ms: int | None
     attacking_direction: Literal['left', 'right', 'unknown']
     source: Literal['manual', 'cv_auto']
+    # Проверена человеком: внесена вручную или проверена в разборе; передача из видео без проверки — нет.
+    verified: bool
 
 
 class PassPlayerStats(BaseModel):
@@ -408,6 +413,7 @@ class PassPlayerStats(BaseModel):
     accurate: int
     known: int
     length_m: float | None
+    verified: int  # из них проверено человеком
 
 
 class PlayerPosition(BaseModel):

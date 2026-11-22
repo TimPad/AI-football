@@ -283,3 +283,88 @@ def test_cabinet_ratings_follow_the_active_video_version(admin_client, analytics
     assert command(admin_client, match, first, 'activate').status_code == 200
     assert source()['participation_id'] == str(first['auto_sources']['participation_version_id'])
     assert source()['action_id'] == str(first['auto_sources']['action_version_id'])
+
+
+def test_pass_review_marks_video_passes_checked_and_stats_follow(admin_client, analytics_match, send_command):
+    """Проверка передач: автоматическая версия → версия, где часть передач проверена, одна отклонена, одна
+    исправлена. Сводка берёт проверенную версию: отклонённой нет, исправленная — неточная, непроверенная — без
+    отметки проверки."""
+    match, _ = _protocol(admin_client, analytics_match, send_command)
+    run, players = _video(admin_client, match)
+    overview = admin_client.get(f'/api/v1/matches/{match["id"]}/performance-actions').json()
+    current = overview['current']
+    passes = [a for a in current['document']['actions'] if a['kind'] == 'pass']
+    assert {a['review'] for a in passes} == {'auto'}
+    # Не хватает третьей передачи, чтобы показать все три исхода: добавим её копией первой (позже по времени).
+    extra = {**passes[0], 'id': str(uuid4()), 'start_ms': 50000, 'end_ms': 50500}
+    accepted, failed = passes
+    doc = {
+        **current['document'],
+        'actions': [
+            {**accepted, 'review': 'checked'},
+            {**failed, 'review': 'checked', 'success': True, 'outcome': 'success', 'recipient_id': players[2]},
+            {**extra, 'review': 'auto'},
+        ],
+    }
+    body = {
+        'request_id': str(uuid4()),
+        'expected_revision': overview['revision'],
+        'expected_match_revision': overview['match_revision'],
+        'status': 'confirmed',
+        'document': doc,
+    }
+    saved = admin_client.put(f'/api/v1/matches/{match["id"]}/performance-actions', json=body)
+    assert saved.status_code == 200, saved.text
+    assert saved.json()['auto'] is False
+    stats = admin_client.get(f'/api/v1/matches/{match["id"]}/action-stats').json()
+    assert stats['source']['kind'] == 'manual'
+    by_time = {p['start_ms']: p for p in stats['passes']}
+    assert by_time[30000]['success'] is True and by_time[30000]['verified'] is True
+    assert by_time[50000]['verified'] is False
+    assert stats['pass_players'][0]['verified'] == 2 and stats['pass_players'][0]['total'] == 3
+    # Отклонённая передача не идёт в сводку.
+    rejected = {**doc, 'actions': [{**doc['actions'][2], 'decision': 'rejected', 'review': 'checked'}]}
+    again = admin_client.put(
+        f'/api/v1/matches/{match["id"]}/performance-actions',
+        json={**body, 'request_id': str(uuid4()), 'expected_revision': overview['revision'] + 1, 'document': rejected},
+    )
+    assert again.status_code == 200, again.text
+    stats = admin_client.get(f'/api/v1/matches/{match["id"]}/action-stats').json()
+    assert stats['passes'] == [] and stats['pass_players'] == []
+
+
+def test_action_request_without_review_keeps_its_retry_hash(admin_client, analytics_match, send_command):
+    """Запрос, отправленный до поля проверки, при повторе не конфликтует: поле без значения в хэш не входит."""
+    match, protocol = _protocol(admin_client, analytics_match, send_command)
+    overview = admin_client.get(f'/api/v1/matches/{match["id"]}/performance-actions').json()
+    home = next(p['player_id'] for p in overview['lineup'] if p['side'] == 'home')
+    body = {
+        'request_id': str(uuid4()),
+        'expected_revision': overview['revision'],
+        'expected_match_revision': overview['match_revision'],
+        'status': 'review',
+        'document': {
+            'clock_basis': 'game',
+            'duration_ms': 2400000,
+            'source_protocol_version_id': protocol['id'],
+            'actions': [{'id': str(uuid4()), 'kind': 'pass', 'player_id': home, 'side': 'home', 'start_ms': 1000}],
+        },
+    }
+    first = admin_client.put(f'/api/v1/matches/{match["id"]}/performance-actions', json=body)
+    assert first.status_code == 200, first.text
+    retry = admin_client.put(f'/api/v1/matches/{match["id"]}/performance-actions', json=body)
+    assert retry.status_code == 200 and retry.json() == first.json()
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    from aifootball.service.analysis.jobs import command_hash
+    from aifootball.service.analysis.models import AnalysisCommand
+    from aifootball.service.ratings.schemas import ActionsSave
+
+    # Прежний код хэшировал документ без поля проверки — сохранённый хэш тот же.
+    legacy = ActionsSave(**body).model_dump(mode='json', exclude={'request_id'})
+    for action in legacy['document']['actions']:
+        assert action.pop('review') is None
+    with Session(admin_client.app.state.engine) as db:
+        stored = db.scalar(select(AnalysisCommand).where(AnalysisCommand.request_id == body['request_id']))
+        assert stored.request_hash == command_hash(match['id'], 'performance-actions', legacy)

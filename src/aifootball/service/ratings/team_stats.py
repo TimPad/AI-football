@@ -143,6 +143,7 @@ def _pass_points(records, period_of, source):
             'start_ms': r.get('start_ms'),
             'attacking_direction': r.get('attacking_direction') or 'unknown',
             'source': source,
+            'verified': r.get('review') != 'auto',
         }
         for r in records
         if r.get('start_xy') and r.get('end_xy')
@@ -166,6 +167,7 @@ def _pass_players(records):
                 'accurate': sum(1 for i in known if i['success']),
                 'known': len(known),
                 'length_m': round(sum(lengths) / len(lengths), 1) if lengths else None,
+                'verified': sum(1 for i in items if i.get('review') != 'auto'),
             }
         )
     return sorted(
@@ -348,6 +350,7 @@ def _auto_passes(run, period, people):
                 'start_ms': max(0, round(e['start_s'] * 1000)),
                 # Направление атаки по видео: обработчик его не выдаёт, оно выводится из центров команд в тайме.
                 'attacking_direction': attack.get(_report_key(run, half), {}).get(e['team'], 'unknown'),
+                'review': 'auto',
             }
         )
     return records

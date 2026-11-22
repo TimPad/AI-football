@@ -145,7 +145,7 @@ def test_team_stats_count_outcomes_keep_unknown_and_skip_undeclared(admin_client
     home = [p['player_id'] for p in match['lineup'] if p['side'] == 'home']
     assert stats['passes'] == []
     assert stats['pass_players'] == [
-        {'side': 'home', 'player_id': home[0], 'total': 4, 'accurate': 2, 'known': 3, 'length_m': None}
+        {'side': 'home', 'player_id': home[0], 'total': 4, 'accurate': 2, 'known': 3, 'length_m': None, 'verified': 4}
     ]
 
 
@@ -187,11 +187,12 @@ def test_passes_carry_points_length_period_and_player_summary(admin_client, anal
     )
     assert first['start_xy'] == [10.0, 5.0] and first['end_xy'] == [13.0, 9.0]
     assert first['attacking_direction'] == 'right' and first['source'] == 'manual' and first['success'] is True
+    assert all(p['verified'] for p in stats['passes'])  # внесены человеком
     assert points[('home', 200000)]['success'] is False and points[('home', 200000)]['attacking_direction'] == 'unknown'
     assert points[('away', 1500000)]['period'] == '2' and points[('away', 1500000)]['length_m'] == 6.0
     assert stats['pass_players'] == [  # хозяева первыми, затем по числу передач
-        {'side': 'home', 'player_id': home[0], 'total': 3, 'accurate': 2, 'known': 3, 'length_m': 7.5},
-        {'side': 'away', 'player_id': away[0], 'total': 1, 'accurate': 1, 'known': 1, 'length_m': 6.0},
+        {'side': 'home', 'player_id': home[0], 'total': 3, 'accurate': 2, 'known': 3, 'length_m': 7.5, 'verified': 3},
+        {'side': 'away', 'player_id': away[0], 'total': 1, 'accurate': 1, 'known': 1, 'length_m': 6.0, 'verified': 1},
     ]
     second = admin_client.get(f'/api/v1/matches/{match["id"]}/action-stats', params={'period': '2'}).json()
     assert [p['side'] for p in second['passes']] == ['away'] and len(second['pass_players']) == 1
@@ -300,6 +301,7 @@ def test_auto_passes_from_published_video_analysis(admin_client, analytics_match
         (False, 8.1, [10.0, 5.0], [18.0, 6.0], 'cv_auto'),
     ]
     assert all(p['side'] == 'home' and p['period'] is None and p['player_id'] for p in stats['passes'])
+    assert not any(p['verified'] for p in stats['passes'])
     assert stats['passes'][1]['recipient_id'] is None and stats['passes'][0]['start_ms'] == 10000
     assert stats['pass_players'] == [
         {
@@ -309,6 +311,7 @@ def test_auto_passes_from_published_video_analysis(admin_client, analytics_match
             'accurate': 1,
             'known': 2,
             'length_m': 8.1,
+            'verified': 0,  # передачи из видео без проверки
         }
     ]
     assert admin_client.get(path).status_code == 404
