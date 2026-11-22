@@ -5973,6 +5973,66 @@ export interface components {
                 };
             };
         };
+        /**
+         * PassPlayerStats
+         * @description Передачи исполнителя за период: все, точные и с известным исходом; средняя длина — по передачам с точками.
+         */
+        PassPlayerStats: {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Player Id */
+            player_id: string | null;
+            /** Total */
+            total: number;
+            /** Accurate */
+            accurate: number;
+            /** Known */
+            known: number;
+            /** Length M */
+            length_m: number | null;
+        };
+        /**
+         * PassPoint
+         * @description Передача на карте: координаты площадки в метрах, как на видео (без разворота по атаке).
+         */
+        PassPoint: {
+            /** Id */
+            id: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Player Id */
+            player_id: string | null;
+            /** Recipient Id */
+            recipient_id: string | null;
+            /** Start Xy */
+            start_xy: number[];
+            /** End Xy */
+            end_xy: number[];
+            /** Length M */
+            length_m: number;
+            /** Success */
+            success: boolean | null;
+            /** Period */
+            period: string | null;
+            /** Start Ms */
+            start_ms: number | null;
+            /**
+             * Attacking Direction
+             * @enum {string}
+             */
+            attacking_direction: "left" | "right" | "unknown";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "manual" | "cv_auto";
+        };
         /** PenaltyAttempt */
         "PenaltyAttempt-Input": {
             /**
@@ -8761,6 +8821,10 @@ export interface components {
             rows: components["schemas"]["TeamStatRow"][];
             /** Shots */
             shots: components["schemas"]["ShotPoint"][];
+            /** Passes */
+            passes: components["schemas"]["PassPoint"][];
+            /** Pass Players */
+            pass_players: components["schemas"]["PassPlayerStats"][];
             pitch: components["schemas"]["PitchSize"] | null;
         };
         /** TeamCreate */

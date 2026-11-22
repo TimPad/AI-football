@@ -1,11 +1,21 @@
 import type { PublicAnalysis, PublicMatch, PublicProtocol, TeamActionStats } from '../../api/domain';
 import { type Shot, ShotMap } from '../../components/pitch/ShotMap';
 import type { ReportModel, Resource } from './model';
+import { PassStats } from './PassStats';
 import { AUTO_HINT, StatCard } from './StatBlocks';
 import { actionLines, cvLines, cvPeriodKey, cvThirds, protocolLines, type StatLine } from './stats';
 import { TeamComparison } from './TeamComparison';
 
 const ready = <T,>(r: Resource<T>) => (r.status === 'ready' ? r.value : null);
+
+// Имя игрока по UUID: протокол, затем видеоанализ и оценки — у матча без протокола имена есть только там.
+export function playerName(model: ReportModel) {
+  const names = new Map<string, string>();
+  for (const r of ready(model.ratings)?.items ?? []) names.set(r.player_id, r.display_name);
+  for (const p of ready(model.cv)?.players ?? []) names.set(p.player_id, p.display_name);
+  for (const l of ready(model.protocol)?.lineup ?? []) names.set(l.player_id, l.display_name);
+  return (id: string | null | undefined) => (id ? (names.get(id) ?? null) : null);
+}
 export type PeriodOption = { key: string; label: string };
 
 // Периоды: из ручной версии действий, иначе из регламента протокола, иначе из таймов CV
@@ -139,9 +149,9 @@ export function MatchStats({
   const groups = actions ? actionLines(actions) : null;
   const physical = cv && cvKey ? cvLines(cv, cvKey) : null;
   const thirds = cv && cvKey ? cvThirds(cv, cvKey) : null;
-  const lineup = protocol?.lineup ?? [];
-  const name = (id: string | null) => (id ? (lineup.find((l) => l.player_id === id)?.display_name ?? null) : null);
+  const name = playerName(model);
   const shots: Shot[] = actions ? actions.shots.map((s) => ({ ...s, player: name(s.player_id ?? null) })) : [];
+  const passes = actions?.pitch && actions.rows.some((r) => r.category === 'passes') && actions.pass_players.length > 0;
   // «Главное» здесь не повторяется: каждая строка уже есть в своей карточке, голы — вместе с дисциплиной.
   const discipline = protocol ? protocolLines(protocol, period) : [];
   const anything = protocol || actions || cv;
@@ -170,6 +180,11 @@ export function MatchStats({
                   homeName={match.home_name}
                   awayName={match.away_name}
                 />
+              </StatCard>
+            )}
+            {passes && (
+              <StatCard title="Передачи: карта и точность" wide>
+                <PassStats stats={actions!} homeName={match.home_name} awayName={match.away_name} name={name} />
               </StatCard>
             )}
             {groups && (
