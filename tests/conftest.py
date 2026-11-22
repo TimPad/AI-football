@@ -45,15 +45,15 @@ def write_video(path: Path, n_frames: int = 50, fps: float = 25.0, size=(320, 24
     return path
 
 
-def write_vfr_video(path: Path, size=(400, 200), trim_s: float = 9.9) -> Path:
+def write_vfr_video(path: Path, size=(400, 200), trim_s: float = 9.9, frame=None) -> Path:
     """Видео с плавающим шагом кадров и отброшенными кадрами в начале, как в загрузках трансляций VK.
 
     300 кадров: первые 150 через 0.4 с, остальные через 0.6 с, плюс дрожание 0–20 мс. Номер кадра / fps
     расходится с меткой кадра на десятки кадров. Обрезка копированием с -ss оставляет в файле кадры от
     предыдущего опорного с отрицательной меткой: контейнер считает их, декодер отбрасывает.
 
-    Верхняя половина кадра — ровная яркость, своя у каждого кадра (frame_level): по ней узнаётся кадр.
-    Нижняя — шахматка, чтобы вырезка была резкой.
+    По умолчанию верхняя половина кадра — ровная яркость, своя у каждого кадра (frame_level): по ней узнаётся
+    кадр. Нижняя — шахматка, чтобы вырезка была резкой. frame(i) — свой кадр BGR размера size вместо этого.
     """
     if shutil.which('ffmpeg') is None:
         pytest.skip('нет ffmpeg')
@@ -61,13 +61,14 @@ def write_vfr_video(path: Path, size=(400, 200), trim_s: float = 9.9) -> Path:
     source = path.with_name(path.stem + '-source.mp4')
     timeline = '(if(lt(N,150),N*0.4,60+(N-150)*0.6)+mod(N,3)*0.01)/TB'
     board = ((np.indices((height - height // 2, width)).sum(axis=0) // 8 % 2) * 255).astype(np.uint8)
-    frames = []
-    for i in range(300):
-        frame = np.empty((height, width, 3), np.uint8)
-        frame[: height // 2] = (i * 7) % 256
-        frame[height // 2 :] = board[:, :, None]
-        frames.append(frame.tobytes())
-    raw = b''.join(frames)
+
+    def level_frame(i):
+        image = np.empty((height, width, 3), np.uint8)
+        image[: height // 2] = (i * 7) % 256
+        image[height // 2 :] = board[:, :, None]
+        return image
+
+    raw = b''.join(np.ascontiguousarray((frame or level_frame)(i), np.uint8).tobytes() for i in range(300))
     encode = ['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'bgr24', '-s', f'{width}x{height}']
     encode += ['-r', '2', '-i', '-', '-vf', f"settb=1/1000,setpts='{timeline}'", '-fps_mode', 'passthrough']
     encode += ['-enc_time_base', '1/1000', '-c:v', 'mpeg4', '-q:v', '4', '-g', '20', '-sc_threshold', '1000000000']

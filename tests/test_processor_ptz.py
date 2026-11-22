@@ -6,11 +6,13 @@ from zipfile import ZipFile
 
 import cv2
 import numpy as np
+import polars as pl
 import pytest
 import yaml
 
 from aifootball import schemas
 from aifootball.analytics.exchange import canonical
+from conftest import decoded_times, write_vfr_video
 from test_processor_camera import with_reference
 from test_processor_resume import Predictor, cv_case  # noqa: F401  (фикстура)
 
@@ -103,6 +105,45 @@ def test_ptz_job_registers_frames_and_tracks_in_reference_pixels(ptz_case, monke
     monkeypatch.setattr(registration, 'register_video', lambda *a, **k: calls.append(1))
     run_cv(job, video, ws('ptz'), models=models)
     assert not calls  # готовая привязка не пересчитывается
+
+
+def test_ptz_vfr_recording_keeps_registration_and_detection_frames_after_resume(cv_case, tmp_path, monkeypatch):
+    """Загрузка трансляции: шаг кадров плавает, в начале файла кадры с отрицательной меткой.
+
+    У одного и того же изображения номер и время в привязке и в детекции одни и те же, в том числе после
+    продолжения: иначе трекер применит к рамкам гомографию другого кадра. Время — метки декодированных кадров.
+    """
+    from aifootball.processor.cv import run_cv
+    from aifootball.processor.workspace import Workspace
+
+    job, _, models, ws = cv_case
+    image = scene()
+    ptz_job(job, crop(image, *REF_ORIGIN))
+    video = write_vfr_video(tmp_path / 'pan.mp4', size=(W, H), frame=lambda n: crop(image, *origin(n)))
+    times = decoded_times(video)
+    full = run_cv(job, video, ws('full'), models=models)
+    original = Workspace.put_json
+
+    def interrupt(self, key, value):
+        original(self, key, value)
+        if key == 'cv:chunk:0':
+            raise RuntimeError('power loss')
+
+    monkeypatch.setattr(Workspace, 'put_json', interrupt)
+    with pytest.raises(RuntimeError, match='power loss'):
+        run_cv(job, video, ws('resumed'), models=models)
+    monkeypatch.setattr(Workspace, 'put_json', original)
+    Predictor.calls = 0
+    resumed = run_cv(job, video, ws('resumed'), models=models)
+    assert Predictor.calls == sum(t >= 60 for t in times)  # первая минута не детектируется повторно
+    for root in (full, resumed):
+        frames = schemas.read(root / 'registration.parquet', 'registration').select('frame_id', 'ts')
+        detected = pl.read_parquet(root / 'detections.parquet').select('frame_id', 'ts').unique().sort('frame_id')
+        assert frames['frame_id'].to_list() == list(range(len(times)))
+        assert frames['ts'].to_list() == pytest.approx(times, abs=1e-6)
+        assert detected.equals(frames.sort('frame_id'))
+    for name in ('registration', 'detections', 'tracks'):
+        assert pl.read_parquet(full / f'{name}.parquet').equals(pl.read_parquet(resumed / f'{name}.parquet'))
 
 
 def test_ptz_job_with_ball_model_or_foreign_reference_stops_before_detection(ptz_case):
