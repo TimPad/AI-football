@@ -152,6 +152,66 @@ test('camera points are marked by clicking a frame, which becomes the reference 
   });
 });
 
+test('a broadcast camera: points without an outline, graphics and a replay badge on the reference frame', async ({
+  page,
+}) => {
+  await login(page);
+  const data = await createTournament(page);
+  await page.goto(`/halls/${data.hallId}`);
+  await page.getByRole('button', { name: 'Добавить профиль камеры', exact: true }).click();
+  await page.getByLabel('Название камеры', { exact: true }).fill('Балкон');
+  await page.getByRole('button', { name: 'Трансляция с поворотом и зумом', exact: true }).click();
+  await openImage(page, 800, 400);
+  await markCorners(page, 800, 400);
+  // Табло сверху во всю ширину кадра: рамку тянут мышью.
+  await page.getByRole('button', { name: 'Графика трансляции', exact: true }).click();
+  const graphics = page.getByRole('img', { name: 'Графика трансляции на кадре' });
+  const area = (await graphics.boundingBox())!;
+  await page.mouse.move(area.x + 2, area.y + 2);
+  await page.mouse.down();
+  await page.mouse.move(area.x + area.width / 2, area.y + area.height * 0.04, { steps: 4 });
+  await page.mouse.move(area.x + area.width - 2, area.y + area.height * 0.08, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByRole('button', { name: 'Убрать графику 1', exact: true })).toBeVisible();
+  await page.locator('.camera-editor').screenshot({ path: 'test-results/camera-ptz-graphics.png' });
+  await page.getByRole('button', { name: 'Сохранить профиль камеры', exact: true }).click();
+  const summary = page.locator('summary').filter({ hasText: 'Балкон · версия 1 · трансляция' });
+  await expect(summary).toBeVisible();
+  await summary.click();
+  const reference = page.getByRole('img', { name: 'Эталонный кадр камеры «Балкон», версия 1' });
+  await expect(reference).toBeVisible();
+  const [profile] = (await (await page.request.get(`/api/v1/halls/${data.hallId}/camera-profiles`)).json()).items;
+  expect(profile.motion).toBe('ptz');
+  expect(profile.pitch_polygon_px).toBeNull();
+  expect(profile.reference_sha256).toMatch(/^[0-9a-f]{64}$/);
+  expect(profile.overlay).toHaveLength(1);
+  const [x1, y1, x2, y2] = profile.overlay[0];
+  expect([x1, y1]).toEqual([expect.closeTo(0, 1), expect.closeTo(0, 1)]);
+  expect(x2).toBeGreaterThan(0.98);
+  expect(y2).toBeGreaterThan(0.06);
+  expect(y2).toBeLessThan(0.1);
+
+  // Плашку обводим на эталонном кадре: угол белой рамки «поля» — не однотонный участок.
+  await page.getByRole('button', { name: 'Обвести на эталонном кадре', exact: true }).click();
+  const stage = page.getByRole('img', { name: 'Обводка плашки повтора на кадре' });
+  const box = (await stage.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.02, box.y + box.height * 0.05);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.16, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByRole('status', { name: 'Обводка плашки', exact: true })).toContainText('Плашка');
+  await page.getByRole('button', { name: 'Сохранить плашку', exact: true }).click();
+  await expect(page.getByRole('img', { name: 'Плашка повтора', exact: true })).toBeVisible();
+  const [saved] = (await (await page.request.get(`/api/v1/halls/${data.hallId}/camera-profiles`)).json()).items;
+  expect(saved.replay_badge.xy[0]).toBeLessThanOrEqual(20);
+  expect(saved.replay_badge.size[0]).toBeGreaterThanOrEqual(60);
+  await page.locator('.camera-versions details[open]').screenshot({ path: 'test-results/camera-ptz-profile.png' });
+  for (const width of [768, 375]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+});
+
 test('a frame is taken from the recording itself in its own resolution', async ({ page }) => {
   await login(page);
   const data = await createTournament(page);

@@ -19,6 +19,17 @@ def context_hash(context):
     return sha256(canonical_json(context)).hexdigest()
 
 
+def camera_motion_context(camera):
+    """Поворотная камера: тип, графика трансляции и плашка повтора. У неподвижной — ничего: её контекст прежний."""
+    if not camera.is_ptz:
+        return {}
+    return {
+        'motion': camera.motion,
+        'overlay': camera.overlay,
+        **({'replay_badge': camera.replay_badge} if camera.replay_badge else {}),
+    }
+
+
 def build_context(db, match_id, *, lock=True):
     match = get_entity(db, Match, match_id, lock=lock)
     if not match.camera_profile_id or not match.hall_snapshot:
@@ -57,6 +68,7 @@ def build_context(db, match_id, *, lock=True):
             'calibration': camera.calibration,
             # Только если кадр задан: контекст профилей без кадра и их задания не меняются.
             **({'reference_sha256': camera.reference_sha256} if camera.reference_sha256 else {}),
+            **camera_motion_context(camera),
         },
         'units': {'distance': 'm', 'speed': 'm/s', 'time': 's', 'heatmap': 's'},
     }
