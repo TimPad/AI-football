@@ -368,3 +368,50 @@ def test_action_request_without_review_keeps_its_retry_hash(admin_client, analyt
     with Session(admin_client.app.state.engine) as db:
         stored = db.scalar(select(AnalysisCommand).where(AnalysisCommand.request_id == body['request_id']))
         assert stored.request_hash == command_hash(match['id'], 'performance-actions', legacy)
+
+
+def test_guest_sees_confirmed_pass_review_before_actions_are_published(admin_client, analytics_match, send_command):
+    """Зритель видит передачи из видео после подтверждённой проверки, не дожидаясь публикации действий матча:
+    черновик проверки ему не виден, проверенные передачи помечены cv_reviewed."""
+    match, _ = _protocol(admin_client, analytics_match, send_command)
+    run, players = _video(admin_client, match, publish=True)
+    public = f'/api/v1/public/matches/{match["id"]}/action-stats'
+    row = lambda stats, key: next(r for r in stats['rows'] if r['key'] == key)
+    before = admin_client.get(public).json()
+    assert row(before, 'passes_total')['source'] == 'cv_auto' and not any(p['verified'] for p in before['passes'])
+
+    overview = admin_client.get(f'/api/v1/matches/{match["id"]}/performance-actions').json()
+    accepted, failed = [a for a in overview['current']['document']['actions'] if a['kind'] == 'pass']
+    doc = {
+        **overview['current']['document'],
+        'actions': [
+            {**accepted, 'review': 'checked'},
+            {**failed, 'review': 'checked', 'success': True, 'outcome': 'success', 'recipient_id': players[2]},
+        ],
+    }
+
+    def save(status, revision):
+        body = {
+            'request_id': str(uuid4()),
+            'expected_revision': revision,
+            'expected_match_revision': overview['match_revision'],
+            'status': status,
+            'document': doc,
+        }
+        response = admin_client.put(f'/api/v1/matches/{match["id"]}/performance-actions', json=body)
+        assert response.status_code == 200, response.text
+
+    save('review', overview['revision'])  # черновик проверки зрителю не виден
+    assert row(admin_client.get(public).json(), 'passes_total')['source'] == 'cv_auto'
+    save('confirmed', overview['revision'] + 1)
+    after = admin_client.get(public).json()
+    accurate = row(after, 'passes_accurate')
+    assert accurate['source'] == 'cv_reviewed' and (accurate['home']['numerator'], accurate['home']['denominator']) == (
+        2,
+        2,
+    )
+    assert [(p['source'], p['verified'], p['success']) for p in after['passes']] == [('cv_reviewed', True, True)] * 2
+    assert after['passes'][1]['recipient_id'] == players[2]
+    assert after['pass_players'][0]['verified'] == 2
+    # Действия матча при этом не опубликованы: публичных оценок по ним нет.
+    assert after['source']['kind'] == 'cv_auto'

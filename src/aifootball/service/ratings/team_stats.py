@@ -356,6 +356,66 @@ def _auto_passes(run, period, people):
     return records
 
 
+def _reviewed_version(db, match_id, run):
+    """Последняя подтверждённая проверка передач этого видеоанализа: ручная версия действий из него, где хотя бы
+    одна передача из видео проверена человеком. Зрителю она видна без отдельной публикации действий."""
+    versions = db.scalars(
+        select(ActionVersion)
+        .where(
+            ActionVersion.match_id == match_id,
+            ActionVersion.status == 'confirmed',
+            ActionVersion.source_analysis_run_id == run.id,
+        )
+        .order_by(ActionVersion.revision.desc())
+    )
+    for version in versions:
+        if is_auto(version):
+            continue
+        actions = version.document.get('actions', [])
+        if any(a['kind'] == 'pass' and a.get('review') == 'checked' for a in actions):
+            return version
+    return None
+
+
+def _reviewed_passes(version, run, period):
+    """Передачи проверки (без отклонённых) за период видеоанализа: тайм и направление атаки — по видео."""
+    bounds = next((p for p in _cv_periods(run) if p['key'] == period), None)
+    if bounds is None:
+        return []
+    halves = [p for p in _cv_periods(run) if p['key'] != 'all']
+    attack = _cv_attack(run)
+    team_of = {side: team for team, side in run.side_map.items()}
+    inside = lambda t, spans: any(a <= t <= b for a, b in spans)
+    records = []
+    for r in version.canonical_actions or []:
+        if r['kind'] != 'pass' or r.get('side') not in SIDES or r.get('start_ms') is None:
+            continue
+        t = r['start_ms'] / 1000
+        if not inside(t, bounds['spans']):
+            continue
+        half = next((h['key'] for h in halves if inside(t, h['spans'])), None)
+        direction = r.get('attacking_direction') or 'unknown'
+        if direction == 'unknown':
+            direction = attack.get(_report_key(run, half), {}).get(team_of.get(r['side']), 'unknown')
+        records.append({**r, 'period': half, 'attacking_direction': direction})
+    return records
+
+
+def _with_review(stats, version, run):
+    """Передачи из проверки вместо событий видео: строки, карта и сводка по игрокам — с пометкой cv_reviewed."""
+    records = _reviewed_passes(version, run, stats['period'])
+    values = {side: _values([r for r in records if r['side'] == side], set()) for side in SIDES}
+    rows = [r for r in stats['rows'] if r['category'] != 'passes']
+    for row in (r for r in stats['rows'] if r['category'] == 'passes'):
+        rows.append(
+            {**row, 'source': 'cv_reviewed', 'home': values['home'][row['key']], 'away': values['away'][row['key']]}
+        )
+    stats['rows'] = rows
+    stats['passes'] = _pass_points(records, lambda r: r['period'], 'cv_reviewed')
+    stats['pass_players'] = _pass_players(records)
+    return stats
+
+
 def _with_events(stats, run, published, people):
     """Добавляет автоматические строки в категории, которых нет в ручной версии."""
     rows = _auto_rows(run, stats['period'])
@@ -541,12 +601,22 @@ def public_action_stats(db, match_id, period='all'):
     if version is None and run is None:
         raise DomainError('not_found', 'Действия матча не опубликованы', status=404)
     if version is None:
-        return auto_action_stats(run, published=True, period=period, people=_people(db, run))
+        stats = auto_action_stats(run, published=True, period=period, people=_people(db, run))
+        return _public_review(db, match_id, stats, run)
     stats = team_action_stats(version, published=True, period=period)
     if run:
-        stats = _with_events(stats, run, True, _people(db, run))
+        stats = _public_review(db, match_id, _with_events(stats, run, True, _people(db, run)), run)
     # Позиции — только из опубликованного видеоанализа, даже без событий по мячу.
     return _with_positions(stats, run or _analysis_run(db, published_run), db)
+
+
+def _public_review(db, match_id, stats, run):
+    """Передачи из видео зритель видит после подтверждённой проверки, не дожидаясь публикации действий;
+    опубликованная ручная версия с передачами главнее."""
+    if not any(r['category'] == 'passes' and r['source'] == 'cv_auto' for r in stats['rows']):
+        return stats
+    version = _reviewed_version(db, match_id, run)
+    return _with_review(stats, version, run) if version else stats
 
 
 def private_action_stats(db, match_id, period='all'):
