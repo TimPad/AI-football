@@ -83,14 +83,12 @@ def _validate_coverage(doc, lineup):
 
 
 def save_actions(db, match_id, actor_id, data, *, source_kind=None):
-    old, hashed = prior_command(
-        db,
-        match_id,
-        actor_id,
-        data.request_id,
-        'performance-actions',
-        data.model_dump(mode='json', exclude={'request_id'}),
-    )
+    payload = data.model_dump(mode='json', exclude={'request_id'})
+    # Поля проверки не было в прежних запросах: повтор старого запроса даёт тот же хэш.
+    for action in payload['document']['actions']:
+        if action.get('review') is None:
+            action.pop('review', None)
+    old, hashed = prior_command(db, match_id, actor_id, data.request_id, 'performance-actions', payload)
     if old:
         return old.response
     match = get_entity(db, Match, match_id, lock=True)

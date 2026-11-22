@@ -23,6 +23,7 @@ const pass = (over: Partial<PassPoint>): PassPoint => ({
   start_ms: 65000,
   attacking_direction: 'unknown',
   source: 'cv_auto',
+  verified: false,
   ...over,
 });
 
@@ -125,10 +126,10 @@ function match() {
   ];
   return stats(passes, {
     pass_players: [
-      { side: 'away', player_id: P3, total: 1, accurate: 0, known: 1, length_m: 8.1 },
-      { side: 'away', player_id: null, total: 2, accurate: 0, known: 1, length_m: 2.8 },
-      { side: 'home', player_id: P1, total: 6, accurate: 5, known: 6, length_m: 11.8 },
-      { side: 'home', player_id: P2, total: 1, accurate: 1, known: 1, length_m: 7.3 },
+      { side: 'away', player_id: P3, total: 1, accurate: 0, known: 1, length_m: 8.1, verified: 0 },
+      { side: 'away', player_id: null, total: 2, accurate: 0, known: 1, length_m: 2.8, verified: 0 },
+      { side: 'home', player_id: P1, total: 6, accurate: 5, known: 6, length_m: 11.8, verified: 0 },
+      { side: 'home', player_id: P2, total: 1, accurate: 1, known: 1, length_m: 7.3, verified: 0 },
     ],
   });
 }
@@ -174,11 +175,23 @@ it('draws passes as arrows, failed ones red, and filters by team, outcome and pl
 it('marks only video passes as approximate', () => {
   const manual = match();
   manual.rows = manual.rows.map((r) => ({ ...r, source: 'manual' as const }));
+  manual.passes = manual.passes.map((p) => ({ ...p, source: 'manual' as const, verified: true }));
+  manual.pass_players = manual.pass_players.map((p) => ({ ...p, verified: p.total }));
   render(<PassStats stats={manual} homeName="Север" awayName="Юг" name={name} />);
   expect(within(screen.getByLabelText('Точность передач команд')).getByText('86%')).toBeInTheDocument();
   expect(screen.queryByText(/расходится с ручным журналом/)).toBeNull();
   expect(screen.queryByText(/Неточные из видео чаще ошибочны/)).toBeNull();
   expect(within(screen.getByLabelText('Точность передач команд')).getByText('86%')).not.toHaveAttribute('title');
+});
+
+it('shows the review progress and keeps ≈ until every pass is checked', () => {
+  const partial = match();
+  partial.rows = partial.rows.map((r) => ({ ...r, source: 'manual' as const }));
+  partial.pass_players = partial.pass_players.map((p, i) => ({ ...p, verified: i < 2 ? p.total : 0 }));
+  render(<PassStats stats={partial} homeName="Север" awayName="Юг" name={name} />);
+  // Проверены передачи гостей (1 + 2), передачи хозяев (6 + 1) — нет.
+  expect(screen.getByText('Проверено 3 из 10 передач.')).toBeInTheDocument();
+  expect(within(screen.getByLabelText('Точность передач команд')).getByText('≈86%')).toBeInTheDocument();
 });
 
 it("shows one player's passes and accuracy in the player card", () => {
@@ -190,8 +203,8 @@ it("shows one player's passes and accuracy in the player card", () => {
 
 describe('passNetwork', () => {
   const players = [
-    { side: 'home' as const, player_id: P1, total: 4, accurate: 3, known: 4, length_m: 8 },
-    { side: 'home' as const, player_id: P2, total: 2, accurate: 2, known: 2, length_m: 8 },
+    { side: 'home' as const, player_id: P1, total: 4, accurate: 3, known: 4, length_m: 8, verified: 0 },
+    { side: 'home' as const, player_id: P2, total: 2, accurate: 2, known: 2, length_m: 8, verified: 0 },
   ];
   const passes = [
     pass({ attacking_direction: 'right', recipient_id: P2, start_xy: [10, 4], end_xy: [20, 6] }),
@@ -243,8 +256,8 @@ it('draws the network, filters links by the threshold and explains the selected 
     <PassNetworkStats
       stats={stats(many, {
         pass_players: [
-          { side: 'home', player_id: P1, total: 4, accurate: 4, known: 4, length_m: 10 },
-          { side: 'home', player_id: P2, total: 1, accurate: 1, known: 1, length_m: 10 },
+          { side: 'home', player_id: P1, total: 4, accurate: 4, known: 4, length_m: 10, verified: 0 },
+          { side: 'home', player_id: P2, total: 1, accurate: 1, known: 1, length_m: 10, verified: 0 },
         ],
       })}
       homeName="Север"

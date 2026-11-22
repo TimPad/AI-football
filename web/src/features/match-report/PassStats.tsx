@@ -24,9 +24,14 @@ import {
 } from './passes';
 
 type Name = (id: string | null | undefined) => string | null;
-// «≈» — у передач, распознанных по видео; ручная разметка точна по тому, что размечено.
-const autoPasses = (stats: TeamActionStats) =>
-  stats.rows.some((r) => r.category === 'passes' && r.source === 'cv_auto');
+// «≈» — пока есть передачи из видео без проверки человеком; ручная и проверенная разметка точна по тому, что размечено.
+const autoPasses = (stats: TeamActionStats) => stats.pass_players.some((p) => p.verified < p.total);
+// Сколько передач проверено, когда проверка начата, но не закончена.
+function reviewProgress(stats: TeamActionStats) {
+  const total = stats.pass_players.reduce((s, p) => s + p.total, 0);
+  const verified = stats.pass_players.reduce((s, p) => s + p.verified, 0);
+  return verified > 0 && verified < total ? `Проверено ${verified} из ${total} передач.` : null;
+}
 const metres = (v: number | null) => (v == null ? '—' : v.toLocaleString('ru-RU', { maximumFractionDigits: 1 }));
 
 // Доли точных, неточных и с неизвестным исходом — полосой; подпись «точных / с исходом · %».
@@ -223,6 +228,7 @@ export function PassStats({
         selected={filter.playerId}
         onPick={(playerId) => set({ playerId })}
       />
+      {reviewProgress(stats) && <p className="muted small">{reviewProgress(stats)}</p>}
       {approx && (
         <p className="muted small pass-caveat">
           ≈ — передачи из видео: находится около двух третей, процент точности расходится с ручным журналом до{' '}

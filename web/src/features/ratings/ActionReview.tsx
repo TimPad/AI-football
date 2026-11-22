@@ -97,6 +97,7 @@ function newAction(kind: Action['kind'], playerId: string | null): Action {
     source_video_ms: null,
     shot_id: null,
     decision: 'accepted',
+    review: null, // внесено человеком
     notes: '',
   };
 }

@@ -1816,6 +1816,10 @@ summary {
   max-width: 100%;
   height: auto;
 }
+/* fieldset по умолчанию не уже содержимого: на телефоне форма действий была шире экрана. */
+#action-journal fieldset {
+  min-width: 0;
+}
 .interval-editor,
 .action-editor,
 .category-coverage {
@@ -2025,7 +2029,8 @@ summary {
 }
 .camera-editor label.button,
 .reference-upload label.button,
-.replay-badge-setup label.button {
+.replay-badge-setup label.button,
+.pass-clip label.button {
   display: inline-flex;
   align-items: center;
   gap: 8px;

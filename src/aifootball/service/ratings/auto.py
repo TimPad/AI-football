@@ -213,6 +213,7 @@ def actions_document(run, job, part, assigned):
                 'source_video_ms': None,
                 'shot_id': None,
                 'decision': 'accepted',
+                'review': 'auto',
                 'notes': '',
             }
         )
