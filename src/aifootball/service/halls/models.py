@@ -69,10 +69,27 @@ class CameraProfile(Entity, Base):
     frame_width = Column(Integer, nullable=False)
     frame_height = Column(Integer, nullable=False)
     points = Column(JSONB, nullable=False)
-    pitch_polygon_px = Column(JSONB, nullable=False)
+    # Контур размечается только у неподвижной камеры; у поворотной обработчик строит его по гомографии.
+    pitch_polygon_px = Column(JSONB(none_as_null=True))
     homography = Column(JSONB, nullable=False)
     calibration = Column(JSONB)
     reprojection_error_m = Column(Float, nullable=False)
     leave_one_out_error_m = Column(Float)
     reference_sha256 = Column(String(64))  # эталонный кадр этой версии (camera-frames/<id>.jpg), задаётся один раз
-    __table_args__ = (UniqueConstraint('hall_id', 'name', 'version', name='uq_camera_version'),)
+    # fixed — неподвижная камера; ptz — трансляция с оператором (пан и зум), кадры привязываются к эталонному.
+    motion = Column(String(10), nullable=False, default='fixed', server_default='fixed')
+    overlay = Column(JSONB(none_as_null=True))  # ptz: графика трансляции, доли кадра [x1, y1, x2, y2]
+    # ptz: образец плашки повтора {sha256, xy, size} (camera-frames/<id>-replay-badge.png), задаётся один раз
+    replay_badge = Column(JSONB(none_as_null=True))
+    __table_args__ = (
+        UniqueConstraint('hall_id', 'name', 'version', name='uq_camera_version'),
+        CheckConstraint(
+            "(motion = 'fixed' AND pitch_polygon_px IS NOT NULL AND overlay IS NULL AND replay_badge IS NULL)"
+            " OR (motion = 'ptz' AND pitch_polygon_px IS NULL AND overlay IS NOT NULL)",
+            name='ck_camera_motion',
+        ),
+    )
+
+    @property
+    def is_ptz(self):
+        return self.motion == 'ptz'

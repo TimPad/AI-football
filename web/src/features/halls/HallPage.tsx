@@ -8,7 +8,18 @@ import { useDocumentTitle } from '../../components/useDocumentTitle';
 import { useAuth } from '../auth/Auth';
 import { useDraft } from '../protocol/drafts';
 import { AddressField } from './AddressField';
-import { type Frame, FramePicker, frameFromVideo, landmarks, pointLabel, readImageSize } from './FramePicker';
+import {
+  type Frame,
+  FramePicker,
+  frameFromVideo,
+  landmarks,
+  outlineFromHomography,
+  pointLabel,
+  type Rect,
+  RectPicker,
+  Rects,
+  readImageSize,
+} from './FramePicker';
 
 export function HallList() {
   useDocumentTitle('Залы');
@@ -313,6 +324,8 @@ export function HallEditor({
   );
 }
 type Point = { px: [string, string]; m: [string, string] };
+type Motion = 'fixed' | 'ptz';
+// motion и overlay необязательны: черновики, сохранённые до поворотных камер, остаются годными.
 type CameraDraft = {
   request_id: string;
   expected_hall_revision: number;
@@ -323,7 +336,23 @@ type CameraDraft = {
   points: Point[];
   polygon: string;
   calibration: string;
+  motion?: Motion;
+  overlay?: number[][]; // графика трансляции, доли кадра x1, y1, x2, y2
 };
+const cornerPoints = (h: Hall): Point[] =>
+  [
+    [0, 0],
+    [h.pitch_length_m, 0],
+    [h.pitch_length_m, h.pitch_width_m],
+    [0, h.pitch_width_m],
+  ].map((m) => ({ px: ['', ''], m: m.map(String) as [string, string] }));
+// Неподвижной камере контур строится по первым четырём точкам — углам поля. У трансляции углы могли убрать:
+// возвращаем их на первые места, отметки уже отмеченных точек сохраняются.
+function cornersFirst(points: Point[], h: Hall): Point[] {
+  const same = (a: Point, b: Point) => a.m.every((v, i) => Number(v) === Number(b.m[i]));
+  const corners = cornerPoints(h).map((c) => points.find((p) => same(p, c)) ?? c);
+  return [...corners, ...points.filter((p) => !corners.some((c) => same(p, c)))];
+}
 function cameraDraft(h: Hall): CameraDraft {
   return {
     request_id: crypto.randomUUID(),
@@ -332,12 +361,7 @@ function cameraDraft(h: Hall): CameraDraft {
     name: 'Основная камера',
     frame_width: '',
     frame_height: '',
-    points: [
-      [0, 0],
-      [h.pitch_length_m, 0],
-      [h.pitch_length_m, h.pitch_width_m],
-      [0, h.pitch_width_m],
-    ].map((m) => ({ px: ['', ''], m: m.map(String) as [string, string] })),
+    points: cornerPoints(h),
     polygon: '',
     calibration: '',
   };
@@ -352,6 +376,10 @@ function validCamera(v: unknown): v is CameraDraft {
     ['name', 'frame_width', 'frame_height', 'polygon', 'calibration'].every(
       (k) => typeof d[k as keyof CameraDraft] === 'string',
     ) &&
+    (d.motion === undefined || d.motion === 'fixed' || d.motion === 'ptz') &&
+    (d.overlay === undefined ||
+      (Array.isArray(d.overlay) &&
+        d.overlay.every((r) => Array.isArray(r) && r.length === 4 && r.every((v) => typeof v === 'number')))) &&
     Array.isArray(d.points) &&
     d.points.length >= 4 &&
     d.points.every(
@@ -373,7 +401,9 @@ function CameraProfiles({ hall }: { hall: Hall }) {
       <div className="panel-head">
         <div>
           <h2>Камеры и координаты поля</h2>
-          <p className="muted">Для неподвижной камеры: точки на кадре → метры на поле.</p>
+          <p className="muted">
+            Точки на кадре → метры на поле: для неподвижной камеры и для трансляции с поворотом и зумом.
+          </p>
         </div>
         <button disabled={hall.archived} onClick={() => setOpen(!open)}>
           {open ? 'Закрыть форму' : 'Добавить профиль камеры'}
@@ -399,6 +429,7 @@ function CameraProfiles({ hall }: { hall: Hall }) {
             <details key={p.id}>
               <summary>
                 {p.name} · версия {p.version}
+                {p.motion === 'ptz' ? ' · трансляция' : ''}
                 {!p.matches_current_dimensions ? ' · прежние размеры поля' : ''}
               </summary>
               <p className="muted">
@@ -407,6 +438,7 @@ function CameraProfiles({ hall }: { hall: Hall }) {
                 {p.leave_one_out_error_m != null ? ` (проверка — ${cm(p.leave_one_out_error_m)} см)` : ''}
               </p>
               <ReferenceFrame hall={hall} profile={p} onSaved={state.reload} />
+              {p.motion === 'ptz' && <ReplayBadge hall={hall} profile={p} onSaved={state.reload} />}
               <ProfilePoints points={p.points} />
             </details>
           ))}
@@ -465,13 +497,26 @@ function ReferenceFrame({ hall, profile, onSaved }: { hall: Hall; profile: Camer
   }
   const w = profile.frame_width,
     h = profile.frame_height;
+  const ptz = profile.motion === 'ptz';
+  // У трансляции контур не размечен: показываем тот, что обработчик построит по точкам.
+  const outline = ptz
+    ? outlineFromHomography(profile.homography, profile.pitch_length_m, profile.pitch_width_m)
+    : profile.pitch_polygon_px;
+  const badge = profile.replay_badge;
   if (profile.reference_sha256)
     return (
       <figure className="reference-frame">
         <div className="reference-stage" style={{ aspectRatio: `${w} / ${h}` }}>
           <img src={`/api/v1${path}`} alt={`Эталонный кадр камеры «${profile.name}», версия ${profile.version}`} />
           <svg viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
-            <polygon points={profile.pitch_polygon_px.map((p) => p.join(',')).join(' ')} strokeWidth={w / 250} />
+            <Rects rects={(profile.overlay ?? []).map((r) => fractionsToPx(r, w, h))} />
+            {badge && (
+              <Rects
+                className="badge-rect"
+                rects={[[badge.xy[0], badge.xy[1], badge.xy[0] + badge.size[0], badge.xy[1] + badge.size[1]]]}
+              />
+            )}
+            {outline && <polygon points={outline.map((p) => p.join(',')).join(' ')} strokeWidth={w / 250} />}
             {(profile.points as { px: [number, number] }[]).map((p, i) => (
               <g key={i}>
                 <circle cx={p.px[0]} cy={p.px[1]} r={w / 180} />
@@ -483,18 +528,35 @@ function ReferenceFrame({ hall, profile, onSaved }: { hall: Hall; profile: Camer
           </svg>
         </div>
         <figcaption className="muted">
-          Эталонный кадр. В каждой записи обработчик сверяет с ним положение камеры и сам поправляет небольшой сдвиг;
-          при большом — попросит новую версию профиля. Точки и контур нанесены по профилю и должны лежать на разметке
-          поля.
+          {ptz ? (
+            <>
+              Эталонный кадр трансляции. Каждый кадр записи обработчик привязывает к нему по фону: стенам, баннерам,
+              разметке. Графика трансляции (жёлтый пунктир) в сверку не идёт, кадры с плашкой повтора (красная рамка) —
+              в координаты. Контур построен по точкам и должен лечь на линии поля.
+            </>
+          ) : (
+            <>
+              Эталонный кадр. В каждой записи обработчик сверяет с ним положение камеры и сам поправляет небольшой
+              сдвиг; при большом — попросит новую версию профиля. Точки и контур нанесены по профилю и должны лежать на
+              разметке поля.
+            </>
+          )}
         </figcaption>
       </figure>
     );
   return (
     <div className="reference-upload">
-      <p>
-        Эталонный кадр не загружен. Загрузите кадр этой камеры в том же положении и разрешении ({w} × {h} px), по
-        которому отмечены точки: обработчик будет сам замечать сдвиг камеры между днями и поправлять геометрию.
-      </p>
+      {ptz ? (
+        <p>
+          Эталонный кадр не загружен, а без него задание по трансляции не выдаётся. Загрузите кадр, на котором отмечены
+          точки ({w} × {h} px): к нему обработчик привяжет каждый кадр записи.
+        </p>
+      ) : (
+        <p>
+          Эталонный кадр не загружен. Загрузите кадр этой камеры в том же положении и разрешении ({w} × {h} px), по
+          которому отмечены точки: обработчик будет сам замечать сдвиг камеры между днями и поправлять геометрию.
+        </p>
+      )}
       <label className={`button${busy ? ' disabled' : ''}`}>
         {busy ? 'Загружаем…' : 'Загрузить эталонный кадр'}
         <input
@@ -516,6 +578,165 @@ function ReferenceFrame({ hall, profile, onSaved }: { hall: Hall; profile: Camer
     </div>
   );
 }
+const fractionsToPx = (r: number[], w: number, h: number): Rect => [r[0] * w, r[1] * h, r[2] * w, r[3] * h];
+const pxToFractions = (r: Rect, w: number, h: number) =>
+  [r[0] / w, r[1] / h, r[2] / w, r[3] / h].map((v) => Math.round(v * 10000) / 10000);
+// «12:34» или «1:02:03» -> секунды; пусто или неразборчиво — undefined (берётся начало записи).
+function seconds(value: string) {
+  const parts = value.trim().split(':').map(Number);
+  if (!value.trim() || parts.length > 3 || parts.some((v) => !Number.isFinite(v) || v < 0)) return undefined;
+  return parts.reduce((total, v) => total * 60 + v, 0);
+}
+// Момент записи для кадра: самый широкий план для эталона, повтор с плашкой.
+function MomentField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  return (
+    <label className="moment-field">
+      {label}
+      <input inputMode="numeric" placeholder="мм:сс" value={value} onChange={(e) => onChange(e.target.value)} />
+    </label>
+  );
+}
+// Плашка повтора трансляции: по ней обработчик узнаёт повторы — их снимает та же камера, и по фону склейку
+// не заметить. Обводится на полном кадре повтора; сервер сам вырезает её и запоминает положение.
+function ReplayBadge({ hall, profile, onSaved }: { hall: Hall; profile: CameraProfile; onSaved: () => void }) {
+  const [frame, setFrame] = useState<Frame | null>(null);
+  const [rect, setRect] = useState<Rect | null>(null);
+  const [moment, setMoment] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>();
+  const base = `/halls/${hall.id}/camera-profiles/${profile.id}`;
+  const badge = profile.replay_badge;
+  const w = profile.frame_width,
+    h = profile.frame_height;
+  if (badge)
+    return (
+      <figure className="replay-badge">
+        <img src={`/api/v1${base}/replay-badge`} alt="Плашка повтора" width={badge.size[0]} height={badge.size[1]} />
+        <figcaption className="muted">
+          Плашка повтора {badge.size[0]} × {badge.size[1]} px, левый верхний угол — {badge.xy[0]}, {badge.xy[1]} px.
+          Кадры с ней обработчик считает повтором и в координаты не берёт. Другую плашку задаёт новая версия профиля.
+        </figcaption>
+      </figure>
+    );
+  async function open(load: () => Promise<File>) {
+    setError(undefined);
+    setBusy(true);
+    try {
+      const file = await load();
+      const size = await readImageSize(file);
+      if (size.w !== w || size.h !== h) {
+        URL.revokeObjectURL(size.url);
+        throw new Error(
+          `Кадр ${size.w} × ${size.h} px, а профиль — ${w} × ${h} px. Нужен кадр той же трансляции в полном разрешении.`,
+        );
+      }
+      if (frame) URL.revokeObjectURL(frame.url);
+      setFrame({ file, url: size.url, w, h });
+      setRect(null);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function save() {
+    if (!frame || !rect) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      const body = new FormData();
+      body.set('file', frame.file);
+      body.set('x', String(rect[0]));
+      body.set('y', String(rect[1]));
+      body.set('width', String(rect[2] - rect[0]));
+      body.set('height', String(rect[3] - rect[1]));
+      await api<CameraProfile>(`${base}/replay-badge`, { method: 'PUT', body, signal: AbortSignal.timeout(120000) });
+      URL.revokeObjectURL(frame.url);
+      onSaved();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="replay-badge-setup">
+      <h3>Плашка повтора</h3>
+      <p className="muted">
+        Необязательно. Повторы трансляция показывает той же камерой, и по фону их не отличить от игры. Если в повторе
+        есть плашка — логотип или надпись «Повтор», — обведите её на кадре повтора: такие кадры обработчик не возьмёт в
+        координаты и метры.
+      </p>
+      <div className="row wrap">
+        {profile.reference_sha256 && (
+          <button
+            type="button"
+            disabled={busy || hall.archived}
+            onClick={() =>
+              open(async () => {
+                const r = await fetch(`/api/v1${base}/reference-frame`, { credentials: 'same-origin' });
+                if (!r.ok) throw new Error('Не удалось открыть эталонный кадр');
+                return new File([await r.blob()], 'reference.jpg', { type: 'image/jpeg' });
+              })
+            }
+          >
+            Обвести на эталонном кадре
+          </button>
+        )}
+        <MomentField label="Повтор в записи" value={moment} onChange={setMoment} />
+        <label className={`button${busy ? ' disabled' : ''}`}>
+          Взять кадр повтора из записи
+          <input
+            type="file"
+            accept="video/*"
+            hidden
+            disabled={busy || hall.archived}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void open(() => frameFromVideo(f, seconds(moment)));
+              e.target.value = '';
+            }}
+          />
+        </label>
+        <label className={`button${busy ? ' disabled' : ''}`}>
+          Загрузить картинку
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            disabled={busy || hall.archived}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void open(async () => f);
+              e.target.value = '';
+            }}
+          />
+        </label>
+      </div>
+      {frame && (
+        <>
+          <p className="frame-step" role="status" aria-label="Обводка плашки">
+            {rect
+              ? `Плашка ${rect[2] - rect[0]} × ${rect[3] - rect[1]} px. Если рамка неточная, обведите заново.`
+              : 'Обведите плашку рамкой: нажмите в одном углу и протяните до противоположного.'}
+          </p>
+          <RectPicker
+            frame={frame}
+            rects={rect ? [rect] : []}
+            label="Обводка плашки повтора на кадре"
+            className="badge-rect"
+            disabled={busy}
+            onDraw={setRect}
+          />
+          <button type="button" className="primary" disabled={!rect || busy} onClick={save}>
+            {busy ? 'Сохраняем…' : 'Сохранить плашку'}
+          </button>
+        </>
+      )}
+      <ErrorBox error={error} />
+    </div>
+  );
+}
 function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
   const auth = useAuth();
   const [initial] = useState(() => cameraDraft(hall));
@@ -529,6 +750,11 @@ function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
   const [chosen, setChosen] = useState<number | null>(null);
   const marks = landmarks(hall.pitch_length_m, hall.pitch_width_m);
   const empty = (p: Point) => p.px[0] === '' || p.px[1] === '';
+  const ptz = d.motion === 'ptz';
+  const overlay = d.overlay ?? [];
+  // Трансляция: на кадре отмечают или точки разметки, или графику трансляции.
+  const [drawing, setDrawing] = useState(false);
+  const [moment, setMoment] = useState('');
   // Активная точка — выбранная вручную или первая неотмеченная; когда отмечены все, клик по кадру ничего не меняет.
   const active = chosen ?? d.points.findIndex(empty);
   function change(patch: Partial<CameraDraft>) {
@@ -540,7 +766,9 @@ function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
     setError(undefined);
     setReading(true);
     try {
-      const file = source.type.startsWith('video/') ? await frameFromVideo(source) : source;
+      const file = source.type.startsWith('video/')
+        ? await frameFromVideo(source, ptz ? seconds(moment) : undefined)
+        : source;
       const { url, w, h } = await readImageSize(file);
       if (frame) URL.revokeObjectURL(frame.url);
       setFrame({ file, url, w, h });
@@ -587,13 +815,17 @@ function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
         frame_width: Number(d.frame_width),
         frame_height: Number(d.frame_height),
         points,
-        pitch_polygon_px: d.polygon.trim() ? JSON.parse(d.polygon) : points.slice(0, 4).map((p) => p.px),
-        calibration: d.calibration.trim() ? JSON.parse(d.calibration) : null,
+        // Трансляция: контур обработчик строит по точкам, объектив с зумом не калибруется.
+        ...(ptz
+          ? { motion: 'ptz', overlay }
+          : { pitch_polygon_px: d.polygon.trim() ? JSON.parse(d.polygon) : points.slice(0, 4).map((p) => p.px) }),
+        calibration: !ptz && d.calibration.trim() ? JSON.parse(d.calibration) : null,
       };
       draft.change({ ...d, attempted: true });
       const profile = await post<CameraProfile>(`/halls/${hall.id}/camera-profiles`, body);
       draft.clear();
-      // Тот же кадр — эталонный для сверки сдвига камеры; ошибка загрузки не отменяет созданный профиль.
+      // Тот же кадр — эталонный: для сверки сдвига камеры, а у трансляции — для привязки каждого кадра записи.
+      // Ошибка загрузки не отменяет созданный профиль: кадр можно загрузить в карточке профиля.
       if (frame) {
         try {
           const form = new FormData();
@@ -670,7 +902,7 @@ function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
                   )),
                 )}
                 <td>
-                  {i >= 4 && (
+                  {(i >= 4 || (ptz && d.points.length > 4)) && (
                     <button
                       type="button"
                       aria-label={`Убрать точку ${i + 1}`}
@@ -707,15 +939,46 @@ function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
         <Field label="Название камеры">
           <input required maxLength={200} value={d.name} onChange={(e) => change({ name: e.target.value })} />
         </Field>
-        <h3>Кадр с камеры</h3>
-        {!frame && (
+        <div className="camera-motion">
+          <div className="segmented" role="group" aria-label="Как снимает камера">
+            {(['fixed', 'ptz'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={(d.motion ?? 'fixed') === m ? 'active' : ''}
+                aria-pressed={(d.motion ?? 'fixed') === m}
+                onClick={() => {
+                  change(m === 'fixed' ? { motion: m, points: cornersFirst(d.points, hall) } : { motion: m });
+                  setDrawing(false);
+                  setChosen(null);
+                }}
+              >
+                {m === 'fixed' ? 'Неподвижная камера' : 'Трансляция с поворотом и зумом'}
+              </button>
+            ))}
+          </div>
+          <p className="muted small">
+            {ptz
+              ? 'Оператор поворачивает камеру и меняет зум. Точки отмечаются на одном эталонном кадре, а каждый кадр записи обработчик сам привяжет к нему по фону: стенам, баннерам, разметке.'
+              : 'Камера закреплена и весь матч смотрит в одну точку.'}
+          </p>
+        </div>
+        <h3>{ptz ? 'Эталонный кадр трансляции' : 'Кадр с камеры'}</h3>
+        {!frame && !ptz && (
           <p className="muted">
             Возьмите кадр из записи этой камеры — кликом отметите на нём углы поля. Подойдёт любой момент матча: важна
             неподвижная разметка, а не игроки. Видео остаётся на компьютере, на сервер уходит только кадр; после
             сохранения он станет эталонным, и обработчик будет замечать сдвиг камеры.
           </p>
         )}
+        {!frame && ptz && (
+          <p className="muted">
+            Возьмите самый широкий план матча, где видно больше всего разметки, без повтора и графики на весь экран.
+            Укажите момент записи или загрузите стоп-кадр. Видео остаётся на компьютере, на сервер уходит только кадр.
+          </p>
+        )}
         <div className="row wrap">
+          {ptz && <MomentField label="Момент записи" value={moment} onChange={setMoment} />}
           <label className={`button${frame ? '' : ' primary'}`}>
             {reading ? 'Открываем…' : frame ? 'Взять другой кадр из записи' : 'Взять кадр из записи'}
             <input
@@ -750,7 +1013,59 @@ function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
             Картинка — стоп-кадр в полном разрешении записи (например, сохранённый в VLC), а не снимок экрана.
           </p>
         )}
-        {frame && (
+        {frame && ptz && (
+          <div className="segmented" role="group" aria-label="Что отмечать на кадре">
+            <button
+              type="button"
+              className={drawing ? '' : 'active'}
+              aria-pressed={!drawing}
+              onClick={() => setDrawing(false)}
+            >
+              Точки разметки
+            </button>
+            <button
+              type="button"
+              className={drawing ? 'active' : ''}
+              aria-pressed={drawing}
+              onClick={() => setDrawing(true)}
+            >
+              Графика трансляции{overlay.length ? ` · ${overlay.length}` : ''}
+            </button>
+          </div>
+        )}
+        {frame && ptz && drawing && (
+          <>
+            <p className="frame-step" role="status" aria-label="Графика трансляции">
+              Обведите рамкой табло, логотипы и бегущую строку — всё, что нарисовано поверх картинки и не двигается
+              вместе с полем. Нажмите в одном углу и протяните до противоположного.
+            </p>
+            <RectPicker
+              frame={frame}
+              rects={overlay.map((r) => fractionsToPx(r, frame.w, frame.h))}
+              label="Графика трансляции на кадре"
+              disabled={locked || overlay.length >= 20}
+              onDraw={(r) => change({ overlay: [...overlay, pxToFractions(r, frame.w, frame.h)] })}
+            />
+            <div className="frame-points">
+              {overlay.map((r, i) => (
+                <button
+                  type="button"
+                  key={i}
+                  aria-label={`Убрать графику ${i + 1}`}
+                  title={`${Math.round(r[0] * 100)}–${Math.round(r[2] * 100)}% ширины, ${Math.round(r[1] * 100)}–${Math.round(r[3] * 100)}% высоты`}
+                  onClick={() => change({ overlay: overlay.filter((_, n) => n !== i) })}
+                >
+                  Графика {i + 1} ×
+                </button>
+              ))}
+            </div>
+            <p className="muted small">
+              Обработчик не ищет по графике совпадений с эталоном и не берёт оттуда игроков. Если графики нет, ничего не
+              обводите.
+            </p>
+          </>
+        )}
+        {frame && !drawing && (
           <>
             <p className="frame-step" role="status" aria-label="Разметка камеры">
               {active < 0 ? (
@@ -768,20 +1083,36 @@ function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
               active={active}
               disabled={locked || active < 0}
               onPick={pick}
+              outline={!ptz}
+              rects={ptz ? overlay.map((r) => fractionsToPx(r, frame.w, frame.h)) : []}
             />
             <div className="frame-points">
               {d.points.map((p, i) => (
-                <button
-                  type="button"
-                  key={i}
-                  aria-pressed={i === active}
-                  className={empty(p) ? '' : 'done'}
-                  onClick={() => setChosen(i)}
-                  title={pointLabel(p, marks, i)}
-                >
-                  {i + 1}
-                  {empty(p) ? '' : ' ✓'}
-                </button>
+                <span key={i} className="frame-point">
+                  <button
+                    type="button"
+                    aria-pressed={i === active}
+                    className={empty(p) ? '' : 'done'}
+                    onClick={() => setChosen(i)}
+                    title={pointLabel(p, marks, i)}
+                  >
+                    {i + 1}
+                    {empty(p) ? '' : ' ✓'}
+                  </button>
+                  {ptz && d.points.length > 4 && (
+                    <button
+                      type="button"
+                      className="frame-point-remove"
+                      aria-label={`Не отмечать точку ${i + 1}`}
+                      onClick={() => {
+                        change({ points: d.points.filter((_, n) => n !== i) });
+                        setChosen(null);
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
               ))}
               <select
                 aria-label="Добавить точку разметки"
@@ -797,15 +1128,19 @@ function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
               </select>
             </div>
             <p className="muted small">
-              Первые четыре точки — углы поля, по ним строится контур. Чем больше видимых точек разметки, тем точнее
-              координаты. Кадр {frame.w} × {frame.h} px.
+              {ptz
+                ? 'Отметьте не меньше четырёх точек разметки, видных на этом кадре, лучше по всей длине поля: углы, центральную линию, отметки 6 и 10 м, штанги. Невидимую точку замените: добавьте другую и уберите лишнюю крестиком. Контур поля обработчик построит по точкам сам.'
+                : 'Первые четыре точки — углы поля, по ним строится контур. Чем больше видимых точек разметки, тем точнее координаты.'}{' '}
+              Кадр {frame.w} × {frame.h} px.
             </p>
           </>
         )}
         {/* Координаты числами, контур и объектив — техническая настройка: только для Админ+ и свёрнуто. */}
         {specialist && (
           <details className="camera-advanced">
-            <summary>Для специалиста: координаты, контур и объектив</summary>
+            <summary>
+              {ptz ? 'Для специалиста: координаты точек' : 'Для специалиста: координаты, контур и объектив'}
+            </summary>
             {!frame && (
               <div className="form-grid">
                 <Field label="Ширина кадра, px">
@@ -833,23 +1168,27 @@ function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
               направлен вправо, Y вниз.
             </p>
             {table}
-            <Field label="Контур поля на кадре, JSON">
-              <textarea
-                rows={3}
-                value={d.polygon}
-                onChange={(e) => change({ polygon: e.target.value })}
-                placeholder="[[x1,y1],[x2,y2],[x3,y3],[x4,y4]]"
-              />
-            </Field>
-            <p className="muted">Если оставить пустым, контур проходит через первые четыре точки.</p>
-            <Field label="Калибровка объектива, JSON">
-              <textarea
-                rows={3}
-                value={d.calibration}
-                onChange={(e) => change({ calibration: e.target.value })}
-                placeholder={'{"K":[[fx,0,cx],[0,fy,cy],[0,0,1]],"dist":[k1,k2,p1,p2,k3]}'}
-              />
-            </Field>
+            {!ptz && (
+              <>
+                <Field label="Контур поля на кадре, JSON">
+                  <textarea
+                    rows={3}
+                    value={d.polygon}
+                    onChange={(e) => change({ polygon: e.target.value })}
+                    placeholder="[[x1,y1],[x2,y2],[x3,y3],[x4,y4]]"
+                  />
+                </Field>
+                <p className="muted">Если оставить пустым, контур проходит через первые четыре точки.</p>
+                <Field label="Калибровка объектива, JSON">
+                  <textarea
+                    rows={3}
+                    value={d.calibration}
+                    onChange={(e) => change({ calibration: e.target.value })}
+                    placeholder={'{"K":[[fx,0,cx],[0,fy,cy],[0,0,1]],"dist":[k1,k2,p1,p2,k3]}'}
+                  />
+                </Field>
+              </>
+            )}
           </details>
         )}
       </fieldset>
@@ -861,7 +1200,11 @@ function CameraEditor({ hall, onSaved }: { hall: Hall; onSaved: () => void }) {
           </button>
         </div>
       )}
-      <p className="muted">При перемещении камеры, зуме или смене разрешения создайте новую версию профиля.</p>
+      <p className="muted">
+        {ptz
+          ? 'Повороты и зум оператора профиль учитывает сам. Новая версия нужна, если камеру переставили, сменились разрешение или графика трансляции.'
+          : 'При перемещении камеры, зуме или смене разрешения создайте новую версию профиля.'}
+      </p>
     </form>
   );
 }

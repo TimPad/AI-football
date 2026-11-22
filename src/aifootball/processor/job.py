@@ -54,9 +54,46 @@ class JobContext:
     files: dict[str, bytes]
 
 
+def _check_camera_motion(cfg, files, camera):
+    """Тип камеры и её файлы в venue.yaml и пакете — как в снимке задания.
+
+    Неподвижная камера: контур поля размечен (pitch_polygon.json), секции camera нет — как в прежних заданиях.
+    Поворотная: контура нет (его строит aifootball.venue по гомографии), эталонный кадр обязателен, графика
+    трансляции и плашка повтора — те же, что в снимке.
+    """
+    section = cfg.get('camera')
+    if camera.get('motion', 'fixed') == 'fixed':
+        ensure('pitch_polygon.json' in files, 'Неполный пакет задания')
+        ensure(
+            section is None
+            and 'replay_badge.png' not in files
+            and load_json(files['pitch_polygon.json'], 'pitch_polygon.json')['points_px'] == camera['polygon_px'],
+            'CV-геометрия не совпадает со снимком задания',
+        )
+        return
+    ensure(camera['motion'] == 'ptz', 'Неизвестный тип камеры задания')
+    badge = camera.get('replay_badge')
+    ensure(
+        isinstance(section, dict)
+        and set(section) <= {'motion', 'overlay', 'replay_badge_xy'}
+        and section.get('motion') == 'ptz'
+        and section.get('overlay') == camera['overlay']
+        and section.get('replay_badge_xy') == (badge['xy'] if badge else None)
+        and 'pitch_polygon.json' not in files
+        and camera['polygon_px'] is None,
+        'Поворотная камера в настройках не совпадает со снимком задания',
+    )
+    ensure(camera.get('reference_sha256') is not None, 'Поворотной камере нужен эталонный кадр профиля')
+    ensure(
+        ('replay_badge.png' in files) == (badge is not None)
+        and (badge is None or sha256(files['replay_badge.png']).hexdigest() == badge['sha256']),
+        'Плашка повтора не совпадает с заданием',
+    )
+
+
 def read_job(path):
     files = read_archive(path, job=True)
-    ensure({'job.json', 'venue.yaml', 'homography.json', 'pitch_polygon.json'} <= set(files), 'Неполный пакет задания')
+    ensure({'job.json', 'venue.yaml', 'homography.json'} <= set(files), 'Неполный пакет задания')
     job = load_json(files['job.json'], 'job.json')
     try:
         ensure(job['contract_version'] == '1', 'Неподдерживаемая версия задания')
@@ -75,10 +112,10 @@ def read_job(path):
             and proc['camera_profile_id'] == camera['id']
             and proc['frame_width'] == camera['frame_width']
             and proc['frame_height'] == camera['frame_height']
-            and load_json(files['homography.json'], 'homography.json')['H'] == camera['homography']
-            and load_json(files['pitch_polygon.json'], 'pitch_polygon.json')['points_px'] == camera['polygon_px'],
+            and load_json(files['homography.json'], 'homography.json')['H'] == camera['homography'],
             'CV-геометрия не совпадает со снимком задания',
         )
+        _check_camera_motion(cfg, files, camera)
         calibration = load_json(files['calib.json'], 'calib.json') if 'calib.json' in files else None
         ensure(calibration == camera['calibration'], 'CV-геометрия объектива не совпадает')
         # Эталонный кадр профиля: по нему обработчик сверяет, не сдвинута ли камера.
@@ -271,6 +308,7 @@ def package_result(
     from aifootball.analytics.periods import find_halves, in_period, parse_halves
     from aifootball.analytics.report_data import assign_goalkeeper_teams, build_report, heatmap_seconds, thumb_request
     from aifootball.geometry.camera_drift import alignment_messages, apply_alignment
+    from aifootball.geometry.registration import registration_messages
     from aifootball.report.frames import grab_images
     from aifootball.venue import load_venue
 
@@ -286,7 +324,9 @@ def package_result(
             (root / name).write_bytes(raw)
         venue = load_venue(root)
     meta_path = artifacts / 'meta.json'
-    alignment = load_json(meta_path.read_bytes(), 'meta.json').get('camera_alignment') if meta_path.exists() else None
+    meta = load_json(meta_path.read_bytes(), 'meta.json') if meta_path.exists() else {}
+    alignment = meta.get('camera_alignment')
+    registration = meta.get('camera_registration')
     venue = apply_alignment(venue, alignment)
     times = tracks['ts'].unique().sort().to_list()
     steps = [b - a for a, b in zip(times, times[1:]) if 0 < b - a <= 1]
@@ -359,6 +399,8 @@ def package_result(
     partial = partial_recording or report['match']['processed_s'] < source['duration_s'] - max(1, step * 2)
     events, events_warning = ball_events(artifacts, venue, normalized, spans, {t['track_id'] for t in indexed}, models)
     camera_warnings, camera_errors = alignment_messages(alignment)
+    ptz_warnings, ptz_errors = registration_messages(registration)
+    camera_warnings, camera_errors = camera_warnings + ptz_warnings, camera_errors + ptz_errors
     warnings = (
         (['Частичная запись или неполное покрытие обработки'] if partial else [])
         + ([events_warning] if events_warning else [])
@@ -375,6 +417,10 @@ def package_result(
     if alignment:
         checks['camera_alignment'] = {
             k: alignment[k] for k in ('status', 'shift_px', 'error_if_uncorrected_m', 'moved_at_s') if k in alignment
+        }
+    if registration:
+        checks['camera_registration'] = {
+            k: registration[k] for k in ('share', 'replays', 'keyframes') if k in registration
         }
     # Кандидаты-игроки: склейка по тем же команде и роли, что в индексе (их видит проверка в кабинете).
     labels = pl.DataFrame(

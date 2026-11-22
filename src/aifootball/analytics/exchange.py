@@ -38,6 +38,7 @@ JOB_FILES = {
     'calib.json',
     'source.json',
     'reference.jpg',
+    'replay_badge.png',
 }
 
 

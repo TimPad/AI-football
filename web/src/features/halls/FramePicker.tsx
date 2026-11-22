@@ -1,8 +1,10 @@
-import type { MouseEvent } from 'react';
+import { type MouseEvent, type PointerEvent, useState } from 'react';
 
 export type Frame = { file: File; url: string; w: number; h: number };
 export type PickPoint = { px: [string, string]; m: [string, string] };
 export type Landmark = { label: string; m: [number, number] };
+// Прямоугольник в пикселях кадра: x1, y1, x2, y2 (правый нижний край не включается).
+export type Rect = [number, number, number, number];
 
 // Точки разметки мини-футбольного поля в метрах: X — вдоль длины, Y — вдоль ширины.
 // Отметки 6 и 10 м и ворота 3 м — по правилам футзала; линии поля берутся из карточки зала.
@@ -56,7 +58,7 @@ export function readImageSize(file: File): Promise<{ url: string; w: number; h: 
 
 // Кадр из файла записи — в исходном разрешении видео (скриншот экрана дал бы размер окна, а не записи).
 // Видео не покидает компьютер: на сервер уходит только этот кадр. Берём момент через несколько секунд от начала.
-export function frameFromVideo(file: File): Promise<File> {
+export function frameFromVideo(file: File, atSeconds?: number): Promise<File> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const video = document.createElement('video');
@@ -76,7 +78,9 @@ export function frameFromVideo(file: File): Promise<File> {
     video.onloadedmetadata = () => {
       if (!video.videoWidth) return fail('В файле нет видеодорожки');
       const d = Number.isFinite(video.duration) ? video.duration : 0;
-      video.currentTime = Math.max(0.05, Math.min(5, d / 2));
+      // Нужный момент (кадр повтора) — если задан; иначе через несколько секунд от начала.
+      const at = atSeconds === undefined ? Math.min(5, d / 2) : d ? Math.min(atSeconds, d - 0.05) : atSeconds;
+      video.currentTime = Math.max(0.05, at);
     };
     video.onseeked = () => {
       clearTimeout(timer);
@@ -105,12 +109,16 @@ export function FramePicker({
   active,
   disabled,
   onPick,
+  outline = true,
+  rects = [],
 }: {
   frame: Frame;
   points: PickPoint[];
   active: number;
   disabled: boolean;
   onPick: (px: [number, number]) => void;
+  outline?: boolean; // контур по первым четырём точкам — только у неподвижной камеры
+  rects?: Rect[]; // графика трансляции, закрытая от сверки
 }) {
   const { w, h } = frame;
   const placed = points.map((p, i) => ({
@@ -137,7 +145,10 @@ export function FramePicker({
         onClick={pick}
         style={{ cursor: disabled ? 'default' : 'crosshair' }}
       >
-        {corners.length > 1 && <polygon points={corners.map((p) => `${p.x},${p.y}`).join(' ')} strokeWidth={w / 250} />}
+        <Rects rects={rects} />
+        {outline && corners.length > 1 && (
+          <polygon points={corners.map((p) => `${p.x},${p.y}`).join(' ')} strokeWidth={w / 250} />
+        )}
         {placed
           .filter((p) => p.set)
           .map((p) => (
@@ -151,4 +162,100 @@ export function FramePicker({
       </svg>
     </div>
   );
+}
+
+export function Rects({ rects, className = 'overlay-rect' }: { rects: Rect[]; className?: string }) {
+  return (
+    <>
+      {rects.map(([x1, y1, x2, y2], i) => (
+        <rect key={i} className={className} x={x1} y={y1} width={x2 - x1} height={y2 - y1} />
+      ))}
+    </>
+  );
+}
+
+// Кадр, на котором рамку тянут мышью или пальцем: графика трансляции, плашка повтора.
+export function RectPicker({
+  frame,
+  rects,
+  label,
+  disabled,
+  onDraw,
+  className,
+}: {
+  frame: Frame;
+  rects: Rect[];
+  label: string;
+  disabled: boolean;
+  onDraw: (rect: Rect) => void;
+  className?: string;
+}) {
+  const { w, h } = frame;
+  const [drag, setDrag] = useState<{ x: number; y: number; cx: number; cy: number } | null>(null);
+  const at = (e: PointerEvent<SVGSVGElement>): [number, number] => {
+    const box = e.currentTarget.getBoundingClientRect();
+    return [
+      Math.min(w, Math.max(0, Math.round(((e.clientX - box.left) / box.width) * w))),
+      Math.min(h, Math.max(0, Math.round(((e.clientY - box.top) / box.height) * h))),
+    ];
+  };
+  const box = (d: NonNullable<typeof drag>): Rect => [
+    Math.min(d.x, d.cx),
+    Math.min(d.y, d.cy),
+    Math.max(d.x, d.cx),
+    Math.max(d.y, d.cy),
+  ];
+  return (
+    <div className="reference-stage frame-picker" style={{ aspectRatio: `${w} / ${h}` }}>
+      <img src={frame.url} alt="Кадр для обводки рамкой" />
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        role="img"
+        aria-label={label}
+        style={{ cursor: disabled ? 'default' : 'crosshair', touchAction: 'none' }}
+        onPointerDown={(e) => {
+          if (disabled) return;
+          e.currentTarget.setPointerCapture?.(e.pointerId);
+          const [x, y] = at(e);
+          setDrag({ x, y, cx: x, cy: y });
+        }}
+        onPointerMove={(e) => {
+          if (!drag) return;
+          const [cx, cy] = at(e);
+          setDrag({ ...drag, cx, cy });
+        }}
+        onPointerUp={(e) => {
+          if (!drag) return;
+          const [cx, cy] = at(e);
+          setDrag(null);
+          const r = box({ ...drag, cx, cy });
+          // Случайный клик без протяжки — не рамка.
+          if (r[2] - r[0] >= 8 && r[3] - r[1] >= 8) onDraw(r);
+        }}
+        onPointerCancel={() => setDrag(null)}
+      >
+        <Rects rects={rects} className={className} />
+        {drag && <Rects rects={[box(drag)]} className={`${className ?? 'overlay-rect'} drawing`} />}
+      </svg>
+    </div>
+  );
+}
+
+// Контур поля по гомографии «пиксели -> метры» (так его строит обработчик для поворотной камеры).
+// Углы, оказавшиеся по разные стороны горизонта, не рисуем: такой профиль сервис бы не принял.
+export function outlineFromHomography(H: number[][], length: number, width: number): [number, number][] | null {
+  const [[a, b, c], [d, e, f], [g, k, l]] = H;
+  const inv = [
+    [e * l - f * k, c * k - b * l, b * f - c * e],
+    [f * g - d * l, a * l - c * g, c * d - a * f],
+    [d * k - e * g, b * g - a * k, a * e - b * d],
+  ];
+  const corners = [
+    [0, 0],
+    [length, 0],
+    [length, width],
+    [0, width],
+  ].map(([x, y]) => inv.map((row) => row[0] * x + row[1] * y + row[2]));
+  if (!corners.every((p) => p[2] > 0) && !corners.every((p) => p[2] < 0)) return null;
+  return corners.map((p) => [p[0] / p[2], p[1] / p[2]]);
 }

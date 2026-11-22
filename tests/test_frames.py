@@ -33,6 +33,36 @@ def test_missing_file_fails_clearly(tmp_path):
         list(iter_frames(tmp_path / 'nope.mp4', target_fps=10))
 
 
+def test_without_seek_start_is_reached_by_reading_frames_in_order(tiny_video, monkeypatch):
+    """OpenCV перематывает по времени, а сообщает расчётный номер кадра: на записи с плавающим шагом кадров
+    номера после перемотки расходятся с чтением подряд. Без перемотки кадры к началу читаются по порядку."""
+    import cv2
+
+    positions = []
+    real = cv2.VideoCapture
+
+    class Spy:  # наследоваться от cv2.VideoCapture нельзя: падает расширение
+        def __init__(self, *args):
+            self.cap = real(*args)
+
+        def set(self, prop, value):
+            if prop == cv2.CAP_PROP_POS_FRAMES:
+                positions.append(value)
+            return self.cap.set(prop, value)
+
+        def __getattr__(self, name):
+            return getattr(self.cap, name)
+
+    monkeypatch.setattr(cv2, 'VideoCapture', Spy)
+    tail = list(iter_frames(tiny_video, 10, start_ms=1000, seek=False))
+    full = list(iter_frames(tiny_video, 10, seek=True))
+    assert all(p == 0 for p in positions)
+    assert [f[0] for f in tail] == [f[0] for f in full if f[1] >= 1.0]
+    assert all((a[2] == b[2]).all() for a, b in zip(tail, [f for f in full if f[1] >= 1.0]))
+    list(iter_frames(tiny_video, 10, start_ms=1000))
+    assert positions[-1] == 25  # по умолчанию — перемотка, как раньше
+
+
 @pytest.fixture
 def vfr_video(tmp_path):
     return write_vfr_video(tmp_path / 'vfr.mp4')

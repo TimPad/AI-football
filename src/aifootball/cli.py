@@ -2,6 +2,7 @@
 
 python -m aifootball.cli run     --video V --venue DIR --match DIR   # всё подряд
 python -m aifootball.cli detect  --video V --venue DIR --match DIR   # минуты
+python -m aifootball.cli register --video V --venue DIR --match DIR  # поворотная камера: привязка кадров к эталону
 python -m aifootball.cli track   --venue DIR --match DIR             # секунды
 python -m aifootball.cli project --venue DIR --match DIR
 python -m aifootball.cli metrics --venue DIR --match DIR
@@ -78,11 +79,43 @@ def cmd_detect(args, venue) -> None:
     )
 
 
+def cmd_register(args, venue) -> None:
+    """Поворотная камера: привязка каждого обрабатываемого кадра к эталонному кадру установки."""
+    import cv2
+
+    from aifootball.geometry.registration import register_video
+
+    if not venue.is_ptz:
+        raise ValueError('register нужен только поворотной камере (camera.motion: ptz в venue.yaml)')
+    reference = cv2.imread(str(venue.root / 'reference.jpg'), cv2.IMREAD_COLOR)
+    if reference is None:
+        raise FileNotFoundError(f'{venue.root / "reference.jpg"}: нет эталонного кадра поворотной камеры')
+    result = register_video(args.video, venue, reference)
+    schemas.write(result.frames, args.match / 'registration.parquet', 'registration')
+    schemas.write_json(result.summary, args.match / 'registration.json')
+    share = result.summary['share']
+    print(
+        f'register: {result.summary["frames"]} кадров: привязано {share["ok"]:.1%}, слабо {share["weak"]:.1%}, '
+        f'потеряно {share["lost"]:.1%}, повторы {share["replay"]:.1%} ({len(result.summary["replays"])}); '
+        f'опорных {result.summary["keyframes"]}, связано с эталоном {result.summary["keyframes_linked_to_reference"]}'
+    )
+
+
+def read_registration(match: Path, venue):
+    """Привязка кадров поворотной камеры (None у неподвижной)."""
+    if not venue.is_ptz:
+        return None
+    path = match / 'registration.parquet'
+    if not path.exists():
+        raise FileNotFoundError(f'{path}: у поворотной камеры сначала нужна привязка кадров (команда register)')
+    return schemas.read(path, 'registration')
+
+
 def cmd_track(args, venue) -> None:
     from aifootball.perception.stitch import split_on_color_change, stitch_tracks
 
     detections = schemas.read(args.match / 'detections.parquet', 'detections')
-    raw_tracks = track_people(detections, venue)
+    raw_tracks = track_people(detections, venue, read_registration(args.match, venue))
     split_tracks = split_on_color_change(raw_tracks, team_color_centers(raw_tracks, venue.min_team_observations))
     stitched_tracks = stitch_tracks(split_tracks, max_gap_s=venue.max_gap_s * 5.0)
     assigned_teams = assign_teams(stitched_tracks, min_observations=venue.min_team_observations)
@@ -110,6 +143,13 @@ def cmd_metrics(args, venue) -> None:
     state = schemas.read(args.match / 'state.parquet', 'state')
     det_path = args.match / 'detections.parquet'
     detections = schemas.read(det_path, 'detections') if det_path.exists() else None
+    registration = read_registration(args.match, venue)
+    if detections is not None and registration is not None:
+        from aifootball.geometry.registration import detections_to_reference
+
+        detections = detections_to_reference(
+            detections, registration, venue.overlay, (venue.frame_width, venue.frame_height)
+        )
     ball_state = process_ball_trajectory(detections, venue) if detections is not None else None
 
     metrics = compute_metrics(state, venue.length_m, venue.width_m, ball_state=ball_state)
@@ -135,6 +175,10 @@ def cmd_render(args, venue) -> None:
     tracks = schemas.read(args.match / 'tracks.parquet', 'tracks')
     state = schemas.read(args.match / 'state.parquet', 'state')
     out = args.match / 'debug.mp4'
+    if venue.is_ptz:
+        from dataclasses import replace
+
+        venue = replace(venue, pitch_polygon_px=None)  # контур поворотной камеры — в пикселях эталона, не кадра
     written = render_debug_video(args.video, tracks, state, venue, out, max_seconds=args.seconds)
     print(f'render: {written} кадров -> {out}')
 
@@ -144,6 +188,8 @@ def cmd_run(args, venue) -> bool:
         cmd_detect(args, venue)
     else:
         print('detect: пропущен, detections.parquet уже есть (--redetect, чтобы пересчитать)')
+    if venue.is_ptz and (args.redetect or not (args.match / 'registration.parquet').exists()):
+        cmd_register(args, venue)
     cmd_track(args, venue)
     cmd_project(args, venue)
     cmd_metrics(args, venue)
@@ -348,6 +394,7 @@ def build_parser() -> argparse.ArgumentParser:
         return p
 
     add('detect', video=True, models=True)
+    add('register', video=True)
     add('track')
     add('project')
     add('metrics')
@@ -375,6 +422,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 COMMANDS = {
     'detect': cmd_detect,
+    'register': cmd_register,
     'track': cmd_track,
     'project': cmd_project,
     'metrics': cmd_metrics,

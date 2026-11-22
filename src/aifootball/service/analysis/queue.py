@@ -163,6 +163,24 @@ def queue_query(tid):
             else_=cast(literal('{}'), JSONB),
         )
     )
+    # То же, что analysis.context.camera_motion_context: поля поворотной камеры, у неподвижной — ничего.
+    current_camera = current_camera.op('||')(
+        case(
+            (
+                camera.motion == 'ptz',
+                func.jsonb_build_object('motion', camera.motion, 'overlay', camera.overlay).op('||')(
+                    case(
+                        (
+                            camera.replay_badge.is_not(None),
+                            func.jsonb_build_object('replay_badge', camera.replay_badge),
+                        ),
+                        else_=cast(literal('{}'), JSONB),
+                    )
+                ),
+            ),
+            else_=cast(literal('{}'), JSONB),
+        )
+    )
     current_pitch = func.jsonb_build_object('length_m', camera.pitch_length_m, 'width_m', camera.pitch_width_m)
     current_teams = func.jsonb_build_object(
         'home',

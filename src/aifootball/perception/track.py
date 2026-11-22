@@ -18,16 +18,28 @@ ACTIVATION_CONF = 0.4
 HIGH_CONF = 0.5
 
 
-def track_people(detections: pl.DataFrame, venue: Venue) -> pl.DataFrame:
+def track_people(detections: pl.DataFrame, venue: Venue, registration: pl.DataFrame | None = None) -> pl.DataFrame:
     """Присваивает людям track_id, считает точку касания пола и флаг «на поле».
 
     Роль и команда здесь ещё не известны: role='unknown', team=null.
     Их заполняет perception.teams.assign_teams.
+
+    Поворотная камера (registration — привязка кадров к эталону): трекер, точка ног и контур поля работают
+    в пикселях эталонного кадра, где движение камеры уже вычтено, как у неподвижной камеры. Рамки x1..y2
+    в результате остаются в пикселях своего кадра — по ним вырезаются игроки и стоп-кадры.
+    Кадры без надёжной привязки и повторы трекер видит пустыми: треки стареют, но не продолжаются.
     """
     polygon = venue.require_polygon()
     people = detections.filter(pl.col('cls') == 'person').sort('frame_id').with_row_index('row')
     if people.is_empty():
         return schemas.empty('tracks')
+    original = people
+    if registration is not None:
+        from aifootball.geometry.registration import detections_to_reference
+
+        people = detections_to_reference(people, registration, venue.overlay, (venue.frame_width, venue.frame_height))
+        if people.is_empty():
+            return schemas.empty('tracks')
 
     tracker = ByteTrackTracker(
         lost_track_buffer=venue.lost_buffer_30fps,
@@ -42,6 +54,8 @@ def track_people(detections: pl.DataFrame, venue: Venue) -> pl.DataFrame:
     # Кадр, где не нашлось вообще ничего, сюда не попадёт — на футзале с
     # 10 игроками в кадре такого не бывает.
     frames = detections.select('frame_id', 'ts').unique('frame_id').sort('frame_id')
+    if registration is not None:
+        frames = registration.select('frame_id', 'ts').sort('frame_id')
 
     rows: list[int] = []
     track_ids: list[int] = []
@@ -66,18 +80,27 @@ def track_people(detections: pl.DataFrame, venue: Venue) -> pl.DataFrame:
         track_ids.extend(tracked.tracker_id[confirmed].tolist())
 
     assigned = pl.DataFrame({'row': rows, 'track_id': track_ids}, schema={'row': pl.UInt32, 'track_id': pl.Int32})
-    tracked_people = people.join(assigned, on='row', how='inner').drop('row')
+    tracked_people = people.join(assigned, on='row', how='inner')
 
     foot_x, foot_y = _compute_robust_foot_points(tracked_people)
     foot = np.column_stack([foot_x, foot_y])
+    if registration is not None:
+        boxes = original.select('row', 'x1', 'y1', 'x2', 'y2')
+        tracked_people = tracked_people.drop('x1', 'y1', 'x2', 'y2').join(
+            boxes, on='row', how='left', maintain_order='left'
+        )
 
-    return tracked_people.with_columns(
-        foot_x=pl.Series(foot_x, dtype=pl.Float32),
-        foot_y=pl.Series(foot_y, dtype=pl.Float32),
-        in_pitch=pl.Series(points_in_polygon(foot, polygon)),
-        role=pl.lit('unknown'),
-        team=pl.lit(None, dtype=pl.Utf8),
-    ).sort('frame_id', 'track_id')
+    return (
+        tracked_people.drop('row')
+        .with_columns(
+            foot_x=pl.Series(foot_x, dtype=pl.Float32),
+            foot_y=pl.Series(foot_y, dtype=pl.Float32),
+            in_pitch=pl.Series(points_in_polygon(foot, polygon)),
+            role=pl.lit('unknown'),
+            team=pl.lit(None, dtype=pl.Utf8),
+        )
+        .sort('frame_id', 'track_id')
+    )
 
 
 FOOT_WINDOW = 15  # кадров (~1 с при 15 fps) для медианы высоты бокса

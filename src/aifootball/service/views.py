@@ -47,6 +47,14 @@ class HallView(NamedView):
     description: str
 
 
+class ReplayBadgeView(BaseModel):
+    """Образец плашки повтора поворотной камеры: где на кадре (левый верхний угол) и размер, px."""
+
+    sha256: str
+    xy: list[int]
+    size: list[int]
+
+
 class CameraProfileView(EntityView):
     hall_id: UUID
     name: str
@@ -57,12 +65,15 @@ class CameraProfileView(EntityView):
     frame_width: int
     frame_height: int
     points: list[dict]
-    pitch_polygon_px: list[list[float]]
+    motion: Literal['fixed', 'ptz'] = 'fixed'
+    pitch_polygon_px: list[list[float]] | None = None  # у поворотной камеры не размечается
+    overlay: list[list[float]] | None = None  # графика трансляции поворотной камеры, доли кадра
     homography: list[list[float]]
     calibration: dict | None = None
     reprojection_error_m: float
     leave_one_out_error_m: float | None = None
     reference_sha256: str | None = None
+    replay_badge: ReplayBadgeView | None = None
     matches_current_dimensions: bool
 
 

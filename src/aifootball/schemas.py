@@ -33,7 +33,8 @@ DETECTIONS = {
 TRACKS = {
     **DETECTIONS,
     'track_id': pl.Int32,
-    # Точка касания пола: центр нижней грани бокса, в пикселях исходного кадра.
+    # Точка касания пола: центр нижней грани бокса, в пикселях исходного кадра; у поворотной камеры —
+    # в пикселях эталонного кадра профиля (рамки x1..y2 и тогда остаются в пикселях своего кадра).
     'foot_x': pl.Float32,
     'foot_y': pl.Float32,
     'in_pitch': pl.Boolean,
@@ -73,7 +74,26 @@ TOUCHES = {
     'event': pl.Utf8,  # A | B | dead | pass (удар отдающего) | shot (удар по воротам)
 }
 
-SCHEMAS = {'detections': DETECTIONS, 'tracks': TRACKS, 'state': STATE, 'ball_labels': BALL_LABELS, 'touches': TOUCHES}
+# Привязка кадров поворотной камеры к эталонному кадру профиля (geometry.registration).
+# status: ok — сверен с опорным кадром; weak — только по прогнозу цепочкой; lost — не привязан;
+# replay — повтор. h0..h8 — гомография «пиксели кадра -> пиксели эталона» построчно (NaN без привязки).
+REGISTRATION = {
+    'frame_id': pl.Int32,
+    'ts': pl.Float64,
+    'status': pl.Utf8,
+    'key': pl.Int32,
+    'inliers': pl.Int32,
+    **{f'h{i}': pl.Float64 for i in range(9)},
+}
+
+SCHEMAS = {
+    'detections': DETECTIONS,
+    'tracks': TRACKS,
+    'state': STATE,
+    'ball_labels': BALL_LABELS,
+    'touches': TOUCHES,
+    'registration': REGISTRATION,
+}
 
 
 class SchemaError(Exception):
