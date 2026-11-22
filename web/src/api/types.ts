@@ -2785,6 +2785,8 @@ export interface components {
              * @enum {string}
              */
             decision?: "accepted" | "rejected";
+            /** Review */
+            review?: ("auto" | "checked") | null;
             /**
              * Notes
              * @default
@@ -2856,6 +2858,8 @@ export interface components {
              * @enum {string}
              */
             decision: "accepted" | "rejected";
+            /** Review */
+            review: ("auto" | "checked") | null;
             /**
              * Notes
              * @default
@@ -5993,6 +5997,8 @@ export interface components {
             known: number;
             /** Length M */
             length_m: number | null;
+            /** Verified */
+            verified: number;
         };
         /**
          * PassPoint
@@ -6032,6 +6038,8 @@ export interface components {
              * @enum {string}
              */
             source: "manual" | "cv_auto";
+            /** Verified */
+            verified: boolean;
         };
         /** PenaltyAttempt */
         "PenaltyAttempt-Input": {
