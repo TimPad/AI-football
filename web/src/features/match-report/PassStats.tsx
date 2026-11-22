@@ -18,6 +18,9 @@ import {
   type Side,
   teamAccuracy,
   toArrows,
+  VIDEO_ACCURACY_HINT,
+  VIDEO_PASS_CHECK,
+  VIDEO_RED_HINT,
 } from './passes';
 
 type Name = (id: string | null | undefined) => string | null;
@@ -133,7 +136,7 @@ export function PassStats({
                 <i className={`side-dot ${side}`} />
                 {sideName(side)}
               </span>
-              <b className="num pass-percent">
+              <b className="num pass-percent" title={approx ? VIDEO_ACCURACY_HINT : undefined}>
                 {a.percent == null ? '—' : `${approx ? '≈' : ''}${Math.round(a.percent)}%`}
               </b>
               <span className="muted small num">
@@ -207,6 +210,7 @@ export function PassStats({
         awayName={awayName}
         note={[
           ORIENTATION_NOTE[oriented.orientation],
+          approx && shown.some((p) => p.success === false) ? VIDEO_RED_HINT : null,
           unplaced > 0 ? `Без точек на поле и не на карте: ${unplaced}` : null,
         ]
           .filter(Boolean)
@@ -220,9 +224,11 @@ export function PassStats({
         onPick={(playerId) => set({ playerId })}
       />
       {approx && (
-        <p className="muted small">
-          ≈ — передачи распознаны по видео не все: находится около двух третей, и неточные среди них бывают ложными.
-          Процент игрока — от {MIN_PASSES_FOR_PERCENT} передач с известным исходом.
+        <p className="muted small pass-caveat">
+          ≈ — передачи из видео: находится около двух третей, процент точности расходится с ручным журналом до{' '}
+          {VIDEO_PASS_CHECK.maxErrorPp} п.п., а из неточных по видео верны {VIDEO_PASS_CHECK.redTrue} из{' '}
+          {VIDEO_PASS_CHECK.redTotal} (замер на {VIDEO_PASS_CHECK.journals} журналах, {VIDEO_PASS_CHECK.passes}{' '}
+          передачи). Процент игрока — от {MIN_PASSES_FOR_PERCENT} передач с известным исходом.
         </p>
       )}
     </div>
@@ -256,6 +262,7 @@ export function PlayerPasses({
         {row.total} · точных {formatAccuracy(accuracy([row], MIN_PASSES_FOR_PERCENT), approx)}
         {row.length_m != null ? ` · средняя длина ${metres(row.length_m)} м` : ''}
       </p>
+      {approx && <p className="muted small">{VIDEO_ACCURACY_HINT}</p>}
       <PassMap
         passes={toArrows(own, name, stats.source.clock_basis === 'video')}
         lengthM={L}
@@ -373,7 +380,7 @@ export function PassNetworkStats({
             : 'Узел — средняя точка передач и приёмов игрока.',
           'Размер — передачи и приёмы, толщина стрелки — число точных передач.',
           network.withoutPosition ? `Без позиции на видео: ${network.withoutPosition}.` : null,
-          autoPasses(stats) ? '≈ — передачи распознаны по видео не все.' : null,
+          autoPasses(stats) ? '≈ — передачи из видео: находится около двух третей.' : null,
         ]
           .filter(Boolean)
           .join(' ')}

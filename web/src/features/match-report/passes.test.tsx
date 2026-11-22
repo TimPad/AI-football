@@ -148,6 +148,13 @@ it('draws passes as arrows, failed ones red, and filters by team, outcome and pl
   expect(screen.getByText(/второй тайм развёрнут/)).toBeInTheDocument();
   expect(screen.getByText(/Без точек на поле и не на карте: 5/)).toBeInTheDocument();
 
+  // Замеренная погрешность видео: в подсказке процента, под картой при красных стрелках и в примечании.
+  expect(within(teams).getByText('≈86%')).toHaveAttribute('title', expect.stringContaining('расхождение до 17 п.п.'));
+  expect(screen.getByText(/Неточные из видео чаще ошибочны: верны 2 из 21/)).toBeInTheDocument();
+  expect(
+    screen.getByText(/расходится с ручным журналом до 17 п\.п\., а из неточных по видео верны 2 из 21/),
+  ).toBeInTheDocument();
+
   fireEvent.click(screen.getByRole('button', { name: 'Неточные' }));
   expect(screen.getByRole('img', { name: 'Карта передач: 2' }).querySelectorAll('g.pass.failure')).toHaveLength(2);
   fireEvent.click(screen.getByRole('button', { name: 'Все' }));
@@ -169,12 +176,15 @@ it('marks only video passes as approximate', () => {
   manual.rows = manual.rows.map((r) => ({ ...r, source: 'manual' as const }));
   render(<PassStats stats={manual} homeName="Север" awayName="Юг" name={name} />);
   expect(within(screen.getByLabelText('Точность передач команд')).getByText('86%')).toBeInTheDocument();
-  expect(screen.queryByText(/распознаны по видео не все/)).toBeNull();
+  expect(screen.queryByText(/расходится с ручным журналом/)).toBeNull();
+  expect(screen.queryByText(/Неточные из видео чаще ошибочны/)).toBeNull();
+  expect(within(screen.getByLabelText('Точность передач команд')).getByText('86%')).not.toHaveAttribute('title');
 });
 
 it("shows one player's passes and accuracy in the player card", () => {
   render(<PlayerPasses stats={match()} playerId={P1} homeName="Север" awayName="Юг" name={name} />);
   expect(screen.getByText('6 · точных 5 / 6 · ≈83% · средняя длина 11,8 м')).toBeInTheDocument();
+  expect(screen.getByText(/расхождение до 17 п\.п\./)).toBeInTheDocument();
   expect(screen.getByRole('img', { name: 'Карта передач: 2' })).toBeInTheDocument();
 });
 
