@@ -410,6 +410,16 @@ class PassPlayerStats(BaseModel):
     length_m: float | None
 
 
+class PlayerPosition(BaseModel):
+    """Средняя позиция игрока за период по видео, метры площадки (развёрнута по positions_orientation)."""
+
+    side: Literal['home', 'away']
+    player_id: UUID
+    x: float
+    y: float
+    observed_s: float
+
+
 class StatsSource(BaseModel):
     kind: Literal['manual', 'cv_auto', 'mixed']
     action_version_id: UUID | None
@@ -442,4 +452,7 @@ class TeamActionStats(BaseModel):
     shots: list[ShotPoint]
     passes: list[PassPoint]
     pass_players: list[PassPlayerStats]
+    positions: list[PlayerPosition]
+    # attack — хозяева атакуют вправо; halves — чётные таймы повёрнуты к первому; camera — как на видео.
+    positions_orientation: Literal['attack', 'halves', 'camera'] | None
     pitch: PitchSize | None

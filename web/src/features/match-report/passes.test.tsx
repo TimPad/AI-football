@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { TeamActionStats } from '../../api/domain';
-import { PassStats, PlayerPasses } from './PassStats';
-import { accuracy, formatAccuracy, orientPasses, type PassPoint } from './passes';
+import { PassNetworkStats, PassStats, PlayerPasses } from './PassStats';
+import { accuracy, defaultThreshold, formatAccuracy, orientPasses, type PassPoint, passNetwork } from './passes';
 
 const P1 = '11111111-1111-4111-8111-111111111111',
   P2 = '22222222-2222-4222-8222-222222222222',
@@ -59,6 +59,8 @@ function stats(passes: PassPoint[], over: Partial<TeamActionStats> = {}): TeamAc
     shots: [],
     passes,
     pass_players: [],
+    positions: [],
+    positions_orientation: null,
     pitch: { length_m: 40, width_m: 20 },
     ...over,
   };
@@ -146,6 +148,13 @@ it('draws passes as arrows, failed ones red, and filters by team, outcome and pl
   expect(screen.getByText(/второй тайм развёрнут/)).toBeInTheDocument();
   expect(screen.getByText(/Без точек на поле и не на карте: 5/)).toBeInTheDocument();
 
+  // Замеренная погрешность видео: в подсказке процента, под картой при красных стрелках и в примечании.
+  expect(within(teams).getByText('≈86%')).toHaveAttribute('title', expect.stringContaining('расхождение до 17 п.п.'));
+  expect(screen.getByText(/Неточные из видео чаще ошибочны: верны 2 из 21/)).toBeInTheDocument();
+  expect(
+    screen.getByText(/расходится с ручным журналом до 17 п\.п\., а из неточных по видео верны 2 из 21/),
+  ).toBeInTheDocument();
+
   fireEvent.click(screen.getByRole('button', { name: 'Неточные' }));
   expect(screen.getByRole('img', { name: 'Карта передач: 2' }).querySelectorAll('g.pass.failure')).toHaveLength(2);
   fireEvent.click(screen.getByRole('button', { name: 'Все' }));
@@ -167,11 +176,92 @@ it('marks only video passes as approximate', () => {
   manual.rows = manual.rows.map((r) => ({ ...r, source: 'manual' as const }));
   render(<PassStats stats={manual} homeName="Север" awayName="Юг" name={name} />);
   expect(within(screen.getByLabelText('Точность передач команд')).getByText('86%')).toBeInTheDocument();
-  expect(screen.queryByText(/распознаны по видео не все/)).toBeNull();
+  expect(screen.queryByText(/расходится с ручным журналом/)).toBeNull();
+  expect(screen.queryByText(/Неточные из видео чаще ошибочны/)).toBeNull();
+  expect(within(screen.getByLabelText('Точность передач команд')).getByText('86%')).not.toHaveAttribute('title');
 });
 
 it("shows one player's passes and accuracy in the player card", () => {
   render(<PlayerPasses stats={match()} playerId={P1} homeName="Север" awayName="Юг" name={name} />);
   expect(screen.getByText('6 · точных 5 / 6 · ≈83% · средняя длина 11,8 м')).toBeInTheDocument();
+  expect(screen.getByText(/расхождение до 17 п\.п\./)).toBeInTheDocument();
   expect(screen.getByRole('img', { name: 'Карта передач: 2' })).toBeInTheDocument();
+});
+
+describe('passNetwork', () => {
+  const players = [
+    { side: 'home' as const, player_id: P1, total: 4, accurate: 3, known: 4, length_m: 8 },
+    { side: 'home' as const, player_id: P2, total: 2, accurate: 2, known: 2, length_m: 8 },
+  ];
+  const passes = [
+    pass({ attacking_direction: 'right', recipient_id: P2, start_xy: [10, 4], end_xy: [20, 6] }),
+    pass({ attacking_direction: 'right', recipient_id: P2, start_xy: [12, 6], end_xy: [22, 8] }),
+    pass({ attacking_direction: 'right', success: false, start_xy: [14, 8], end_xy: [30, 8] }),
+    pass({ attacking_direction: 'right', player_id: P2, recipient_id: P1, start_xy: [20, 6], end_xy: [10, 4] }),
+  ];
+
+  it('places players at the mean of their passes and receptions and counts accurate passes between them', () => {
+    const net = passNetwork(stats(passes, { pass_players: players }), 'home');
+    expect(net.source).toBe('passes');
+    expect(net.attackRight).toBe(true);
+    const p1 = net.nodes.find((n) => n.playerId === P1)!;
+    // Начала трёх своих передач и приём одной: (10+12+14+10)/4, (4+6+8+4)/4.
+    expect([p1.x, p1.y, p1.made, p1.received]).toEqual([11.5, 5.5, 4, 1]);
+    expect(net.edges).toEqual([
+      { from: P1, to: P2, count: 2 },
+      { from: P2, to: P1, count: 1 },
+    ]);
+    expect(net.maxCount).toBe(2);
+    expect(defaultThreshold(net.maxCount)).toBe(2);
+    expect(defaultThreshold(12)).toBe(3);
+  });
+
+  it('turns the away team to attack right and prefers video positions', () => {
+    const away = stats(
+      passes.map((p) => ({ ...p, side: 'away' as const, attacking_direction: 'left' as const })),
+      {
+        pass_players: players.map((p) => ({ ...p, side: 'away' as const })),
+        positions: [{ side: 'away', player_id: P1, x: 30, y: 5, observed_s: 600 }],
+        positions_orientation: 'attack',
+      },
+    );
+    const net = passNetwork(away, 'away');
+    expect(net.source).toBe('video');
+    // Гости атакуют влево: разворот на 180° — своя половина у них слева, как у хозяев.
+    expect(net.nodes.map((n) => [n.playerId, n.x, n.y])).toEqual([[P1, 10, 15]]);
+    expect(net.withoutPosition).toBe(1);
+    expect(net.edges).toEqual([]);
+  });
+});
+
+it('draws the network, filters links by the threshold and explains the selected player', () => {
+  const many = [
+    ...Array.from({ length: 4 }, () => pass({ attacking_direction: 'right', recipient_id: P2 })),
+    pass({ attacking_direction: 'right', player_id: P2, recipient_id: P1, start_xy: [20, 5], end_xy: [10, 5] }),
+  ];
+  render(
+    <PassNetworkStats
+      stats={stats(many, {
+        pass_players: [
+          { side: 'home', player_id: P1, total: 4, accurate: 4, known: 4, length_m: 10 },
+          { side: 'home', player_id: P2, total: 1, accurate: 1, known: 1, length_m: 10 },
+        ],
+      })}
+      homeName="Север"
+      awayName="Юг"
+      name={name}
+      number={(id) => (id === P1 ? '7' : null)}
+    />,
+  );
+  // По умолчанию — связки от 3 передач: остаётся одна стрелка Иванов → Петров.
+  const graph = screen.getByRole('img', { name: 'Сеть передач: Север, игроков 2, связок 1' });
+  expect(graph.querySelectorAll('line.network-link')).toHaveLength(1);
+  expect(graph.querySelector('text.network-number')).toHaveTextContent('7');
+  fireEvent.change(screen.getByLabelText('Порог связки, передач'), { target: { value: '1' } });
+  expect(screen.getByRole('img', { name: 'Сеть передач: Север, игроков 2, связок 2' })).toBeInTheDocument();
+  fireEvent.click(within(screen.getByRole('list', { name: 'Игроки сети' })).getByRole('button', { name: /Иванов/ }));
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'Иванов: передач 4, точных приёмов 1; чаще всего: отдаёт → Петров (4), получает ← Петров (1)',
+  );
+  expect(screen.getByText(/Север атакует вправо/)).toBeInTheDocument();
 });

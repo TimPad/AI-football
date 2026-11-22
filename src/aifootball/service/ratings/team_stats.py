@@ -7,6 +7,8 @@
 
 Передачи для карты (passes) — только с точками начала и конца, в координатах площадки (метры, как на видео);
 сводка по исполнителям (pass_players) — по всем передачам периода, в том числе без координат.
+Средние позиции игроков (positions) — по видео: тепловые карты треков в таймах отчёта, развёрнутые к одному
+направлению атаки (positions_orientation); у матча без видеоанализа их нет.
 """
 
 import math
@@ -215,6 +217,95 @@ def _auto_rows(run, period):
     ]
 
 
+# Центры команд ближе этого — направление атаки по ним не определяем.
+ATTACK_MIN_GAP_M = 0.5
+
+
+def _centroid(heatmap, cell, length, width):
+    """(x, y, секунды) — средняя точка тепловой карты (клетки cell м, первый индекс — x) или None без наблюдений."""
+    total = sx = sy = 0.0
+    for i, column in enumerate(heatmap or []):
+        for j, seconds in enumerate(column):
+            if seconds > 0:
+                total += seconds
+                sx += seconds * min((i + 0.5) * cell, length)
+                sy += seconds * min((j + 0.5) * cell, width)
+    return (sx / total, sy / total, total) if total > 0 else None
+
+
+def _cv_attack(run):
+    """{ключ периода отчёта: {команда: 'right' | 'left'}} — куда атакует команда A/B в координатах площадки.
+
+    Правило то же, что у обработчика (perception.teams.defending_sides): свои ворота у той команды, чей центр
+    полевых ближе к ним. Центр — по тепловой карте команды за период; близкие центры — направление неизвестно.
+    """
+    pitch = run.report['pitch']
+    size = (pitch.get('cell_m', 1), pitch['length_m'], pitch['width_m'])
+    out = {}
+    for period in run.report['periods']:
+        teams = period.get('teams') or {}
+        centers = {t: _centroid((teams.get(t) or {}).get('heatmap_s'), *size) for t in ('A', 'B')}
+        if None in centers.values() or abs(centers['A'][0] - centers['B'][0]) < ATTACK_MIN_GAP_M:
+            continue
+        left = 'A' if centers['A'][0] < centers['B'][0] else 'B'
+        out[period['key']] = {left: 'right', 'B' if left == 'A' else 'A': 'left'}
+    return out
+
+
+def _report_key(run, period):
+    """Ключ периода отчёта для тайма передачи ('1' -> 'h1'); без тайма — основной период."""
+    return f'h{period}' if period else run.manifest['primary_period_key']
+
+
+def _cv_positions(run, period, people):
+    """Средние позиции игроков по видео за период и как они развёрнуты.
+
+    Позиция — средняя точка тепловых карт треков игрока в таймах отчёта (взвешена секундами). Если направление
+    атаки известно во всех таймах, поле развёрнуто так, что хозяева атакуют вправо, гости — влево ('attack');
+    иначе в чётных таймах поле повёрнуто на 180°: в перерыве команды меняются воротами ('halves').
+    Без деления на таймы и без направления — координаты как на видео ('camera').
+    """
+    assigned, sides = people
+    periods = {p['key']: p for p in run.report['periods']}
+    halves = sorted((k for k in periods if k[:1] == 'h' and k[1:].isdigit()), key=lambda k: int(k[1:]))
+    if period == 'all':
+        keys = halves or [run.manifest['primary_period_key']]
+    else:
+        keys = [f'h{period}'] if f'h{period}' in periods else []
+    if not keys:
+        return [], None
+    attack = _cv_attack(run)
+    known = all(k in attack for k in keys)
+    orientation = 'attack' if known else 'halves' if halves else 'camera'
+    pitch = run.report['pitch']
+    length, width = float(pitch['length_m']), float(pitch['width_m'])
+    sums = {}
+    for key in keys:
+        number = int(key[1:]) if key in halves else 1
+        for row in periods[key].get('players') or []:
+            team = row.get('team')
+            side = run.side_map.get(team)
+            player = assigned.get(row['track_id'])
+            if player is None or side not in SIDES or sides.get(player) != side:
+                continue
+            center = _centroid(row.get('heatmap_s'), pitch.get('cell_m', 1), length, width)
+            if center is None:
+                continue
+            x, y, seconds = center
+            flip = (side == 'home') == (attack[key][team] == 'left') if known else number % 2 == 0
+            if flip:
+                x, y = length - x, width - y
+            acc = sums.setdefault((side, player), [0.0, 0.0, 0.0])
+            acc[0] += x * seconds
+            acc[1] += y * seconds
+            acc[2] += seconds
+    positions = [
+        {'side': side, 'player_id': player, 'x': round(sx / s, 2), 'y': round(sy / s, 2), 'observed_s': round(s, 1)}
+        for (side, player), (sx, sy, s) in sums.items()
+    ]
+    return sorted(positions, key=lambda p: (SIDES.index(p['side']), str(p['player_id']))), orientation
+
+
 def _auto_passes(run, period, people):
     """Передачи прогона CV как записи сводки. Исполнитель и адресат — игроки назначенных фрагментов той же
     стороны (как в автоматической версии действий); адресат — только у точной передачи."""
@@ -225,6 +316,7 @@ def _auto_passes(run, period, people):
         return []
     halves = [p for p in periods if p['key'] != 'all']
     pitch = run.report['pitch']
+    attack = _cv_attack(run)
     inside = lambda t, spans: any(a <= t <= b for a, b in spans)
     clip = lambda xy: [
         min(max(float(xy[0]), 0.0), float(pitch['length_m'])),
@@ -240,6 +332,7 @@ def _auto_passes(run, period, people):
         recipient = assigned.get(e.get('recipient_track_id')) if e['success'] else None
         if recipient is not None and (recipient == author or sides.get(recipient) != side):
             recipient = None
+        half = next((h['key'] for h in halves if inside(e['start_s'], h['spans'])), None)
         records.append(
             {
                 # Тот же UUID, что у передачи в автоматической версии действий (ratings.auto.actions_document).
@@ -251,8 +344,10 @@ def _auto_passes(run, period, people):
                 'start_xy': clip(e['start_xy']),
                 'end_xy': clip(e['end_xy']),
                 'success': bool(e['success']),
-                'period': next((h['key'] for h in halves if inside(e['start_s'], h['spans'])), None),
+                'period': half,
                 'start_ms': max(0, round(e['start_s'] * 1000)),
+                # Направление атаки по видео: обработчик его не выдаёт, оно выводится из центров команд в тайме.
+                'attacking_direction': attack.get(_report_key(run, half), {}).get(e['team'], 'unknown'),
             }
         )
     return records
@@ -285,6 +380,7 @@ def auto_action_stats(run, *, published, period='all', people=({}, {})):
     rows = _auto_rows(run, period) or []
     pitch = run.report['pitch']
     records = _auto_passes(run, period, people) if any(r['category'] == 'passes' for r in rows) else []
+    positions, orientation = _cv_positions(run, period, people)
     return {
         'source': {
             'kind': 'cv_auto',
@@ -305,6 +401,8 @@ def auto_action_stats(run, *, published, period='all', people=({}, {})):
         'shots': [],
         'passes': _pass_points(records, lambda r: r['period'], 'cv_auto'),
         'pass_players': _pass_players(records),
+        'positions': positions,
+        'positions_orientation': orientation,
         'pitch': {'length_m': pitch['length_m'], 'width_m': pitch['width_m']},
     }
 
@@ -383,15 +481,28 @@ def team_action_stats(version, *, published, period='all'):
         'shots': shots,
         'passes': _pass_points(passes, lambda r: _period_of(r, bounds), 'manual'),
         'pass_players': _pass_players(passes),
+        'positions': [],
+        'positions_orientation': None,
         'pitch': {'length_m': pitch['length_m'], 'width_m': pitch['width_m']} if pitch else None,
     }
 
 
 def _run_with_events(db, run_id):
+    run = _analysis_run(db, run_id)
+    return run if run is not None and run.events is not None else None
+
+
+def _analysis_run(db, run_id):
     from aifootball.service.analysis.models import AnalysisRun
 
-    run = db.get(AnalysisRun, run_id) if run_id else None
-    return run if run is not None and run.events is not None else None
+    return db.get(AnalysisRun, run_id) if run_id else None
+
+
+def _with_positions(stats, run, db):
+    """Средние позиции игроков по видеоанализу — и к ручной версии действий; без прогона их нет."""
+    if run is not None:
+        stats['positions'], stats['positions_orientation'] = _cv_positions(run, stats['period'], _people(db, run))
+    return stats
 
 
 def _people(db, run):
@@ -422,13 +533,17 @@ def public_action_stats(db, match_id, period='all'):
     if is_auto(version):
         version = None
     # Передачи по мячу видны гостю вместе с опубликованным видеоанализом.
-    run = _run_with_events(db, db.get(Match, match_id).published_analysis_run_id)
+    published_run = db.get(Match, match_id).published_analysis_run_id
+    run = _run_with_events(db, published_run)
     if version is None and run is None:
         raise DomainError('not_found', 'Действия матча не опубликованы', status=404)
     if version is None:
         return auto_action_stats(run, published=True, period=period, people=_people(db, run))
     stats = team_action_stats(version, published=True, period=period)
-    return _with_events(stats, run, True, _people(db, run)) if run else stats
+    if run:
+        stats = _with_events(stats, run, True, _people(db, run))
+    # Позиции — только из опубликованного видеоанализа, даже без событий по мячу.
+    return _with_positions(stats, run or _analysis_run(db, published_run), db)
 
 
 def private_action_stats(db, match_id, period='all'):
@@ -459,4 +574,6 @@ def private_action_stats(db, match_id, period='all'):
         return auto_action_stats(run, published=run_published, period=period, people=_people(db, run))
     pub = db.scalar(select(RatingMatchPublication).where(RatingMatchPublication.match_id == match_id))
     stats = team_action_stats(version, published=bool(pub and pub.action_version_id == version.id), period=period)
-    return _with_events(stats, run, run_published, _people(db, run)) if run else stats
+    if run:
+        stats = _with_events(stats, run, run_published, _people(db, run))
+    return _with_positions(stats, run or _analysis_run(db, match.active_analysis_run_id), db)

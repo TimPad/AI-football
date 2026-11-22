@@ -222,3 +222,70 @@
 .pass-map.compact figcaption {
   font-size: 12px;
 }
+
+/* Сеть передач: узлы — средние позиции, стрелки — точные передачи; выбранный игрок выделен, прочие связи бледнее. */
+.network-link {
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+.network-link.home {
+  stroke: var(--home, #488ee6);
+}
+.network-link.away {
+  stroke: var(--away, #e9aa49);
+}
+.network-link.faded {
+  opacity: 0.12;
+}
+.network-head.home path {
+  fill: var(--home, #488ee6);
+}
+.network-head.away path {
+  fill: var(--away, #e9aa49);
+}
+.network-node {
+  cursor: pointer;
+}
+.network-node circle {
+  stroke: #fff;
+  stroke-width: 0.1;
+}
+.network-node.home circle {
+  fill: var(--home, #488ee6);
+}
+.network-node.away circle {
+  fill: var(--away, #e9aa49);
+}
+.network-node.selected circle {
+  stroke: #ffd166;
+  stroke-width: 0.22;
+}
+.network-node.faded {
+  opacity: 0.45;
+}
+.network-node:focus-visible {
+  outline: none;
+}
+.network-node:focus-visible circle {
+  stroke: var(--focus, #3479ce);
+  stroke-width: 0.25;
+}
+.network-number {
+  fill: #fff;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.network-node.away .network-number {
+  fill: #1d1a14;
+}
+.network-label {
+  fill: #fff;
+  font-weight: 600;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.75);
+  stroke-width: 0.14;
+  pointer-events: none;
+}

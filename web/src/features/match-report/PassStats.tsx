@@ -1,19 +1,26 @@
 import { useState } from 'react';
 import type { TeamActionStats } from '../../api/domain';
 import { PassMap } from '../../components/pitch/PassMap';
+import { PassNetwork } from '../../components/pitch/PassNetwork';
 import {
   ALL_PASSES,
   accuracy,
+  defaultThreshold,
   filterPasses,
   formatAccuracy,
   MIN_PASSES_FOR_PERCENT,
+  type NetworkEdge,
   ORIENTATION_NOTE,
   orientPasses,
   type PassFilter,
   type PassPlayer,
+  passNetwork,
   type Side,
   teamAccuracy,
   toArrows,
+  VIDEO_ACCURACY_HINT,
+  VIDEO_PASS_CHECK,
+  VIDEO_RED_HINT,
 } from './passes';
 
 type Name = (id: string | null | undefined) => string | null;
@@ -129,7 +136,7 @@ export function PassStats({
                 <i className={`side-dot ${side}`} />
                 {sideName(side)}
               </span>
-              <b className="num pass-percent">
+              <b className="num pass-percent" title={approx ? VIDEO_ACCURACY_HINT : undefined}>
                 {a.percent == null ? '—' : `${approx ? '≈' : ''}${Math.round(a.percent)}%`}
               </b>
               <span className="muted small num">
@@ -203,6 +210,7 @@ export function PassStats({
         awayName={awayName}
         note={[
           ORIENTATION_NOTE[oriented.orientation],
+          approx && shown.some((p) => p.success === false) ? VIDEO_RED_HINT : null,
           unplaced > 0 ? `Без точек на поле и не на карте: ${unplaced}` : null,
         ]
           .filter(Boolean)
@@ -216,9 +224,11 @@ export function PassStats({
         onPick={(playerId) => set({ playerId })}
       />
       {approx && (
-        <p className="muted small">
-          ≈ — передачи распознаны по видео не все: находится около двух третей, и неточные среди них бывают ложными.
-          Процент игрока — от {MIN_PASSES_FOR_PERCENT} передач с известным исходом.
+        <p className="muted small pass-caveat">
+          ≈ — передачи из видео: находится около двух третей, процент точности расходится с ручным журналом до{' '}
+          {VIDEO_PASS_CHECK.maxErrorPp} п.п., а из неточных по видео верны {VIDEO_PASS_CHECK.redTrue} из{' '}
+          {VIDEO_PASS_CHECK.redTotal} (замер на {VIDEO_PASS_CHECK.journals} журналах, {VIDEO_PASS_CHECK.passes}{' '}
+          передачи). Процент игрока — от {MIN_PASSES_FOR_PERCENT} передач с известным исходом.
         </p>
       )}
     </div>
@@ -252,6 +262,7 @@ export function PlayerPasses({
         {row.total} · точных {formatAccuracy(accuracy([row], MIN_PASSES_FOR_PERCENT), approx)}
         {row.length_m != null ? ` · средняя длина ${metres(row.length_m)} м` : ''}
       </p>
+      {approx && <p className="muted small">{VIDEO_ACCURACY_HINT}</p>}
       <PassMap
         passes={toArrows(own, name, stats.source.clock_basis === 'video')}
         lengthM={L}
@@ -263,4 +274,141 @@ export function PlayerPasses({
       />
     </section>
   );
+}
+
+// Сеть передач команды, как у аналитических сайтов: узлы — средние позиции, толщина — число точных передач.
+export function PassNetworkStats({
+  stats,
+  homeName,
+  awayName,
+  name,
+  number,
+}: {
+  stats: TeamActionStats;
+  homeName: string;
+  awayName: string;
+  name: Name;
+  number: Name;
+}) {
+  const [side, setSide] = useState<Side>('home');
+  const network = passNetwork(stats, side);
+  const [threshold, setThreshold] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  if (!stats.pitch) return null;
+  const min = Math.min(threshold ?? defaultThreshold(network.maxCount), Math.max(1, network.maxCount));
+  const links = network.edges.filter((e) => e.count >= min);
+  const label = (id: string) => name(id) ?? 'Игрок';
+  const dots = network.nodes
+    .map((n) => ({
+      id: n.playerId,
+      x: n.x,
+      y: n.y,
+      touches: n.made + n.received,
+      number: number(n.playerId),
+      label: label(n.playerId),
+    }))
+    .sort((a, b) => b.touches - a.touches);
+  const chosen = selected ? network.nodes.find((n) => n.playerId === selected) : undefined;
+  const top = (list: NetworkEdge[]) => [...list].sort((a, b) => b.count - a.count)[0];
+  const to = chosen && top(network.edges.filter((e) => e.from === chosen.playerId));
+  const from = chosen && top(network.edges.filter((e) => e.to === chosen.playerId));
+  const sideName = side === 'home' ? homeName : awayName;
+  if (!network.nodes.length) return <p className="muted">Для сети нужны точные передачи с известным адресатом.</p>;
+  return (
+    <div className="pass-stats">
+      <div className="pass-filters">
+        <div className="segmented" role="group" aria-label="Команда сети">
+          {(['home', 'away'] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={side === s ? 'active' : ''}
+              aria-pressed={side === s}
+              onClick={() => {
+                setSide(s);
+                setSelected(null);
+                setThreshold(null);
+              }}
+            >
+              {s === 'home' ? homeName : awayName}
+            </button>
+          ))}
+        </div>
+        {network.maxCount > 1 && (
+          <label className="network-threshold">
+            <span>
+              Связки от <b className="num">{min}</b> {plural(min, 'передачи', 'передач', 'передач')}
+            </span>
+            <input
+              type="range"
+              min={1}
+              max={network.maxCount}
+              value={min}
+              aria-label="Порог связки, передач"
+              onChange={(e) => setThreshold(Number(e.target.value))}
+            />
+          </label>
+        )}
+      </div>
+      {chosen && (
+        <p className="pass-chosen" role="status">
+          <b>{label(chosen.playerId)}</b>: передач {chosen.made}, точных приёмов {chosen.received}
+          {to || from ? '; чаще всего: ' : ''}
+          {[
+            to ? `отдаёт → ${label(to.to)} (${to.count})` : null,
+            from ? `получает ← ${label(from.from)} (${from.count})` : null,
+          ]
+            .filter(Boolean)
+            .join(', ')}
+        </p>
+      )}
+      <PassNetwork
+        dots={dots}
+        links={links}
+        lengthM={stats.pitch.length_m}
+        widthM={stats.pitch.width_m}
+        side={side}
+        selected={selected}
+        onSelect={setSelected}
+        label={`Сеть передач: ${sideName}, игроков ${dots.length}, связок ${links.length}`}
+      />
+      <p className="muted small network-note">
+        {[
+          network.attackRight ? `${sideName} атакует вправо →.` : ORIENTATION_NOTE[network.orientation],
+          network.source === 'video'
+            ? 'Узел — средняя позиция игрока по видео.'
+            : 'Узел — средняя точка передач и приёмов игрока.',
+          'Размер — передачи и приёмы, толщина стрелки — число точных передач.',
+          network.withoutPosition ? `Без позиции на видео: ${network.withoutPosition}.` : null,
+          autoPasses(stats) ? '≈ — передачи из видео: находится около двух третей.' : null,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      </p>
+      <ol className="network-legend" aria-label="Игроки сети">
+        {dots.map((d) => (
+          <li key={d.id}>
+            <button
+              type="button"
+              className="link-button"
+              aria-pressed={d.id === selected}
+              onClick={() => setSelected(d.id === selected ? null : d.id)}
+            >
+              <span className={`network-dot ${side}`}>{d.number ?? ''}</span>
+              {d.label}
+            </button>
+            <span className="muted num"> · касаний {d.touches}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function plural(n: number, one: string, few: string, many: string) {
+  const mod10 = n % 10,
+    mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
 }

@@ -233,26 +233,43 @@ def seed():
                 )
         blocked = next(a for a in actions if a['kind'] == 'shot' and a['side'] == 'home' and a['outcome'] == 'failure')
         act('shot_block', 'away', blocked['start_ms'], player_id=players['away'][2], shot_id=blocked['id'])
-        # Передачи с точками для карты: длина 4–18 м, чаще вперёд по направлению атаки стороны.
+        # Передачи с точками и адресатами для карты и сети: у каждого игрока своя зона (вратарь, два защитника,
+        # фланг, пивот у хозяев, атакующих вправо; у гостей — зеркально), точная передача уходит партнёру —
+        # чаще ближнему, неточная — вперёд наугад.
+        zones = [(3, 10), (11, 5), (11, 15), (21, 4), (29, 11)]
+        zone = {
+            side: {
+                pid: (x, y) if side == 'home' else (40 - x, 20 - y)
+                for pid, (x, y) in zip(players[side], zones + [(20, 16)] * len(players[side]))
+            }
+            for side in ('home', 'away')
+        }
         forward = {'home': 1, 'away': -1}
-
-        def pass_points(side):
-            x, y = rng.uniform(3, 37), rng.uniform(2, 18)
-            angle = rng.gauss(0, 1.1)
-            length = rng.uniform(4, 18)
-            dx, dy = forward[side] * length * math.cos(angle), length * math.sin(angle)
-            end = [min(max(x + dx, 0.5), 39.5), min(max(y + dy, 0.5), 19.5)]
-            return [round(x, 1), round(y, 1)], [round(end[0], 1), round(end[1], 1)]
+        near = lambda xy, spread: [
+            round(min(max(xy[0] + rng.gauss(0, spread), 0.5), 39.5), 1),
+            round(min(max(xy[1] + rng.gauss(0, spread), 0.5), 19.5), 1),
+        ]
 
         for side, total, accurate in (('home', 74, 61), ('away', 58, 44)):
             for i in range(total):
-                start, end = pass_points(side)
+                author = rng.choice(players[side])
+                start = near(zone[side][author], 2.5)
+                success = i < accurate if i < total - 3 else None
+                recipient = None
+                if success:
+                    mates = [p for p in players[side] if p != author]
+                    weights = [1 / (1 + math.dist(zone[side][author], zone[side][p])) for p in mates]
+                    recipient = rng.choices(mates, weights)[0]
+                    end = near(zone[side][recipient], 2.0)
+                else:
+                    end = near([start[0] + forward[side] * rng.uniform(5, 15), start[1] + rng.uniform(-6, 6)], 1.0)
                 act(
                     'pass',
                     side,
                     rng.randrange(0, 2400) * 1000,
-                    player_id=rng.choice(players[side]),
-                    success=i < accurate if i < total - 3 else None,
+                    player_id=author,
+                    recipient_id=recipient,
+                    success=success,
                     start_xy=start,
                     end_xy=end,
                     attacking_direction='right' if side == 'home' else 'left',
