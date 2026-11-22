@@ -7,6 +7,15 @@ export type Side = 'home' | 'away';
 // Процент точности игрока — от стольких передач с известным исходом: меньше — шум, а не точность.
 export const MIN_PASSES_FOR_PERCENT = 5;
 
+// Замер передач из видео по ручным журналам (scripts/eval_pass_accuracy.py, docs/2026-11-22-pass-accuracy.md):
+// находится около двух третей передач, процент точности расходится с журналом до maxErrorPp п.п.,
+// из передач, помеченных по видео неточными, на деле неточные redTrue из redTotal.
+// Обновлять после каждого нового замера; без «≈» — когда расхождение не больше 5 п.п. в каждом зале.
+export const VIDEO_PASS_CHECK = { journals: 5, passes: 93, maxErrorPp: 17, redTrue: 2, redTotal: 21 };
+const C = VIDEO_PASS_CHECK;
+export const VIDEO_ACCURACY_HINT = `Точность по видео приблизительная: на ${C.journals} ручных журналах (${C.passes} передачи) расхождение до ${C.maxErrorPp} п.п.`;
+export const VIDEO_RED_HINT = `Неточные из видео чаще ошибочны: верны ${C.redTrue} из ${C.redTotal} по замеру.`;
+
 export type Orientation = 'attack' | 'halves' | 'camera';
 export const ORIENTATION_NOTE: Record<Orientation, string> = {
   attack: 'Хозяева атакуют вправо, гости — влево.',
