@@ -290,7 +290,12 @@ def thumb_request(tracks: pl.DataFrame, track_id: int) -> dict | None:
         return None
     longest = max(segments(g['ts'].to_numpy()), key=lambda s: s.stop - s.start)
     row = g.row(longest.start + (longest.stop - longest.start) // 2, named=True)
-    return {'kind': 'thumb', 'frame_id': row['frame_id'], 'box': [row['x1'], row['y1'], row['x2'], row['y2']]}
+    return {
+        'kind': 'thumb',
+        'frame_id': row['frame_id'],
+        'ts': row['ts'],
+        'box': [row['x1'], row['y1'], row['x2'], row['y2']],
+    }
 
 
 def _still(tracks: pl.DataFrame, ts: float, track_id: int | None) -> dict | None:
@@ -301,9 +306,10 @@ def _still(tracks: pl.DataFrame, ts: float, track_id: int | None) -> dict | None
         g = tracks.filter(pl.col('track_id') == track_id)
         if not g.is_empty():
             row = g.with_columns(d=(pl.col('ts') - ts).abs()).sort('d').row(0, named=True)
-            return {'kind': 'still', 'frame_id': row['frame_id'], 'box': [row['x1'], row['y1'], row['x2'], row['y2']]}
+            box = [row['x1'], row['y1'], row['x2'], row['y2']]
+            return {'kind': 'still', 'frame_id': row['frame_id'], 'ts': row['ts'], 'box': box}
     row = tracks.with_columns(d=(pl.col('ts') - ts).abs()).sort('d').row(0, named=True)
-    return {'kind': 'still', 'frame_id': row['frame_id'], 'box': None}
+    return {'kind': 'still', 'frame_id': row['frame_id'], 'ts': row['ts'], 'box': None}
 
 
 def moments(state: pl.DataFrame, tracks: pl.DataFrame, labels: dict[int, str], spans, cap: float) -> list[dict]:

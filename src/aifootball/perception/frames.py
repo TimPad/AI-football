@@ -144,27 +144,78 @@ def _sampled(frame_id: int, taken: int, src_fps: float, sample_fps: float) -> bo
     return frame_id / src_fps + 1e-6 >= taken / sample_fps
 
 
-def _seek_after(cap: cv2.VideoCapture, frame_id: int, ts: float) -> int | None:
-    """Ставит чтение сразу за кадром (frame_id, ts) прохода от начала; номер следующего кадра или None.
+class FrameReader:
+    """Кадры по метке времени — для кадров, найденных проходом от начала (треки, детекции).
 
-    Перемотка останавливается на кадре чуть раньше цели (его метка видна до следующего grab), дальше читаем
-    до кадра с той же меткой. Метка у кадра одна, поэтому совпадение определяет и номер. OpenCV после опорного
-    кадра считает кадры подряд, а время — по fps, и при плавающем шаге может остановиться позже цели: тогда
-    отступаем дальше.
+    Номер кадра для перемотки не годится: OpenCV переводит его во время по fps, и на записи ВШЭ промах
+    в среднем 36 кадров, до 62 (2 с). Здесь — перемотка по времени и чтение до кадра с той же меткой.
+    Запросы по возрастанию времени дешевле: к близкому следующему кадру читаем подряд, без перемотки.
+    """
+
+    READ_AHEAD_S = 2.0
+
+    def __init__(self, video: Path):
+        self.video = video
+        self.cap = _open(video)
+        self.at = -math.inf  # метка кадра последнего grab
+
+    def read(self, ts: float) -> np.ndarray | None:
+        """Кадр с меткой ts или None, если такого кадра в записи нет."""
+        if not -SAME_FRAME_S <= ts - self.at <= self.READ_AHEAD_S:  # не тот же кадр и не чуть впереди
+            self.at = _seek_before(self.cap, ts)
+            if self.at is None:
+                self.cap.release()
+                self.cap, self.at = _open(self.video), -math.inf
+        while self.at < ts - SAME_FRAME_S:
+            if not self.cap.grab():
+                self.at = math.inf
+                return None
+            self.at = frame_time(self.cap)
+        if abs(self.at - ts) > SAME_FRAME_S:
+            return None
+        ok, frame = self.cap.retrieve()
+        return frame if ok else None
+
+    def close(self) -> None:
+        self.cap.release()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+
+def _seek_before(cap: cv2.VideoCapture, ts: float) -> float | None:
+    """Перемотка чуть раньше кадра с меткой ts: возвращает метку кадра, на котором она остановилась, или None.
+
+    Следующий grab даёт кадр после этого. OpenCV после опорного кадра считает кадры подряд, а время — по fps,
+    и при плавающем шаге может остановиться позже цели: тогда отступаем дальше. None — кадр в начале записи
+    (прочитать подряд дешевле) или перемотка не встала раньше цели.
     """
     for back_s in (1.0, 10.0, 60.0):
         if ts - back_s <= 0:
-            return None  # кадр в начале записи: прочитать подряд дешевле
+            return None
         cap.set(cv2.CAP_PROP_POS_MSEC, (ts - back_s) * 1000)
         current = frame_time(cap)
-        if current > ts + SAME_FRAME_S:
-            continue  # перемотка проскочила кадр: отступаем дальше
-        while current < ts - SAME_FRAME_S:
-            if not cap.grab():
-                return None
-            current = frame_time(cap)
-        return frame_id + 1 if abs(current - ts) <= SAME_FRAME_S else None
+        if current < ts - SAME_FRAME_S:
+            return current
     return None
+
+
+def _seek_after(cap: cv2.VideoCapture, frame_id: int, ts: float) -> int | None:
+    """Ставит чтение сразу за кадром (frame_id, ts) прохода от начала; номер следующего кадра или None.
+
+    Метка у кадра одна, поэтому кадр с той же меткой — тот же кадр, и номер дальше известен.
+    """
+    current = _seek_before(cap, ts)
+    if current is None:
+        return None
+    while current < ts - SAME_FRAME_S:
+        if not cap.grab():
+            return None
+        current = frame_time(cap)
+    return frame_id + 1 if abs(current - ts) <= SAME_FRAME_S else None
 
 
 def _seek_by_fps(cap: cv2.VideoCapture, start_ms: int, src_fps: float) -> int | None:
