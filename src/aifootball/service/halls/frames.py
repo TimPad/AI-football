@@ -1,7 +1,8 @@
 """Эталонный кадр версии профиля камеры: приватный JPEG без метаданных в хранилище вложений.
 
-По нему обработчик сверяет, не сдвинута ли камера к моменту записи (geometry.camera_drift).
-Кадр задаётся один раз: перенастроенной камере нужна новая версия профиля.
+По нему обработчик сверяет, не сдвинута ли камера к моменту записи (geometry.camera_drift), а у поворотной
+камеры привязывает к нему каждый кадр записи (geometry.registration). Там же — образец плашки повтора
+поворотной камеры. Кадр и плашка задаются один раз: перенастроенной камере нужна новая версия профиля.
 """
 
 import os
@@ -12,9 +13,9 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageStat, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from aifootball.service.auth.security import require_admin, require_csrf
@@ -34,8 +35,25 @@ def reference_path(root, profile_id) -> Path:
     return Path(root) / 'camera-frames' / f'{profile_id}.jpg'
 
 
-def normalized_jpeg(raw: bytes, content_type: str | None) -> tuple[bytes, int, int]:
-    """JPEG/PNG/WebP -> JPEG без EXIF и прочих метаданных; кодирование детерминировано (повтор даёт тот же хэш)."""
+def badge_path(root, profile_id) -> Path:
+    return Path(root) / 'camera-frames' / f'{profile_id}-replay-badge.png'
+
+
+def _store(target: Path, encoded: bytes) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with NamedTemporaryFile(dir=target.parent, delete=False) as temporary:
+        path = Path(temporary.name)
+        try:
+            temporary.write(encoded)
+            temporary.flush()
+            os.replace(path, target)
+            target.chmod(0o600)
+        finally:
+            path.unlink(missing_ok=True)
+
+
+def decoded_rgb(raw: bytes, content_type: str | None) -> Image.Image:
+    """JPEG/PNG/WebP -> RGB-изображение без EXIF и прочих метаданных."""
     try:
         with warnings.catch_warnings():
             warnings.simplefilter('error', Image.DecompressionBombWarning)
@@ -47,11 +65,17 @@ def normalized_jpeg(raw: bytes, content_type: str | None) -> tuple[bytes, int, i
                 image.load()
                 clean = Image.new('RGB', image.size)
                 clean.paste(image.convert('RGB'))
-                output = BytesIO()
-                clean.save(output, format='JPEG', quality=95)
-                return output.getvalue(), clean.width, clean.height
+                return clean
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning):
         raise DomainError('file_type', 'Не удалось прочитать кадр. Загрузите корректный JPEG, PNG или WebP')
+
+
+def normalized_jpeg(raw: bytes, content_type: str | None) -> tuple[bytes, int, int]:
+    """JPEG/PNG/WebP -> JPEG без EXIF и прочих метаданных; кодирование детерминировано (повтор даёт тот же хэш)."""
+    clean = decoded_rgb(raw, content_type)
+    output = BytesIO()
+    clean.save(output, format='JPEG', quality=95)
+    return output.getvalue(), clean.width, clean.height
 
 
 def _profile(db, hid, pid, lock=False):
@@ -92,17 +116,7 @@ def upload_reference(
                     status=409,
                 )
             return camera_view(profile, hall)
-        target = reference_path(request.app.state.settings.attachment_root, profile.id)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with NamedTemporaryFile(dir=target.parent, delete=False) as temporary:
-            path = Path(temporary.name)
-            try:
-                temporary.write(encoded)
-                temporary.flush()
-                os.replace(path, target)
-                target.chmod(0o600)
-            finally:
-                path.unlink(missing_ok=True)
+        _store(reference_path(request.app.state.settings.attachment_root, profile.id), encoded)
         profile.reference_sha256 = digest
         db.flush()
         return camera_view(profile, hall)
@@ -117,5 +131,78 @@ def reference_frame(hid: UUID, pid: UUID, request: Request, db: Session = Depend
     return FileResponse(
         path,
         media_type='image/jpeg',
+        headers={'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, max-age=3600'},
+    )
+
+
+# Плашка повтора поворотной камеры: образец, по которому обработчик узнаёт повторы трансляции. Повтор снят
+# той же камерой, и геометрия склейку не замечает. Вырезается здесь из полного кадра записи: так положение
+# и размер заведомо в пикселях кадра профиля, а не уменьшенного снимка экрана.
+BADGE_MIN_PX = 8
+BADGE_MIN_STDDEV = 8.0  # однотонный прямоугольник с чем угодно коррелирует непредсказуемо
+
+
+@router.put('/halls/{hid}/camera-profiles/{pid}/replay-badge', response_model=CameraProfileView)
+def upload_badge(
+    hid: UUID,
+    pid: UUID,
+    request: Request,
+    file: UploadFile = File(),
+    x: int = Form(ge=0),
+    y: int = Form(ge=0),
+    width: int = Form(ge=BADGE_MIN_PX),
+    height: int = Form(ge=BADGE_MIN_PX),
+    db: Session = Depends(get_session),
+    actor=Depends(require_csrf),
+):
+    raw = file.file.read(MAX_BYTES + 1)
+    if len(raw) > MAX_BYTES:
+        raise DomainError('file_size', 'Кадр должен быть не больше 16 МБ')
+    image = decoded_rgb(raw, file.content_type)
+    with db.begin():
+        profile = _profile(db, hid, pid, lock=True)
+        if not profile.is_ptz:
+            raise DomainError('camera_motion', 'Плашка повтора задаётся только поворотной камере')
+        if (image.width, image.height) != (profile.frame_width, profile.frame_height):
+            raise DomainError(
+                'image_size',
+                f'Кадр {image.width} × {image.height} px, а профиль камеры — '
+                f'{profile.frame_width} × {profile.frame_height} px. Возьмите кадр той же трансляции в полном разрешении',
+            )
+        if x + width > image.width or y + height > image.height:
+            raise DomainError('badge_area', 'Плашка должна целиком лежать внутри кадра')
+        if width > image.width // 2 or height > image.height // 2:
+            raise DomainError('badge_area', 'Обведите только плашку повтора, а не часть картинки')
+        crop = image.crop((x, y, x + width, y + height)).convert('L')
+        if ImageStat.Stat(crop).stddev[0] < BADGE_MIN_STDDEV:
+            raise DomainError('badge_area', 'Прямоугольник однотонный: обведите плашку с надписью или логотипом')
+        output = BytesIO()
+        crop.save(output, format='PNG')
+        encoded = output.getvalue()
+        badge = {'sha256': sha256(encoded).hexdigest(), 'xy': [x, y], 'size': [width, height]}
+        hall = get_entity(db, Hall, hid)
+        if profile.replay_badge:
+            if profile.replay_badge != badge:
+                raise DomainError(
+                    'badge_set',
+                    'Плашка повтора этой версии уже задана. Чтобы заменить её, создайте новую версию профиля',
+                    status=409,
+                )
+            return camera_view(profile, hall)
+        _store(badge_path(request.app.state.settings.attachment_root, profile.id), encoded)
+        profile.replay_badge = badge
+        db.flush()
+        return camera_view(profile, hall)
+
+
+@router.get('/halls/{hid}/camera-profiles/{pid}/replay-badge', dependencies=[Depends(require_admin)])
+def replay_badge(hid: UUID, pid: UUID, request: Request, db: Session = Depends(get_session)):
+    profile = _profile(db, hid, pid)
+    path = badge_path(request.app.state.settings.attachment_root, profile.id)
+    if not profile.replay_badge or not path.is_file():
+        raise DomainError('not_found', 'Плашка повтора не задана', status=404)
+    return FileResponse(
+        path,
+        media_type='image/png',
         headers={'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, max-age=3600'},
     )

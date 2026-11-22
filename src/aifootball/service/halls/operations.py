@@ -14,16 +14,14 @@ from aifootball.service.halls.schemas import HallFields
 
 
 def digest(data, identifier):
+    exclude = {'address_selection_token'} if getattr(data, 'address_selection_token', None) is None else set()
+    if hasattr(data, 'digest_exclude'):
+        exclude |= data.digest_exclude()
     return sha256(
         json.dumps(
             {
                 'id': str(identifier),
-                'data': data.model_dump(
-                    mode='json',
-                    exclude={'address_selection_token'}
-                    if getattr(data, 'address_selection_token', None) is None
-                    else set(),
-                ),
+                'data': data.model_dump(mode='json', exclude=exclude),
             },
             sort_keys=True,
             separators=(',', ':'),
@@ -122,6 +120,8 @@ def make_camera(db, hall_id, data):
     ) + 1
     values = data.model_dump(mode='json', exclude={'expected_hall_revision'})
     values['request_id'] = data.request_id
+    if data.motion == 'ptz':
+        values['overlay'] = values['overlay'] or []
     profile = CameraProfile(
         id=uuid5(NAMESPACE_URL, 'aifootball:camera:' + str(data.request_id)),
         hall_id=hall_id,
@@ -151,7 +151,8 @@ def calculate_geometry(data, hall):
 
     px = np.array([p.px for p in data.points])
     meters = np.array([p.m for p in data.points])
-    polygon = np.asarray(data.pitch_polygon_px)
+    # Поворотная камера: точки — на эталонном кадре, контур обработчик строит по гомографии и размерам поля.
+    polygon = None if data.motion == 'ptz' else np.asarray(data.pitch_polygon_px)
 
     def fail(message):
         raise DomainError('camera_geometry', message)
@@ -166,7 +167,7 @@ def calculate_geometry(data, hall):
             )
         )
 
-    if not in_frame(px) or not in_frame(polygon):
+    if not in_frame(px) or (polygon is not None and not in_frame(polygon)):
         fail('Пиксельные точки должны находиться внутри кадра указанного размера')
     if not np.all(
         (meters[:, 0] >= 0)
@@ -179,7 +180,7 @@ def calculate_geometry(data, hall):
         fail('Опорные точки не должны повторяться')
     if np.linalg.matrix_rank(px - px.mean(axis=0)) < 2 or np.linalg.matrix_rank(meters - meters.mean(axis=0)) < 2:
         fail('Опорные точки не должны лежать на одной прямой')
-    if (
+    if polygon is not None and (
         len(np.unique(polygon, axis=0)) != len(polygon)
         or not is_simple_polygon(polygon)
         or abs(cv2.contourArea(polygon.astype(np.float32))) < 1
@@ -195,10 +196,21 @@ def calculate_geometry(data, hall):
             fail('Опорные точки не задают устойчивое преобразование')
         # A homography can fit four swapped corners exactly while its horizon
         # crosses the pitch. Such a map makes interior distances meaningless.
-        ideal_polygon = undistort_points(polygon, calibration)
-        denominator = np.column_stack((ideal_polygon, np.ones(len(polygon)))) @ H[2]
-        if not np.isfinite(denominator).all() or not (np.all(denominator > 1e-9) or np.all(denominator < -1e-9)):
-            fail('Преобразование разрывается внутри поля. Проверьте порядок и соответствие точек.')
+        if polygon is None:
+            # The processor derives the ptz outline the same way and refuses a pitch behind the camera.
+            from aifootball.venue import PTZ_PITCH_MARGIN_M, pitch_polygon_from_homography
+
+            try:
+                outline = pitch_polygon_from_homography(H, hall.pitch_length_m, hall.pitch_width_m, PTZ_PITCH_MARGIN_M)
+            except ValueError:
+                outline = None
+            if outline is None or not np.isfinite(outline).all():
+                fail('Преобразование разрывается внутри поля. Проверьте порядок и соответствие точек.')
+        else:
+            ideal_polygon = undistort_points(polygon, calibration)
+            denominator = np.column_stack((ideal_polygon, np.ones(len(polygon)))) @ H[2]
+            if not np.isfinite(denominator).all() or not (np.all(denominator > 1e-9) or np.all(denominator < -1e-9)):
+                fail('Преобразование разрывается внутри поля. Проверьте порядок и соответствие точек.')
         loo = leave_one_out_error(ideal, meters) if len(px) > 4 else None
         if not np.isfinite(error) or (loo is not None and not np.isfinite(loo)):
             fail('Не удалось проверить преобразование')
