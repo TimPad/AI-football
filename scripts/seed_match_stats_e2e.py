@@ -5,6 +5,7 @@ Prints the synthetic resource IDs for Playwright.
 """
 
 import json
+import math
 import os
 import random
 from pathlib import Path
@@ -232,14 +233,29 @@ def seed():
                 )
         blocked = next(a for a in actions if a['kind'] == 'shot' and a['side'] == 'home' and a['outcome'] == 'failure')
         act('shot_block', 'away', blocked['start_ms'], player_id=players['away'][2], shot_id=blocked['id'])
+        # Передачи с точками для карты: длина 4–18 м, чаще вперёд по направлению атаки стороны.
+        forward = {'home': 1, 'away': -1}
+
+        def pass_points(side):
+            x, y = rng.uniform(3, 37), rng.uniform(2, 18)
+            angle = rng.gauss(0, 1.1)
+            length = rng.uniform(4, 18)
+            dx, dy = forward[side] * length * math.cos(angle), length * math.sin(angle)
+            end = [min(max(x + dx, 0.5), 39.5), min(max(y + dy, 0.5), 19.5)]
+            return [round(x, 1), round(y, 1)], [round(end[0], 1), round(end[1], 1)]
+
         for side, total, accurate in (('home', 74, 61), ('away', 58, 44)):
             for i in range(total):
+                start, end = pass_points(side)
                 act(
                     'pass',
                     side,
                     rng.randrange(0, 2400) * 1000,
                     player_id=rng.choice(players[side]),
                     success=i < accurate if i < total - 3 else None,
+                    start_xy=start,
+                    end_xy=end,
+                    attacking_direction='right' if side == 'home' else 'left',
                 )
         for side, won in (('home', 11), ('away', 9)):
             for i in range(20):

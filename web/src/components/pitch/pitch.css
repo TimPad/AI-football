@@ -132,3 +132,93 @@
   background: #fff;
   box-shadow: 0 0 0 2px var(--text-muted, #697487) inset;
 }
+
+/* Карта передач: стрелка от передачи к приёму; точные — цветом команды, неточные — красным. */
+.pass-map {
+  --pass-fail: #ff4d6d;
+  --pass-unknown: rgba(255, 255, 255, 0.55);
+}
+.pass line {
+  stroke-width: 0.12;
+  stroke-linecap: round;
+  cursor: pointer;
+  opacity: 0.9;
+}
+.pass line.pass-hit {
+  stroke: transparent;
+  stroke-width: 0.9;
+}
+/* Точка передачи — только заливка: обводка без ширины в метрах viewBox была бы шириной в метр. */
+.pass circle {
+  stroke: none;
+}
+.pass.home line:not(.pass-hit) {
+  stroke: var(--home, #488ee6);
+}
+.pass.home circle {
+  fill: var(--home, #488ee6);
+}
+.pass.away line:not(.pass-hit) {
+  stroke: var(--away, #e9aa49);
+}
+.pass.away circle {
+  fill: var(--away, #e9aa49);
+}
+.pass.failure line:not(.pass-hit) {
+  stroke: var(--pass-fail);
+}
+.pass.failure circle {
+  fill: var(--pass-fail);
+}
+.pass.unknown line:not(.pass-hit) {
+  stroke: var(--pass-unknown);
+  stroke-dasharray: 0.4 0.3;
+}
+.pass.unknown circle {
+  fill: var(--pass-unknown);
+}
+.pass.selected line:not(.pass-hit) {
+  stroke-width: 0.26;
+}
+.pass:focus-visible {
+  outline: none;
+}
+.pass:focus-visible line:not(.pass-hit) {
+  stroke: var(--focus, #3479ce);
+}
+.pass-head path {
+  stroke: none;
+}
+.pass-head.home path {
+  fill: var(--home, #488ee6);
+}
+.pass-head.away path {
+  fill: var(--away, #e9aa49);
+}
+.pass-head.failure path {
+  fill: var(--pass-fail, #ff4d6d);
+}
+.pass-head.unknown path {
+  fill: rgba(255, 255, 255, 0.55);
+}
+.pass-key {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+}
+.pass-key.success {
+  background: linear-gradient(90deg, var(--home, #488ee6) 50%, var(--away, #e9aa49) 50%);
+}
+.pass-key.failure {
+  background: #ff4d6d;
+}
+.pass-key.unknown {
+  background: repeating-linear-gradient(90deg, var(--text-muted, #697487) 0 4px, transparent 4px 7px);
+}
+.pass-note {
+  flex-basis: 100%;
+}
+.pass-map.compact figcaption {
+  font-size: 12px;
+}

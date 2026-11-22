@@ -11,9 +11,10 @@ import { publicForward } from '../navigation/publicContext';
 import { num, reason, roles } from '../ratings/types';
 import { canAttachCurrentCv, mergeRoster, type RosterRow } from './adapters';
 import { formatFact, STAT_GROUPS, type StatGroup } from './facts';
-import { MatchStats, topLines } from './MatchStats';
+import { MatchStats, playerName, topLines } from './MatchStats';
 import { MatchTimeline } from './MatchTimeline';
 import type { PlayerSelection, ReportModel, Resource } from './model';
+import { PlayerPasses } from './PassStats';
 import { PlayerTable } from './PlayerTable';
 import { StatRow } from './StatBlocks';
 import type { StatLine } from './stats';
@@ -142,6 +143,7 @@ function Inspector({
     );
   const cv = ready(model.cv);
   const ratings = ready(model.ratings);
+  const actions = ready(model.actions);
   const rows = ratings?.items.filter((r) => r.player_id === row.playerId) ?? [];
   const overall: RatingRow | undefined =
     ratings?.overall?.find((r) => r.player_id === row.playerId) ?? (rows.length === 1 ? rows[0] : undefined);
@@ -199,6 +201,15 @@ function Inspector({
       ) : ratings ? (
         <p className="muted">Оценки этого игрока нет.</p>
       ) : null}
+      {actions && (
+        <PlayerPasses
+          stats={actions}
+          playerId={row.playerId}
+          homeName={match.home_name}
+          awayName={match.away_name}
+          name={playerName(model)}
+        />
+      )}
       <section>
         <h3>Карта времени</h3>
         {showMap && pitch ? (

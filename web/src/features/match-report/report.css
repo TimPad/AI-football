@@ -747,3 +747,95 @@
     padding: 2px 7px;
   }
 }
+
+/* Передачи: точность команд, фильтры карты и таблица игроков. */
+.pass-stats {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.pass-stats > * {
+  min-width: 0;
+}
+.pass-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 12px 24px;
+}
+.pass-team {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.pass-team .pass-percent {
+  font-size: 24px;
+  font-weight: 600;
+}
+.pass-team .small,
+.pass-team .pass-bar {
+  grid-column: 1 / -1;
+}
+.pass-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--hover);
+  min-width: 64px;
+}
+.pass-bar > span {
+  display: block;
+  height: 100%;
+}
+.pass-bar .ok.home {
+  background: var(--home, #488ee6);
+}
+.pass-bar .ok.away {
+  background: var(--away, #e9aa49);
+}
+.pass-bar .miss {
+  background: #ff4d6d;
+}
+.pass-bar .unknown {
+  background: var(--border);
+}
+.pass-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.pass-filters .segmented {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.pass-player-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+.pass-player-filter select {
+  max-width: min(240px, 100%);
+  min-width: 0;
+}
+.pass-players td:nth-child(3) {
+  white-space: nowrap;
+}
+/* Четыре узких столбца помещаются и на телефоне: точность не уезжает в прокрутку. */
+.table-scroll .pass-players {
+  min-width: 0;
+}
+.pass-chosen {
+  margin: 0;
+}
+.pass-players td .pass-bar {
+  margin-top: 4px;
+}
+.player-passes h3 {
+  margin-bottom: 4px;
+}
+.player-passes p {
+  margin: 0 0 8px;
+}
