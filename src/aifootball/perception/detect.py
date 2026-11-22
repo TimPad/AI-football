@@ -76,9 +76,22 @@ class DetectionBatch:
 
 
 def detect_batches(
-    video, venue, weights, *, batch_size=16, start_ms=0, end_ms=None, progress_every=250, ball_detector=None
+    video,
+    venue,
+    weights,
+    *,
+    batch_size=16,
+    start_ms=0,
+    end_ms=None,
+    progress_every=250,
+    ball_detector=None,
+    seek=True,
+    after=None,
 ):
-    """Load weights once, retaining sampled empty frames as coverage metadata."""
+    """Load weights once, retaining sampled empty frames as coverage metadata.
+
+    seek и after — как у iter_frames: after — уже обработанный кадр, от которого продолжение идёт перемоткой.
+    """
     if not weights.exists():
         raise FileNotFoundError(f'нет весов модели: {weights}')
     if type(batch_size) is not int or not 1 <= batch_size <= 256:
@@ -138,6 +151,8 @@ def detect_batches(
         expected_height=venue.frame_height,
         start_ms=start_ms,
         end_ms=end_ms,
+        seek=seek,
+        after=after,
     ):
         batch_meta.append((frame_id, ts, frame))
         total_frames += 1

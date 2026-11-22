@@ -8,7 +8,7 @@ import polars as pl
 import pytest
 
 from aifootball import schemas
-from conftest import write_video
+from conftest import decoded_times, write_vfr_video, write_video
 from test_processor_job import job_package
 
 
@@ -123,6 +123,40 @@ def test_corrupted_chunk_is_not_reused(cv_case):
     chunk.write_bytes(b'bad')
     with pytest.raises(ValueError, match='chunk'):
         run_cv(job, video, ws('corrupt'), models=models)
+
+
+def test_vfr_recording_with_dropped_leading_frames_completes_and_resumes_identically(cv_case, tmp_path, monkeypatch):
+    """Загрузка трансляции: шаг кадров плавает, в начале файла кадры с отрицательной меткой.
+
+    Детекция доходит до конца записи, время кадров — метки декодированных кадров, а продолжение после сбоя
+    даёт те же номера и время, что проход от начала.
+    """
+    from aifootball.processor.cv import run_cv
+    from aifootball.processor.workspace import Workspace
+
+    job, _, models, ws = cv_case
+    video = write_vfr_video(tmp_path / 'vfr.mp4')
+    times = decoded_times(video)
+    full = run_cv(job, video, ws('full'), models=models)
+    detections = pl.read_parquet(full / 'detections.parquet').sort('frame_id')
+    assert detections['frame_id'].to_list() == list(range(len(times)))
+    assert detections['ts'].to_list() == pytest.approx(times, abs=1e-6)
+    original = Workspace.put_json
+
+    def interrupt(self, key, value):
+        original(self, key, value)
+        if key == 'cv:chunk:0':
+            raise RuntimeError('power loss')
+
+    monkeypatch.setattr(Workspace, 'put_json', interrupt)
+    with pytest.raises(RuntimeError, match='power loss'):
+        run_cv(job, video, ws('resumed'), models=models)
+    monkeypatch.setattr(Workspace, 'put_json', original)
+    Predictor.calls = 0
+    resumed = run_cv(job, video, ws('resumed'), models=models)
+    assert Predictor.calls == sum(t >= 60 for t in times)
+    for name in ('detections', 'tracks'):
+        assert pl.read_parquet(full / f'{name}.parquet').equals(pl.read_parquet(resumed / f'{name}.parquet'))
 
 
 def test_range_sampler_keeps_global_ids_and_original_grid(tmp_path):
