@@ -76,7 +76,7 @@ class DetectionBatch:
 
 
 def detect_batches(
-    video, venue, weights, *, batch_size=16, start_ms=0, end_ms=None, progress_every=250, ball_detector=None
+    video, venue, weights, *, batch_size=16, start_ms=0, end_ms=None, progress_every=250, ball_detector=None, seek=True
 ):
     """Load weights once, retaining sampled empty frames as coverage metadata."""
     if not weights.exists():
@@ -138,6 +138,7 @@ def detect_batches(
         expected_height=venue.frame_height,
         start_ms=start_ms,
         end_ms=end_ms,
+        seek=seek,
     ):
         batch_meta.append((frame_id, ts, frame))
         total_frames += 1

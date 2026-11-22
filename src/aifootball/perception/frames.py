@@ -24,8 +24,14 @@ def iter_frames(
     expected_height: int | None = None,
     start_ms: int = 0,
     end_ms: int | None = None,
+    seek: bool = True,
 ) -> Iterator[tuple[int, float, np.ndarray]]:
     """Отдаёт (номер кадра, время в секундах, кадр BGR) примерно с частотой target_fps.
+
+    seek=False — к start_ms идём чтением кадров подряд, без перемотки. OpenCV перематывает по времени, а номер
+    кадра сообщает расчётный: на записи с плавающим шагом кадров (трансляция ВШЭ) перемотка на кадр 50000
+    даёт кадр, который при чтении подряд идёт 50050-м. Где номера должны совпасть с проходом от начала
+    (привязка кадров поворотной камеры), перемотка недопустима.
 
     Отбор по времени, а не «каждый N-й кадр»: из 25 fps так получается ровно 10,
     а не 12.5, как дал бы шаг 2.
@@ -56,8 +62,9 @@ def iter_frames(
     taken = max(0, math.ceil(start_ms / 1000 * sample_fps - 1e-6))
     frame_id = int(math.floor(start_ms / 1000 * src_fps))
     if frame_id:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
-        if abs(cap.get(cv2.CAP_PROP_POS_FRAMES) - frame_id) > 0.5:
+        if seek:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
+        if not seek or abs(cap.get(cv2.CAP_PROP_POS_FRAMES) - frame_id) > 0.5:
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
             for _ in range(frame_id):
                 if not cap.grab():
