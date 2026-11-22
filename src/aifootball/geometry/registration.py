@@ -144,17 +144,42 @@ def _overlap(H_cur, H_key, corners, area, symmetric=True):
     p = np.linalg.inv(H_key) @ H_cur @ np.vstack([corners.T, np.ones(4)])
     if (p[2] <= 1e-9).any():
         return 0.0
-    pts = (p[:2] / p[2]).T.astype(np.float32)
+    pts = (p[:2] / p[2]).T
     if not np.isfinite(pts).all():
         return 0.0
-    try:
-        inter, _ = cv2.intersectConvexConvex(pts, corners.astype(np.float32))
-    except cv2.error:
-        return 0.0
-    own = cv2.contourArea(pts)
+    own = _polygon_area(pts)
     if own <= 1e-6:
         return 0.0
+    # cv2.intersectConvexConvex на совпадающих многоугольниках (кадр-дубль опорного, гомография единичная
+    # до 1e-13) возвращает 0.09 вместо 1, поэтому пересечение с прямоугольником кадра считается отсечением.
+    w, h = corners.max(axis=0)
+    inter = _polygon_area(_clip_to_rect(pts, w, h))
     return float(inter / min(own, area)) if symmetric else float(inter / own)
+
+
+def _polygon_area(pts: np.ndarray) -> float:
+    if len(pts) < 3:
+        return 0.0
+    x, y = pts[:, 0], pts[:, 1]
+    return float(abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))) / 2)
+
+
+def _clip_to_rect(pts: np.ndarray, w: float, h: float) -> np.ndarray:
+    """Выпуклый многоугольник, обрезанный прямоугольником [0, w] x [0, h] (Сазерленд — Ходжмен)."""
+    poly = [np.asarray(p, np.float64) for p in pts]
+    for axis, bound, below in ((0, 0.0, False), (0, w, True), (1, 0.0, False), (1, h, True)):
+        out = []
+        for a, b in zip(poly, poly[1:] + poly[:1]):
+            a_in = a[axis] <= bound if below else a[axis] >= bound
+            b_in = b[axis] <= bound if below else b[axis] >= bound
+            if a_in:
+                out.append(a)
+            if a_in != b_in:
+                out.append(a + (bound - a[axis]) / (b[axis] - a[axis]) * (b - a))
+        poly = out
+        if not poly:
+            return np.zeros((0, 2))
+    return np.array(poly)
 
 
 class _Sequence:
