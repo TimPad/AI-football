@@ -37,6 +37,31 @@ def _write_detections(data, path):
         os.close(descriptor)
 
 
+def _ensure_registration(job, video: Path, venue, source: dict, workspace: Workspace, root: Path) -> dict:
+    """Поворотная камера: привязка кадров к эталону профиля; готовая и целая привязка не пересчитывается."""
+    import cv2
+    import numpy as np
+
+    from aifootball.geometry.registration import register_video
+
+    path = root / 'registration.parquet'
+    saved = workspace.get_json('cv:registration')
+    if saved is not None and path.exists() and file_hash(path) == saved['sha256']:
+        return saved['summary']
+    if 'reference.jpg' not in job.files:
+        raise ValueError('Поворотной камере нужен эталонный кадр профиля')
+    reference = cv2.imdecode(np.frombuffer(job.files['reference.jpg'], np.uint8), cv2.IMREAD_COLOR)
+    if reference is None or reference.shape[1] != source['width'] or reference.shape[0] != source['height']:
+        raise ValueError('Эталонный кадр камеры не читается или другого размера')
+    result = register_video(Path(video), venue, reference)
+    if result.summary['keyframes_linked_to_reference'] == 0:
+        # Ни один вид записи не совпал с эталоном: другой зал, другая точка съёмки или эталон не той трансляции.
+        raise ValueError('Запись не сверяется с эталонным кадром профиля: нужна новая версия профиля камеры')
+    schemas.write(result.frames, path, 'registration')
+    workspace.put_json('cv:registration', {'sha256': file_hash(path), 'summary': result.summary})
+    return result.summary
+
+
 def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, ball_model: str | None = None) -> Path:
     from aifootball import cli
     from aifootball.perception.detect import detect_batches, pick_device
@@ -58,7 +83,12 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
         # Детекция, трекер и проверки идут на фактической частоте, а не на пределе из задания.
         venue = replace(venue, target_fps=processing_fps(video_fps(video), venue.target_fps))
         alignment = None
-        if 'reference.jpg' in job.files:
+        registration = None
+        if venue.is_ptz and ball_model:
+            raise ValueError('Модель мяча пока не работает с поворотной камерой')
+        if venue.is_ptz:
+            registration = _ensure_registration(job, video, venue, source, workspace, root)
+        elif 'reference.jpg' in job.files:
             alignment = workspace.get_json('cv:alignment')
             if alignment is None:
                 import cv2
@@ -92,6 +122,10 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
         }
         if ball_weights:
             fingerprint['ball_model'] = {'name': ball_model, 'sha256': file_hash(ball_weights)}
+        if venue.is_ptz:
+            from aifootball.geometry.registration import VERSION
+
+            fingerprint['camera_motion'] = {'motion': 'ptz', 'registration': VERSION}
         previous = workspace.get_json('cv:fingerprint')
         if previous is not None and previous != fingerprint:
             raise ValueError('CV fingerprint mismatch')
@@ -149,8 +183,14 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
                     ball.conf_ball,
                     pick_device(),
                 )
+            # Номера кадров детекции должны совпасть с привязкой поворотной камеры: продолжение — без перемотки.
             for batch in detect_batches(
-                Path(video), venue, weights, start_ms=start * CHUNK_MS, ball_detector=ball_detector
+                Path(video),
+                venue,
+                weights,
+                start_ms=start * CHUNK_MS,
+                ball_detector=ball_detector,
+                seek=not venue.is_ptz,
             ):
                 for frame_id, ts in zip(batch.frame_ids, batch.timestamps):
                     index = min(count - 1, int(ts * 1000 // CHUNK_MS))
@@ -190,6 +230,7 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
             'source_sha256': source['sha256'],
             'context_hash': job.contract['context_hash'],
             'camera_alignment': alignment,
+            'camera_registration': registration,
             'created_at': datetime.now(UTC).isoformat(timespec='seconds'),
         }
         Workspace._atomic(root / 'meta.json', canonical(meta))
