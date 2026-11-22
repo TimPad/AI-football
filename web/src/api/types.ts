@@ -1278,6 +1278,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/halls/{hid}/camera-profiles/{pid}/replay-badge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Replay Badge */
+        get: operations["replay_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_get"];
+        /** Upload Badge */
+        put: operations["upload_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{mid}/analysis/runs/{rid}/team-confirmations": {
         parameters: {
             query?: never;
@@ -3469,6 +3487,19 @@ export interface components {
             /** Entry Id */
             entry_id?: string | null;
         };
+        /** Body_upload_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_put */
+        Body_upload_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_put: {
+            /** File */
+            file: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** Width */
+            width: number;
+            /** Height */
+            height: number;
+        };
         /** Body_upload_image_api_v1_captain_images_post */
         Body_upload_image_api_v1_captain_images_post: {
             /** File */
@@ -3496,11 +3527,24 @@ export interface components {
             frame_height: number;
             /** Points */
             points: components["schemas"]["ControlPoint"][];
+            /**
+             * Motion
+             * @default fixed
+             * @enum {string}
+             */
+            motion?: "fixed" | "ptz";
             /** Pitch Polygon Px */
-            pitch_polygon_px: [
+            pitch_polygon_px?: [
                 number,
                 number
-            ][];
+            ][] | null;
+            /** Overlay */
+            overlay?: [
+                number,
+                number,
+                number,
+                number
+            ][] | null;
             calibration?: components["schemas"]["LensCalibration"] | null;
         };
         /** CameraProfileView */
@@ -3538,8 +3582,16 @@ export interface components {
             points: {
                 [key: string]: unknown;
             }[];
+            /**
+             * Motion
+             * @default fixed
+             * @enum {string}
+             */
+            motion?: "fixed" | "ptz";
             /** Pitch Polygon Px */
-            pitch_polygon_px: number[][];
+            pitch_polygon_px?: number[][] | null;
+            /** Overlay */
+            overlay?: number[][] | null;
             /** Homography */
             homography: number[][];
             /** Calibration */
@@ -3552,6 +3604,7 @@ export interface components {
             leave_one_out_error_m?: number | null;
             /** Reference Sha256 */
             reference_sha256?: string | null;
+            replay_badge?: components["schemas"]["ReplayBadgeView"] | null;
             /** Matches Current Dimensions */
             matches_current_dimensions: boolean;
         };
@@ -7790,6 +7843,18 @@ export interface components {
              */
             kind: "replace_event";
             payload: components["schemas"]["EventChange"];
+        };
+        /**
+         * ReplayBadgeView
+         * @description Образец плашки повтора поворотной камеры: где на кадре (левый верхний угол) и размер, px.
+         */
+        ReplayBadgeView: {
+            /** Sha256 */
+            sha256: string;
+            /** Xy */
+            xy: number[];
+            /** Size */
+            size: number[];
         };
         /** ReportedTotals */
         "ReportedTotals-Input": {
@@ -12476,6 +12541,74 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_upload_reference_api_v1_halls__hid__camera_profiles__pid__reference_frame_put"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CameraProfileView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replay_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hid: string;
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hid: string;
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_put"];
             };
         };
         responses: {

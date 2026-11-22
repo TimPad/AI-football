@@ -2024,7 +2024,8 @@ summary {
   font-size: 13px;
 }
 .camera-editor label.button,
-.reference-upload label.button {
+.reference-upload label.button,
+.replay-badge-setup label.button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -2045,6 +2046,79 @@ summary {
 .hall-size-warning {
   grid-column: 1 / -1;
   margin: 0;
+}
+/* Поворотная камера: тип камеры, графика трансляции и плашка повтора на кадре. */
+.camera-motion {
+  margin: 16px 0 4px;
+}
+.camera-motion .segmented,
+.camera-editor .segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  margin: 12px 0 0;
+}
+.camera-motion p {
+  margin: 8px 0 0;
+}
+.reference-stage rect.overlay-rect {
+  fill: #ffd16633;
+  stroke: #ffd166;
+  stroke-width: 2;
+  stroke-dasharray: 8 6;
+  vector-effect: non-scaling-stroke;
+}
+.reference-stage rect.badge-rect {
+  fill: #ff4d6d26;
+  stroke: #ff4d6d;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.reference-stage rect.drawing {
+  fill-opacity: 0.5;
+}
+.moment-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.moment-field input {
+  width: 88px;
+}
+.frame-point {
+  display: inline-flex;
+}
+.frame-point .frame-point-remove {
+  min-width: 28px;
+  padding: 4px 6px;
+  margin-left: -1px;
+  color: var(--muted);
+}
+.replay-badge-setup {
+  margin: 16px 0;
+}
+.replay-badge-setup h3 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+.replay-badge-setup .row {
+  margin: 12px 0;
+  gap: 8px;
+}
+.replay-badge {
+  margin: 16px 0;
+}
+.replay-badge img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.replay-badge figcaption {
+  margin-top: 8px;
+  font-size: 13px;
 }
 .entry-player-row > .roster-row {
   display: grid;
