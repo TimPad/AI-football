@@ -6037,7 +6037,7 @@ export interface components {
              * Source
              * @enum {string}
              */
-            source: "manual" | "cv_auto";
+            source: "manual" | "cv_auto" | "cv_reviewed";
             /** Verified */
             verified: boolean;
         };
@@ -9096,7 +9096,7 @@ export interface components {
              * @default manual
              * @enum {string}
              */
-            source?: "manual" | "cv_auto";
+            source?: "manual" | "cv_auto" | "cv_reviewed";
             home: components["schemas"]["StatValue"];
             away: components["schemas"]["StatValue"];
         };

@@ -366,7 +366,8 @@ class TeamStatRow(BaseModel):
     category: str
     unit: Literal['count', 'percent']
     coverage: Literal['complete', 'partial', 'unknown']
-    source: Literal['manual', 'cv_auto'] = 'manual'
+    # cv_reviewed — передачи из видео после ручной проверки, ещё не опубликованной как действия матча.
+    source: Literal['manual', 'cv_auto', 'cv_reviewed'] = 'manual'
     home: StatValue
     away: StatValue
 
@@ -399,7 +400,7 @@ class PassPoint(BaseModel):
     period: str | None
     start_ms: int | None
     attacking_direction: Literal['left', 'right', 'unknown']
-    source: Literal['manual', 'cv_auto']
+    source: Literal['manual', 'cv_auto', 'cv_reviewed']
     # Проверена человеком: внесена вручную или проверена в разборе; передача из видео без проверки — нет.
     verified: bool
 

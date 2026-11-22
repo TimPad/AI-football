@@ -766,6 +766,7 @@
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: baseline;
+  align-content: start;
   gap: 4px 12px;
 }
 .pass-team .pass-percent {

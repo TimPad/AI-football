@@ -15,6 +15,9 @@ export const VIDEO_PASS_CHECK = { journals: 5, passes: 93, maxErrorPp: 17, redTr
 const C = VIDEO_PASS_CHECK;
 export const VIDEO_ACCURACY_HINT = `Точность по видео приблизительная: на ${C.journals} ручных журналах (${C.passes} передачи) расхождение до ${C.maxErrorPp} п.п.`;
 export const VIDEO_RED_HINT = `Неточные из видео чаще ошибочны: верны ${C.redTrue} из ${C.redTotal} по замеру.`;
+// Передачи из видео проверены вручную, но разбор матча ещё не опубликован: найдено не каждое касание.
+export const REVIEWED_ACCURACY_HINT =
+  '≈ — передачи из видео проверены вручную, разбор матча ещё не опубликован: найдена не каждая передача, точность не 100%.';
 
 export type Orientation = 'attack' | 'halves' | 'camera';
 export const ORIENTATION_NOTE: Record<Orientation, string> = {
