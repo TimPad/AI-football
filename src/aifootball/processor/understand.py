@@ -10,7 +10,7 @@ import polars as pl
 from aifootball import schemas
 from aifootball.analytics.exchange import canonical
 from aifootball.processor.job import source_for_job
-from aifootball.processor.media import make_window, select_player_frames
+from aifootball.processor.media import frame_before, make_window, select_player_frames
 from aifootball.processor.qwen import QwenError
 from aifootball.understanding.identity import resolve_identity
 from aifootball.understanding.prompts import PROMPT_VERSION, identity_prompt, match_prompt
@@ -135,6 +135,8 @@ def run_understanding(
     completed = {'match': 0, 'identity': 0}
     exhausted = False
     for kind, spec in tasks:
+        # Номера кадров окна должны совпасть с треками: продолжение от кадра трека перед окном, без него — подряд.
+        after = frame_before(tracks, spec['start_ms']) if kind == 'match' else None
         try:
             window = (
                 spec
@@ -147,6 +149,8 @@ def run_understanding(
                     mode=mode,
                     fps=spec['fps'],
                     track_ids=spec['track_ids'],
+                    after=after,
+                    seek=after is not None,
                 )
             )
         except ValueError:

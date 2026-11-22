@@ -1,4 +1,6 @@
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 import cv2
@@ -41,6 +43,60 @@ def write_video(path: Path, n_frames: int = 50, fps: float = 25.0, size=(320, 24
         writer.write(np.full((size[1], size[0], 3), (i * 5) % 256, dtype=np.uint8))
     writer.release()
     return path
+
+
+def write_vfr_video(path: Path, size=(400, 200), trim_s: float = 9.9) -> Path:
+    """Видео с плавающим шагом кадров и отброшенными кадрами в начале, как в загрузках трансляций VK.
+
+    300 кадров: первые 150 через 0.4 с, остальные через 0.6 с, плюс дрожание 0–20 мс. Номер кадра / fps
+    расходится с меткой кадра на десятки кадров. Обрезка копированием с -ss оставляет в файле кадры от
+    предыдущего опорного с отрицательной меткой: контейнер считает их, декодер отбрасывает.
+
+    Верхняя половина кадра — ровная яркость, своя у каждого кадра (frame_level): по ней узнаётся кадр.
+    Нижняя — шахматка, чтобы вырезка была резкой.
+    """
+    if shutil.which('ffmpeg') is None:
+        pytest.skip('нет ffmpeg')
+    width, height = size
+    source = path.with_name(path.stem + '-source.mp4')
+    timeline = '(if(lt(N,150),N*0.4,60+(N-150)*0.6)+mod(N,3)*0.01)/TB'
+    board = ((np.indices((height - height // 2, width)).sum(axis=0) // 8 % 2) * 255).astype(np.uint8)
+    frames = []
+    for i in range(300):
+        frame = np.empty((height, width, 3), np.uint8)
+        frame[: height // 2] = (i * 7) % 256
+        frame[height // 2 :] = board[:, :, None]
+        frames.append(frame.tobytes())
+    raw = b''.join(frames)
+    encode = ['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'bgr24', '-s', f'{width}x{height}']
+    encode += ['-r', '2', '-i', '-', '-vf', f"settb=1/1000,setpts='{timeline}'", '-fps_mode', 'passthrough']
+    encode += ['-enc_time_base', '1/1000', '-c:v', 'mpeg4', '-q:v', '4', '-g', '20', '-sc_threshold', '1000000000']
+    encode += ['-bf', '2', '-video_track_timescale', '1000', str(source)]
+    subprocess.run(encode, input=raw, check=True)
+    if not trim_s:
+        return source.replace(path)
+    subprocess.run(
+        ['ffmpeg', '-v', 'error', '-y', '-ss', str(trim_s), '-i', str(source), '-c', 'copy', str(path)], check=True
+    )
+    source.unlink()
+    return path
+
+
+def frame_level(image: np.ndarray) -> float:
+    """Яркость верхней половины кадра write_vfr_video (или вырезки из неё)."""
+    return float(image[: image.shape[0] // 4].mean())
+
+
+def decoded_times(video: Path) -> list[float]:
+    """Метки декодированных кадров по ffprobe, с."""
+    out = subprocess.run(
+        ['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'frame=best_effort_timestamp_time']
+        + ['-of', 'csv=p=0', str(video)],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return [float(line) for line in out.split()]
 
 
 @pytest.fixture

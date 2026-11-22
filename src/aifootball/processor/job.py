@@ -1,6 +1,7 @@
 import base64
 import math
 from dataclasses import dataclass
+from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
@@ -138,21 +139,36 @@ def read_job(path):
 
 
 def video_info(path):
+    """Размер и длительность записи. Длительность — конец последнего декодируемого кадра: его метка + шаг по fps.
+
+    Число кадров контейнера для длительности не годится: в загрузках трансляций оно включает кадры с
+    отрицательной меткой, которые декодер отбрасывает (запись ВШЭ: 78208 в контейнере, декодируется 78030,
+    длительность по ним длиннее записи на 6 с).
+    """
+    path = Path(path)
+    stat = path.stat() if path.exists() else None
+    return dict(_video_info(str(path), stat and stat.st_size, stat and stat.st_mtime_ns))
+
+
+@lru_cache(maxsize=16)
+def _video_info(path, size, mtime_ns):
+    # Конец записи ищется перемоткой и чтением последних секунд: окна понимания спрашивают его много раз.
     import cv2
 
-    cap = cv2.VideoCapture(str(path))
+    from aifootball.perception.frames import last_frame_time
+
+    cap = cv2.VideoCapture(path)
     try:
         ensure(cap.isOpened(), 'Не открывается исходное видео')
         fps = cap.get(cv2.CAP_PROP_FPS)
         frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         ensure(fps > 0 and frames > 0 and math.isfinite(fps), 'Не определена длительность видео')
-        return {
-            'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-            'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-            'duration_s': frames / fps,
-        }
+        width, height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     finally:
         cap.release()
+    last = last_frame_time(Path(path), frames / fps)
+    ensure(last is not None, 'Видео не декодируется')
+    return {'width': width, 'height': height, 'duration_s': round(last + 1 / fps, 6)}
 
 
 def file_hash(path):

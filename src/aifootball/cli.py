@@ -332,7 +332,8 @@ def _report_video_duration(args, processed_end: float) -> tuple[float, bool]:
     """Длительность исходника; без источника явно помечаем оценку по артефактам."""
     import math
 
-    import cv2
+    from aifootball.analytics.exchange import ExchangeError
+    from aifootball.processor.job import video_info
 
     meta_path = args.match / 'meta.json'
     meta = json.loads(meta_path.read_text(encoding='utf-8')) if meta_path.exists() else {}
@@ -342,14 +343,10 @@ def _report_video_duration(args, processed_end: float) -> tuple[float, bool]:
             return float(duration), False
     source = args.video or (Path(meta['video']) if meta.get('video') else None)
     if source is not None and (args.video or source.exists()):
-        cap = cv2.VideoCapture(str(source))
         try:
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-            if cap.isOpened() and fps > 0 and frames > 0:
-                return frames / fps, False
-        finally:
-            cap.release()
+            return video_info(source)['duration_s'], False
+        except ExchangeError:
+            pass
         if args.video:
             raise ValueError(f'не открывается видео: {source}')
     return processed_end, True

@@ -117,7 +117,8 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
             'context_hash': job.contract['context_hash'],
             'weights_sha256': file_hash(weights),
             'venue_files': {name: sha256(raw).hexdigest() for name, raw in job.files.items()},
-            'pipeline': 'cv-chunks-v1',
+            # v2: время кадра — метка кадра в потоке, а не номер / fps; куски v1 с ними не смешиваются.
+            'pipeline': 'cv-chunks-v2',
             'chunk_ms': CHUNK_MS,
         }
         if ball_weights:
@@ -183,7 +184,10 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
                     ball.conf_ball,
                     pick_device(),
                 )
-            # Номера кадров детекции должны совпасть с привязкой поворотной камеры: продолжение — без перемотки.
+            # Продолжение — от последнего обработанного кадра: перемотка к нему со сверкой метки времени даёт те же
+            # номера и время кадров, что проход от начала, и при плавающем шаге кадров. Поворотная камера продолжает
+            # чтением подряд: номера кадров детекции должны совпасть с привязкой к эталону.
+            last = (saved[-1]['last_frame_id'], saved[-1]['last_ts']) if saved else None
             for batch in detect_batches(
                 Path(video),
                 venue,
@@ -191,6 +195,7 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
                 start_ms=start * CHUNK_MS,
                 ball_detector=ball_detector,
                 seek=not venue.is_ptz,
+                after=last,
             ):
                 for frame_id, ts in zip(batch.frame_ids, batch.timestamps):
                     index = min(count - 1, int(ts * 1000 // CHUNK_MS))
@@ -207,7 +212,9 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
                         parts.append(part)
             if not sampled or current != count - 1:
                 raise ValueError('Incomplete video decoding')
-            tolerance = max(1 / venue.target_fps, 1 / video_fps(video)) + 0.001
+            # Длительность — метка последнего кадра + шаг по fps; при прореживании последний отобранный кадр раньше
+            # последнего на шаг отбора. Запас в кадр — на плавающий шаг кадров.
+            tolerance = 1 / venue.target_fps + 1 / video_fps(video) + 0.001
             if source['duration_s'] - sampled[-1][1] > tolerance:
                 raise ValueError('Incomplete video decoding')
             saved.append(persist(current))
