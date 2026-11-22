@@ -382,6 +382,34 @@ class ShotPoint(BaseModel):
     start_ms: int | None
 
 
+class PassPoint(BaseModel):
+    """Передача на карте: координаты площадки в метрах, как на видео (без разворота по атаке)."""
+
+    id: str
+    side: Literal['home', 'away']
+    player_id: UUID | None
+    recipient_id: UUID | None
+    start_xy: list[float]
+    end_xy: list[float]
+    length_m: float
+    success: bool | None
+    period: str | None
+    start_ms: int | None
+    attacking_direction: Literal['left', 'right', 'unknown']
+    source: Literal['manual', 'cv_auto']
+
+
+class PassPlayerStats(BaseModel):
+    """Передачи исполнителя за период: все, точные и с известным исходом; средняя длина — по передачам с точками."""
+
+    side: Literal['home', 'away']
+    player_id: UUID | None
+    total: int
+    accurate: int
+    known: int
+    length_m: float | None
+
+
 class StatsSource(BaseModel):
     kind: Literal['manual', 'cv_auto', 'mixed']
     action_version_id: UUID | None
@@ -412,4 +440,6 @@ class TeamActionStats(BaseModel):
     coverage: dict[str, Literal['complete', 'partial', 'unknown']]
     rows: list[TeamStatRow]
     shots: list[ShotPoint]
+    passes: list[PassPoint]
+    pass_players: list[PassPlayerStats]
     pitch: PitchSize | None

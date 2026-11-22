@@ -4,7 +4,13 @@
 Неизвестный исход остаётся отдельным числом и не входит в знаменатель процента.
 Ручная версия главнее: автоматические строки добавляются только в категории, которых в ней нет.
 Автоматическая категория всегда неполная — распознаётся не каждая передача.
+
+Передачи для карты (passes) — только с точками начала и конца, в координатах площадки (метры, как на видео);
+сводка по исполнителям (pass_players) — по всем передачам периода, в том числе без координат.
 """
+
+import math
+from uuid import NAMESPACE_URL, uuid5
 
 from sqlalchemy import select
 
@@ -115,6 +121,56 @@ def _values(records, blocked_ids):
     }
 
 
+def _length(a, b):
+    return round(math.hypot(b[0] - a[0], b[1] - a[1]), 1)
+
+
+def _pass_points(records, period_of, source):
+    """Передачи с обеими точками — стрелки карты; исход неизвестен — success None."""
+    return [
+        {
+            'id': str(r['id']),
+            'side': r['side'],
+            'player_id': r.get('player_id'),
+            'recipient_id': r.get('recipient_id'),
+            'start_xy': [float(v) for v in r['start_xy']],
+            'end_xy': [float(v) for v in r['end_xy']],
+            'length_m': _length(r['start_xy'], r['end_xy']),
+            'success': r.get('success'),
+            'period': period_of(r),
+            'start_ms': r.get('start_ms'),
+            'attacking_direction': r.get('attacking_direction') or 'unknown',
+            'source': source,
+        }
+        for r in records
+        if r.get('start_xy') and r.get('end_xy')
+    ]
+
+
+def _pass_players(records):
+    """Передачи по исполнителю (player_id None — автор не определён); точность — по известному исходу."""
+    groups = {}
+    for r in records:
+        groups.setdefault((r['side'], r.get('player_id')), []).append(r)
+    rows = []
+    for (side, player_id), items in groups.items():
+        known = [i for i in items if i.get('success') is not None]
+        lengths = [_length(i['start_xy'], i['end_xy']) for i in items if i.get('start_xy') and i.get('end_xy')]
+        rows.append(
+            {
+                'side': side,
+                'player_id': player_id,
+                'total': len(items),
+                'accurate': sum(1 for i in known if i['success']),
+                'known': len(known),
+                'length_m': round(sum(lengths) / len(lengths), 1) if lengths else None,
+            }
+        )
+    return sorted(
+        rows, key=lambda r: (SIDES.index(r['side']), r['player_id'] is None, -r['total'], str(r['player_id']))
+    )
+
+
 # Вид события по мячу -> категория полноты строк сводки.
 AUTO_CATEGORY = {'pass': 'passes'}
 
@@ -159,7 +215,50 @@ def _auto_rows(run, period):
     ]
 
 
-def _with_events(stats, run, published):
+def _auto_passes(run, period, people):
+    """Передачи прогона CV как записи сводки. Исполнитель и адресат — игроки назначенных фрагментов той же
+    стороны (как в автоматической версии действий); адресат — только у точной передачи."""
+    assigned, sides = people
+    periods = _cv_periods(run)
+    bounds = next((p for p in periods if p['key'] == period), None)
+    if bounds is None:
+        return []
+    halves = [p for p in periods if p['key'] != 'all']
+    pitch = run.report['pitch']
+    inside = lambda t, spans: any(a <= t <= b for a, b in spans)
+    clip = lambda xy: [
+        min(max(float(xy[0]), 0.0), float(pitch['length_m'])),
+        min(max(float(xy[1]), 0.0), float(pitch['width_m'])),
+    ]
+    records = []
+    for index, e in enumerate((run.events or {}).get('events', [])):
+        side = run.side_map.get(e.get('team'))
+        if e['kind'] != 'pass' or side not in SIDES or not inside(e['start_s'], bounds['spans']):
+            continue
+        author = assigned.get(e['track_id'])
+        author = author if author is not None and sides.get(author) == side else None
+        recipient = assigned.get(e.get('recipient_track_id')) if e['success'] else None
+        if recipient is not None and (recipient == author or sides.get(recipient) != side):
+            recipient = None
+        records.append(
+            {
+                # Тот же UUID, что у передачи в автоматической версии действий (ratings.auto.actions_document).
+                'id': uuid5(NAMESPACE_URL, f'aifootball:cv-auto:{run.id}:{index}'),
+                'kind': 'pass',
+                'side': side,
+                'player_id': author,
+                'recipient_id': recipient,
+                'start_xy': clip(e['start_xy']),
+                'end_xy': clip(e['end_xy']),
+                'success': bool(e['success']),
+                'period': next((h['key'] for h in halves if inside(e['start_s'], h['spans'])), None),
+                'start_ms': max(0, round(e['start_s'] * 1000)),
+            }
+        )
+    return records
+
+
+def _with_events(stats, run, published, people):
     """Добавляет автоматические строки в категории, которых нет в ручной версии."""
     rows = _auto_rows(run, stats['period'])
     if not rows:
@@ -171,16 +270,21 @@ def _with_events(stats, run, published):
     stats['rows'] = stats['rows'] + extra
     stats['coverage'] = {**stats['coverage'], **{r['category']: 'partial' for r in extra}}
     stats['source'] = {**stats['source'], 'kind': 'mixed', 'run_id': run.id, 'run_published': published}
+    if any(r['category'] == 'passes' for r in extra):
+        records = _auto_passes(run, stats['period'], people)
+        stats['passes'] = _pass_points(records, lambda r: r['period'], 'cv_auto')
+        stats['pass_players'] = _pass_players(records)
     return stats
 
 
-def auto_action_stats(run, *, published, period='all'):
+def auto_action_stats(run, *, published, period='all', people=({}, {})):
     """Сводка только из событий видеоанализа: ручной версии действий нет.
     Тайм, которого нет в видеоанализе (запись не разделена на таймы), — пустая сводка, а не ошибка:
     периоды странице задаёт протокол."""
     periods = _cv_periods(run)
     rows = _auto_rows(run, period) or []
     pitch = run.report['pitch']
+    records = _auto_passes(run, period, people) if any(r['category'] == 'passes' for r in rows) else []
     return {
         'source': {
             'kind': 'cv_auto',
@@ -199,6 +303,8 @@ def auto_action_stats(run, *, published, period='all'):
         'coverage': {r['category']: 'partial' for r in rows},
         'rows': rows,
         'shots': [],
+        'passes': _pass_points(records, lambda r: r['period'], 'cv_auto'),
+        'pass_players': _pass_players(records),
         'pitch': {'length_m': pitch['length_m'], 'width_m': pitch['width_m']},
     }
 
@@ -255,6 +361,7 @@ def team_action_stats(version, *, published, period='all'):
         for r in selected
         if r.get('counts_as_shot') and r.get('start_xy') and r.get('side') in SIDES
     ]
+    passes = [r for r in selected if r['kind'] == 'pass' and r.get('side') in SIDES]
     pitch = (version.provenance or {}).get('pitch')
     return {
         'source': {
@@ -274,6 +381,8 @@ def team_action_stats(version, *, published, period='all'):
         'coverage': coverage,
         'rows': rows,
         'shots': shots,
+        'passes': _pass_points(passes, lambda r: _period_of(r, bounds), 'manual'),
+        'pass_players': _pass_players(passes),
         'pitch': {'length_m': pitch['length_m'], 'width_m': pitch['width_m']} if pitch else None,
     }
 
@@ -283,6 +392,23 @@ def _run_with_events(db, run_id):
 
     run = db.get(AnalysisRun, run_id) if run_id else None
     return run if run is not None and run.events is not None else None
+
+
+def _people(db, run):
+    """Игроки фрагментов прогона (трек -> UUID) и их стороны по составу из снимка задания."""
+    from aifootball.service.analysis.models import AnalysisAssignment, AnalysisJob
+
+    assigned = {
+        a.track_id: str(a.player_id)
+        for a in db.scalars(
+            select(AnalysisAssignment).where(
+                AnalysisAssignment.run_id == run.id, AnalysisAssignment.player_id.is_not(None)
+            )
+        )
+    }
+    job = db.get(AnalysisJob, run.job_id)
+    sides = {p['player_id']: p['side'] for p in (job.context.get('rosters') or [])} if job else {}
+    return assigned, sides
 
 
 def public_action_stats(db, match_id, period='all'):
@@ -300,9 +426,9 @@ def public_action_stats(db, match_id, period='all'):
     if version is None and run is None:
         raise DomainError('not_found', 'Действия матча не опубликованы', status=404)
     if version is None:
-        return auto_action_stats(run, published=True, period=period)
+        return auto_action_stats(run, published=True, period=period, people=_people(db, run))
     stats = team_action_stats(version, published=True, period=period)
-    return _with_events(stats, run, True) if run else stats
+    return _with_events(stats, run, True, _people(db, run)) if run else stats
 
 
 def private_action_stats(db, match_id, period='all'):
@@ -330,7 +456,7 @@ def private_action_stats(db, match_id, period='all'):
         raise DomainError('not_found', 'Версий действий пока нет', status=404)
     run_published = bool(run and run.id == match.published_analysis_run_id)
     if version is None:
-        return auto_action_stats(run, published=run_published, period=period)
+        return auto_action_stats(run, published=run_published, period=period, people=_people(db, run))
     pub = db.scalar(select(RatingMatchPublication).where(RatingMatchPublication.match_id == match_id))
     stats = team_action_stats(version, published=bool(pub and pub.action_version_id == version.id), period=period)
-    return _with_events(stats, run, run_published) if run else stats
+    return _with_events(stats, run, run_published, _people(db, run)) if run else stats
