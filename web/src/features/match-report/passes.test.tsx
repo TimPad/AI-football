@@ -194,6 +194,22 @@ it('shows the review progress and keeps ≈ until every pass is checked', () => 
   expect(within(screen.getByLabelText('Точность передач команд')).getByText('≈86%')).toBeInTheDocument();
 });
 
+it('marks a confirmed but unpublished review as checked, with accuracy below 100%', () => {
+  const reviewed = match();
+  reviewed.rows = reviewed.rows.map((r) => ({ ...r, source: 'cv_reviewed' as const }));
+  reviewed.passes = reviewed.passes.map((p) => ({ ...p, source: 'cv_reviewed' as const, verified: true }));
+  reviewed.pass_players = reviewed.pass_players.map((p) => ({ ...p, verified: p.total }));
+  render(<PassStats stats={reviewed} homeName="Север" awayName="Юг" name={name} />);
+  const percent = within(screen.getByLabelText('Точность передач команд')).getByText('≈86%');
+  expect(percent).toHaveAttribute('title', expect.stringContaining('проверены вручную'));
+  expect(
+    screen.getByText(/разбор матча ещё не опубликован: найдена не каждая передача, точность не 100%/),
+  ).toBeInTheDocument();
+  // Замеренная погрешность непроверенных передач к проверенным не относится.
+  expect(screen.queryByText(/Неточные из видео чаще ошибочны/)).toBeNull();
+  expect(screen.queryByText(/расходится с ручным журналом/)).toBeNull();
+});
+
 it("shows one player's passes and accuracy in the player card", () => {
   render(<PlayerPasses stats={match()} playerId={P1} homeName="Север" awayName="Юг" name={name} />);
   expect(screen.getByText('6 · точных 5 / 6 · ≈83% · средняя длина 11,8 м')).toBeInTheDocument();

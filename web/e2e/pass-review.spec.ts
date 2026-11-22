@@ -13,7 +13,10 @@ function packageFor(job: unknown) {
   return result.stdout;
 }
 
-test('video passes are checked one by one and the report drops the ≈ for checked ones', async ({ page }) => {
+test('video passes are checked one by one; guests see the checked passes before the actions are published', async ({
+  page,
+  browser,
+}) => {
   await page.goto('/login');
   await page.getByLabel('Логин', { exact: true }).fill('e2e-analyst');
   await page.getByLabel('Пароль', { exact: true }).fill('e2e-only-password');
@@ -110,12 +113,24 @@ test('video passes are checked one by one and the report drops the ≈ for check
     },
     'PUT',
   );
-  const analysis = await (await page.request.get(`/api/v1${path}/analysis`)).json();
-  await call(`${path}/analysis/runs/${run.id}/confirm`, {
+  let analysis = await (await page.request.get(`/api/v1${path}/analysis`)).json();
+  run = await call(`${path}/analysis/runs/${run.id}/confirm`, {
     request_id: crypto.randomUUID(),
     expected_revision: run.revision,
     expected_analysis_revision: analysis.analysis_revision,
   });
+  // Видеоанализ опубликован, действия матча — нет: зритель видит передачи из видео с пометкой «авто».
+  analysis = await (await page.request.get(`/api/v1${path}/analysis`)).json();
+  await call(`${path}/analysis/runs/${run.id}/publish`, {
+    request_id: crypto.randomUUID(),
+    expected_revision: run.revision,
+    expected_analysis_revision: analysis.analysis_revision,
+  });
+  const guest = await (await browser.newContext()).newPage();
+  const publicStats = async () => (await guest.request.get(`/api/v1/public${path}/action-stats`)).json();
+  const passesRow = (stats: { rows: { key: string; source: string }[] }) =>
+    stats.rows.find((r) => r.key === 'passes_total')!.source;
+  expect(passesRow(await publicStats())).toBe('cv_auto');
   const before = await (await page.request.get(`/api/v1${path}/action-stats`)).json();
   expect(before.passes.map((p: { verified: boolean }) => p.verified)).toEqual([false, false]);
 
@@ -146,6 +161,14 @@ test('video passes are checked one by one and the report drops the ≈ for check
   expect(after.pass_players).toEqual([
     expect.objectContaining({ player_id: people.home[0].id, total: 2, accurate: 2, verified: 2 }),
   ]);
+  // Зритель видит проверку сразу, с пометкой «проверено» и точностью «не 100%»; действия при этом не опубликованы.
+  await expect.poll(async () => passesRow(await publicStats())).toBe('cv_reviewed');
+  await guest.goto(`/watch${path}?tab=stats`);
+  const card = guest.locator('.stat-card', { has: guest.getByRole('heading', { name: 'Передачи: карта и точность' }) });
+  await expect(card.getByText(/проверены вручную, разбор матча ещё не опубликован/)).toBeVisible();
+  await expect(card.getByLabel('Точность передач команд')).toContainText('≈100%');
+  await expect(guest.locator('.stat-row', { hasText: 'Точные передачи' }).getByText('проверено')).toBeVisible();
+  await card.screenshot({ path: 'test-results/pass-review-public.png' });
   for (const width of [768, 390]) {
     await page.setViewportSize({ width, height: 900 });
     expect(

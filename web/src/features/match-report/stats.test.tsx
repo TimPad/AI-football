@@ -100,6 +100,13 @@ describe('match statistics', () => {
     expect(line.home.note).toBe('2/3 · 1 без исхода');
     expect(line.away.text).toBe('—');
     expect(line.partial).toBe(true);
+    const reviewed = actionLines({
+      rows: [{ ...stats.rows[0], source: 'cv_reviewed' }],
+    } as unknown as TeamActionStats).passes[0];
+    expect([reviewed.reviewed, reviewed.auto, reviewed.partial]).toEqual([true, false, false]);
+    const { unmount } = render(<StatRow line={reviewed} />);
+    expect(screen.getByText('проверено')).toHaveAttribute('title', expect.stringContaining('точность не 100%'));
+    unmount();
     render(<StatRow line={line} />);
     expect(screen.getByText('67 %').className).toBe('');
     expect(screen.getByText('2/3 · 1 без исхода')).toBeInTheDocument();

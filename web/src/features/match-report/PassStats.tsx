@@ -15,6 +15,7 @@ import {
   type PassFilter,
   type PassPlayer,
   passNetwork,
+  REVIEWED_ACCURACY_HINT,
   type Side,
   teamAccuracy,
   toArrows,
@@ -24,8 +25,12 @@ import {
 } from './passes';
 
 type Name = (id: string | null | undefined) => string | null;
-// «≈» — пока есть передачи из видео без проверки человеком; ручная и проверенная разметка точна по тому, что размечено.
-const autoPasses = (stats: TeamActionStats) => stats.pass_players.some((p) => p.verified < p.total);
+// «≈» — пока есть передачи из видео без проверки человеком и у проверки, не опубликованной как действия матча:
+// найдено не каждое касание, и разбор не завершён. Опубликованная ручная разметка точна по тому, что размечено.
+const reviewedPasses = (stats: TeamActionStats) =>
+  stats.rows.some((r) => r.category === 'passes' && r.source === 'cv_reviewed');
+const autoPasses = (stats: TeamActionStats) =>
+  reviewedPasses(stats) || stats.pass_players.some((p) => p.verified < p.total);
 // Сколько передач проверено, когда проверка начата, но не закончена.
 function reviewProgress(stats: TeamActionStats) {
   const total = stats.pass_players.reduce((s, p) => s + p.total, 0);
@@ -36,7 +41,7 @@ const metres = (v: number | null) => (v == null ? '—' : v.toLocaleString('ru-R
 
 // Доли точных, неточных и с неизвестным исходом — полосой; подпись «точных / с исходом · %».
 function AccuracyBar({ side, total, accurate, known }: { side: Side; total: number; accurate: number; known: number }) {
-  if (!total) return <span className="pass-bar empty" />;
+  if (!total) return null;
   const pct = (v: number) => `${(100 * v) / total}%`;
   return (
     <span className="pass-bar" aria-hidden="true">
@@ -123,6 +128,8 @@ export function PassStats({
   if (!stats.pitch) return null;
   const { length_m: L, width_m: W } = stats.pitch;
   const approx = autoPasses(stats);
+  // Есть передачи из видео без проверки — к ним относится замеренная погрешность.
+  const unchecked = stats.pass_players.some((p) => p.verified < p.total);
   const oriented = orientPasses(stats.passes, L, W);
   const shown = filterPasses(oriented.passes, filter);
   const players = stats.pass_players.filter((p) => filter.side === 'all' || p.side === filter.side);
@@ -141,7 +148,10 @@ export function PassStats({
                 <i className={`side-dot ${side}`} />
                 {sideName(side)}
               </span>
-              <b className="num pass-percent" title={approx ? VIDEO_ACCURACY_HINT : undefined}>
+              <b
+                className="num pass-percent"
+                title={approx ? (unchecked ? VIDEO_ACCURACY_HINT : REVIEWED_ACCURACY_HINT) : undefined}
+              >
                 {a.percent == null ? '—' : `${approx ? '≈' : ''}${Math.round(a.percent)}%`}
               </b>
               <span className="muted small num">
@@ -215,7 +225,7 @@ export function PassStats({
         awayName={awayName}
         note={[
           ORIENTATION_NOTE[oriented.orientation],
-          approx && shown.some((p) => p.success === false) ? VIDEO_RED_HINT : null,
+          unchecked && shown.some((p) => p.success === false && !p.verified) ? VIDEO_RED_HINT : null,
           unplaced > 0 ? `Без точек на поле и не на карте: ${unplaced}` : null,
         ]
           .filter(Boolean)
@@ -229,7 +239,8 @@ export function PassStats({
         onPick={(playerId) => set({ playerId })}
       />
       {reviewProgress(stats) && <p className="muted small">{reviewProgress(stats)}</p>}
-      {approx && (
+      {approx && reviewedPasses(stats) && <p className="muted small pass-caveat">{REVIEWED_ACCURACY_HINT}</p>}
+      {approx && unchecked && (
         <p className="muted small pass-caveat">
           ≈ — передачи из видео: находится около двух третей, процент точности расходится с ручным журналом до{' '}
           {VIDEO_PASS_CHECK.maxErrorPp} п.п., а из неточных по видео верны {VIDEO_PASS_CHECK.redTrue} из{' '}
@@ -268,7 +279,11 @@ export function PlayerPasses({
         {row.total} · точных {formatAccuracy(accuracy([row], MIN_PASSES_FOR_PERCENT), approx)}
         {row.length_m != null ? ` · средняя длина ${metres(row.length_m)} м` : ''}
       </p>
-      {approx && <p className="muted small">{VIDEO_ACCURACY_HINT}</p>}
+      {approx && (
+        <p className="muted small">
+          {stats.pass_players.some((p) => p.verified < p.total) ? VIDEO_ACCURACY_HINT : REVIEWED_ACCURACY_HINT}
+        </p>
+      )}
       <PassMap
         passes={toArrows(own, name, stats.source.clock_basis === 'video')}
         lengthM={L}
