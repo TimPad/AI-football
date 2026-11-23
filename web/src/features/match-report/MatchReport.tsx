@@ -7,6 +7,7 @@ import { PlayerInspector } from '../../components/match/PlayerInspector';
 import { SourceStatus } from '../../components/match/SourceStatus';
 import { sharedHeatmapMax } from '../../components/pitch/heatmap';
 import { PitchMap } from '../../components/pitch/PitchMap';
+import { ShotMap } from '../../components/pitch/ShotMap';
 import { publicForward } from '../navigation/publicContext';
 import { num, reason, roles } from '../ratings/types';
 import { canAttachCurrentCv, mergeRoster, type RosterRow } from './adapters';
@@ -16,6 +17,7 @@ import { MatchTimeline } from './MatchTimeline';
 import type { PlayerSelection, ReportModel, Resource } from './model';
 import { PlayerPasses } from './PassStats';
 import { PlayerTable } from './PlayerTable';
+import { hasShotData, heatmapCenter, playerShots, videoTiles } from './playerCard';
 import { StatRow } from './StatBlocks';
 import type { StatLine } from './stats';
 import './report.css';
@@ -152,6 +154,15 @@ function Inspector({
   const showMap = canAttachCurrentCv({ ...model.context, cvRunId: cv?.run_id ?? null }, origin) && cvPlayer;
   const pitch = cv?.pitch as { length_m: number; width_m: number; orientation?: string } | undefined;
   const share = overall ? formatFact('pass_completion_pct', overall.facts) : null;
+  const tiles = videoTiles(cvPlayer?.metrics);
+  const protocol = ready(model.protocol);
+  // Голы и карточки — из протокола; «0» только если категория размечена, иначе неизвестно и плитки нет.
+  const known = playerMarks(protocol)[row.playerId];
+  const marked =
+    protocol && (protocol.protocol.completeness.goals !== 'unknown' || (known && known.goals + known.assists > 0));
+  const marks = marked ? (known ?? { goals: 0, assists: 0, yellow: 0, red: 0 }) : null;
+  const shotData = hasShotData(actions ?? null);
+  const shots = playerShots(actions ?? null, row.playerId, row.name);
   return (
     <PlayerInspector title={row.name} onClose={onClose}>
       <p className="inspector-meta num">
@@ -201,6 +212,49 @@ function Inspector({
       ) : ratings ? (
         <p className="muted">Оценки этого игрока нет.</p>
       ) : null}
+      {tiles && (
+        <section aria-label="Физика по видео">
+          <h3>Физика · видео</h3>
+          <div className="card-tiles">
+            {tiles.map((t) => (
+              <div key={t.label} className="card-tile" title={t.hint}>
+                <span className="muted small">{t.label}</span>
+                <b className="num">{t.value}</b>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {(marks || shotData) && (
+        <div className="card-tiles" aria-label="Голы и удары">
+          {marks && (
+            <div className="card-tile">
+              <span className="muted small">Голы · ассисты</span>
+              <b className="num">
+                {marks.goals} · {marks.assists}
+              </b>
+            </div>
+          )}
+          {marks && marks.yellow + marks.red > 0 && (
+            <div className="card-tile">
+              <span className="muted small">Карточки</span>
+              <b className="num">
+                {marks.yellow ? `жёлтых ${marks.yellow}` : ''}
+                {marks.yellow && marks.red ? ' · ' : ''}
+                {marks.red ? `удалений ${marks.red}` : ''}
+              </b>
+            </div>
+          )}
+          {shotData && (
+            <div className="card-tile">
+              <span className="muted small">Удары · в створ</span>
+              <b className="num">
+                {shots.length} · {shots.filter((s) => s.on_target || s.goal).length}
+              </b>
+            </div>
+          )}
+        </div>
+      )}
       {actions && (
         <PlayerPasses
           stats={actions}
@@ -209,6 +263,18 @@ function Inspector({
           awayName={match.away_name}
           name={playerName(model)}
         />
+      )}
+      {shots.length > 0 && actions?.pitch && (
+        <section>
+          <h3>Удары</h3>
+          <ShotMap
+            shots={shots}
+            lengthM={actions.pitch.length_m}
+            widthM={actions.pitch.width_m}
+            homeName={match.home_name}
+            awayName={match.away_name}
+          />
+        </section>
       )}
       <section>
         <h3>Карта времени</h3>
@@ -223,8 +289,11 @@ function Inspector({
               scaleLabel="индивидуальная шкала"
               label={row.name}
               tone={row.side ?? 'neutral'}
+              marker={heatmapCenter(cvPlayer.metrics.heatmap_s, (cv?.pitch as { cell_m?: number })?.cell_m ?? 1)}
             />
-            <p className="muted small">По видео · {cv?.partial ? 'обработанный фрагмент' : 'весь матч'}.</p>
+            <p className="muted small">
+              По видео · {cv?.partial ? 'обработанный фрагмент' : 'весь матч'} · точка — средняя позиция.
+            </p>
           </>
         ) : origin === 'rating' ? (
           <div className="map-absent">
@@ -474,7 +543,16 @@ export function MatchReport({
       </section>
     );
   else if (section === 'stats')
-    body = <MatchStats match={match} model={model} period={period} onPeriod={onPeriod} players={playersTable} />;
+    body = (
+      <MatchStats
+        match={match}
+        model={model}
+        period={period}
+        onPeriod={onPeriod}
+        players={playersTable}
+        onOpenPlayer={(playerId) => onSelect({ playerId, origin: 'cv' })}
+      />
+    );
   else if (section === 'video') body = video;
   else
     body = (

@@ -289,3 +289,8 @@
   stroke-width: 0.14;
   pointer-events: none;
 }
+.pitch-marker {
+  fill: #fff;
+  stroke: var(--pitch, #172620);
+  stroke-width: 0.25;
+}

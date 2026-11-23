@@ -143,12 +143,14 @@ export function MatchStats({
   period,
   onPeriod,
   players,
+  onOpenPlayer,
 }: {
   match: PublicMatch;
   model: ReportModel;
   period: string;
   onPeriod: (k: string) => void;
   players: React.ReactNode;
+  onOpenPlayer?: (playerId: string) => void;
 }) {
   const protocol = ready(model.protocol),
     actions = ready(model.actions),
@@ -192,7 +194,13 @@ export function MatchStats({
             )}
             {passes && (
               <StatCard title="Передачи: карта и точность" wide>
-                <PassStats stats={actions!} homeName={match.home_name} awayName={match.away_name} name={name} />
+                <PassStats
+                  stats={actions!}
+                  homeName={match.home_name}
+                  awayName={match.away_name}
+                  name={name}
+                  onOpenPlayer={onOpenPlayer}
+                />
               </StatCard>
             )}
             {passes && actions!.passes.some((p) => p.success === true && p.recipient_id) && (
@@ -203,6 +211,7 @@ export function MatchStats({
                   awayName={match.away_name}
                   name={name}
                   number={playerNumber(model)}
+                  onOpenPlayer={onOpenPlayer}
                 />
               </StatCard>
             )}

@@ -11,6 +11,8 @@ type Props = {
   scaleLabel: string;
   label?: string;
   tone?: PitchTone;
+  // Точка средней позиции в метрах тех же координат.
+  marker?: [number, number] | null;
 };
 
 const format = (value: number) => value.toLocaleString('ru-RU', { maximumFractionDigits: 1 });
@@ -47,6 +49,7 @@ export function PitchMap({
   scaleLabel,
   label = 'Площадка',
   tone = 'neutral',
+  marker = null,
 }: Props) {
   const valid = validMatrix(cells);
   const observed = !!valid && maxSeconds > 0 && valid.some((row) => row.some((v) => v > 0));
@@ -86,6 +89,11 @@ export function PitchMap({
           }),
         )}
         <PitchLines lengthM={lengthM} widthM={widthM} />
+        {marker && (
+          <circle className="pitch-marker" cx={marker[0]} cy={marker[1]} r={Math.max(0.6, widthM / 40)}>
+            <title>Средняя позиция</title>
+          </circle>
+        )}
       </svg>
       <figcaption>
         <span className="pitch-legend">
