@@ -276,3 +276,46 @@ def test_appearance_size_matches_the_feature():
     from aifootball.perception.appearance import APPEARANCE_DIMS
 
     assert APPEARANCE_BYTES == APPEARANCE_DIMS
+
+
+def _with_fragment(**change):
+    def mutate(m, r, t, c):
+        t['tracks'].append(
+            {'track_id': 4, 'team': 'A', 'role': 'player', 'intervals': [[61, 70]], 'thumb': None, 'has_metrics': False}
+        )
+        fragment = {
+            'track_id': 4,
+            'team': 'A',
+            'observed_s': 9.0,
+            'distance_m': 20.0,
+            'hsr_m': 0.0,
+            'sprints': 0,
+            'vmax_ms': None,
+            'heatmap_cells': [[5, 5, 9.0]],
+            **change,
+        }
+        r['periods'][0]['fragments'] = [fragment]
+
+    return mutate
+
+
+@pytest.mark.parametrize(
+    'change,error',
+    [
+        ({}, None),
+        ({'heatmap_cells': [[99, 5, 1.0]]}, 'тепловая карта фрагмента'),
+        ({'team': 'B'}, 'Команда/роль фрагмента'),
+        ({'distance_m': 1000.0}, 'Дистанция'),
+        ({'track_id': 1}, 'повторный трек'),
+    ],
+)
+def test_short_fragments_in_the_report_are_validated(tmp_path, change, error):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    path = tmp_path / 'result.zip'
+    path.write_bytes(result_zip(mutate=_with_fragment(**change)))
+    if error is None:
+        assert validate_result(path).report['periods'][0]['fragments'][0]['track_id'] == 4
+    else:
+        with pytest.raises(ExchangeError, match=error):
+            validate_result(path)

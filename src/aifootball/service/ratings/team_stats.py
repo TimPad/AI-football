@@ -16,6 +16,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from sqlalchemy import select
 
+from aifootball.service.analysis.aggregation import period_fragments
 from aifootball.service.errors import DomainError
 from aifootball.service.ratings.models import ActionVersion, RatingMatchPublication, is_auto
 
@@ -284,7 +285,7 @@ def _cv_positions(run, period, people):
     sums = {}
     for key in keys:
         number = int(key[1:]) if key in halves else 1
-        for row in periods[key].get('players') or []:
+        for row in period_fragments(periods[key], pitch).values():
             team = row.get('team')
             side = run.side_map.get(team)
             player = assigned.get(row['track_id'])

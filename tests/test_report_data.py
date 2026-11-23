@@ -265,3 +265,21 @@ def test_process_coverage_uses_actual_variable_frame_steps():
     tracks = pl.DataFrame({'ts': [0.0, 1 / 15, 3 / 15, 4 / 15, 6 / 15, 7 / 15]})
     # All neighbouring samples are continuous; don't replace every step with the median.
     assert _coverage_seconds(tracks, [(0.0, 7 / 15)]) == pytest.approx(7 / 15)
+
+
+def test_short_fragments_get_metrics_outside_the_players_table():
+    from aifootball.analytics.report_data import MIN_PLAYER_S, fragments_table, player_labels, players_table
+
+    state, _ = synthetic_match(seconds=70, sprint=False)
+    # Фрагмент трансляции: тот же игрок B1 первые 5 с — отдельным треком 101.
+    short = state.filter((pl.col('track_id') == 1) & (pl.col('ts') < 5)).with_columns(track_id=pl.lit(101, pl.Int32))
+    state = pl.concat([state, short])
+    labels = player_labels(state)
+    players = players_table(state, state, labels, LENGTH, 20.0, 9.0)
+    assert 101 not in {p['track_id'] for p in players} and all(p['observed_s'] >= MIN_PLAYER_S for p in players)
+    [fragment] = fragments_table(state, {p['track_id'] for p in players}, LENGTH, 20.0, 9.0)
+    assert fragment['track_id'] == 101 and fragment['team'] == 'B'
+    assert fragment['observed_s'] == pytest.approx(5, abs=0.6) and fragment['distance_m'] > 0
+    # Разреженная тепловая карта: секунды по клеткам складываются во время наблюдения.
+    assert sum(c[2] for c in fragment['heatmap_cells']) == pytest.approx(fragment['observed_s'], abs=0.05)
+    assert all(isinstance(c[0], int) and isinstance(c[1], int) for c in fragment['heatmap_cells'])
