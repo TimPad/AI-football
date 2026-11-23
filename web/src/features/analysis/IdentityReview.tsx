@@ -5,6 +5,7 @@ import { useDraft } from '../protocol/drafts';
 import { baseGroups } from './candidates';
 import { PlayerCandidates } from './PlayerCandidates';
 import { filteredCount, TRACK_FILTERS, type TrackFilter, trackState, visibleTrackIds } from './reviewQueue';
+import { SimilarPicker } from './SimilarPicker';
 import type { IdentitySuggestion } from './understandingTypes';
 import './review.css';
 
@@ -59,8 +60,12 @@ export function IdentityReview({
   const view = external ?? local;
   const navigate = onView ?? ((patch: Partial<View>) => setLocal((v) => ({ ...v, ...patch })));
   const [queueOpen, setQueueOpen] = useState(false);
-  // Есть склейка треков — по умолчанию сопоставляем кандидатов-игроков; старые версии открываются по фрагментам.
-  const [mode, setMode] = useState<'players' | 'tracks'>(run.groups?.length ? 'players' : 'tracks');
+  // Есть признаки внешности — по умолчанию подбор похожих фрагментов; есть склейка — кандидаты-игроки;
+  // старые версии открываются по фрагментам.
+  const looks = run.tracks.some((t) => t.appearance);
+  const [mode, setMode] = useState<'similar' | 'players' | 'tracks'>(
+    looks ? 'similar' : run.groups?.length ? 'players' : 'tracks',
+  );
   useEffect(() => {
     onDirty?.(draft.dirty);
   }, [draft.dirty, onDirty]);
@@ -168,6 +173,11 @@ export function IdentityReview({
           ))}
         </div>
         <div className="segmented review-mode" role="group" aria-label="Сопоставлять">
+          {looks && (
+            <button aria-pressed={mode === 'similar'} onClick={() => setMode('similar')}>
+              Подбор
+            </button>
+          )}
           <button aria-pressed={mode === 'players'} onClick={() => setMode('players')}>
             По игрокам · {baseGroups(run).length}
           </button>
@@ -197,7 +207,15 @@ export function IdentityReview({
           </>
         )}
       </div>
-      {mode === 'players' ? (
+      {mode === 'similar' ? (
+        <SimilarPicker
+          run={run}
+          assignments={assignments}
+          sideMap={draft.value.side_map}
+          disabled={disabled}
+          onChange={(next) => change({ ...draft.value, assignments: next })}
+        />
+      ) : mode === 'players' ? (
         <PlayerCandidates
           run={run}
           assignments={assignments}
