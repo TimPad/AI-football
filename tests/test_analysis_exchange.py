@@ -319,3 +319,23 @@ def test_short_fragments_in_the_report_are_validated(tmp_path, change, error):
     else:
         with pytest.raises(ExchangeError, match=error):
             validate_result(path)
+
+
+@pytest.mark.parametrize('share,ok', [(0.4, True), (None, True), (1.5, False)])
+def test_match_flow_in_the_report_is_validated(tmp_path, share, ok):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    def mutate(m, r, t, c):
+        team = {'observed_s': 50.0, 'attack_share': share}
+        r['periods'][0]['flow'] = {
+            'bin_s': 60,
+            'bins': [{'half': 1, 'minute': 0, 'start_s': 0.0, 'A': team, 'B': team}],
+        }
+
+    path = tmp_path / 'result.zip'
+    path.write_bytes(result_zip(mutate=mutate))
+    if ok:
+        assert validate_result(path).report['periods'][0]['flow']['bins'][0]['A']['attack_share'] == share
+    else:
+        with pytest.raises(ExchangeError, match='чужой трети'):
+            validate_result(path)

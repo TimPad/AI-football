@@ -223,6 +223,34 @@ def appearance_ok(value) -> bool:
         return False
 
 
+def validate_flow(value, span_s):
+    """Ход матча по минутам (report_data.flow): необязательный, доли — от 0 до 1."""
+    if value is None:
+        return
+    ensure(
+        isinstance(value, dict) and value.get('bin_s') == 60 and isinstance(value.get('bins'), list),
+        'Неверный ход матча',
+    )
+    ensure(len(value['bins']) <= 1000, 'Слишком длинный ход матча')
+    for b in value['bins']:
+        ensure(
+            isinstance(b, dict)
+            and type(b.get('half')) is int
+            and 1 <= b['half'] <= 10
+            and type(b.get('minute')) is int
+            and 0 <= b['minute'] <= 1000,
+            'Неверная минута хода матча',
+        )
+        numeric(b['start_s'], 'начало минуты')
+        for side in ('A', 'B'):
+            team = b[side]
+            numeric(team['observed_s'], 'время команды в минуте', maximum=60 * 50)
+            ensure(
+                team['attack_share'] is None or 0 <= numeric(team['attack_share'], 'доля в чужой трети') <= 1,
+                'Неверная доля в чужой трети',
+            )
+
+
 def validate_groups(groups, index):
     """Кандидаты-игроки из склейки треков: цепочки одной команды без одновременной видимости."""
     from aifootball.analytics.track_groups import OVERLAP_S
@@ -423,6 +451,7 @@ def validate_result(source, limits=Limits()):
                     ensure(type(player['sprints']) is int, 'Число спринтов должно быть целым')
                 ensure('heatmap_s' in player, 'Нет тепловой карты')
                 heatmap(player['heatmap_s'], pitch, f'трек {tid}')
+            validate_flow(period.get('flow'), span_s)
             fragments = period.get('fragments', [])
             ensure(isinstance(fragments, list) and len(fragments) <= 50000, 'Неверный список фрагментов периода')
             for f in fragments:
