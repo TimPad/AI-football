@@ -74,13 +74,13 @@ export function identityConflicts(
     if (a.player_id) players.set(a.player_id, [...(players.get(a.player_id) ?? []), a.track_id]);
   const out: { playerId: string; keep: number; drop: number }[] = [];
   for (const [playerId, ids] of players)
-    ids.forEach((x, i) =>
-      ids.slice(i + 1).forEach((y) => {
-        if (!intervalsClash(byId.get(x)?.intervals ?? [], byId.get(y)?.intervals ?? [])) return;
+    for (let i = 0; i < ids.length; i++)
+      for (const y of ids.slice(i + 1)) {
+        const x = ids[i];
+        if (!intervalsClash(byId.get(x)?.intervals ?? [], byId.get(y)?.intervals ?? [])) continue;
         const [keep, drop] = length(x) >= length(y) ? [x, y] : [y, x];
         out.push({ playerId, keep, drop });
-      }),
-    );
+      }
   return out;
 }
 
