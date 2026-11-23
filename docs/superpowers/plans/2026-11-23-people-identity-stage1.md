@@ -1,5 +1,8 @@
 # Люди вместо фрагментов — этап 1: сборка людей и замер
 
+> **Выполнен 23.11.2026:** ворота не пройдены ([замер](../../2026-11-23-people-clustering.md)). Код в плане — как
+> он был задуман; рабочие версии — в `src/` и `scripts/`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
