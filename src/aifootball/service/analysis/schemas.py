@@ -91,6 +91,8 @@ class TrackView(BaseModel):
     intervals: list[list[float]]
     thumb: str | None
     has_metrics: bool
+    # Признак цвета для подбора похожих фрагментов (base64, analytics.exchange.APPEARANCE_BYTES байт); у старых — нет.
+    appearance: str | None = None
 
 
 class MetricValues(BaseModel):

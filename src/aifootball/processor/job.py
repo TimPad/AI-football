@@ -287,6 +287,31 @@ def ball_events(artifacts, venue, state, spans, track_ids, models=None):
     }, None
 
 
+def appearance(video_path, tracks, venue, artifacts, track_ids, frame_size):
+    """Признак цвета фрагментов для подбора игроков в кабинете: {трек: base64}. Без годных кадров признака нет.
+
+    Сборка людей по этому признаку не проходит проверку (docs/2026-11-23-people-clustering.md: точность склеек 0,50),
+    поэтому он только упорядочивает подсказки похожих фрагментов, а решает человек.
+    """
+    import polars as pl
+
+    from aifootball.analytics.people import mean_feature
+    from aifootball.cli import read_registration
+    from aifootball.geometry.registration import frame_homographies
+    from aifootball.perception.appearance import color_feature, encode
+    from aifootball.perception.person_crops import extract_crops, pick_frames
+
+    registration = read_registration(Path(artifacts), venue)
+    usable = set(frame_homographies(registration)) if registration is not None else None
+    picks = pick_frames(tracks.filter(pl.col('track_id').is_in(sorted(track_ids))), frame_size, usable, venue.overlay)
+    out = {}
+    for tid, images in extract_crops(Path(video_path), picks).items():
+        feature = mean_feature([color_feature(i) for i in images])
+        if feature is not None:
+            out[tid] = encode(feature)
+    return out
+
+
 def package_result(
     job_path,
     video_path,
@@ -388,6 +413,11 @@ def package_result(
             }
         )
     images = grab_images(Path(video_path), requests)
+    playable = {t['track_id'] for t in indexed if t['team'] and t['role'] in ('player', 'goalkeeper')}
+    looks = appearance(video_path, tracks, venue, artifacts, playable, (source['width'], source['height']))
+    for track in indexed:
+        if track['track_id'] in looks:
+            track['appearance'] = looks[track['track_id']]
     files = {}
     for track in indexed:
         image = images.get(str(track['track_id']))

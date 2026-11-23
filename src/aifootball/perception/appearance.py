@@ -15,6 +15,10 @@ import cv2
 import numpy as np
 
 BANDS = ((0.15, 0.5), (0.5, 0.85), (0.85, 1.0))
+# Признак цвета в пакете результата (track-index.json, поле фрагмента appearance): 156 чисел от 0 до 1,
+# по байту на число, base64. Похожесть фрагментов в кабинете — косинус раскодированных признаков.
+APPEARANCE_KIND = 'color-hsv-v1'
+APPEARANCE_DIMS = 3 * (12 * 4 + 4)
 INPUT = (112, 224)  # ширина, высота
 ENCODERS = {
     'dino': 'vit_small_patch14_reg4_dinov2.lvd142m',
@@ -34,6 +38,22 @@ def color_feature(crop: np.ndarray) -> np.ndarray:
         parts.append(np.sqrt(hist / max(float(hist.sum()), 1.0)))
     f = np.concatenate(parts)
     return f / max(float(np.linalg.norm(f)), 1e-9)
+
+
+def encode(feature: np.ndarray) -> str:
+    """Признак цвета (числа 0..1) — по байту на число, base64."""
+    import base64
+
+    q = np.clip(np.rint(np.asarray(feature, np.float64) * 255), 0, 255).astype(np.uint8)
+    return base64.b64encode(q.tobytes()).decode('ascii')
+
+
+def decode(text: str) -> np.ndarray:
+    """Обратно в нормированный вектор."""
+    import base64
+
+    v = np.frombuffer(base64.b64decode(text, validate=True), np.uint8).astype(np.float64) / 255
+    return v / max(float(np.linalg.norm(v)), 1e-9)
 
 
 class TimmEmbedder:

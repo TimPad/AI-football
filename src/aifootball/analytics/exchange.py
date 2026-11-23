@@ -46,6 +46,10 @@ class ExchangeError(ValueError):
     pass
 
 
+# Байт в признаке цвета фрагмента: perception.appearance.APPEARANCE_DIMS.
+APPEARANCE_BYTES = 156
+
+
 @dataclass(frozen=True)
 class Limits:
     compressed: int = 100 * 1024 * 1024
@@ -206,6 +210,19 @@ def read_archive(source, limits=Limits(), *, job=False):
     return files
 
 
+def appearance_ok(value) -> bool:
+    """Признак цвета фрагмента (perception.appearance): APPEARANCE_BYTES байт в base64; поле необязательное."""
+    if value is None:
+        return True
+    import base64
+    import binascii
+
+    try:
+        return isinstance(value, str) and len(base64.b64decode(value, validate=True)) == APPEARANCE_BYTES
+    except (binascii.Error, ValueError):
+        return False
+
+
 def validate_groups(groups, index):
     """Кандидаты-игроки из склейки треков: цепочки одной команды без одновременной видимости."""
     from aifootball.analytics.track_groups import OVERLAP_S
@@ -347,6 +364,7 @@ def validate_result(source, limits=Limits()):
                 thumb is None or (isinstance(thumb, str) and thumb in files and thumb.startswith('thumbs/')),
                 'Нет миниатюры в пакете',
             )
+            ensure(appearance_ok(track.get('appearance')), 'Неверный признак внешности фрагмента')
             index[tid] = track
         validate_groups(tracks.get('groups', []), index)
         ensure(isinstance(report['periods'], list) and 0 < len(report['periods']) <= 20, 'Неверное число периодов')

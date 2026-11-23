@@ -9513,6 +9513,8 @@ export interface components {
             thumb: string | null;
             /** Has Metrics */
             has_metrics: boolean;
+            /** Appearance */
+            appearance?: string | null;
         };
         /** UnderstandingReviewUpdate */
         UnderstandingReviewUpdate: {
