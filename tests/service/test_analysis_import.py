@@ -94,3 +94,20 @@ def test_import_request_is_bounded_before_multipart_spooling(admin_client, analy
         content=b'x',
     )
     assert r.status_code == 413
+
+
+def test_run_view_carries_fragment_appearance(admin_client, analytics_match):
+    import base64
+
+    look = base64.b64encode(bytes(range(156))).decode()
+
+    def mutate(m, r, t, c):
+        t['tracks'][0]['appearance'] = look
+
+    job = new_job(admin_client, analytics_match)
+    run = upload(admin_client, analytics_match, result_zip(job, mutate=mutate))
+    assert run.status_code == 200, run.text
+    tracks = admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/analysis/runs/{run.json()["id"]}').json()[
+        'tracks'
+    ]
+    assert tracks[0]['appearance'] == look and all(t['appearance'] is None for t in tracks[1:])

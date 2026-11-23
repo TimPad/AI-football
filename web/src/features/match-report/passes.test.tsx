@@ -304,3 +304,29 @@ it('draws the network, filters links by the threshold and explains the selected 
   );
   expect(screen.getByText(/Север атакует вправо/)).toBeInTheDocument();
 });
+
+it('opens the network of the team that has one and keeps the team switch', () => {
+  // У хозяев игроки не назначены: сеть есть только у гостей (ВШЭ, 23.11.2026).
+  const away = Array.from({ length: 3 }, () =>
+    pass({ side: 'away', attacking_direction: 'left', player_id: P3, recipient_id: P1 }),
+  );
+  render(
+    <PassNetworkStats
+      stats={stats([...away, pass({ player_id: null, recipient_id: null })], {
+        pass_players: [
+          { side: 'home', player_id: null, total: 1, accurate: 1, known: 1, length_m: 10, verified: 0 },
+          { side: 'away', player_id: P3, total: 3, accurate: 3, known: 3, length_m: 10, verified: 0 },
+        ],
+      })}
+      homeName="Север"
+      awayName="Юг"
+      name={name}
+      number={() => null}
+    />,
+  );
+  expect(screen.getByRole('button', { name: 'Юг' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('img', { name: /Сеть передач: Юг/ })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Север' }));
+  expect(screen.getByText('Для сети нужны точные передачи с известным адресатом.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Юг' })).toBeInTheDocument();
+});

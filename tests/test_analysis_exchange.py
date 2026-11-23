@@ -1,3 +1,4 @@
+import base64
 import copy
 import json
 import math
@@ -244,3 +245,34 @@ def test_contract_3_rejects_bad_events(raw):
 
     with pytest.raises(ExchangeError):
         validate_result(raw())
+
+
+@pytest.mark.parametrize(
+    'value,ok',
+    [
+        (base64.b64encode(bytes(range(156))).decode(), True),
+        (base64.b64encode(bytes(155)).decode(), False),
+        ('не base64', False),
+        (42, False),
+    ],
+)
+def test_fragment_appearance_is_156_bytes_of_base64(tmp_path, value, ok):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    def mutate(m, r, t, c):
+        t['tracks'][0]['appearance'] = value
+
+    path = tmp_path / 'result.zip'
+    path.write_bytes(result_zip(mutate=mutate))
+    if ok:
+        assert validate_result(path).tracks['tracks'][0]['appearance'] == value
+    else:
+        with pytest.raises(ExchangeError, match='признак внешности'):
+            validate_result(path)
+
+
+def test_appearance_size_matches_the_feature():
+    from aifootball.analytics.exchange import APPEARANCE_BYTES
+    from aifootball.perception.appearance import APPEARANCE_DIMS
+
+    assert APPEARANCE_BYTES == APPEARANCE_DIMS

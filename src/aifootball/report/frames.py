@@ -8,7 +8,8 @@ import numpy as np
 
 from aifootball.perception.frames import FrameReader
 
-THUMB_H = 120
+# Миниатюра фрагмента: по ней в кабинете узнают человека (волосы, гетры, обувь) — 120 px было мало.
+THUMB_H = 240
 STILL_W = 640
 JPEG_QUALITY = 80
 THUMB_PAD = 0.15  # запас вокруг рамки игрока

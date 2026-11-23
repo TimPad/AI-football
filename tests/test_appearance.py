@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from aifootball.perception.appearance import ENCODERS, TimmEmbedder, color_feature
+from aifootball.perception.appearance import APPEARANCE_DIMS, ENCODERS, TimmEmbedder, color_feature, decode, encode
 
 CACHE = Path('models/hf')
 
@@ -41,3 +41,11 @@ def test_timm_encoders_embed_crops_to_unit_vectors(kind):
     embed = TimmEmbedder(kind, CACHE)
     out = embed([person((30, 30, 200), (20, 20, 20), (250, 250, 250)), person((0, 140, 255), (20, 20, 20), (0, 0, 0))])
     assert len(out) == 2 and all(abs(np.linalg.norm(v) - 1) < 1e-5 for v in out)
+
+
+def test_color_feature_survives_the_package_encoding():
+    a = color_feature(person((30, 30, 200), (20, 20, 20), (250, 250, 250)))
+    b = color_feature(person((0, 140, 255), (20, 20, 20), (250, 250, 250), seed=3))
+    assert a.size == APPEARANCE_DIMS and len(encode(a)) == 208  # 156 байт в base64
+    assert decode(encode(a)) @ a > 0.999
+    assert decode(encode(a)) @ decode(encode(b)) == pytest.approx(a @ b, abs=0.01)

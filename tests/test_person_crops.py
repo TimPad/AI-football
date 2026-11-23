@@ -64,3 +64,14 @@ def test_crops_are_cut_from_the_video_by_timestamp(tmp_path):
     assert len(crops[1]) == min(KEEP, 3)
     assert all(c.shape == (100, 40, 3) for c in crops[1])
     assert isinstance(crops[1][0], np.ndarray)
+
+
+def test_package_gets_a_colour_appearance_per_fragment(tmp_path, venue):
+    from aifootball.analytics.exchange import appearance_ok
+    from aifootball.processor.job import appearance
+
+    video = write_video(tmp_path / 'clip.mp4', n_frames=40, fps=10, size=(400, 300))
+    rows = [row(k, 1, (100, 50, 140, 150)) for k in range(30)] + [row(k, 2, (200, 100, 220, 130)) for k in range(30)]
+    looks = appearance(video, tracks(rows), venue, tmp_path, {1, 2}, (400, 300))
+    # У второго рамка 30 px — годных кадров нет, признака тоже.
+    assert set(looks) == {1} and appearance_ok(looks[1])
