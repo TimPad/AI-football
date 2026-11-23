@@ -339,3 +339,36 @@ def test_match_flow_in_the_report_is_validated(tmp_path, share, ok):
     else:
         with pytest.raises(ExchangeError, match='чужой трети'):
             validate_result(path)
+
+
+def _board(goals, final=None):
+    counted = {s: sum(g['side'] == s for g in goals) for s in ('left', 'right')}
+    return {'source': 'broadcast', 'overlay': 'Мяч ТВ', 'final': final or counted, 'goals': goals}
+
+
+GOAL = {'t_s': 5.0, 'side': 'left', 'period': 1, 'elapsed_s': 5.0}
+
+
+@pytest.mark.parametrize(
+    'board,error',
+    [
+        (_board([GOAL]), None),
+        (_board([GOAL], final={'left': 2, 'right': 0}), 'Итог табло'),
+        (_board([{**GOAL, 'side': 'home'}]), 'Неверный гол табло'),
+        (_board([{**GOAL, 't_s': 1e6}]), 'время гола табло'),
+        (_board([{**GOAL, 't_s': 8.0}, GOAL]), 'не по порядку'),
+    ],
+)
+def test_scoreboard_in_the_report_is_validated(tmp_path, board, error):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    def mutate(m, r, t, c):
+        r['scoreboard'] = board
+
+    path = tmp_path / 'result.zip'
+    path.write_bytes(result_zip(mutate=mutate))
+    if error is None:
+        assert validate_result(path).report['scoreboard']['final'] == {'left': 1, 'right': 0}
+    else:
+        with pytest.raises(ExchangeError, match=error):
+            validate_result(path)

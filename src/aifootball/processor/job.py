@@ -340,6 +340,7 @@ def package_result(
     understanding=None,
     evidence_files=None,
     models=None,
+    scoreboard=None,
 ):
     from tempfile import TemporaryDirectory
 
@@ -388,6 +389,17 @@ def package_result(
     )
     report['pitch']['orientation'] = 'camera'
     report['match']['video_duration_estimated'] = False
+    if scoreboard is not None:
+        # Голы с табло трансляции: по шаблону её оформления; итог сверяется со счётом протокола на сайте.
+        from aifootball.perception.scoreboard import load_overlay, scoreboard_from_video
+
+        report['scoreboard'] = scoreboard_from_video(
+            Path(video_path),
+            load_overlay(Path(scoreboard)),
+            (source['width'], source['height']),
+            (registration or {}).get('replays', []),
+            spans,
+        )
     primary = report['periods'][0]
     # Uniform physical orientation makes maps summable across fragments and halves.
     for period in report['periods']:
@@ -561,6 +573,7 @@ def process_job(
     vlm_max_output_tokens=100_000,
     analysis_scope='unknown',
     ball_model=None,
+    scoreboard=None,
 ):
     from aifootball.processor.cv import run_cv
     from aifootball.processor.workspace import Workspace
@@ -612,6 +625,7 @@ def process_job(
                 halves=halves,
                 partial_recording=partial_recording,
                 models=models,
+                scoreboard=scoreboard,
             )
     work = Path(work_dir) if work_dir is not None else Path(output_path).parent / ('processor-' + uuid4().hex)
     ensure(
@@ -657,6 +671,7 @@ def process_job(
             understanding=understanding,
             evidence_files=evidence,
             models=models,
+            scoreboard=scoreboard,
         )
 
 

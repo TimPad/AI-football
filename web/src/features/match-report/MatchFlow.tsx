@@ -13,10 +13,12 @@ export function MatchFlow({
   minutes,
   homeName,
   awayName,
+  goalsFrom = 'protocol',
 }: {
   minutes: FlowMinute[];
   homeName: string;
   awayName: string;
+  goalsFrom?: 'protocol' | 'board';
 }) {
   const [mode, setMode] = useState<'pressure' | 'passes'>('pressure');
   if (!minutes.length) return null;
@@ -125,7 +127,7 @@ export function MatchFlow({
         {mode === 'pressure'
           ? 'Давление — у чьих ворот шла игра: доля времени полевых игроков в чужой трети за минуту, по видео; столбик — разница команд.'
           : '≈ — передачи из видео по минутам: находится не каждая передача.'}
-        {hasGoals ? ' Точки — голы из протокола.' : ''}
+        {hasGoals ? (goalsFrom === 'board' ? ' Точки — голы по табло трансляции.' : ' Точки — голы из протокола.') : ''}
       </p>
     </div>
   );

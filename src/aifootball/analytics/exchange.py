@@ -251,6 +251,41 @@ def validate_flow(value, span_s):
             )
 
 
+def validate_scoreboard(value, duration):
+    """Голы с табло трансляции (perception.scoreboard): необязательный блок, итог равен числу голов плашки."""
+    if value is None:
+        return
+    ensure(
+        isinstance(value, dict)
+        and value.get('source') == 'broadcast'
+        and isinstance(value.get('overlay'), str)
+        and 0 < len(value['overlay']) <= 100
+        and isinstance(value.get('goals'), list)
+        and len(value['goals']) <= 200,
+        'Неверный блок табло',
+    )
+    previous = -1.0
+    for g in value['goals']:
+        ensure(
+            isinstance(g, dict)
+            and g.get('side') in ('left', 'right')
+            and type(g.get('period')) is int
+            and 1 <= g['period'] <= 10,
+            'Неверный гол табло',
+        )
+        t = numeric(g['t_s'], 'время гола табло', maximum=duration + 0.1)
+        numeric(g['elapsed_s'], 'время гола от начала тайма', maximum=duration + 0.1)
+        ensure(t >= previous, 'Голы табло не по порядку')
+        previous = t
+    final = value.get('final')
+    ensure(
+        isinstance(final, dict)
+        and set(final) == {'left', 'right'}
+        and all(final[s] == sum(g['side'] == s for g in value['goals']) for s in ('left', 'right')),
+        'Итог табло не совпадает с голами',
+    )
+
+
 def validate_groups(groups, index):
     """Кандидаты-игроки из склейки треков: цепочки одной команды без одновременной видимости."""
     from aifootball.analytics.track_groups import OVERLAP_S
@@ -376,6 +411,7 @@ def validate_result(source, limits=Limits()):
         ensure(pitch.get('orientation', 'camera') == 'camera', 'Карты должны использовать координаты площадки')
         numeric(report['match']['processed_s'], 'processed_s', maximum=duration + 0.1)
         ensure(abs(report['match']['video_s'] - duration) <= 0.1, 'Длительность отчёта не совпадает с источником')
+        validate_scoreboard(report.get('scoreboard'), duration)
         ensure(isinstance(tracks['tracks'], list) and len(tracks['tracks']) <= 50000, 'Неверный индекс треков')
         index = {}
         for track in tracks['tracks']:
