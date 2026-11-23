@@ -189,6 +189,30 @@ class PublicPlayer(BaseModel):
     metrics: PublicMetrics
 
 
+class MomentGoal(BaseModel):
+    t_s: float
+    plate: Literal['left', 'right']
+
+
+class MomentShot(BaseModel):
+    t_s: float
+    side: Literal['home', 'away']
+    on_target: bool | None
+
+
+class RunMoments(BaseModel):
+    """Закладки разметки ударов и защиты по видео: время — секунды записи."""
+
+    run_id: UUID
+    video_s: float
+    halves: list[list[float]]
+    side_map: dict[str, Literal['home', 'away']]
+    board_final: dict[Literal['left', 'right'], int] | None
+    board_goals: list[MomentGoal]
+    replays: list[list[float]]
+    shots: list[MomentShot]
+
+
 class ScoreboardGoal(BaseModel):
     side: Literal['left', 'right']
     period: int

@@ -30,6 +30,9 @@ PASS_FIELDS = {
     'confidence',
 }
 EVENT_PITCH_MARGIN_M = 3.0
+# Удары-кандидаты: подсказки для разметки по видео в кабинете, не события и не статистика
+# (найдено 9 из 26 ударов, верных 9 из 14 — docs/2026-10-25-shots-stoppages-new-hall.md).
+CANDIDATE_FIELDS = {'kind', 'team', 'start_s', 'on_target', 'confidence'}
 JOB_FILES = {
     'job.json',
     'venue.yaml',
@@ -615,7 +618,8 @@ def validate_events(value, index, pitch, duration, limits=Limits()):
     """events.json: события по мячу, привязанные к трекам пакета, внутри видео и площадки."""
     try:
         ensure(
-            set(value) == {'schema_version', 'ball', 'kinds', 'events'} and value['schema_version'] == '1',
+            set(value) - {'candidates'} == {'schema_version', 'ball', 'kinds', 'events'}
+            and value['schema_version'] == '1',
             'Неверная структура events.json',
         )
         ball = value['ball']
@@ -666,6 +670,22 @@ def validate_events(value, index, pitch, duration, limits=Limits()):
             previous = start
             ensure(within(event['start_xy']) and within(event['end_xy']), 'Точка события вне площадки')
             numeric(event['confidence'], 'уверенность события', maximum=1)
+        candidates = value.get('candidates', [])
+        ensure(isinstance(candidates, list) and len(candidates) <= limits.events, 'Неверные кандидаты ударов')
+        previous = 0
+        for c in candidates:
+            ensure(
+                isinstance(c, dict)
+                and set(c) == CANDIDATE_FIELDS
+                and c['kind'] == 'shot'
+                and c['team'] in ('A', 'B')
+                and c['on_target'] in (True, False, None),
+                'Неверный кандидат удара',
+            )
+            start = numeric(c['start_s'], 'время кандидата удара', maximum=duration + 0.001)
+            ensure(start >= previous, 'Кандидаты ударов не по порядку')
+            previous = start
+            numeric(c['confidence'], 'уверенность кандидата удара', maximum=1)
         return value
     except (KeyError, TypeError, AttributeError) as exc:
         raise ExchangeError('Неверная структура events.json') from exc

@@ -247,6 +247,40 @@ def test_contract_3_rejects_bad_events(raw):
         validate_result(raw())
 
 
+SHOT = {'kind': 'shot', 'team': 'A', 'start_s': 12.0, 'on_target': True, 'confidence': 0.6}
+
+
+def test_shot_candidates_ride_along_with_passes():
+    from aifootball.analytics.exchange import validate_result
+
+    raw = json.loads(events_doc())
+    raw['candidates'] = [SHOT, {**SHOT, 'start_s': 40.0, 'team': 'B', 'on_target': None}]
+    result = validate_result(result_v3(json.dumps(raw).encode()))
+    # Кандидаты — подсказки разметки: не события и не статистика.
+    assert [c['start_s'] for c in result.events['candidates']] == [12.0, 40.0]
+    assert result.events['kinds'] == ['pass']
+
+
+@pytest.mark.parametrize(
+    'candidate',
+    [
+        {**SHOT, 'kind': 'pass'},
+        {**SHOT, 'team': 'C'},
+        {**SHOT, 'start_s': 500.0},
+        {**SHOT, 'on_target': 'yes'},
+        {**SHOT, 'confidence': 2.0},
+        {**SHOT, 'extra': 1},
+    ],
+)
+def test_bad_shot_candidates_are_rejected(candidate):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    raw = json.loads(events_doc())
+    raw['candidates'] = [candidate]
+    with pytest.raises(ExchangeError):
+        validate_result(result_v3(json.dumps(raw).encode()))
+
+
 @pytest.mark.parametrize(
     'value,ok',
     [

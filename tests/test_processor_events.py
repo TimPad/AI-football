@@ -113,6 +113,25 @@ def test_pass_between_teammates_goes_to_events(venue, tmp_path):
     )
 
 
+def _pass_and_shot(t):
+    """Передача 1 → 2, затем с 5 с удар игрока 2 к воротам x = 40 по центру (16 м/с)."""
+    if t < 5:
+        return _pass(t)
+    return (min(39.5, 23.7 + 16.0 * (t - 5)), 10.0)
+
+
+def test_shots_are_candidates_not_events(venue, tmp_path):
+    from aifootball.processor.job import ball_events
+
+    work = _artifacts(tmp_path, _pass_and_shot, seconds=7)
+    events, _ = ball_events(work, venue, _state(7), [(0.0, 7.0)], {1, 2, 3, 4})
+    # Удар — подсказка для разметки в кабинете: в события и статистику не идёт.
+    assert [e['kind'] for e in events['events']] == ['pass'] and events['kinds'] == ['pass']
+    [shot] = events['candidates']
+    assert (shot['kind'], shot['team'], shot['on_target']) == ('shot', 'A', True)
+    assert 4.5 <= shot['start_s'] <= 5.5 and 0 < shot['confidence'] <= 1
+
+
 @pytest.mark.parametrize(
     'case,expected',
     [
