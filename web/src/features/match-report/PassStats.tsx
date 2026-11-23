@@ -311,7 +311,10 @@ export function PassNetworkStats({
   name: Name;
   number: Name;
 }) {
-  const [side, setSide] = useState<Side>('home');
+  // Сеть открывается на команде, у которой она есть: у хозяев может не быть назначенных игроков.
+  const [side, setSide] = useState<Side>(() =>
+    passNetwork(stats, 'home').nodes.length || !passNetwork(stats, 'away').nodes.length ? 'home' : 'away',
+  );
   const network = passNetwork(stats, side);
   const [threshold, setThreshold] = useState<number | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -334,27 +337,37 @@ export function PassNetworkStats({
   const to = chosen && top(network.edges.filter((e) => e.from === chosen.playerId));
   const from = chosen && top(network.edges.filter((e) => e.to === chosen.playerId));
   const sideName = side === 'home' ? homeName : awayName;
-  if (!network.nodes.length) return <p className="muted">Для сети нужны точные передачи с известным адресатом.</p>;
+  const switcher = (
+    <div className="segmented" role="group" aria-label="Команда сети">
+      {(['home', 'away'] as const).map((s) => (
+        <button
+          key={s}
+          type="button"
+          className={side === s ? 'active' : ''}
+          aria-pressed={side === s}
+          onClick={() => {
+            setSide(s);
+            setSelected(null);
+            setThreshold(null);
+          }}
+        >
+          {s === 'home' ? homeName : awayName}
+        </button>
+      ))}
+    </div>
+  );
+  // Переключатель остаётся и без сети: у другой команды она может быть.
+  if (!network.nodes.length)
+    return (
+      <div className="pass-stats">
+        <div className="pass-filters">{switcher}</div>
+        <p className="muted">Для сети нужны точные передачи с известным адресатом.</p>
+      </div>
+    );
   return (
     <div className="pass-stats">
       <div className="pass-filters">
-        <div className="segmented" role="group" aria-label="Команда сети">
-          {(['home', 'away'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              className={side === s ? 'active' : ''}
-              aria-pressed={side === s}
-              onClick={() => {
-                setSide(s);
-                setSelected(null);
-                setThreshold(null);
-              }}
-            >
-              {s === 'home' ? homeName : awayName}
-            </button>
-          ))}
-        </div>
+        {switcher}
         {network.maxCount > 1 && (
           <label className="network-threshold">
             <span>
