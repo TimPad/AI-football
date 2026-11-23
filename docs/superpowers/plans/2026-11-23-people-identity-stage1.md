@@ -8,12 +8,14 @@
 
 **Architecture:** модуль сборки `analytics/people.py` не зависит от модели признаков: средняя связь с запретом
 одновременных. Кадры фрагментов — `perception/person_crops.py` (выбор рамок по `tracks.parquet`, вырезка по метке
-времени через `FrameReader`). Признаки — `perception/appearance.py` (цвет без модели и DINOv2 small).
+времени через `FrameReader`). Признаки — `perception/appearance.py` (цвет без модели, DINOv2 ViT-S/14 с
+регистрами и SigLIP 2 ViT-B/16 через timm).
 Замер — `scripts/eval_people.py`: кадры, признаки, сборка с перебором порога, листы пар для разметки глазами,
 оценка. Пакет результата, сервис и экран «Люди» — во втором плане, после ворот.
 
-**Tech Stack:** Python 3.12, numpy, polars, OpenCV, torch (уже в зависимостях через ultralytics), torch.hub для
-DINOv2; pytest, ruff.
+**Tech Stack:** Python 3.12, numpy, polars, OpenCV, torch (уже в зависимостях через ultralytics), timm
+(необязательная группа `people`) для DINOv2 с регистрами и SigLIP 2; pytest, ruff. Модели выбраны по навыку
+cv-model-selection (таблица лицензий — Task 3).
 
 Спецификация: `docs/superpowers/specs/2026-11-23-people-identity-design.md`.
 
@@ -536,23 +538,36 @@ git commit -m "feat(perception): pick and cut fragment crops for appearance feat
 
 ### Task 3: Признаки внешности (`perception/appearance.py`)
 
+Выбор моделей — по навыку cv-model-selection (проверено 2026-11-23 по его справочнику от 2026-09-27; перед
+скачиванием перечитать лицензии в источнике):
+
+| Кандидат | Загрузка | Код | Веса | Решение |
+|---|---|---|---|---|
+| DINOv2 ViT-S/14 с регистрами | timm `vit_small_patch14_reg4_dinov2.lvd142m` | Apache-2.0 | Apache-2.0, без доступа по запросу | берём: самообучение, сильные замороженные признаки |
+| SigLIP 2 ViT-B/16 | timm `vit_base_patch16_siglip_224.v2_webli` | Apache-2.0 | Apache-2.0, без доступа по запросу | берём: другое предобучение (по подписям) |
+| Цвет HSV | без модели | — | — | нижняя планка |
+| OSNet (torchreid) | pip `torchreid` | MIT | обучены на Market-1501 / MSMT17, условия наборов не проверены | пропуск: лицензия весов, библиотека не обновлялась с 2022 |
+| InsightFace, BoxMOT | — | — | NC / AGPL | пропуск: лицензия; лица не распознаём |
+
 **Files:**
+- Modify: `pyproject.toml` (необязательная группа `people = ["timm>=1.0.30"]`), `uv.lock`
 - Create: `src/aifootball/perception/appearance.py`
 - Test: `tests/test_appearance.py`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
-"""Признаки внешности: цвет верха, шорт и обуви; DINOv2 — только при скачанных весах."""
+"""Признаки внешности: цвет верха, шорт и обуви; модели timm — только при скачанных весах."""
 
+import os
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from aifootball.perception.appearance import DinoEmbedder, color_feature
+from aifootball.perception.appearance import ENCODERS, TimmEmbedder, color_feature
 
-HUB = Path('models/hub')
+CACHE = Path('models/hf')
 
 
 def person(shirt, shorts, shoes, h=200, w=80, seed=0):
@@ -576,9 +591,13 @@ def test_color_feature_tells_kits_apart_and_is_normalized():
     assert red @ blue_shoes < 0.9 and red @ orange < 0.9
 
 
-@pytest.mark.skipif(not (HUB / 'checkpoints').exists(), reason='нет скачанных весов DINOv2 в models/hub')
-def test_dino_embeds_crops_to_unit_vectors():
-    embed = DinoEmbedder(HUB)
+@pytest.mark.parametrize('kind', ['dino', 'siglip'])
+def test_timm_encoders_embed_crops_to_unit_vectors(kind):
+    pytest.importorskip('timm')
+    if not any(CACHE.glob(f'models--timm--{ENCODERS[kind].split(".")[0]}*')):
+        pytest.skip(f'нет скачанных весов {ENCODERS[kind]} в {CACHE}')
+    os.environ['HF_HUB_OFFLINE'] = '1'
+    embed = TimmEmbedder(kind, CACHE)
     out = embed([person((30, 30, 200), (20, 20, 20), (250, 250, 250)), person((0, 140, 255), (20, 20, 20), (0, 0, 0))])
     assert len(out) == 2 and all(abs(np.linalg.norm(v) - 1) < 1e-5 for v in out)
 ```
@@ -597,9 +616,9 @@ color_feature — без модели: гистограммы HSV (оттено�
 (15–50% высоты), шорты (50–85%) и обувь (85–100%), по центральным 60% ширины, чтобы меньше брать пол. Корень из
 нормированных гистограмм (расстояние Хеллингера) и общая нормировка: косинус — похожесть.
 
-DinoEmbedder — универсальные признаки DINOv2 small (facebookresearch/dinov2, Apache-2.0) через torch.hub; код и
-веса лежат в models/hub (скачиваются один раз, в Git не попадают). Вход 112×224, нормировка ImageNet, выход —
-нормированный вектор класса (384).
+TimmEmbedder — замороженные признаки моделей timm с весами Apache-2.0 (выбор и лицензии — в плане этапа 1 и
+документе замера): DINOv2 ViT-S/14 с регистрами и SigLIP 2 ViT-B/16. Вход 112×224 (кратно патчам 14 и 16),
+нормировка — из настроек весов, выход — нормированный вектор. Веса лежат в models/hf (в Git не попадают).
 """
 
 from pathlib import Path
@@ -608,9 +627,11 @@ import cv2
 import numpy as np
 
 BANDS = ((0.15, 0.5), (0.5, 0.85), (0.85, 1.0))
-DINO_SIZE = (112, 224)  # ширина, высота: кратно патчу 14
-MEAN = np.array([0.485, 0.456, 0.406], np.float32)
-STD = np.array([0.229, 0.224, 0.225], np.float32)
+INPUT = (112, 224)  # ширина, высота
+ENCODERS = {
+    'dino': 'vit_small_patch14_reg4_dinov2.lvd142m',
+    'siglip': 'vit_base_patch16_siglip_224.v2_webli',
+}
 
 
 def color_feature(crop: np.ndarray) -> np.ndarray:
@@ -627,24 +648,31 @@ def color_feature(crop: np.ndarray) -> np.ndarray:
     return f / max(float(np.linalg.norm(f)), 1e-9)
 
 
-class DinoEmbedder:
-    def __init__(self, hub_dir: Path, device: str | None = None):
+class TimmEmbedder:
+    def __init__(self, kind: str, cache: Path, device: str | None = None):
+        import os
+
+        os.environ.setdefault('HF_HUB_CACHE', str(Path(cache).resolve()))
+        import timm
         import torch
 
         from aifootball.perception.detect import pick_device
 
-        torch.hub.set_dir(str(hub_dir))
         self.torch = torch
         self.device = device or pick_device()
-        self.model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14').eval().to(self.device)
+        self.model = timm.create_model(ENCODERS[kind], pretrained=True, num_classes=0, dynamic_img_size=True)
+        self.model = self.model.eval().to(self.device)
+        cfg = self.model.pretrained_cfg
+        self.mean = np.array(cfg['mean'], np.float32)
+        self.std = np.array(cfg['std'], np.float32)
 
     def __call__(self, crops: list[np.ndarray]) -> list[np.ndarray]:
         if not crops:
             return []
         batch = []
         for crop in crops:
-            rgb = cv2.cvtColor(cv2.resize(crop, DINO_SIZE, interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB)
-            batch.append(((rgb.astype(np.float32) / 255.0 - MEAN) / STD).transpose(2, 0, 1))
+            rgb = cv2.cvtColor(cv2.resize(crop, INPUT, interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB)
+            batch.append(((rgb.astype(np.float32) / 255.0 - self.mean) / self.std).transpose(2, 0, 1))
         x = self.torch.from_numpy(np.stack(batch)).to(self.device)
         with self.torch.no_grad():
             out = self.model(x).float().cpu().numpy()
@@ -654,30 +682,38 @@ class DinoEmbedder:
 - [ ] **Step 4: Run tests to verify the color test passes**
 
 Run: `.venv/bin/python -m pytest tests/test_appearance.py -q`
-Expected: `1 passed, 1 skipped` (DINOv2 ещё не скачан)
+Expected: `1 passed, 2 skipped` (timm и веса ещё не скачаны)
 
-- [ ] **Step 5: Ask the owner before downloading DINOv2**
+- [ ] **Step 5: Ask the owner before downloading**
 
-Скачивание — с разрешения владельца проекта. Спросить: «Скачать код facebookresearch/dinov2 (GitHub) и веса
-dinov2_vits14 (~85 МБ, dl.fbaipublicfiles.com) в `models/hub`?» Только после «да»:
+Скачивание — только с разрешения владельца проекта. Спросить одним вопросом: «Скачать пакет timm (PyPI) и веса
+`timm/vit_small_patch14_reg4_dinov2.lvd142m` (~90 МБ) и `timm/vit_base_patch16_siglip_224.v2_webli`
+(~350 МБ, Hugging Face) в `models/hf`? Лицензии — Apache-2.0». Перед вопросом открыть карточки моделей на
+huggingface.co и сверить лицензию весов. Только после «да»:
+
+В `pyproject.toml` в `[project.optional-dependencies]` добавить строку:
+
+```toml
+people = ["timm>=1.0.30"]
+```
 
 ```bash
 cd /Users/timofeynikulin/AI-football/.claude/worktrees/laughing-pike-bce1b6
-mkdir -p models/hub
-.venv/bin/python -c "import torch; torch.hub.set_dir('models/hub'); torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')"
+uv lock && uv sync --locked --all-extras
+HF_HUB_CACHE=models/hf .venv/bin/python -c "import timm; [timm.create_model(n, pretrained=True, num_classes=0) for n in ('vit_small_patch14_reg4_dinov2.lvd142m', 'vit_base_patch16_siglip_224.v2_webli')]"
 .venv/bin/python -m pytest tests/test_appearance.py -q
 ```
 
-Expected: `2 passed`. `models/` в `.gitignore` — проверить `git status --short`: папки `models/hub` там нет.
-При «нет» — замер идёт только по цвету, и это записывается в документ замера.
+Expected: `3 passed`. `git status --short` — `models/` нет (игнорируется), изменены только `pyproject.toml` и
+`uv.lock`. При «нет» — замер только по цвету, это записывается в документ замера.
 
 - [ ] **Step 6: Format, lint, commit**
 
 ```bash
 .venv/bin/ruff format src/aifootball/perception/appearance.py tests/test_appearance.py
 .venv/bin/ruff check src/aifootball/perception/appearance.py tests/test_appearance.py
-git add src/aifootball/perception/appearance.py tests/test_appearance.py
-git commit -m "feat(perception): color and DINOv2 appearance features for fragments"
+git add pyproject.toml uv.lock src/aifootball/perception/appearance.py tests/test_appearance.py
+git commit -m "feat(perception): colour, DINOv2-reg and SigLIP 2 appearance features"
 ```
 
 ---
@@ -721,6 +757,16 @@ def test_stratified_pairs_cover_every_similarity_band():
     assert values[0] < 0.1 and values[-1] > 0.9
 
 
+def test_auc_and_paired_bootstrap():
+    assert eval_people.auc([0.9, 0.8], [0.1, 0.2]) == 1.0
+    assert eval_people.auc([0.5], [0.5]) == 0.5
+    truth = [True] * 20 + [False] * 20
+    good = [0.9] * 20 + [0.1] * 20
+    noisy = [0.6, 0.4] * 10 + [0.5] * 20
+    low, high = eval_people.paired_bootstrap(truth, good, noisy, n=300)
+    assert low > 0
+
+
 def test_same_rate_by_similarity_is_a_step_function():
     labelled = [(0.1, False), (0.2, False), (0.6, True), (0.7, False), (0.9, True), (0.95, True)]
     p = eval_people.same_rate(labelled, bands=3)
@@ -758,6 +804,7 @@ import numpy as np
 
 from aifootball.analytics.people import assemble, conflicts, mean_feature, units_from_index
 
+KINDS = ['color', 'dino', 'siglip']
 SHEET_H = 180
 PER_SHEET = 6
 
@@ -770,6 +817,27 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     c = p + z * z / (2 * n)
     r = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
     return float((c - r) / d), float((c + r) / d)
+
+
+def auc(same: list[float], different: list[float]) -> float:
+    """Площадь под ROC: доля пар (один человек, разные), где у «один человек» похожесть выше; ничья — половина."""
+    if not same or not different:
+        return float('nan')
+    s, d = np.array(same)[:, None], np.array(different)[None, :]
+    return float(((s > d).sum() + 0.5 * (s == d).sum()) / (s.size * d.size))
+
+
+def paired_bootstrap(truth: list[bool], x: list[float], y: list[float], n: int = 2000, seed: int = 0):
+    """95% интервал разницы AUC двух вариантов на одних и тех же парах."""
+    rng = np.random.default_rng(seed)
+    t, x, y = np.array(truth), np.array(x), np.array(y)
+    diffs = []
+    for _ in range(n):
+        i = rng.integers(0, len(t), len(t))
+        a = auc(list(x[i][t[i]]), list(x[i][~t[i]])) - auc(list(y[i][t[i]]), list(y[i][~t[i]]))
+        if np.isfinite(a):
+            diffs.append(a)
+    return float(np.percentile(diffs, 2.5)), float(np.percentile(diffs, 97.5))
 
 
 def stratified(sims: dict, n: int, bands: int = 10, seed: int = 0) -> list:
@@ -869,10 +937,10 @@ def cmd_crops(a):
 
 
 def cmd_features(a):
-    from aifootball.perception.appearance import DinoEmbedder, color_feature
+    from aifootball.perception.appearance import TimmEmbedder, color_feature
 
     crops = read_crops(a.out)
-    embed = (lambda images: [color_feature(i) for i in images]) if a.kind == 'color' else DinoEmbedder(a.hub)
+    embed = (lambda images: [color_feature(i) for i in images]) if a.kind == 'color' else TimmEmbedder(a.kind, a.cache)
     ids, rows = [], []
     for tid, images in sorted(crops.items()):
         f = mean_feature(embed(images))
@@ -984,6 +1052,25 @@ def cmd_score(a):
     known = [p for p in pairs if labels.get(p['id']) in ('same', 'different')]
     print('размечено:', len(known), 'из', len(pairs), '· не понять:', sum(labels.get(p['id']) == 'unclear' for p in pairs))
     if a.set == 'calib':
+        sims = {}
+        for kind in a.kinds:
+            units = units_from_index(index, load_features(a.out, kind))
+            by_track = {t: u for u in units for t in u.track_ids}
+            sims[kind] = {
+                p['id']: float(by_track[p['a'][0]].feature @ by_track[p['b'][0]].feature)
+                for p in known
+                if by_track[p['a'][0]].feature is not None and by_track[p['b'][0]].feature is not None
+            }
+        common = [p for p in known if all(p['id'] in sims[k] for k in a.kinds)]
+        truth = [labels[p['id']] == 'same' for p in common]
+        print('пар с признаками всех вариантов:', len(common), '· один человек:', sum(truth))
+        for kind in a.kinds:
+            v = [sims[kind][p['id']] for p in common]
+            print(kind, 'AUC', round(auc([s for s, t in zip(v, truth) if t], [s for s, t in zip(v, truth) if not t]), 3))
+        for n, x in enumerate(a.kinds):
+            for y in a.kinds[n + 1 :]:
+                low, high = paired_bootstrap(truth, [sims[x][p['id']] for p in common], [sims[y][p['id']] for p in common])
+                print(f'AUC {x} − {y}: 95% {low:+.3f}…{high:+.3f}')
         for kind in a.kinds:
             feats = load_features(a.out, kind)
             units = units_from_index(index, feats)
@@ -1019,19 +1106,19 @@ def main():
     s.add_argument('--video', type=Path, required=True)
     s.add_argument('--venue', type=Path, required=True)
     s = sub.add_parser('features')
-    s.add_argument('--kind', choices=['color', 'dino'], required=True)
-    s.add_argument('--hub', type=Path, default=Path('models/hub'))
+    s.add_argument('--kind', choices=KINDS, required=True)
+    s.add_argument('--cache', type=Path, default=Path('models/hf'))
     s = sub.add_parser('cluster')
     s.add_argument('--index', type=Path, required=True)
-    s.add_argument('--kind', choices=['color', 'dino'], required=True)
+    s.add_argument('--kind', choices=KINDS, required=True)
     s.add_argument('--threshold', type=float, nargs='+', required=True)
     s.add_argument('--margin', type=float, default=0.05)
     s = sub.add_parser('pairs')
     s.add_argument('--index', type=Path, required=True)
     s.add_argument('--set', choices=['calib', 'final'], required=True)
-    s.add_argument('--kinds', nargs='+', default=['color', 'dino'])
-    s.add_argument('--n', type=int, default=200)
-    s.add_argument('--kind', choices=['color', 'dino'])
+    s.add_argument('--kinds', nargs='+', default=KINDS)
+    s.add_argument('--n', type=int, default=210)
+    s.add_argument('--kind', choices=KINDS)
     s.add_argument('--tau', type=float)
     s.add_argument('--margin', type=float, default=0.05)
     s.add_argument('--n-within', type=int, default=75)
@@ -1040,7 +1127,7 @@ def main():
     s = sub.add_parser('score')
     s.add_argument('--index', type=Path, required=True)
     s.add_argument('--set', choices=['calib', 'final'], required=True)
-    s.add_argument('--kinds', nargs='+', default=['color', 'dino'])
+    s.add_argument('--kinds', nargs='+', default=KINDS)
     s.add_argument('--threshold', type=float, nargs='*', default=[])
     s.add_argument('--margin', type=float, default=0.05)
     for s in sub.choices.values():
@@ -1057,7 +1144,7 @@ if __name__ == '__main__':
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `.venv/bin/python -m pytest tests/test_eval_people.py -q`
-Expected: `3 passed`
+Expected: `4 passed`
 
 - [ ] **Step 5: Format, lint, commit**
 
@@ -1095,19 +1182,21 @@ Expected: `фрагментов с кадрами: N кадров: M`; N — б�
 ```bash
 .venv/bin/python scripts/eval_people.py features --out $O --kind color
 .venv/bin/python scripts/eval_people.py features --out $O --kind dino
+.venv/bin/python scripts/eval_people.py features --out $O --kind siglip
 ```
 
-Expected: `color признаков: N`, `dino признаков: N` (то же N).
+Expected: `color признаков: N`, `dino признаков: N`, `siglip признаков: N` (то же N).
 
 - [ ] **Step 3: Перебор порога**
 
 ```bash
 .venv/bin/python scripts/eval_people.py cluster --out $O --index $I --kind color --threshold 0.6 0.7 0.8 0.85 0.9
 .venv/bin/python scripts/eval_people.py cluster --out $O --index $I --kind dino --threshold 0.4 0.5 0.6 0.7 0.8
+.venv/bin/python scripts/eval_people.py cluster --out $O --index $I --kind siglip --threshold 0.4 0.5 0.6 0.7 0.8
 ```
 
 Expected: строка на порог — по командам `people`, `unsorted_share`, `doubtful`, `top_seconds`. Записать таблицу.
-Если у DINOv2 даже на низком пороге людей больше 40 на команду — расширить перебор вниз (0.3, 0.2).
+Если у модели даже на низком пороге людей больше 40 на команду — расширить перебор вниз (0.3, 0.2).
 
 ---
 
@@ -1116,10 +1205,10 @@ Expected: строка на порог — по командам `people`, `unso
 - [ ] **Step 1: Пары и листы**
 
 ```bash
-.venv/bin/python scripts/eval_people.py pairs --out $O --index $I --set calib --kinds color dino --n 200
+.venv/bin/python scripts/eval_people.py pairs --out $O --index $I --set calib --n 210
 ```
 
-Expected: `пар: ~200 листов: ~34`.
+Expected: `пар: ~210 листов: ~35` (по 70 на вариант, разложены по похожести, повторы убраны).
 
 - [ ] **Step 2: Разметка глазами**
 
@@ -1130,10 +1219,12 @@ Expected: `пар: ~200 листов: ~34`.
 - [ ] **Step 3: Оценка по порогам**
 
 ```bash
-.venv/bin/python scripts/eval_people.py score --out $O --index $I --set calib --kinds color dino --threshold 0.4 0.5 0.6 0.7 0.8 0.85 0.9
+.venv/bin/python scripts/eval_people.py score --out $O --index $I --set calib --threshold 0.4 0.5 0.6 0.7 0.8 0.85 0.9
 ```
 
-Expected: строки «<вариант> <порог> ожидаемая точность X {...}». Выбрать вариант и наибольший охват при ожидаемой
+Expected: сначала AUC каждого варианта на одних и тех же парах и 95% интервалы разниц AUC (парный бутстреп) —
+вариант выбирается по ним, не по одному порогу; затем строки «<вариант> <порог> ожидаемая точность X {...}».
+Выбрать вариант и наибольший охват при ожидаемой
 точности ≥ 0,96 (запас к воротам 0,95), людях ≤ 20 и «Неразобранных» ≤ 15%. μ (порог сомнения) — значение, при
 котором сомнительных 5–10% фрагментов в людях (перебор `--margin 0.02 0.05 0.1` шагом `cluster`). Если ни один
 вариант не дотягивает — Task 8 (ворота не пройдены).
@@ -1170,7 +1261,8 @@ Expected: `within один человек k/n = p (95%: a–b)` и `neighbor ...
 - Modify: `docs/README.md` (раздел «Архитектура и следующие этапы»)
 
 - [ ] **Step 1: Документ** — по-русски, только числа, без кадров участников:
-  данные и команды; сколько фрагментов дали кадры; таблица перебора порога (Task 5); калибровка по вариантам
+  данные и команды; таблица лицензий кандидатов (Task 3) с датой проверки; сколько фрагментов дали кадры;
+  AUC вариантов на общих парах и интервалы разниц; таблица перебора порога (Task 5); калибровка по вариантам
   (доля «один человек» по полосам похожести, ожидаемая точность по порогам); выбранные вариант, τ, μ и почему;
   проверка (within и neighbor с интервалами); итог ворот; ограничения (разметка одним разметчиком, один матч,
   трансляция). При непройденных воротах — что не дотянуло и что пробовать (OSNet, кадры крупнее, обучение
