@@ -1536,6 +1536,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/moments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Moments */
+        get: operations["moments_api_v1_matches__mid__analysis_runs__rid__moments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{mid}/analysis/runs/{rid}/thumbs/{tid}": {
         parameters: {
             query?: never;
@@ -5521,6 +5538,28 @@ export interface components {
             /** Missing Track Ids */
             missing_track_ids?: number[];
         };
+        /** MomentGoal */
+        MomentGoal: {
+            /** T S */
+            t_s: number;
+            /**
+             * Plate
+             * @enum {string}
+             */
+            plate: "left" | "right";
+        };
+        /** MomentShot */
+        MomentShot: {
+            /** T S */
+            t_s: number;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** On Target */
+            on_target: boolean | null;
+        };
         /** NextRound */
         NextRound: {
             /**
@@ -8144,6 +8183,35 @@ export interface components {
              * @default false
              */
             tied: boolean;
+        };
+        /**
+         * RunMoments
+         * @description Закладки разметки ударов и защиты по видео: время — секунды записи.
+         */
+        RunMoments: {
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Video S */
+            video_s: number;
+            /** Halves */
+            halves: number[][];
+            /** Side Map */
+            side_map: {
+                [key: string]: "home" | "away";
+            };
+            /** Board Final */
+            board_final: {
+                [key: string]: number;
+            } | null;
+            /** Board Goals */
+            board_goals: components["schemas"]["MomentGoal"][];
+            /** Replays */
+            replays: number[][];
+            /** Shots */
+            shots: components["schemas"]["MomentShot"][];
         };
         /** RunSummary */
         RunSummary: {
@@ -13286,6 +13354,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    moments_api_v1_matches__mid__analysis_runs__rid__moments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunMoments"];
                 };
             };
             /** @description Validation Error */
