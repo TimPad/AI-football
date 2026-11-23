@@ -885,3 +885,36 @@
   background: var(--away, #e9aa49);
   color: #1d1a14;
 }
+.match-flow {
+  display: grid;
+  gap: 8px;
+}
+.match-flow svg {
+  width: 100%;
+  height: auto;
+}
+.flow-axis {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.flow-break {
+  stroke: var(--border);
+  stroke-dasharray: 3 3;
+}
+.flow-bar.home {
+  fill: var(--home);
+}
+.flow-bar.away {
+  fill: var(--away);
+}
+.flow-goal {
+  fill: var(--text, currentColor);
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+.flow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
+}
