@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisRun } from '../../api/domain';
-import { baseGroups, candidatesOf } from './candidates';
+import { baseGroups, candidatesOf, dropConflicts, identityConflicts, intervalsClash } from './candidates';
 import { IdentityReview } from './IdentityReview';
 import { assignedShare, cosine, decodeLook, lookIndex, suggest } from './similar';
 
@@ -116,5 +116,52 @@ describe('similar fragments', () => {
       { track_id: 4, player_id: 'p1' },
       { track_id: 3, player_id: 'p1' },
     ]);
+  });
+});
+
+describe('simultaneous fragments of one player', () => {
+  it('treats a short tracker duplicate inside a long fragment as a clash, like the server', () => {
+    // 0,7 с внутри 49 с: пересечение меньше секунды, но начинается за 40 с до конца — сервер отклонит.
+    expect(intervalsClash([[1670, 1719.5]], [[1678.2, 1678.9]])).toBe(true);
+    // Передача между треками: новый начинается за 0,5 с до конца прежнего — один человек.
+    expect(intervalsClash([[0, 10]], [[9.5, 20]])).toBe(false);
+    expect(intervalsClash([[0, 10]], [[12, 20]])).toBe(false);
+  });
+
+  it('drops the shorter fragment of each clashing pair from the draft', () => {
+    const nested = {
+      ...run,
+      tracks: [...run.tracks, { ...run.tracks[0], track_id: 7, intervals: [[60, 61]], appearance: RED }],
+    } as AnalysisRun;
+    // 2 (50–90 с) и 7 (60–61 с) у одного игрока: снимается 7.
+    const draft = [
+      { track_id: 2, player_id: 'p1' },
+      { track_id: 7, player_id: 'p1' },
+      { track_id: 4, player_id: 'p1' },
+    ];
+    expect(identityConflicts(nested, draft)).toEqual([{ playerId: 'p1', keep: 2, drop: 7 }]);
+    expect(dropConflicts(nested, draft)).toEqual([
+      { track_id: 2, player_id: 'p1' },
+      { track_id: 4, player_id: 'p1' },
+    ]);
+  });
+
+  it('warns about conflicts in the draft and fixes them with one button', () => {
+    const nested = {
+      ...run,
+      tracks: [...run.tracks, { ...run.tracks[0], track_id: 7, intervals: [[60, 61]], appearance: RED }],
+      assignments: [
+        { track_id: 2, player_id: 'p1' },
+        { track_id: 7, player_id: 'p1' },
+      ],
+    } as AnalysisRun;
+    render(
+      <MemoryRouter>
+        <IdentityReview run={nested} actorId="admin" editable onSave={vi.fn()} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('видные одновременно: 1 пара');
+    fireEvent.click(screen.getByRole('button', { name: 'Снять более короткие (1)' }));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

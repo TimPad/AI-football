@@ -1,5 +1,5 @@
 import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
-import { type Candidate, decisionOf, HANDOFF_S } from './candidates';
+import { type Candidate, decisionOf, intervalsClash } from './candidates';
 
 // Подбор похожих фрагментов игроку. Похожесть — косинус признаков цвета одежды и обуви из пакета
 // (perception.appearance: 156 байт 0..255 в base64). Сборка людей по ней не прошла проверку
@@ -56,11 +56,10 @@ export function meanLook(index: LookIndex, ids: number[]): Look | null {
   return out.map((x) => x / norm);
 }
 
-// Одновременно видны дольше HANDOFF_S — разные люди.
+// Одновременно видны — разные люди (правило сервера, candidates.intervalsClash).
 export function clash(index: LookIndex, a: number[], b: number[]): boolean {
   const spans = (ids: number[]) => ids.flatMap((id) => index.tracks.get(id)?.intervals ?? []);
-  const x = spans(a);
-  return spans(b).some(([s2, e2]) => x.some(([s1, e1]) => Math.min(e1, e2) - Math.max(s1, s2) > HANDOFF_S));
+  return intervalsClash(spans(a), spans(b));
 }
 
 // Подсказки игроку: неназначенные кандидаты его команды, не видные одновременно с его фрагментами и не отклонённые

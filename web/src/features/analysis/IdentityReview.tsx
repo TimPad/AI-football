@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
 import { downloadJson, ErrorBox } from '../../components/ui';
 import { useDraft } from '../protocol/drafts';
-import { baseGroups } from './candidates';
+import { baseGroups, dropConflicts, identityConflicts } from './candidates';
 import { PlayerCandidates } from './PlayerCandidates';
 import { filteredCount, TRACK_FILTERS, type TrackFilter, trackState, visibleTrackIds } from './reviewQueue';
 import { SimilarPicker } from './SimilarPicker';
@@ -142,6 +142,7 @@ export function IdentityReview({
       <span className={`thumb-missing ${cls}`}>Кадр недоступен</span>
     );
   const dirtyCount = draft.dirty ? draft.value.assignments.length : 0;
+  const conflicts = identityConflicts(run, assignments);
   return (
     <section className="identity-review" aria-label="Сопоставление игроков">
       <div className="review-bar">
@@ -430,6 +431,20 @@ export function IdentityReview({
               </>
             ) : null}
           </aside>
+        </div>
+      )}
+      {conflicts.length > 0 && (
+        <div className="warning conflict-banner" role="alert">
+          <span>
+            У одного игрока фрагменты, видные одновременно: {conflicts.length} {conflicts.length === 1 ? 'пара' : 'пар'}
+            . Сервер не подтвердит такую версию — обычно это короткие дубли трекера внутри длинного фрагмента.
+          </span>
+          <button
+            disabled={disabled}
+            onClick={() => change({ ...draft.value, assignments: dropConflicts(run, draft.value.assignments) })}
+          >
+            Снять более короткие ({new Set(conflicts.map((c) => c.drop)).size})
+          </button>
         </div>
       )}
       {draft.dirty && (

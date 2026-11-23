@@ -49,10 +49,49 @@ export function candidatesOf(run: AnalysisRun, groups: number[][]): Candidate[] 
     .sort((a, b) => b.seconds - a.seconds);
 }
 
-// Одновременно видимые больше чем на HANDOFF_S — разные люди: таких не объединяем и не даём одному игроку.
+// Одновременно видны — разные люди: таких не объединяем и не даём одному игроку. Правило — как у сервера при
+// подтверждении: позже начавшийся фрагмент не может начаться раньше, чем за HANDOFF_S до конца другого. Поэтому
+// и короткий дубль трекера внутри длинного фрагмента (пересечение меньше секунды) — конфликт.
+export function intervalsClash(a: number[][], b: number[][]): boolean {
+  return a.some(([s1, e1]) => b.some(([s2, e2]) => (s1 <= s2 ? e1 - s2 : e2 - s1) > HANDOFF_S));
+}
+
 export function overlaps(run: AnalysisRun, a: number[], b: number[]): boolean {
   const spans = (ids: number[]) => run.tracks.filter((t) => ids.includes(t.track_id)).flatMap((t) => t.intervals);
-  return spans(a).some(([s1, e1]) => spans(b).some(([s2, e2]) => Math.min(e1, e2) - Math.max(s1, s2) > HANDOFF_S));
+  return intervalsClash(spans(a), spans(b));
+}
+
+// Конфликты черновика: у одного игрока фрагменты, видные одновременно (сервер такую версию не подтвердит).
+// drop — более короткий фрагмент пары.
+export function identityConflicts(
+  run: AnalysisRun,
+  assignments: AnalysisAssignment[],
+): { playerId: string; keep: number; drop: number }[] {
+  const byId = new Map(run.tracks.map((t) => [t.track_id, t]));
+  const length = (id: number) => byId.get(id)?.intervals.reduce((s, [a, b]) => s + b - a, 0) ?? 0;
+  const players = new Map<string, number[]>();
+  for (const a of assignments)
+    if (a.player_id) players.set(a.player_id, [...(players.get(a.player_id) ?? []), a.track_id]);
+  const out: { playerId: string; keep: number; drop: number }[] = [];
+  for (const [playerId, ids] of players)
+    ids.forEach((x, i) =>
+      ids.slice(i + 1).forEach((y) => {
+        if (!intervalsClash(byId.get(x)?.intervals ?? [], byId.get(y)?.intervals ?? [])) return;
+        const [keep, drop] = length(x) >= length(y) ? [x, y] : [y, x];
+        out.push({ playerId, keep, drop });
+      }),
+    );
+  return out;
+}
+
+// Снимает с игроков более короткие фрагменты конфликтных пар, пока конфликтов не останется.
+export function dropConflicts(run: AnalysisRun, assignments: AnalysisAssignment[]): AnalysisAssignment[] {
+  let next = assignments;
+  for (let found = identityConflicts(run, next); found.length; found = identityConflicts(run, next)) {
+    const drop = found[0].drop;
+    next = next.filter((a) => a.track_id !== drop);
+  }
+  return next;
 }
 
 export function decisionOf(assignments: AnalysisAssignment[], ids: number[]): GroupDecision {
