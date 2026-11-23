@@ -308,6 +308,13 @@ def _cv_positions(run, period, people):
     return sorted(positions, key=lambda p: (SIDES.index(p['side']), str(p['player_id']))), orientation
 
 
+def _video_ball(run):
+    """Мяч передач прогона найден общим детектором игроков (его модель в манифесте) или своей моделью мяча."""
+    ball = ((run.events or {}).get('ball') or {}).get('model')
+    detector = ((run.manifest or {}).get('processor') or {}).get('model')
+    return 'general' if ball and ball == detector else 'ball_model'
+
+
 def _auto_passes(run, period, people):
     """Передачи прогона CV как записи сводки. Исполнитель и адресат — игроки назначенных фрагментов той же
     стороны (как в автоматической версии действий); адресат — только у точной передачи."""
@@ -432,6 +439,7 @@ def _with_events(stats, run, published, people):
         records = _auto_passes(run, stats['period'], people)
         stats['passes'] = _pass_points(records, lambda r: r['period'], 'cv_auto')
         stats['pass_players'] = _pass_players(records)
+        stats['video_ball'] = _video_ball(run)
     return stats
 
 
@@ -467,6 +475,7 @@ def auto_action_stats(run, *, published, period='all', people=({}, {})):
         'positions': positions,
         'positions_orientation': orientation,
         'pitch': {'length_m': pitch['length_m'], 'width_m': pitch['width_m']},
+        'video_ball': _video_ball(run) if records else None,
     }
 
 

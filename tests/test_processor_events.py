@@ -226,3 +226,79 @@ def test_real_video_frame_rate_decides_not_the_job_limit(venue, tmp_path):
     meta['src_fps'] = 14.9
     (work / 'meta.json').write_text(json.dumps(meta))
     assert ball_events(work, venue, _state(6), [(0.0, 6.0)], {1, 2, 3, 4})[0] is not None
+
+
+# Поворотная камера: кадр сдвинут на SHIFT px вправо относительно эталона (10 px = 1 м), привязка у каждого кадра.
+SHIFT = 50
+
+
+def _ptz_venue(tmp_path):
+    import yaml
+
+    from aifootball.venue import load_venue
+    from conftest import SCALE_H, VENUE_YAML, make_venue_dir
+
+    root = make_venue_dir(tmp_path / 'ptz', H=SCALE_H, processing={'frame_width': 400, 'frame_height': 200})
+    cfg = {**VENUE_YAML, 'processing': {**VENUE_YAML['processing'], 'frame_width': 400, 'frame_height': 200}}
+    (root / 'venue.yaml').write_text(yaml.safe_dump({**cfg, 'camera': {'motion': 'ptz', 'overlay': []}}))
+    return load_venue(root)
+
+
+def _ptz_artifacts(tmp_path, seconds=6, conf=0.9):
+    """Рамки — в пикселях кадра (эталон + SHIFT по x), привязка кадр -> эталон; своей модели мяча нет."""
+    work = tmp_path / 'artifacts'
+    work.mkdir()
+    shifted = _detections(seconds, _pass).with_columns(
+        x1=pl.col('x1') + SHIFT,
+        x2=pl.col('x2') + SHIFT,
+        conf=pl.when(pl.col('cls') == 'ball').then(pl.lit(conf, pl.Float32)).otherwise(pl.col('conf')),
+    )
+    schemas.write(shifted, work / 'detections.parquet', 'detections')
+    frames = shifted.select('frame_id', 'ts').unique('frame_id').sort('frame_id')
+    to_reference = [1.0, 0.0, -SHIFT, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+    registration = frames.with_columns(
+        status=pl.lit('ok'),
+        key=pl.lit(0),
+        inliers=pl.lit(500),
+        **{f'h{i}': pl.lit(v) for i, v in enumerate(to_reference)},
+    )
+    schemas.write(registration.cast(schemas.REGISTRATION), work / 'registration.parquet', 'registration')
+    (work / 'meta.json').write_text(json.dumps({'ball_model': None, 'model': 'yolo11m.pt', 'target_fps': FPS}))
+    models = tmp_path / 'models'
+    models.mkdir()
+    (models / 'yolo11m.pt').write_bytes(b'general detector')
+    return work, models
+
+
+def test_broadcast_camera_without_ball_model_uses_the_general_detector(tmp_path):
+    from aifootball.processor.job import ball_events, file_hash
+
+    work, models = _ptz_artifacts(tmp_path)
+    events, warning = ball_events(work, _ptz_venue(tmp_path), _state(6), [(0.0, 6.0)], {1, 2, 3, 4}, models)
+    assert warning is None
+    assert events['ball'] == {
+        'model': 'yolo11m.pt',
+        'sha256': file_hash(models / 'yolo11m.pt'),
+        'frames_with_ball': 1.0,
+    }
+    # Мяч переведён из кадра в эталон: без привязки он лежал бы на 5 м правее и передачи 1 -> 2 не было бы.
+    [passed] = events['events']
+    assert (passed['track_id'], passed['recipient_track_id'], passed['success']) == (1, 2, True)
+    assert passed['start_xy'] == [10.0, 10.0] and passed['end_xy'] == [24.0, 10.0]
+
+
+def test_general_detector_keeps_the_job_threshold(tmp_path):
+    from aifootball.processor.job import ball_events
+
+    # Порог задания 0.10 рассчитан на общую модель; 0.25 своей модели мяча к ней не применяется.
+    work, models = _ptz_artifacts(tmp_path, conf=0.15)
+    events, _ = ball_events(work, _ptz_venue(tmp_path), _state(6), [(0.0, 6.0)], {1, 2, 3, 4}, models)
+    assert events is not None and len(events['events']) == 1
+
+
+def test_fixed_camera_without_ball_model_still_has_no_events(venue, tmp_path):
+    from aifootball.processor.job import ball_events
+
+    work = _artifacts(tmp_path, _pass, meta=False)
+    (work / 'meta.json').write_text(json.dumps({'ball_model': None, 'model': 'yolo11m.pt', 'target_fps': FPS}))
+    assert ball_events(work, venue, _state(6), [(0.0, 6.0)], {1, 2, 3, 4}, tmp_path) == (None, None)

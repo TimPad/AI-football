@@ -229,7 +229,7 @@ def test_ordinary_admin_cannot_read_private_stats(admin_client, analytics_match)
     assert admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').status_code == 403
 
 
-def _cv_run_with_passes(client, match, *, side_map=None, publish=True, report=None):
+def _cv_run_with_passes(client, match, *, side_map=None, publish=True, report=None, manifest=None):
     """Импорт пакета версии 3 (две передачи команды A: точная и неточная), подтверждение и публикация."""
     from uuid import uuid4
 
@@ -246,7 +246,7 @@ def _cv_run_with_passes(client, match, *, side_map=None, publish=True, report=No
         match,
         result_zip(
             job,
-            mutate=lambda m, r, t, c: (m.update(contract_version='3'), report and report(r)),
+            mutate=lambda m, r, t, c: (m.update(contract_version='3'), report and report(r), manifest and manifest(m)),
             extras={'events.json': events_doc()},
         ),
     )
@@ -302,6 +302,8 @@ def test_auto_passes_from_published_video_analysis(admin_client, analytics_match
     ]
     assert all(p['side'] == 'home' and p['period'] is None and p['player_id'] for p in stats['passes'])
     assert not any(p['verified'] for p in stats['passes'])
+    # Мяч найден своей моделью мяча, а не детектором игроков: к точности относится замеренная погрешность.
+    assert stats['video_ball'] == 'ball_model'
     assert stats['passes'][1]['recipient_id'] is None and stats['passes'][0]['start_ms'] == 10000
     assert stats['pass_players'] == [
         {
@@ -337,6 +339,20 @@ def test_auto_passes_follow_the_side_map(admin_client, analytics_match):
     assert {p['side'] for p in stats['passes']} == {'away'} and {p['player_id'] for p in stats['passes']} <= away
 
 
+def test_passes_from_the_general_detector_are_marked(admin_client, analytics_match):
+    """Запись трансляции без своей модели мяча: мяч искал детектор игроков, его модель — в манифесте."""
+    model = 'ball/best.pt'  # модель мяча в events_doc
+    _cv_run_with_passes(
+        admin_client, analytics_match, manifest=lambda m: m['processor'].update(model=model, ball_model=model)
+    )
+    stats = admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').json()
+    assert stats['video_ball'] == 'general' and len(stats['passes']) == 2
+    admin_client.headers.pop('X-CSRF-Token', None)
+    admin_client.cookies.clear()
+    public = admin_client.get(f'/api/v1/public/matches/{analytics_match["id"]}/action-stats')
+    assert public.status_code == 200 and public.json()['video_ball'] == 'general'
+
+
 def _shots_only(home, away):
     return [
         {
@@ -364,7 +380,7 @@ def test_manual_passes_win_and_auto_fills_only_missing_categories(admin_client, 
         and stats['source']['run_published'] is True
     )
     assert _row(stats, 'shots_total')['source'] == 'manual' and _row(stats, 'passes_total')['source'] == 'cv_auto'
-    assert stats['coverage']['passes'] == 'partial'
+    assert stats['coverage']['passes'] == 'partial' and stats['video_ball'] == 'ball_model'
     assert len(stats['passes']) == 2 and {p['source'] for p in stats['passes']} == {'cv_auto'}
 
 

@@ -223,27 +223,44 @@ def ball_model_path(models, name):
 
 
 def ball_events(artifacts, venue, state, spans, track_ids, models=None):
-    """События по мячу для events.json: (содержимое, предупреждение). Без модели мяча — (None, None)."""
+    """События по мячу для events.json: (содержимое, предупреждение). Без модели мяча — (None, None).
+
+    Поворотная камера трансляции без своей модели мяча берёт мяч общего детектора игроков: оператор держит
+    игру крупно, и мяч находится чаще, чем на неподвижной камере зала (там его recall ~12%). Порог уверенности
+    тогда — задания (он рассчитан на общую модель), а годность записи решает та же доля кадров с мячом.
+    """
     import polars as pl
 
     from aifootball import schemas
     from aifootball.analytics.events import extract_events
     from aifootball.analytics.periods import in_period
+    from aifootball.cli import read_registration
+    from aifootball.geometry.registration import detections_to_reference
     from aifootball.perception.ball import process_ball_trajectory
     from aifootball.perception.teams import defending_sides
 
     meta_path, det_path = Path(artifacts) / 'meta.json', Path(artifacts) / 'detections.parquet'
     meta = load_json(meta_path.read_bytes(), 'meta.json') if meta_path.exists() else {}
-    if not meta.get('ball_model') or not det_path.exists():
+    own = bool(meta.get('ball_model'))
+    if not det_path.exists() or not (own or (venue.is_ptz and meta.get('model'))):
         return None, None
-    sha = meta.get('ball_model_sha256') or (file_hash(ball_model_path(models, meta['ball_model'])) if models else None)
+    name = meta['ball_model'] if own else meta['model']
+    sha = (meta.get('ball_model_sha256') if own else None) or (
+        file_hash(ball_model_path(models, name)) if models else None
+    )
     if not sha:
         return None, 'Передачи не рассчитаны: неизвестна версия модели мяча'
     fps = min(meta.get('target_fps') or 0, meta.get('src_fps') or float('inf'))
     if fps < EVENTS_MIN_FPS:
         return None, f'Передачи не рассчитаны: нужна запись не реже 15 кадров/с, обработано {fps:.1f}'
     detections = schemas.read(det_path, 'detections')
-    venue = ball_settings(venue, venue.frame_width or int(meta.get('frame_width') or 0))
+    registration = read_registration(Path(artifacts), venue)
+    if registration is not None:
+        # Рамки поворотной камеры — в пикселях кадра; мяч, как и игроки, переводится в кадр эталона.
+        size = (venue.frame_width or meta.get('frame_width'), venue.frame_height or meta.get('frame_height'))
+        detections = detections_to_reference(detections, registration, venue.overlay, size)
+    if own:
+        venue = ball_settings(venue, venue.frame_width or int(meta.get('frame_width') or 0))
     detections = detections.filter((pl.col('cls') != 'ball') | (pl.col('conf') >= venue.conf_ball))
     ball = in_period(process_ball_trajectory(detections, venue), spans)
     frames = in_period(detections.select('frame_id', 'ts').unique('frame_id'), spans).height
@@ -281,7 +298,7 @@ def ball_events(artifacts, venue, state, spans, track_ids, models=None):
     events.sort(key=lambda e: e['start_s'])
     return {
         'schema_version': '1',
-        'ball': {'model': meta['ball_model'], 'sha256': sha, 'frames_with_ball': round(share, 3)},
+        'ball': {'model': name, 'sha256': sha, 'frames_with_ball': round(share, 3)},
         'kinds': list(EVENT_KINDS),
         'events': events,
     }, None

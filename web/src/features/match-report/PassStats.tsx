@@ -8,6 +8,7 @@ import {
   defaultThreshold,
   filterPasses,
   formatAccuracy,
+  GENERAL_BALL_CAVEAT,
   MIN_PASSES_FOR_PERCENT,
   type NetworkEdge,
   ORIENTATION_NOTE,
@@ -19,9 +20,9 @@ import {
   type Side,
   teamAccuracy,
   toArrows,
-  VIDEO_ACCURACY_HINT,
   VIDEO_PASS_CHECK,
   VIDEO_RED_HINT,
+  videoAccuracyHint,
 } from './passes';
 
 type Name = (id: string | null | undefined) => string | null;
@@ -130,6 +131,8 @@ export function PassStats({
   const approx = autoPasses(stats);
   // Есть передачи из видео без проверки — к ним относится замеренная погрешность.
   const unchecked = stats.pass_players.some((p) => p.verified < p.total);
+  // Мяч искал общий детектор (запись трансляции): замер журналов к этим передачам не относится.
+  const general = stats.video_ball === 'general';
   const oriented = orientPasses(stats.passes, L, W);
   const shown = filterPasses(oriented.passes, filter);
   const players = stats.pass_players.filter((p) => filter.side === 'all' || p.side === filter.side);
@@ -150,7 +153,7 @@ export function PassStats({
               </span>
               <b
                 className="num pass-percent"
-                title={approx ? (unchecked ? VIDEO_ACCURACY_HINT : REVIEWED_ACCURACY_HINT) : undefined}
+                title={approx ? (unchecked ? videoAccuracyHint(stats) : REVIEWED_ACCURACY_HINT) : undefined}
               >
                 {a.percent == null ? '—' : `${approx ? '≈' : ''}${Math.round(a.percent)}%`}
               </b>
@@ -225,7 +228,7 @@ export function PassStats({
         awayName={awayName}
         note={[
           ORIENTATION_NOTE[oriented.orientation],
-          unchecked && shown.some((p) => p.success === false && !p.verified) ? VIDEO_RED_HINT : null,
+          unchecked && !general && shown.some((p) => p.success === false && !p.verified) ? VIDEO_RED_HINT : null,
           unplaced > 0 ? `Без точек на поле и не на карте: ${unplaced}` : null,
         ]
           .filter(Boolean)
@@ -240,7 +243,8 @@ export function PassStats({
       />
       {reviewProgress(stats) && <p className="muted small">{reviewProgress(stats)}</p>}
       {approx && reviewedPasses(stats) && <p className="muted small pass-caveat">{REVIEWED_ACCURACY_HINT}</p>}
-      {approx && unchecked && (
+      {approx && unchecked && general && <p className="muted small pass-caveat">{GENERAL_BALL_CAVEAT}</p>}
+      {approx && unchecked && !general && (
         <p className="muted small pass-caveat">
           ≈ — передачи из видео: находится около двух третей, процент точности расходится с ручным журналом до{' '}
           {VIDEO_PASS_CHECK.maxErrorPp} п.п., а из неточных по видео верны {VIDEO_PASS_CHECK.redTrue} из{' '}
@@ -281,7 +285,7 @@ export function PlayerPasses({
       </p>
       {approx && (
         <p className="muted small">
-          {stats.pass_players.some((p) => p.verified < p.total) ? VIDEO_ACCURACY_HINT : REVIEWED_ACCURACY_HINT}
+          {stats.pass_players.some((p) => p.verified < p.total) ? videoAccuracyHint(stats) : REVIEWED_ACCURACY_HINT}
         </p>
       )}
       <PassMap
