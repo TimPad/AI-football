@@ -16,6 +16,8 @@ dependencies = [
 
 [project.optional-dependencies]
 vlm = ["httpx>=0.28,<1", "python-dotenv>=1,<2"]
+# Признаки внешности для сборки людей (scripts/eval_people.py): DINOv2 с регистрами и SigLIP 2, веса Apache-2.0.
+people = ["timm>=1.0.30"]
 dev = [
     "pytest>=8",
     "ruff>=0.17.5",
