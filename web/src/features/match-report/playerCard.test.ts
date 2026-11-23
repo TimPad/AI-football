@@ -26,7 +26,7 @@ describe('player card figures', () => {
       ['Макс. скорость', '9,8 м/с'],
     ]);
     expect(tiles[0].hint).toMatch(/не минуты на площадке/);
-    expect(videoTiles({ ...metrics, vmax_ms: null, m_per_min: null }).map((t) => t.value)).toContain('—');
+    expect(videoTiles({ ...metrics, vmax_ms: null, m_per_min: null })!.map((t) => t.value)).toContain('—');
     expect(videoTiles(null)).toBeNull();
     expect(clock(59.6)).toBe('1:00');
   });
