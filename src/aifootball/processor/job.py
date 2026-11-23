@@ -414,6 +414,12 @@ def package_result(
         )
     images = grab_images(Path(video_path), requests)
     playable = {t['track_id'] for t in indexed if t['team'] and t['role'] in ('player', 'goalkeeper')}
+    # Показатели коротких фрагментов — только у фрагментов игроков и вратарей индекса, команда — как в индексе.
+    team_of = {t['track_id']: t['team'] for t in indexed}
+    for period in report['periods']:
+        period['fragments'] = [
+            {**f, 'team': team_of[f['track_id']]} for f in period.get('fragments', []) if f['track_id'] in playable
+        ]
     looks = appearance(video_path, tracks, venue, artifacts, playable, (source['width'], source['height']))
     for track in indexed:
         if track['track_id'] in looks:

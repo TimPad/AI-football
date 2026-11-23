@@ -423,6 +423,41 @@ def validate_result(source, limits=Limits()):
                     ensure(type(player['sprints']) is int, 'Число спринтов должно быть целым')
                 ensure('heatmap_s' in player, 'Нет тепловой карты')
                 heatmap(player['heatmap_s'], pitch, f'трек {tid}')
+            fragments = period.get('fragments', [])
+            ensure(isinstance(fragments, list) and len(fragments) <= 50000, 'Неверный список фрагментов периода')
+            for f in fragments:
+                tid = f['track_id']
+                ensure(tid in index and tid not in seen, 'Фрагмент ссылается на неизвестный/повторный трек')
+                seen.add(tid)
+                ensure(
+                    index[tid]['team'] in ('A', 'B')
+                    and index[tid]['role'] in ('player', 'goalkeeper')
+                    and f['team'] == index[tid]['team'],
+                    'Команда/роль фрагмента не совпадает с треком',
+                )
+                for metric in ['observed_s', 'distance_m', 'hsr_m', 'sprints']:
+                    numeric(f[metric], metric)
+                ensure(type(f['sprints']) is int, 'Число спринтов должно быть целым')
+                ensure(f['vmax_ms'] is None or numeric(f['vmax_ms'], 'vmax_ms') <= 30, 'Скорость вне диапазона')
+                ensure(f['observed_s'] <= span_s + 0.11, 'Время фрагмента превышает период')
+                ensure(f['distance_m'] <= f['observed_s'] * 30 + 1, 'Дистанция превышает допустимый диапазон')
+                ensure(f['hsr_m'] <= f['distance_m'] + 0.2, 'HSR превышает дистанцию')
+                cells = f['heatmap_cells']
+                ensure(
+                    isinstance(cells, list)
+                    and len(cells) <= math.ceil(pitch['length_m']) * math.ceil(pitch['width_m'])
+                    and all(
+                        isinstance(c, list)
+                        and len(c) == 3
+                        and type(c[0]) is int
+                        and type(c[1]) is int
+                        and 0 <= c[0] < math.ceil(pitch['length_m'])
+                        and 0 <= c[1] < math.ceil(pitch['width_m'])
+                        and numeric(c[2], 'секунды клетки') <= span_s + 0.11
+                        for c in cells
+                    ),
+                    'Неверная тепловая карта фрагмента',
+                )
             for side, team in period.get('teams', {}).items():
                 ensure(side in ('A', 'B'), 'Неверная команда периода')
                 for metric in [

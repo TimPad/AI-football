@@ -283,6 +283,41 @@ def players_table(
     return sorted(rows, key=lambda r: (r['team'], r['role'] != 'player', -r['observed_s']))
 
 
+def fragments_table(state: pl.DataFrame, shown: set[int], length_m: float, width_m: float, cap: float) -> list[dict]:
+    """Показатели остальных фрагментов игроков и вратарей — короче MIN_PLAYER_S, в таблицу игроков не попадают.
+
+    Нужны, чтобы показатели игрока сложились из всех его фрагментов: на записи трансляции камера теряет игроков
+    каждые несколько секунд, и фрагменты длиннее минуты — редкость (ВШЭ: 18 из 1763). Тепловая карта — разреженная,
+    [[x, y, секунды], …] по клеткам 1 × 1 м в координатах площадки, как у игроков в пакете.
+    """
+    part = state.filter(
+        pl.col('role').is_in(['player', 'goalkeeper'])
+        & pl.col('team').is_in(TEAMS)
+        & ~pl.col('track_id').is_in(sorted(shown))
+    )
+    if part.is_empty():
+        return []
+    metrics = compute_metrics(part, length_m, width_m)['tracks']
+    rows = []
+    for (tid,), g in part.sort('track_id', 'ts').group_by('track_id', maintain_order=True):
+        m = metrics.get(str(tid)) or {}
+        ts, speed = g['ts'].to_numpy(), g['speed'].to_numpy()
+        grid = np.asarray(heatmap_seconds(g, length_m, width_m))
+        rows.append(
+            {
+                'track_id': int(tid),
+                'team': g['team'].mode().first(),
+                'observed_s': m.get('observed_s', 0.0),
+                'distance_m': m.get('distance_m', 0.0),
+                'hsr_m': hsr_distance(ts, g['x_m'].to_numpy(), g['y_m'].to_numpy(), speed),
+                'sprints': int(m.get('sprints_count', 0)),
+                'vmax_ms': sustained_max_speed(ts, speed, cap),
+                'heatmap_cells': [[int(x), int(y), float(grid[x, y])] for x, y in zip(*np.nonzero(grid))],
+            }
+        )
+    return rows
+
+
 def thumb_request(tracks: pl.DataFrame, track_id: int) -> dict | None:
     """Кадр для миниатюры: середина самого длинного непрерывного куска трека на поле."""
     g = tracks.filter((pl.col('track_id') == track_id) & pl.col('in_pitch')).sort('ts')
@@ -471,7 +506,8 @@ def build_report(
             'teams': team_overview(part, oriented, length_m, width_m, cap, p.duration_s),
             'thirds': thirds_share(oriented, length_m) if oriented_ok else {t: None for t in TEAMS},
             'series': series(part, p.spans),
-            'players': players_table(part, oriented, labels, length_m, width_m, cap),
+            'players': (players := players_table(part, oriented, labels, length_m, width_m, cap)),
+            'fragments': fragments_table(part, {r['track_id'] for r in players}, length_m, width_m, cap),
             'moments': moments(part, tracks, labels, p.spans, cap),
             'input_quality': input_quality(part, cap),
         }
