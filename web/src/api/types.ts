@@ -1964,6 +1964,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/matches/{mid}/match-rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Match Points View */
+        get: operations["public_match_points_view_api_v1_public_matches__mid__match_rating_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tid}/matches": {
         parameters: {
             query?: never;
@@ -5379,6 +5396,88 @@ export interface components {
             regulation_override?: components["schemas"]["Regulation-Input"] | null;
             /** Override Reason */
             override_reason?: string | null;
+        };
+        /** MatchPointsItem */
+        MatchPointsItem: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Display Name */
+            display_name: string | null;
+            /** Goalkeeper */
+            goalkeeper: boolean;
+            /** Rating */
+            rating: number;
+            /** Parts */
+            parts: components["schemas"]["MatchPointsPart"][];
+        };
+        /** MatchPointsMissing */
+        MatchPointsMissing: {
+            /** Goals Total */
+            goals_total: number;
+            /** Goals Without Author */
+            goals_without_author: number;
+            /** Actions Without Player */
+            actions_without_player: number;
+            /** Goalkeeper Unknown */
+            goalkeeper_unknown: ("home" | "away")[];
+            /** Without On Court */
+            without_on_court: number;
+            /** Partial Categories */
+            partial_categories: string[];
+        };
+        /** MatchPointsPart */
+        MatchPointsPart: {
+            /** Key */
+            key: string;
+            /** Count */
+            count: number;
+            /** Points */
+            points: number;
+        };
+        /** MatchPointsPolicy */
+        MatchPointsPolicy: {
+            /** Base */
+            base: number;
+            /** Min */
+            min: number;
+            /** Max */
+            max: number;
+            /** Pass Cap */
+            pass_cap: number;
+            /** Goal Authors Min */
+            goal_authors_min: number;
+            /** Points */
+            points: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * MatchPointsView
+         * @description Рейтинг матча по очкам за действия; без авторов голов (ready = false) оценок нет, только чего не хватает.
+         */
+        MatchPointsView: {
+            /** Model Version */
+            model_version: string;
+            /** Ready */
+            ready: boolean;
+            /** Complete */
+            complete: boolean;
+            /** Best Player Id */
+            best_player_id: string | null;
+            /** Items */
+            items: components["schemas"]["MatchPointsItem"][];
+            missing: components["schemas"]["MatchPointsMissing"];
+            /** On Court Source */
+            on_court_source: ("manual" | "video") | null;
+            policy: components["schemas"]["MatchPointsPolicy"];
         };
         /** MatchRatingsView */
         MatchRatingsView: {
@@ -14296,6 +14395,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamActionStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_match_points_view_api_v1_public_matches__mid__match_rating_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchPointsView"];
                 };
             };
             /** @description Validation Error */

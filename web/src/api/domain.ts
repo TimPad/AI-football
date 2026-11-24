@@ -76,6 +76,7 @@ export type PublicAnalysis = S['PublicAnalysis'];
 export type PublicProtocol = S['PublicProtocol'];
 export type TeamActionStats = S['TeamActionStats'];
 export type MatchRatingsView = S['MatchRatingsView'];
+export type MatchPoints = S['MatchPointsView'];
 export type PlayerRating = S['RatingMatchView'];
 export type TournamentRating = S['RatingSummaryView'];
 export type RatingSnapshot = S['RatingSnapshotResult'];

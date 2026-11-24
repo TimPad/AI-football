@@ -1,14 +1,21 @@
 import { ApiError, api, errorText } from '../../api/client';
-import type { MatchRatingsView, PublicAnalysis, PublicMatch, PublicProtocol, TeamActionStats } from '../../api/domain';
+import type {
+  MatchPoints,
+  MatchRatingsView,
+  PublicAnalysis,
+  PublicMatch,
+  PublicProtocol,
+  TeamActionStats,
+} from '../../api/domain';
 import type { ReportModel, Resource } from '../match-report/model';
 
-type Source = 'protocol' | 'cv' | 'ratings' | 'actions';
+type Source = 'protocol' | 'cv' | 'ratings' | 'actions' | 'points';
 // Каждому разделу — только его публичные зависимости.
 // Протокол и видеоанализ нужны везде: из них шапка берёт авторов голов или минуты голов по табло.
 export const SECTION_SOURCES: Record<string, Source[]> = {
   overview: ['protocol', 'cv', 'ratings', 'actions'],
   events: ['protocol', 'cv'],
-  players: ['protocol', 'cv', 'ratings'],
+  players: ['protocol', 'cv', 'ratings', 'points'],
   stats: ['protocol', 'cv', 'ratings', 'actions'],
   video: ['protocol', 'cv'],
 };
@@ -43,6 +50,7 @@ export async function loadPublicSection(
       resource(() =>
         api<TeamActionStats>(`/public/matches/${match.id}/action-stats?period=${encodeURIComponent(period)}`, options),
       ),
+    points: () => resource(() => api<MatchPoints>(`/public/matches/${match.id}/match-rating`, options)),
     ratings: () =>
       resource(async () => {
         const query = snapshotId ? `?snapshot_id=${encodeURIComponent(snapshotId)}` : '';
