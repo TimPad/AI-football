@@ -21,9 +21,23 @@ export const GENERAL_BALL_HINT =
   'Точность по видео приблизительная: мяч на записи трансляции искал общий детектор игроков, погрешность на таких записях не замерялась.';
 export const GENERAL_BALL_CAVEAT =
   '≈ — передачи из видео трансляции: мяч искал общий детектор игроков, а не модель мяча зала. Сверки с ручным журналом на таких записях не было, погрешность не замерена; неточные передачи стоит проверять вручную.';
+// Своя модель мяча на записи трансляции (поворотная камера): замер выше делался на неподвижных камерах залов,
+// к трансляции он не относится.
+export const BROADCAST_BALL_HINT =
+  'Точность по видео приблизительная: мяч на записи трансляции искала модель мяча, погрешность на трансляциях не замерялась.';
+export const BROADCAST_BALL_CAVEAT =
+  '≈ — передачи из видео трансляции: мяч искала модель мяча, но сверки с ручным журналом на трансляциях не было, погрешность не замерена; неточные передачи стоит проверять вручную.';
 // Замер журналов или оговорка без замера — по тому, чем найден мяч.
 export function videoAccuracyHint(stats: Pick<TeamActionStats, 'video_ball'>) {
-  return stats.video_ball === 'general' ? GENERAL_BALL_HINT : VIDEO_ACCURACY_HINT;
+  if (stats.video_ball === 'general') return GENERAL_BALL_HINT;
+  if (stats.video_ball === 'broadcast_model') return BROADCAST_BALL_HINT;
+  return VIDEO_ACCURACY_HINT;
+}
+// Оговорка для передач, к которым замер журналов не относится; null — замер относится.
+export function unmeasuredBallCaveat(stats: Pick<TeamActionStats, 'video_ball'>): string | null {
+  if (stats.video_ball === 'general') return GENERAL_BALL_CAVEAT;
+  if (stats.video_ball === 'broadcast_model') return BROADCAST_BALL_CAVEAT;
+  return null;
 }
 // Передачи из видео проверены вручную, но разбор матча ещё не опубликован: найдено не каждое касание.
 export const REVIEWED_ACCURACY_HINT =
