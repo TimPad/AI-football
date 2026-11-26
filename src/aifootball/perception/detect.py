@@ -127,7 +127,8 @@ def detect_batches(
                 )
             )
             if ball_detector:
-                ball_xyxy, ball_conf = ball_detector(frame)
+                # Номер кадра — для зоны поиска по привязке поворотной камеры.
+                ball_xyxy, ball_conf = ball_detector(frame, frame_id)
                 rows.extend(
                     boxes_to_rows(
                         frame_id,

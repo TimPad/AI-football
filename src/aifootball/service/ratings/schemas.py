@@ -463,9 +463,9 @@ class TeamActionStats(BaseModel):
     # attack — хозяева атакуют вправо; halves — чётные таймы повёрнуты к первому; camera — как на видео.
     positions_orientation: Literal['attack', 'halves', 'camera'] | None
     pitch: PitchSize | None
-    # Чем найден мяч передач из видео: своей моделью мяча зала (погрешность замерена по журналам) или общим
-    # детектором игроков на записи трансляции (не замерена). None — передач из видео в сводке нет.
-    video_ball: Literal['ball_model', 'general'] | None = None
+    # Чем найден мяч передач из видео: своей моделью мяча зала (погрешность замерена по журналам), общим
+    # детектором игроков или своей моделью мяча на записи трансляции (обе не замерены). None — передач из видео нет.
+    video_ball: Literal['ball_model', 'general', 'broadcast_model'] | None = None
 
 
 class MatchPointsPart(BaseModel):

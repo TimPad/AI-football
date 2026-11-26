@@ -310,10 +310,14 @@ def _cv_positions(run, period, people):
 
 
 def _video_ball(run):
-    """Мяч передач прогона найден общим детектором игроков (его модель в манифесте) или своей моделью мяча."""
+    """Чем найден мяч передач прогона: общим детектором игроков (его модель в манифесте), своей моделью мяча на
+    записи трансляции (поворотная камера — в проверках есть привязка кадров) или своей моделью мяча зала.
+    Замер по ручным журналам делался только на своей модели и неподвижных камерах залов."""
     ball = ((run.events or {}).get('ball') or {}).get('model')
     detector = ((run.manifest or {}).get('processor') or {}).get('model')
-    return 'general' if ball and ball == detector else 'ball_model'
+    if ball and ball == detector:
+        return 'general'
+    return 'broadcast_model' if 'camera_registration' in (run.checks or {}) else 'ball_model'
 
 
 def _auto_passes(run, period, people):

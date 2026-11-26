@@ -6,6 +6,7 @@ from zipfile import ZipFile
 
 import cv2
 import numpy as np
+import polars as pl
 import pytest
 import yaml
 
@@ -37,7 +38,7 @@ def crop(image, x, y):
     return cv2.warpAffine(image, np.float32([[1, 0, -x], [0, 1, -y]]), (W, H), flags=cv2.INTER_LINEAR)
 
 
-def ptz_job(path, reference, overlay=(), badge=None):
+def ptz_job(path, reference, overlay=(), badge=None, target_fps=None):
     """Задание поворотной камеры, как его выдаёт кабинет: тип камеры и графика в снимке и в venue.yaml,
     контура поля нет, эталонный кадр обязателен; плашка повтора (кадр, (x, y)) — по желанию."""
     with ZipFile(path) as source:
@@ -47,6 +48,8 @@ def ptz_job(path, reference, overlay=(), badge=None):
     camera.update(motion='ptz', overlay=[list(r) for r in overlay], polygon_px=None)
     cfg = yaml.safe_load(files['venue.yaml'])
     cfg['camera'] = {'motion': 'ptz', 'overlay': camera['overlay']}
+    if target_fps is not None:
+        cfg['processing']['target_fps'] = target_fps
     files.pop('pitch_polygon.json')
     if badge is not None:
         image, xy = badge
@@ -105,12 +108,40 @@ def test_ptz_job_registers_frames_and_tracks_in_reference_pixels(ptz_case, monke
     assert not calls  # готовая привязка не пересчитывается
 
 
-def test_ptz_job_with_ball_model_or_foreign_reference_stops_before_detection(ptz_case):
+def test_ptz_job_with_ball_model_searches_the_ball_on_registered_frames(cv_case, tmp_path):
+    from aifootball.perception.ball_detect import PTZ_SEARCH
+    from aifootball.processor.cv import run_cv
+
+    job, _, models, ws = cv_case
+    image = scene()
+    ptz_job(job, crop(image, *REF_ORIGIN), target_fps=15)  # передачам нужно не реже 15 кадров/с
+    video = tmp_path / 'pan15.mp4'
+    noise = np.random.default_rng(3)
+    writer = cv2.VideoWriter(str(video), cv2.VideoWriter.fourcc(*'mp4v'), 15, (W, H))
+    for n in range(60):
+        # кадры 30–34 — шум, как графика на весь экран: их не привязать, мяч там не ищется
+        frame = noise.integers(0, 255, (H, W, 3), dtype=np.uint8) if 30 <= n < 35 else crop(image, *origin(n))
+        writer.write(frame)
+    writer.release()
+    (models / 'ball').mkdir()
+    (models / 'ball' / 'best.pt').write_bytes(b'synthetic ball weights')
+
+    workspace = ws('ball')
+    root = run_cv(job, video, workspace, models=models, ball_model='ball/best.pt')
+
+    assert json.loads((root / 'meta.json').read_text())['ball_model'] == 'ball/best.pt'
+    assert workspace.get_json('cv:fingerprint')['ball_model']['search'] == PTZ_SEARCH
+    reg = schemas.read(root / 'registration.parquet', 'registration')
+    ok = set(reg.filter(pl.col('status') == 'ok')['frame_id'].to_list())
+    balls = schemas.read(root / 'detections.parquet', 'detections').filter(pl.col('cls') == 'ball')
+    assert len(ok) > 40 and set(balls['frame_id'].to_list()) == ok
+    assert ok.isdisjoint(range(30, 35))
+
+
+def test_ptz_job_with_foreign_reference_stops_before_detection(ptz_case):
     from aifootball.processor.cv import run_cv
 
     job, video, models, ws = ptz_case
-    with pytest.raises(ValueError, match='мяча'):
-        run_cv(job, video, ws('ball'), models=models, ball_model='ball/best.pt')
     unrelated = np.random.default_rng(5).integers(0, 255, (H, W, 3), dtype=np.uint8)
     with_reference(job, unrelated)  # эталон другой съёмки: ни один вид записи с ним не сверяется
     Predictor.calls = 0
