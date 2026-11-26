@@ -1,0 +1,25 @@
+{
+  "model_version": "match-points-v1",
+  "label": "Рейтинг матча по действиям",
+  "base": 6.0,
+  "min": 3.0,
+  "max": 10.0,
+  "goal_authors_min": 0.8,
+  "pass_cap": 0.4,
+  "points": {
+    "goal": 1.0,
+    "assist": 0.6,
+    "shot_on_target": 0.15,
+    "tackle": 0.15,
+    "shot_block": 0.15,
+    "interception": 0.1,
+    "pass": 0.01,
+    "team_goal": 0.1,
+    "team_conceded": -0.1,
+    "save": 0.2,
+    "goal_conceded": -0.4,
+    "yellow": -0.3,
+    "red": -1.5,
+    "own_goal": -0.5
+  }
+}

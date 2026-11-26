@@ -100,6 +100,13 @@ describe('match statistics', () => {
     expect(line.home.note).toBe('2/3 · 1 без исхода');
     expect(line.away.text).toBe('—');
     expect(line.partial).toBe(true);
+    const reviewed = actionLines({
+      rows: [{ ...stats.rows[0], source: 'cv_reviewed' }],
+    } as unknown as TeamActionStats).passes[0];
+    expect([reviewed.reviewed, reviewed.auto, reviewed.partial]).toEqual([true, false, false]);
+    const { unmount } = render(<StatRow line={reviewed} />);
+    expect(screen.getByText('проверено')).toHaveAttribute('title', expect.stringContaining('точность не 100%'));
+    unmount();
     render(<StatRow line={line} />);
     expect(screen.getByText('67 %').className).toBe('');
     expect(screen.getByText('2/3 · 1 без исхода')).toBeInTheDocument();
@@ -146,6 +153,35 @@ describe('match statistics', () => {
     render(<MatchTimeline value={protocol} />);
     expect(screen.getByText('Гол · 2 : 0')).toBeInTheDocument();
     expect(screen.getByText('Конец 1-го тайма · 1 : 0')).toBeInTheDocument();
+  });
+  it('groups goals by author and keeps goals without an author on one line of minutes', () => {
+    const goal = (id: string, side: string, elapsed: number, player_id: string | null = null) => ({
+      id,
+      kind: 'goal',
+      side,
+      period: 1,
+      elapsed_ms: elapsed,
+      player_id,
+      own_goal: false,
+      from_penalty: false,
+    });
+    const value = {
+      ...protocol,
+      lineup: [{ player_id: 'p7', display_name: 'Иванов', side: 'home' }],
+      protocol: {
+        ...protocol.protocol,
+        events: [
+          goal('a', 'home', 60_000),
+          goal('b', 'home', 300_000, 'p7'),
+          goal('c', 'home', 600_000),
+          goal('d', 'home', 900_000, 'p7'),
+        ],
+      },
+    } as unknown as PublicProtocol;
+    expect(goalScorers(value).home.map((s) => [s.name, s.minute])).toEqual([
+      ['', "2' 11'"],
+      ['Иванов', "6' 16'"],
+    ]);
   });
   it('selects a shot and describes it without inventing xG', () => {
     render(

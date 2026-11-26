@@ -66,10 +66,15 @@ def test_detect_video_takes_ball_from_own_detector(monkeypatch, tmp_path, venue,
     weights.write_bytes(b'')
     _FakeYOLO.calls.clear()
 
-    def ball_detector(frame):
+    seen = []
+
+    def ball_detector(frame, frame_id):
+        seen.append(frame_id)
         return np.array([[10.0, 10.0, 20.0, 20.0]]), np.array([0.7])
 
     det = detect_video(tiny_video, venue, weights, ball_detector=ball_detector)
+
+    assert seen == sorted(det['frame_id'].unique().to_list())  # номер кадра — для зоны поиска поворотной камеры
 
     assert all(call['classes'] == [0] for call in _FakeYOLO.calls)  # общая модель — только люди
     balls = det.filter(pl.col('cls') == 'ball')

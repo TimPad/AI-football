@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from pydantic import Field, model_validator
@@ -52,6 +52,9 @@ class LensCalibration(Input):
         return self
 
 
+Fraction = Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
+
+
 class CameraCreate(Input):
     request_id: UUID = Field(default_factory=uuid4)
     expected_hall_revision: int = Field(ge=0, strict=True)
@@ -59,5 +62,29 @@ class CameraCreate(Input):
     frame_width: int = Field(ge=16, le=16384, strict=True)
     frame_height: int = Field(ge=16, le=16384, strict=True)
     points: list[ControlPoint] = Field(min_length=4, max_length=50)
-    pitch_polygon_px: list[tuple[Finite, Finite]] = Field(min_length=3, max_length=50)
+    # fixed — неподвижная камера; ptz — трансляция с оператором: пан и зум, точки — на эталонном кадре.
+    motion: Literal['fixed', 'ptz'] = 'fixed'
+    pitch_polygon_px: list[tuple[Finite, Finite]] | None = Field(default=None, min_length=3, max_length=50)
+    # Графика трансляции поворотной камеры (табло, логотипы): прямоугольники в долях кадра x1, y1, x2, y2.
+    overlay: list[tuple[Fraction, Fraction, Fraction, Fraction]] | None = Field(default=None, max_length=20)
     calibration: LensCalibration | None = None
+
+    @model_validator(mode='after')
+    def motion_geometry(self):
+        if self.motion == 'fixed':
+            if self.pitch_polygon_px is None:
+                raise ValueError('Отметьте контур поля на кадре')
+            if self.overlay is not None:
+                raise ValueError('Графика трансляции задаётся только поворотной камере')
+            return self
+        if self.pitch_polygon_px is not None:
+            raise ValueError('У поворотной камеры контур поля не размечается: он строится по точкам')
+        if self.calibration is not None:
+            raise ValueError('Поворотной камере калибровка объектива не задаётся: зум меняет дисторсию')
+        if any(x1 >= x2 or y1 >= y2 for x1, y1, x2, y2 in self.overlay or []):
+            raise ValueError('Прямоугольник графики: левый верхний угол левее и выше правого нижнего')
+        return self
+
+    def digest_exclude(self):
+        """Поля, которых не было в прежних запросах: повтор старого запроса неподвижной камеры даёт тот же хэш."""
+        return {'motion', 'overlay'} if self.motion == 'fixed' else set()

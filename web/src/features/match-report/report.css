@@ -643,6 +643,32 @@
 .rating-chip.tone-low {
   background: #e07b24;
 }
+/* Лучший игрок матча по рейтингу действий: звезда в значке. */
+.rating-chip.best {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px #1f9d55;
+}
+.rating-chip.best svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+.roster-list li.points-breakdown {
+  display: block;
+  padding: 4px 0 8px 40px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.points-note {
+  margin-top: 12px;
+}
+.points-note p {
+  margin: 4px 0;
+}
 .leaders li {
   display: flex;
   align-items: center;
@@ -746,4 +772,175 @@
   .pill {
     padding: 2px 7px;
   }
+}
+
+/* Передачи: точность команд, фильтры карты и таблица игроков. */
+.pass-stats {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.pass-stats > * {
+  min-width: 0;
+}
+.pass-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 12px 24px;
+}
+.pass-team {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  align-content: start;
+  gap: 4px 12px;
+}
+.pass-team .pass-percent {
+  font-size: 24px;
+  font-weight: 600;
+}
+.pass-team .small,
+.pass-team .pass-bar {
+  grid-column: 1 / -1;
+}
+.pass-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--hover);
+  min-width: 64px;
+}
+.pass-bar > span {
+  display: block;
+  height: 100%;
+}
+.pass-bar .ok.home {
+  background: var(--home, #488ee6);
+}
+.pass-bar .ok.away {
+  background: var(--away, #e9aa49);
+}
+.pass-bar .miss {
+  background: #ff4d6d;
+}
+.pass-bar .unknown {
+  background: var(--border);
+}
+.pass-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.pass-filters .segmented {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.pass-player-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+.pass-player-filter select {
+  max-width: min(240px, 100%);
+  min-width: 0;
+}
+.pass-players td:nth-child(3) {
+  white-space: nowrap;
+}
+/* Четыре узких столбца помещаются и на телефоне: точность не уезжает в прокрутку. */
+.table-scroll .pass-players {
+  min-width: 0;
+}
+.pass-chosen {
+  margin: 0;
+}
+.pass-players td .pass-bar {
+  margin-top: 4px;
+}
+.player-passes h3 {
+  margin-bottom: 4px;
+}
+.player-passes p {
+  margin: 0 0 8px;
+}
+.network-threshold {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  max-width: 100%;
+}
+.network-threshold input {
+  width: 140px;
+  max-width: 40vw;
+}
+.network-note {
+  margin: 0;
+}
+.network-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.network-legend .link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.network-dot {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+.network-dot.home {
+  background: var(--home, #488ee6);
+}
+.network-dot.away {
+  background: var(--away, #e9aa49);
+  color: #1d1a14;
+}
+.match-flow {
+  display: grid;
+  gap: 8px;
+}
+.match-flow svg {
+  width: 100%;
+  height: auto;
+}
+.flow-axis {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.flow-break {
+  stroke: var(--border);
+  stroke-dasharray: 3 3;
+}
+.flow-bar.home {
+  fill: var(--home);
+}
+.flow-bar.away {
+  fill: var(--away);
+}
+.flow-goal {
+  fill: var(--text, currentColor);
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+.flow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
 }

@@ -13,7 +13,7 @@ import numpy as np
 import polars as pl
 
 from aifootball.analytics.exchange import canonical
-from aifootball.perception.frames import iter_frames, video_fps
+from aifootball.perception.frames import FrameReader, iter_frames, video_fps
 from aifootball.processor.job import file_hash, video_info
 from aifootball.processor.workspace import Workspace
 from aifootball.understanding.types import FrameAsset, MediaAsset, Window
@@ -138,10 +138,33 @@ def _clip_view(crop, width, height):
     return f'crop={w}:{h}:{box[0]}:{box[1]},{size}'
 
 
+def frame_before(tracks: pl.DataFrame, start_ms: int) -> tuple[int, float] | None:
+    """Последний кадр треков раньше start_ms: номер и время из прохода от начала — опора для make_window(after=)."""
+    before = tracks.filter(pl.col('ts') * 1000 < start_ms - 1)
+    if before.is_empty():
+        return None
+    row = before.select('frame_id', 'ts').sort('frame_id').row(-1)
+    return int(row[0]), float(row[1])
+
+
 def make_window(
-    video: Path, *, start_ms: int, end_ms: int, out: Path, mode: str, fps=1, track_ids=(), crop=None
+    video: Path,
+    *,
+    start_ms: int,
+    end_ms: int,
+    out: Path,
+    mode: str,
+    fps=1,
+    track_ids=(),
+    crop=None,
+    seek=True,
+    after=None,
 ) -> Window:
-    """crop — область исходника (см. _clip_view), вписанная в 960×720; без неё — весь кадр."""
+    """crop — область исходника (см. _clip_view), вписанная в 960×720; без неё — весь кадр.
+
+    seek и after — как у iter_frames. Номера кадров окна сверяются с треками; без after перемотка считает номер
+    по fps и на записи с плавающим шагом кадров даёт чужие номера. Опора — frame_before(tracks, start_ms).
+    """
     if (
         type(start_ms) is not int
         or type(end_ms) is not int
@@ -249,7 +272,7 @@ def make_window(
         media = MediaAsset('clip', 'video', path, file_hash(path), actual_start, actual_end, actual_audio)
     frames = tuple(
         _save_frame(frame, frame_id=fid, video_ms=round(ts * 1000), out=out)
-        for fid, ts, frame in iter_frames(video, fps, start_ms=actual_start, end_ms=actual_end)
+        for fid, ts, frame in iter_frames(video, fps, start_ms=actual_start, end_ms=actual_end, seek=seek, after=after)
     )
     if not frames or len(frames) > 32:
         raise ValueError('Нет кадров или превышен лимит кадров окна')
@@ -275,13 +298,14 @@ def select_player_frames(video: Path, tracks: pl.DataFrame, out: Path, *, max_pe
         raise ValueError('Нет полей видеотреков')
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    cap = cv2.VideoCapture(str(video))
+    try:
+        reader = FrameReader(video)
+    except FileNotFoundError:
+        raise ValueError('Не открывается видео') from None
     result = {}
     quality = []
-    if not cap.isOpened():
-        raise ValueError('Не открывается видео')
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    width = int(reader.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(reader.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     try:
         for (track_id,), group in tracks.group_by('track_id', maintain_order=True):
             group = group.sort('ts').unique('frame_id', maintain_order=True)
@@ -306,9 +330,9 @@ def select_player_frames(video: Path, tracks: pl.DataFrame, out: Path, *, max_pe
                     occlusion = max(occlusion, min(1, overlap / area))
                 if occlusion >= 0.6:
                     continue
-                cap.set(cv2.CAP_PROP_POS_FRAMES, int(row['frame_id']))
-                okay, frame = cap.read()
-                if not okay:
+                # По метке времени: номер кадра на плавающем шаге кадров указывает на другой момент.
+                frame = reader.read(float(row['ts']))
+                if frame is None:
                     continue
                 crop = frame[y1:y2, x1:x2]
                 sharpness = float(cv2.Laplacian(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY), cv2.CV_64F).var())
@@ -341,6 +365,6 @@ def select_player_frames(video: Path, tracks: pl.DataFrame, out: Path, *, max_pe
             if chosen:
                 result[int(track_id)] = tuple(sorted(chosen, key=lambda frame: frame.video_ms))
     finally:
-        cap.release()
+        reader.close()
     Workspace._atomic(out / 'selection-quality.json', canonical({'frames': quality}))
     return result

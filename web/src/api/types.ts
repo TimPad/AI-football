@@ -1278,6 +1278,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/halls/{hid}/camera-profiles/{pid}/replay-badge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Replay Badge */
+        get: operations["replay_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_get"];
+        /** Upload Badge */
+        put: operations["upload_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{mid}/analysis/runs/{rid}/team-confirmations": {
         parameters: {
             query?: never;
@@ -1510,6 +1528,23 @@ export interface paths {
         };
         /** Detail */
         get: operations["detail_api_v1_matches__mid__analysis_runs__rid__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/moments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Moments */
+        get: operations["moments_api_v1_matches__mid__analysis_runs__rid__moments_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1921,6 +1956,23 @@ export interface paths {
         };
         /** Public Match Action Stats */
         get: operations["public_match_action_stats_api_v1_public_matches__mid__action_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/matches/{mid}/match-rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Match Points View */
+        get: operations["public_match_points_view_api_v1_public_matches__mid__match_rating_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2767,6 +2819,8 @@ export interface components {
              * @enum {string}
              */
             decision?: "accepted" | "rejected";
+            /** Review */
+            review?: ("auto" | "checked") | null;
             /**
              * Notes
              * @default
@@ -2838,6 +2892,8 @@ export interface components {
              * @enum {string}
              */
             decision: "accepted" | "rejected";
+            /** Review */
+            review: ("auto" | "checked") | null;
             /**
              * Notes
              * @default
@@ -3469,6 +3525,19 @@ export interface components {
             /** Entry Id */
             entry_id?: string | null;
         };
+        /** Body_upload_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_put */
+        Body_upload_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_put: {
+            /** File */
+            file: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** Width */
+            width: number;
+            /** Height */
+            height: number;
+        };
         /** Body_upload_image_api_v1_captain_images_post */
         Body_upload_image_api_v1_captain_images_post: {
             /** File */
@@ -3496,11 +3565,24 @@ export interface components {
             frame_height: number;
             /** Points */
             points: components["schemas"]["ControlPoint"][];
+            /**
+             * Motion
+             * @default fixed
+             * @enum {string}
+             */
+            motion?: "fixed" | "ptz";
             /** Pitch Polygon Px */
-            pitch_polygon_px: [
+            pitch_polygon_px?: [
                 number,
                 number
-            ][];
+            ][] | null;
+            /** Overlay */
+            overlay?: [
+                number,
+                number,
+                number,
+                number
+            ][] | null;
             calibration?: components["schemas"]["LensCalibration"] | null;
         };
         /** CameraProfileView */
@@ -3538,8 +3620,16 @@ export interface components {
             points: {
                 [key: string]: unknown;
             }[];
+            /**
+             * Motion
+             * @default fixed
+             * @enum {string}
+             */
+            motion?: "fixed" | "ptz";
             /** Pitch Polygon Px */
-            pitch_polygon_px: number[][];
+            pitch_polygon_px?: number[][] | null;
+            /** Overlay */
+            overlay?: number[][] | null;
             /** Homography */
             homography: number[][];
             /** Calibration */
@@ -3552,6 +3642,7 @@ export interface components {
             leave_one_out_error_m?: number | null;
             /** Reference Sha256 */
             reference_sha256?: string | null;
+            replay_badge?: components["schemas"]["ReplayBadgeView"] | null;
             /** Matches Current Dimensions */
             matches_current_dimensions: boolean;
         };
@@ -5306,6 +5397,88 @@ export interface components {
             /** Override Reason */
             override_reason?: string | null;
         };
+        /** MatchPointsItem */
+        MatchPointsItem: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Display Name */
+            display_name: string | null;
+            /** Goalkeeper */
+            goalkeeper: boolean;
+            /** Rating */
+            rating: number;
+            /** Parts */
+            parts: components["schemas"]["MatchPointsPart"][];
+        };
+        /** MatchPointsMissing */
+        MatchPointsMissing: {
+            /** Goals Total */
+            goals_total: number;
+            /** Goals Without Author */
+            goals_without_author: number;
+            /** Actions Without Player */
+            actions_without_player: number;
+            /** Goalkeeper Unknown */
+            goalkeeper_unknown: ("home" | "away")[];
+            /** Without On Court */
+            without_on_court: number;
+            /** Partial Categories */
+            partial_categories: string[];
+        };
+        /** MatchPointsPart */
+        MatchPointsPart: {
+            /** Key */
+            key: string;
+            /** Count */
+            count: number;
+            /** Points */
+            points: number;
+        };
+        /** MatchPointsPolicy */
+        MatchPointsPolicy: {
+            /** Base */
+            base: number;
+            /** Min */
+            min: number;
+            /** Max */
+            max: number;
+            /** Pass Cap */
+            pass_cap: number;
+            /** Goal Authors Min */
+            goal_authors_min: number;
+            /** Points */
+            points: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * MatchPointsView
+         * @description Рейтинг матча по очкам за действия; без авторов голов (ready = false) оценок нет, только чего не хватает.
+         */
+        MatchPointsView: {
+            /** Model Version */
+            model_version: string;
+            /** Ready */
+            ready: boolean;
+            /** Complete */
+            complete: boolean;
+            /** Best Player Id */
+            best_player_id: string | null;
+            /** Items */
+            items: components["schemas"]["MatchPointsItem"][];
+            missing: components["schemas"]["MatchPointsMissing"];
+            /** On Court Source */
+            on_court_source: ("manual" | "video") | null;
+            policy: components["schemas"]["MatchPointsPolicy"];
+        };
         /** MatchRatingsView */
         MatchRatingsView: {
             /** Overall */
@@ -5463,6 +5636,28 @@ export interface components {
             };
             /** Missing Track Ids */
             missing_track_ids?: number[];
+        };
+        /** MomentGoal */
+        MomentGoal: {
+            /** T S */
+            t_s: number;
+            /**
+             * Plate
+             * @enum {string}
+             */
+            plate: "left" | "right";
+        };
+        /** MomentShot */
+        MomentShot: {
+            /** T S */
+            t_s: number;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** On Target */
+            on_target: boolean | null;
         };
         /** NextRound */
         NextRound: {
@@ -5920,6 +6115,70 @@ export interface components {
                 };
             };
         };
+        /**
+         * PassPlayerStats
+         * @description Передачи исполнителя за период: все, точные и с известным исходом; средняя длина — по передачам с точками.
+         */
+        PassPlayerStats: {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Player Id */
+            player_id: string | null;
+            /** Total */
+            total: number;
+            /** Accurate */
+            accurate: number;
+            /** Known */
+            known: number;
+            /** Length M */
+            length_m: number | null;
+            /** Verified */
+            verified: number;
+        };
+        /**
+         * PassPoint
+         * @description Передача на карте: координаты площадки в метрах, как на видео (без разворота по атаке).
+         */
+        PassPoint: {
+            /** Id */
+            id: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Player Id */
+            player_id: string | null;
+            /** Recipient Id */
+            recipient_id: string | null;
+            /** Start Xy */
+            start_xy: number[];
+            /** End Xy */
+            end_xy: number[];
+            /** Length M */
+            length_m: number;
+            /** Success */
+            success: boolean | null;
+            /** Period */
+            period: string | null;
+            /** Start Ms */
+            start_ms: number | null;
+            /**
+             * Attacking Direction
+             * @enum {string}
+             */
+            attacking_direction: "left" | "right" | "unknown";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "manual" | "cv_auto" | "cv_reviewed";
+            /** Verified */
+            verified: boolean;
+        };
         /** PenaltyAttempt */
         "PenaltyAttempt-Input": {
             /**
@@ -6285,6 +6544,28 @@ export interface components {
             /** Archived */
             archived?: boolean | null;
         };
+        /**
+         * PlayerPosition
+         * @description Средняя позиция игрока за период по видео, метры площадки (развёрнута по positions_orientation).
+         */
+        PlayerPosition: {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** Observed S */
+            observed_s: number;
+        };
         /** PlayerView */
         PlayerView: {
             /**
@@ -6584,6 +6865,7 @@ export interface components {
             }[];
             /** Players */
             players: components["schemas"]["PublicPlayer"][];
+            scoreboard?: components["schemas"]["PublicScoreboard"] | null;
         };
         /** PublicAppearance */
         PublicAppearance: {
@@ -7077,6 +7359,20 @@ export interface components {
             home: number | null;
             /** Away */
             away: number | null;
+        };
+        /**
+         * PublicScoreboard
+         * @description Голы с табло трансляции: стороны — плашки слева и справа, не команды протокола.
+         */
+        PublicScoreboard: {
+            /** Overlay */
+            overlay: string;
+            /** Final */
+            final: {
+                [key: string]: number;
+            };
+            /** Goals */
+            goals: components["schemas"]["ScoreboardGoal"][];
         };
         /** PublicShootoutAttempt */
         PublicShootoutAttempt: {
@@ -7791,6 +8087,18 @@ export interface components {
             kind: "replace_event";
             payload: components["schemas"]["EventChange"];
         };
+        /**
+         * ReplayBadgeView
+         * @description Образец плашки повтора поворотной камеры: где на кадре (левый верхний угол) и размер, px.
+         */
+        ReplayBadgeView: {
+            /** Sha256 */
+            sha256: string;
+            /** Xy */
+            xy: number[];
+            /** Size */
+            size: number[];
+        };
         /** ReportedTotals */
         "ReportedTotals-Input": {
             home?: components["schemas"]["TeamTotals-Input"];
@@ -7975,6 +8283,35 @@ export interface components {
              */
             tied: boolean;
         };
+        /**
+         * RunMoments
+         * @description Закладки разметки ударов и защиты по видео: время — секунды записи.
+         */
+        RunMoments: {
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Video S */
+            video_s: number;
+            /** Halves */
+            halves: number[][];
+            /** Side Map */
+            side_map: {
+                [key: string]: "home" | "away";
+            };
+            /** Board Final */
+            board_final: {
+                [key: string]: number;
+            } | null;
+            /** Board Goals */
+            board_goals: components["schemas"]["MomentGoal"][];
+            /** Replays */
+            replays: number[][];
+            /** Shots */
+            shots: components["schemas"]["MomentShot"][];
+        };
         /** RunSummary */
         RunSummary: {
             /**
@@ -8113,6 +8450,18 @@ export interface components {
             /** Players */
             players: components["schemas"]["PlayerMetric"][];
             auto_sources?: components["schemas"]["AutoSources"] | null;
+        };
+        /** ScoreboardGoal */
+        ScoreboardGoal: {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "left" | "right";
+            /** Period */
+            period: number;
+            /** Elapsed S */
+            elapsed_s: number;
         };
         /** SectionView */
         SectionView: {
@@ -8696,7 +9045,17 @@ export interface components {
             rows: components["schemas"]["TeamStatRow"][];
             /** Shots */
             shots: components["schemas"]["ShotPoint"][];
+            /** Passes */
+            passes: components["schemas"]["PassPoint"][];
+            /** Pass Players */
+            pass_players: components["schemas"]["PassPlayerStats"][];
+            /** Positions */
+            positions: components["schemas"]["PlayerPosition"][];
+            /** Positions Orientation */
+            positions_orientation: ("attack" | "halves" | "camera") | null;
             pitch: components["schemas"]["PitchSize"] | null;
+            /** Video Ball */
+            video_ball?: ("ball_model" | "general" | "broadcast_model") | null;
         };
         /** TeamCreate */
         TeamCreate: {
@@ -8933,7 +9292,7 @@ export interface components {
              * @default manual
              * @enum {string}
              */
-            source?: "manual" | "cv_auto";
+            source?: "manual" | "cv_auto" | "cv_reviewed";
             home: components["schemas"]["StatValue"];
             away: components["schemas"]["StatValue"];
         };
@@ -9350,6 +9709,8 @@ export interface components {
             thumb: string | null;
             /** Has Metrics */
             has_metrics: boolean;
+            /** Appearance */
+            appearance?: string | null;
         };
         /** UnderstandingReviewUpdate */
         UnderstandingReviewUpdate: {
@@ -12499,6 +12860,74 @@ export interface operations {
             };
         };
     };
+    replay_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hid: string;
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hid: string;
+                pid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_badge_api_v1_halls__hid__camera_profiles__pid__replay_badge_put"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CameraProfileView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     admin_side_status_api_v1_matches__mid__analysis_runs__rid__team_confirmations_get: {
         parameters: {
             query?: never;
@@ -13024,6 +13453,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    moments_api_v1_matches__mid__analysis_runs__rid__moments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunMoments"];
                 };
             };
             /** @description Validation Error */
@@ -13934,6 +14395,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamActionStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_match_points_view_api_v1_public_matches__mid__match_rating_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchPointsView"];
                 };
             };
             /** @description Validation Error */

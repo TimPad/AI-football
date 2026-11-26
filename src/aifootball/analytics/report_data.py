@@ -20,6 +20,7 @@ SUSTAIN_S = 0.5  # устойчивая скорость: медиана за э
 TEAMS = ('A', 'B')
 
 SERIES_BIN_S = 300.0  # ход матча по 5-минутным отрезкам
+FLOW_BIN_S = 60.0  # ход матча по минутам: давление команд
 
 LOW_DATA_SHARE = 0.5  # меньше половины от «период × 4 полевых» — пометка «мало данных»
 
@@ -223,6 +224,31 @@ def series(state: pl.DataFrame, spans) -> dict:
     return out
 
 
+def flow(oriented: pl.DataFrame, spans, length_m: float) -> dict:
+    """Ход матча по минутам каждого тайма: доля времени полевых игроков команды в чужой трети.
+
+    oriented — после orient: свои ворота каждой команды слева, чужая треть — x > 2/3 длины. По позициям игроков,
+    без мяча: на записи трансляции мяч виден лишь в части кадров. Минута — от начала своего тайма.
+    """
+    steps = _steps(oriented.filter((pl.col('role') == 'player') & pl.col('team').is_in(TEAMS)))
+    bins = []
+    for half, (start, end) in enumerate(spans, 1):
+        part = steps.filter((pl.col('ts') >= start) & (pl.col('ts') < end))
+        for minute, b0 in enumerate(np.arange(start, end, FLOW_BIN_S)):
+            chunk = part.filter((pl.col('ts') >= b0) & (pl.col('ts') < min(b0 + FLOW_BIN_S, end)))
+            entry = {'half': half, 'minute': minute, 'start_s': round(float(b0), 2)}
+            for team in TEAMS:
+                c = chunk.filter(pl.col('team') == team)
+                observed = float(c['dt'].sum())
+                attack = float(c.filter(pl.col('x_m') > length_m * 2 / 3)['dt'].sum())
+                entry[team] = {
+                    'observed_s': round(observed, 1),
+                    'attack_share': round(attack / observed, 3) if observed > 0 else None,
+                }
+            bins.append(entry)
+    return {'bin_s': FLOW_BIN_S, 'bins': bins}
+
+
 def _observed(state: pl.DataFrame) -> pl.DataFrame:
     """По треку: секунды наблюдения, первое появление, команда (чаще всего), роль."""
     return (
@@ -283,6 +309,41 @@ def players_table(
     return sorted(rows, key=lambda r: (r['team'], r['role'] != 'player', -r['observed_s']))
 
 
+def fragments_table(state: pl.DataFrame, shown: set[int], length_m: float, width_m: float, cap: float) -> list[dict]:
+    """Показатели остальных фрагментов игроков и вратарей — короче MIN_PLAYER_S, в таблицу игроков не попадают.
+
+    Нужны, чтобы показатели игрока сложились из всех его фрагментов: на записи трансляции камера теряет игроков
+    каждые несколько секунд, и фрагменты длиннее минуты — редкость (ВШЭ: 18 из 1763). Тепловая карта — разреженная,
+    [[x, y, секунды], …] по клеткам 1 × 1 м в координатах площадки, как у игроков в пакете.
+    """
+    part = state.filter(
+        pl.col('role').is_in(['player', 'goalkeeper'])
+        & pl.col('team').is_in(TEAMS)
+        & ~pl.col('track_id').is_in(sorted(shown))
+    )
+    if part.is_empty():
+        return []
+    metrics = compute_metrics(part, length_m, width_m)['tracks']
+    rows = []
+    for (tid,), g in part.sort('track_id', 'ts').group_by('track_id', maintain_order=True):
+        m = metrics.get(str(tid)) or {}
+        ts, speed = g['ts'].to_numpy(), g['speed'].to_numpy()
+        grid = np.asarray(heatmap_seconds(g, length_m, width_m))
+        rows.append(
+            {
+                'track_id': int(tid),
+                'team': g['team'].mode().first(),
+                'observed_s': m.get('observed_s', 0.0),
+                'distance_m': m.get('distance_m', 0.0),
+                'hsr_m': hsr_distance(ts, g['x_m'].to_numpy(), g['y_m'].to_numpy(), speed),
+                'sprints': int(m.get('sprints_count', 0)),
+                'vmax_ms': sustained_max_speed(ts, speed, cap),
+                'heatmap_cells': [[int(x), int(y), float(grid[x, y])] for x, y in zip(*np.nonzero(grid))],
+            }
+        )
+    return rows
+
+
 def thumb_request(tracks: pl.DataFrame, track_id: int) -> dict | None:
     """Кадр для миниатюры: середина самого длинного непрерывного куска трека на поле."""
     g = tracks.filter((pl.col('track_id') == track_id) & pl.col('in_pitch')).sort('ts')
@@ -290,7 +351,12 @@ def thumb_request(tracks: pl.DataFrame, track_id: int) -> dict | None:
         return None
     longest = max(segments(g['ts'].to_numpy()), key=lambda s: s.stop - s.start)
     row = g.row(longest.start + (longest.stop - longest.start) // 2, named=True)
-    return {'kind': 'thumb', 'frame_id': row['frame_id'], 'box': [row['x1'], row['y1'], row['x2'], row['y2']]}
+    return {
+        'kind': 'thumb',
+        'frame_id': row['frame_id'],
+        'ts': row['ts'],
+        'box': [row['x1'], row['y1'], row['x2'], row['y2']],
+    }
 
 
 def _still(tracks: pl.DataFrame, ts: float, track_id: int | None) -> dict | None:
@@ -301,9 +367,10 @@ def _still(tracks: pl.DataFrame, ts: float, track_id: int | None) -> dict | None
         g = tracks.filter(pl.col('track_id') == track_id)
         if not g.is_empty():
             row = g.with_columns(d=(pl.col('ts') - ts).abs()).sort('d').row(0, named=True)
-            return {'kind': 'still', 'frame_id': row['frame_id'], 'box': [row['x1'], row['y1'], row['x2'], row['y2']]}
+            box = [row['x1'], row['y1'], row['x2'], row['y2']]
+            return {'kind': 'still', 'frame_id': row['frame_id'], 'ts': row['ts'], 'box': box}
     row = tracks.with_columns(d=(pl.col('ts') - ts).abs()).sort('d').row(0, named=True)
-    return {'kind': 'still', 'frame_id': row['frame_id'], 'box': None}
+    return {'kind': 'still', 'frame_id': row['frame_id'], 'ts': row['ts'], 'box': None}
 
 
 def moments(state: pl.DataFrame, tracks: pl.DataFrame, labels: dict[int, str], spans, cap: float) -> list[dict]:
@@ -465,7 +532,10 @@ def build_report(
             'teams': team_overview(part, oriented, length_m, width_m, cap, p.duration_s),
             'thirds': thirds_share(oriented, length_m) if oriented_ok else {t: None for t in TEAMS},
             'series': series(part, p.spans),
-            'players': players_table(part, oriented, labels, length_m, width_m, cap),
+            # Без направления атаки в каждом тайме чужая треть неизвестна — хода матча нет.
+            'flow': flow(oriented, p.spans, length_m) if oriented_ok else None,
+            'players': (players := players_table(part, oriented, labels, length_m, width_m, cap)),
+            'fragments': fragments_table(part, {r['track_id'] for r in players}, length_m, width_m, cap),
             'moments': moments(part, tracks, labels, p.spans, cap),
             'input_quality': input_quality(part, cap),
         }

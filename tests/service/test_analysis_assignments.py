@@ -134,3 +134,19 @@ def test_track_groups_are_shown_and_a_short_handoff_confirms(admin_client, analy
     assert saved.status_code == 200, saved.text
     confirmed = command(admin_client, analytics_match, saved.json(), 'confirm')
     assert confirmed.status_code == 200, confirmed.text
+
+
+def test_player_metrics_sum_short_fragments_too(admin_client, analytics_match):
+    from test_analysis_exchange import _with_fragment
+
+    run = import_run(admin_client, analytics_match, mutate=_with_fragment())
+    home = next(p['player_id'] for p in run['context']['rosters'] if p['side'] == 'home')
+    values = [*assignments(run), {'track_id': 4, 'player_id': home}]
+    saved = save_assignments(admin_client, analytics_match, run, values)
+    assert saved.status_code == 200, saved.text
+    confirmed = command(admin_client, analytics_match, saved.json(), 'confirm')
+    assert confirmed.status_code == 200, confirmed.text
+    metrics = next(p for p in confirmed.json()['players'] if p['side'] == 'home')['metrics']
+    # Треки 1 и 2 из таблицы игроков (210 м за 180 с) и короткий фрагмент 4 (20 м за 9 с, скорость не измерена).
+    assert (metrics['distance_m'], metrics['observed_s'], metrics['vmax_ms']) == (230, 189, 2)
+    assert metrics['missing_track_ids'] == []

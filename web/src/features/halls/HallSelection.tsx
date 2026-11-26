@@ -58,6 +58,7 @@ export function HallSelection({
           {cameras.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name} · версия {p.version} · {p.frame_width} × {p.frame_height} px
+              {p.motion === 'ptz' ? ' · трансляция' : ''}
             </option>
           ))}
         </select>

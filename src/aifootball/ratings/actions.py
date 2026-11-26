@@ -47,6 +47,7 @@ FIELDS = {
     'penalty_conceded',
     'source_episode_id',
     'shot_id',
+    'review',
 }
 
 

@@ -10,7 +10,13 @@ from aifootball.service.analysis.commands import mutate
 from aifootball.service.analysis.imports import import_result
 from aifootball.service.analysis.jobs import create_job, export_job
 from aifootball.service.analysis.models import AnalysisJob, AnalysisRun
-from aifootball.service.analysis.queries import get_player_history, get_public_analysis, match_analysis, run_view
+from aifootball.service.analysis.queries import (
+    get_player_history,
+    get_public_analysis,
+    match_analysis,
+    run_moments,
+    run_view,
+)
 from aifootball.service.analysis.schemas import (
     AssignmentsUpdate,
     JobCreate,
@@ -19,6 +25,7 @@ from aifootball.service.analysis.schemas import (
     PlayerHistoryView,
     PointerMutation,
     PublicAnalysis,
+    RunMoments,
     RunView,
 )
 from aifootball.service.analysis.storage import limits, read_file, read_upload
@@ -105,6 +112,13 @@ def scoped_run(db, mid, rid, *, lock=False):
 @router.get('/matches/{mid}/analysis/runs/{rid}', response_model=RunView, dependencies=[Depends(require_admin)])
 def detail(mid: UUID, rid: UUID, db: Session = Depends(get_session)):
     return run_view(db, scoped_run(db, mid, rid))
+
+
+@router.get(
+    '/matches/{mid}/analysis/runs/{rid}/moments', response_model=RunMoments, dependencies=[Depends(require_admin)]
+)
+def moments(mid: UUID, rid: UUID, db: Session = Depends(get_session)):
+    return run_moments(scoped_run(db, mid, rid))
 
 
 @router.get('/matches/{mid}/analysis/runs/{rid}/thumbs/{tid}', dependencies=[Depends(require_admin)])

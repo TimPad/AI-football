@@ -7,7 +7,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-from conftest import write_video
+from conftest import frame_level, write_vfr_video, write_video
 
 
 def test_portrait_evidence_fits_exchange_pixel_limit(tmp_path):
@@ -276,3 +276,50 @@ def test_native_clip_is_byte_identical_on_rebuild_so_resume_finds_paid_answers(t
     first = make_window(path, start_ms=0, end_ms=5000, out=tmp_path / 'a', mode='native', fps=1)
     second = make_window(path, start_ms=0, end_ms=5000, out=tmp_path / 'b', mode='native', fps=1)
     assert first.media.sha256 == second.media.sha256 and first.id == second.id
+
+
+def test_player_frames_are_read_by_frame_time_on_variable_frame_rate(tmp_path):
+    from aifootball.perception.frames import iter_frames
+    from aifootball.processor.media import select_player_frames
+
+    video = write_vfr_video(tmp_path / 'vfr.mp4')
+    full = list(iter_frames(video, 100))
+    n = len(full)
+    tracks = pl.DataFrame(
+        {
+            'track_id': [1] * n,
+            'frame_id': [f[0] for f in full],
+            'ts': [f[1] for f in full],
+            'x1': [20.0] * n,
+            'y1': [20.0] * n,
+            'x2': [120.0] * n,
+            'y2': [180.0] * n,
+            'conf': [0.9] * n,
+        }
+    )
+    frames = select_player_frames(video, tracks, tmp_path / 'evidence')[1]
+    assert len(frames) == 5
+    levels = {fid: (ts, frame_level(frame)) for fid, ts, frame in full}
+    for asset in frames:
+        assert asset.video_ms == round(levels[asset.frame_id][0] * 1000)
+        assert frame_level(cv2.imread(str(asset.path))) == pytest.approx(levels[asset.frame_id][1], abs=3)
+
+
+def test_window_frames_keep_numbers_and_times_of_pass_from_start(tmp_path):
+    """Номера кадров окна сопоставляются с треками: продолжение от кадра трека перед окном, а не перемотка по fps."""
+    from aifootball.perception.frames import iter_frames
+    from aifootball.processor.media import frame_before, make_window
+
+    video = write_vfr_video(tmp_path / 'vfr.mp4')
+    full = list(iter_frames(video, 1))
+    tracks = pl.DataFrame({'frame_id': [f[0] for f in full], 'ts': [f[1] for f in full]})
+    after = frame_before(tracks, 70000)
+    assert after is not None and after[1] < 70
+    window = make_window(video, start_ms=70000, end_ms=80000, out=tmp_path / 'w', mode='frames', fps=1, after=after)
+    expected = [
+        (fid, round(ts * 1000), frame) for fid, ts, frame in full if window.start_ms <= ts * 1000 < window.end_ms
+    ]
+    assert [(f.frame_id, f.video_ms) for f in window.frames] == [(fid, ms) for fid, ms, _ in expected]
+    for asset, (_, _, frame) in zip(window.frames, expected):
+        assert frame_level(cv2.imread(str(asset.path))) == pytest.approx(frame_level(frame), abs=2)
+    assert frame_before(tracks, 0) is None

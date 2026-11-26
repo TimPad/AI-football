@@ -24,6 +24,8 @@ import {
 import { MatchPublication } from '../publication/MatchPublication';
 import { ActionReview } from '../ratings/ActionReview';
 import { ParticipationEditor } from '../ratings/ParticipationEditor';
+import { PassReview } from '../ratings/PassReview';
+import { VideoTagging } from '../ratings/VideoTagging';
 import { MatchOverview } from './MatchOverview';
 import { Lineups, MatchInfo } from './MatchPage';
 import { MatchReportTab } from './MatchReportTab';
@@ -172,7 +174,26 @@ export function MatchWorkspace({ matchId }: { matchId: string }) {
           <ParticipationEditor matchId={matchId} actorId={session!.id} onSaved={() => setTick((n) => n + 1)} />
         )}
         {tab === 'actions' && analytics && (
-          <ActionReview matchId={matchId} actorId={session!.id} onSaved={() => setTick((n) => n + 1)} />
+          <>
+            <VideoTagging
+              key={`tagging:${tick}`}
+              match={m}
+              actorId={session!.id}
+              onSaved={() => setTick((n) => n + 1)}
+            />
+            <PassReview
+              key={`passes:${tick}`}
+              matchId={matchId}
+              actorId={session!.id}
+              onSaved={() => setTick((n) => n + 1)}
+            />
+            <ActionReview
+              key={`actions:${tick}`}
+              matchId={matchId}
+              actorId={session!.id}
+              onSaved={() => setTick((n) => n + 1)}
+            />
+          </>
         )}
         {tab === 'report' && <MatchReportTab match={m} tournament={tournament.data ?? null} analytics={analytics} />}
         {tab === 'publication' && (

@@ -1,6 +1,7 @@
 import base64
 import math
 from dataclasses import dataclass
+from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
@@ -53,9 +54,46 @@ class JobContext:
     files: dict[str, bytes]
 
 
+def _check_camera_motion(cfg, files, camera):
+    """Тип камеры и её файлы в venue.yaml и пакете — как в снимке задания.
+
+    Неподвижная камера: контур поля размечен (pitch_polygon.json), секции camera нет — как в прежних заданиях.
+    Поворотная: контура нет (его строит aifootball.venue по гомографии), эталонный кадр обязателен, графика
+    трансляции и плашка повтора — те же, что в снимке.
+    """
+    section = cfg.get('camera')
+    if camera.get('motion', 'fixed') == 'fixed':
+        ensure('pitch_polygon.json' in files, 'Неполный пакет задания')
+        ensure(
+            section is None
+            and 'replay_badge.png' not in files
+            and load_json(files['pitch_polygon.json'], 'pitch_polygon.json')['points_px'] == camera['polygon_px'],
+            'CV-геометрия не совпадает со снимком задания',
+        )
+        return
+    ensure(camera['motion'] == 'ptz', 'Неизвестный тип камеры задания')
+    badge = camera.get('replay_badge')
+    ensure(
+        isinstance(section, dict)
+        and set(section) <= {'motion', 'overlay', 'replay_badge_xy'}
+        and section.get('motion') == 'ptz'
+        and section.get('overlay') == camera['overlay']
+        and section.get('replay_badge_xy') == (badge['xy'] if badge else None)
+        and 'pitch_polygon.json' not in files
+        and camera['polygon_px'] is None,
+        'Поворотная камера в настройках не совпадает со снимком задания',
+    )
+    ensure(camera.get('reference_sha256') is not None, 'Поворотной камере нужен эталонный кадр профиля')
+    ensure(
+        ('replay_badge.png' in files) == (badge is not None)
+        and (badge is None or sha256(files['replay_badge.png']).hexdigest() == badge['sha256']),
+        'Плашка повтора не совпадает с заданием',
+    )
+
+
 def read_job(path):
     files = read_archive(path, job=True)
-    ensure({'job.json', 'venue.yaml', 'homography.json', 'pitch_polygon.json'} <= set(files), 'Неполный пакет задания')
+    ensure({'job.json', 'venue.yaml', 'homography.json'} <= set(files), 'Неполный пакет задания')
     job = load_json(files['job.json'], 'job.json')
     try:
         ensure(job['contract_version'] == '1', 'Неподдерживаемая версия задания')
@@ -74,10 +112,10 @@ def read_job(path):
             and proc['camera_profile_id'] == camera['id']
             and proc['frame_width'] == camera['frame_width']
             and proc['frame_height'] == camera['frame_height']
-            and load_json(files['homography.json'], 'homography.json')['H'] == camera['homography']
-            and load_json(files['pitch_polygon.json'], 'pitch_polygon.json')['points_px'] == camera['polygon_px'],
+            and load_json(files['homography.json'], 'homography.json')['H'] == camera['homography'],
             'CV-геометрия не совпадает со снимком задания',
         )
+        _check_camera_motion(cfg, files, camera)
         calibration = load_json(files['calib.json'], 'calib.json') if 'calib.json' in files else None
         ensure(calibration == camera['calibration'], 'CV-геометрия объектива не совпадает')
         # Эталонный кадр профиля: по нему обработчик сверяет, не сдвинута ли камера.
@@ -101,21 +139,36 @@ def read_job(path):
 
 
 def video_info(path):
+    """Размер и длительность записи. Длительность — конец последнего декодируемого кадра: его метка + шаг по fps.
+
+    Число кадров контейнера для длительности не годится: в загрузках трансляций оно включает кадры с
+    отрицательной меткой, которые декодер отбрасывает (запись ВШЭ: 78208 в контейнере, декодируется 78030,
+    длительность по ним длиннее записи на 6 с).
+    """
+    path = Path(path)
+    stat = path.stat() if path.exists() else None
+    return dict(_video_info(str(path), stat and stat.st_size, stat and stat.st_mtime_ns))
+
+
+@lru_cache(maxsize=16)
+def _video_info(path, size, mtime_ns):
+    # Конец записи ищется перемоткой и чтением последних секунд: окна понимания спрашивают его много раз.
     import cv2
 
-    cap = cv2.VideoCapture(str(path))
+    from aifootball.perception.frames import last_frame_time
+
+    cap = cv2.VideoCapture(path)
     try:
         ensure(cap.isOpened(), 'Не открывается исходное видео')
         fps = cap.get(cv2.CAP_PROP_FPS)
         frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         ensure(fps > 0 and frames > 0 and math.isfinite(fps), 'Не определена длительность видео')
-        return {
-            'width': int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-            'height': int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-            'duration_s': frames / fps,
-        }
+        width, height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     finally:
         cap.release()
+    last = last_frame_time(Path(path), frames / fps)
+    ensure(last is not None, 'Видео не декодируется')
+    return {'width': width, 'height': height, 'duration_s': round(last + 1 / fps, 6)}
 
 
 def file_hash(path):
@@ -170,39 +223,68 @@ def ball_model_path(models, name):
 
 
 def ball_events(artifacts, venue, state, spans, track_ids, models=None):
-    """События по мячу для events.json: (содержимое, предупреждение). Без модели мяча — (None, None)."""
+    """События по мячу для events.json: (содержимое, предупреждение). Без модели мяча — (None, None).
+
+    Поворотная камера трансляции без своей модели мяча берёт мяч общего детектора игроков: оператор держит
+    игру крупно, и мяч находится чаще, чем на неподвижной камере зала (там его recall ~12%). Порог уверенности
+    тогда — задания (он рассчитан на общую модель), а годность записи решает та же доля кадров с мячом.
+    """
     import polars as pl
 
     from aifootball import schemas
     from aifootball.analytics.events import extract_events
     from aifootball.analytics.periods import in_period
+    from aifootball.cli import read_registration
+    from aifootball.geometry.registration import detections_to_reference
     from aifootball.perception.ball import process_ball_trajectory
     from aifootball.perception.teams import defending_sides
 
     meta_path, det_path = Path(artifacts) / 'meta.json', Path(artifacts) / 'detections.parquet'
     meta = load_json(meta_path.read_bytes(), 'meta.json') if meta_path.exists() else {}
-    if not meta.get('ball_model') or not det_path.exists():
+    own = bool(meta.get('ball_model'))
+    if not det_path.exists() or not (own or (venue.is_ptz and meta.get('model'))):
         return None, None
-    sha = meta.get('ball_model_sha256') or (file_hash(ball_model_path(models, meta['ball_model'])) if models else None)
+    name = meta['ball_model'] if own else meta['model']
+    sha = (meta.get('ball_model_sha256') if own else None) or (
+        file_hash(ball_model_path(models, name)) if models else None
+    )
     if not sha:
         return None, 'Передачи не рассчитаны: неизвестна версия модели мяча'
     fps = min(meta.get('target_fps') or 0, meta.get('src_fps') or float('inf'))
     if fps < EVENTS_MIN_FPS:
         return None, f'Передачи не рассчитаны: нужна запись не реже 15 кадров/с, обработано {fps:.1f}'
     detections = schemas.read(det_path, 'detections')
-    venue = ball_settings(venue, venue.frame_width or int(meta.get('frame_width') or 0))
+    registration = read_registration(Path(artifacts), venue)
+    if registration is not None:
+        # Рамки поворотной камеры — в пикселях кадра; мяч, как и игроки, переводится в кадр эталона.
+        size = (venue.frame_width or meta.get('frame_width'), venue.frame_height or meta.get('frame_height'))
+        detections = detections_to_reference(detections, registration, venue.overlay, size)
+    if own:
+        venue = ball_settings(venue, venue.frame_width or int(meta.get('frame_width') or 0))
     detections = detections.filter((pl.col('cls') != 'ball') | (pl.col('conf') >= venue.conf_ball))
     ball = in_period(process_ball_trajectory(detections, venue), spans)
     frames = in_period(detections.select('frame_id', 'ts').unique('frame_id'), spans).height
     share = ball.filter(~pl.col('interpolated')).height / frames if frames else 0.0
     if share < EVENTS_MIN_BALL_SHARE:
         return None, f'Передачи не рассчитаны: мяч найден лишь в {share:.0%} кадров — модель мяча не подходит записи'
-    events = []
+    events, candidates = [], []
     for span in spans:
         part = in_period(state, [span])
         sides = defending_sides(part)
         attack = {sides[0]: venue.length_m, sides[1]: 0.0} if sides else None
         for e in extract_events(in_period(ball, [span]), part, venue.length_m, venue.width_m, attack):
+            if e['kind'] == 'shot' and e['team'] in ('A', 'B'):
+                # Удары находятся на треть и верны на две трети — только подсказки разметки в кабинете.
+                candidates.append(
+                    {
+                        'kind': 'shot',
+                        'team': e['team'],
+                        'start_s': round(float(e['start_s']), 3),
+                        'on_target': e['on_target'],
+                        'confidence': round(float(e['confidence']), 2),
+                    }
+                )
+                continue
             recipient = e.get('recipient_track_id')
             if (
                 e['kind'] not in EVENT_KINDS
@@ -226,12 +308,39 @@ def ball_events(artifacts, venue, state, spans, track_ids, models=None):
                 }
             )
     events.sort(key=lambda e: e['start_s'])
+    candidates.sort(key=lambda e: e['start_s'])
     return {
         'schema_version': '1',
-        'ball': {'model': meta['ball_model'], 'sha256': sha, 'frames_with_ball': round(share, 3)},
+        'ball': {'model': name, 'sha256': sha, 'frames_with_ball': round(share, 3)},
         'kinds': list(EVENT_KINDS),
         'events': events,
+        'candidates': candidates,
     }, None
+
+
+def appearance(video_path, tracks, venue, artifacts, track_ids, frame_size):
+    """Признак цвета фрагментов для подбора игроков в кабинете: {трек: base64}. Без годных кадров признака нет.
+
+    Сборка людей по этому признаку не проходит проверку (docs/2026-11-23-people-clustering.md: точность склеек 0,50),
+    поэтому он только упорядочивает подсказки похожих фрагментов, а решает человек.
+    """
+    import polars as pl
+
+    from aifootball.analytics.people import mean_feature
+    from aifootball.cli import read_registration
+    from aifootball.geometry.registration import frame_homographies
+    from aifootball.perception.appearance import color_feature, encode
+    from aifootball.perception.person_crops import extract_crops, pick_frames
+
+    registration = read_registration(Path(artifacts), venue)
+    usable = set(frame_homographies(registration)) if registration is not None else None
+    picks = pick_frames(tracks.filter(pl.col('track_id').is_in(sorted(track_ids))), frame_size, usable, venue.overlay)
+    out = {}
+    for tid, images in extract_crops(Path(video_path), picks).items():
+        feature = mean_feature([color_feature(i) for i in images])
+        if feature is not None:
+            out[tid] = encode(feature)
+    return out
 
 
 def package_result(
@@ -245,6 +354,7 @@ def package_result(
     understanding=None,
     evidence_files=None,
     models=None,
+    scoreboard=None,
 ):
     from tempfile import TemporaryDirectory
 
@@ -255,6 +365,7 @@ def package_result(
     from aifootball.analytics.periods import find_halves, in_period, parse_halves
     from aifootball.analytics.report_data import assign_goalkeeper_teams, build_report, heatmap_seconds, thumb_request
     from aifootball.geometry.camera_drift import alignment_messages, apply_alignment
+    from aifootball.geometry.registration import registration_messages
     from aifootball.report.frames import grab_images
     from aifootball.venue import load_venue
 
@@ -270,7 +381,9 @@ def package_result(
             (root / name).write_bytes(raw)
         venue = load_venue(root)
     meta_path = artifacts / 'meta.json'
-    alignment = load_json(meta_path.read_bytes(), 'meta.json').get('camera_alignment') if meta_path.exists() else None
+    meta = load_json(meta_path.read_bytes(), 'meta.json') if meta_path.exists() else {}
+    alignment = meta.get('camera_alignment')
+    registration = meta.get('camera_registration')
     venue = apply_alignment(venue, alignment)
     times = tracks['ts'].unique().sort().to_list()
     steps = [b - a for a, b in zip(times, times[1:]) if 0 < b - a <= 1]
@@ -290,6 +403,17 @@ def package_result(
     )
     report['pitch']['orientation'] = 'camera'
     report['match']['video_duration_estimated'] = False
+    if scoreboard is not None:
+        # Голы с табло трансляции: по шаблону её оформления; итог сверяется со счётом протокола на сайте.
+        from aifootball.perception.scoreboard import load_overlay, scoreboard_from_video
+
+        report['scoreboard'] = scoreboard_from_video(
+            Path(video_path),
+            load_overlay(Path(scoreboard)),
+            (source['width'], source['height']),
+            (registration or {}).get('replays', []),
+            spans,
+        )
     primary = report['periods'][0]
     # Uniform physical orientation makes maps summable across fragments and halves.
     for period in report['periods']:
@@ -332,6 +456,17 @@ def package_result(
             }
         )
     images = grab_images(Path(video_path), requests)
+    playable = {t['track_id'] for t in indexed if t['team'] and t['role'] in ('player', 'goalkeeper')}
+    # Показатели коротких фрагментов — только у фрагментов игроков и вратарей индекса, команда — как в индексе.
+    team_of = {t['track_id']: t['team'] for t in indexed}
+    for period in report['periods']:
+        period['fragments'] = [
+            {**f, 'team': team_of[f['track_id']]} for f in period.get('fragments', []) if f['track_id'] in playable
+        ]
+    looks = appearance(video_path, tracks, venue, artifacts, playable, (source['width'], source['height']))
+    for track in indexed:
+        if track['track_id'] in looks:
+            track['appearance'] = looks[track['track_id']]
     files = {}
     for track in indexed:
         image = images.get(str(track['track_id']))
@@ -343,6 +478,8 @@ def package_result(
     partial = partial_recording or report['match']['processed_s'] < source['duration_s'] - max(1, step * 2)
     events, events_warning = ball_events(artifacts, venue, normalized, spans, {t['track_id'] for t in indexed}, models)
     camera_warnings, camera_errors = alignment_messages(alignment)
+    ptz_warnings, ptz_errors = registration_messages(registration)
+    camera_warnings, camera_errors = camera_warnings + ptz_warnings, camera_errors + ptz_errors
     warnings = (
         (['Частичная запись или неполное покрытие обработки'] if partial else [])
         + ([events_warning] if events_warning else [])
@@ -359,6 +496,10 @@ def package_result(
     if alignment:
         checks['camera_alignment'] = {
             k: alignment[k] for k in ('status', 'shift_px', 'error_if_uncorrected_m', 'moved_at_s') if k in alignment
+        }
+    if registration:
+        checks['camera_registration'] = {
+            k: registration[k] for k in ('share', 'replays', 'keyframes') if k in registration
         }
     # Кандидаты-игроки: склейка по тем же команде и роли, что в индексе (их видит проверка в кабинете).
     labels = pl.DataFrame(
@@ -446,6 +587,7 @@ def process_job(
     vlm_max_output_tokens=100_000,
     analysis_scope='unknown',
     ball_model=None,
+    scoreboard=None,
 ):
     from aifootball.processor.cv import run_cv
     from aifootball.processor.workspace import Workspace
@@ -497,6 +639,7 @@ def process_job(
                 halves=halves,
                 partial_recording=partial_recording,
                 models=models,
+                scoreboard=scoreboard,
             )
     work = Path(work_dir) if work_dir is not None else Path(output_path).parent / ('processor-' + uuid4().hex)
     ensure(
@@ -542,6 +685,7 @@ def process_job(
             understanding=understanding,
             evidence_files=evidence,
             models=models,
+            scoreboard=scoreboard,
         )
 
 

@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { leader, type StatLine } from './stats';
 
 export const AUTO_HINT = 'Автоматически по видео: распознаётся не каждая передача, поэтому их число занижено';
+export const REVIEWED_HINT =
+  'По видео с ручной проверкой; разбор матча ещё не опубликован, распознаётся не каждая передача — точность не 100%';
 
 // Строка сравнения в духе FotMob: подпись отдельной строкой, под ней значения команд и полоска долей.
 // Значение лидера — на плашке цвета своей команды; без обоих чисел полоски нет.
@@ -32,6 +34,11 @@ export function StatRow({ line }: { line: StatLine }) {
         {line.auto && (
           <span className="auto-mark" title={AUTO_HINT}>
             авто
+          </span>
+        )}
+        {line.reviewed && (
+          <span className="auto-mark" title={REVIEWED_HINT}>
+            проверено
           </span>
         )}
       </span>

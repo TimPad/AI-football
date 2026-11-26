@@ -141,6 +141,61 @@ def test_team_stats_count_outcomes_keep_unknown_and_skip_undeclared(admin_client
         s['side'] == 'home' for s in stats['shots']
     )
     assert stats['pitch'] is not None and [p['key'] for p in stats['periods']] == ['all', '1', '2']
+    # Передачи без точек на карту не попадают, но входят в сводку исполнителя: неизвестный исход — не в точности.
+    home = [p['player_id'] for p in match['lineup'] if p['side'] == 'home']
+    assert stats['passes'] == []
+    assert stats['pass_players'] == [
+        {'side': 'home', 'player_id': home[0], 'total': 4, 'accurate': 2, 'known': 3, 'length_m': None, 'verified': 4}
+    ]
+
+
+def _passes_with_points(home, away):
+    """Две передачи хозяев в первом тайме (точная и неточная) и одна гостей во втором, с точками и направлением."""
+    pass_ = lambda **c: {'id': str(uuid4()), 'kind': 'pass', 'side': 'home', 'player_id': home[0], **c}
+    return [
+        pass_(
+            start_ms=100000,
+            success=True,
+            recipient_id=home[1],
+            start_xy=[10.0, 5.0],
+            end_xy=[13.0, 9.0],
+            attacking_direction='right',
+        ),
+        pass_(start_ms=200000, success=False, start_xy=[20.0, 5.0], end_xy=[30.0, 5.0]),
+        pass_(start_ms=300000, success=True),  # без точек: только в сводке
+        pass_(
+            side='away', player_id=away[0], start_ms=1500000, success=True, start_xy=[30.0, 10.0], end_xy=[24.0, 10.0]
+        ),
+    ]
+
+
+def test_passes_carry_points_length_period_and_player_summary(admin_client, analytics_match, send_command):
+    match, _, _, actions = _setup(
+        admin_client, analytics_match, send_command, _passes_with_points, {'passes': [{'status': 'complete'}]}
+    )
+    home = [p['player_id'] for p in match['lineup'] if p['side'] == 'home']
+    away = [p['player_id'] for p in match['lineup'] if p['side'] == 'away']
+    stats = admin_client.get(f'/api/v1/matches/{match["id"]}/action-stats').json()
+    points = {(p['side'], p['start_ms']): p for p in stats['passes']}
+    assert set(points) == {('home', 100000), ('home', 200000), ('away', 1500000)}
+    first = points[('home', 100000)]
+    assert (first['player_id'], first['recipient_id'], first['length_m'], first['period']) == (
+        home[0],
+        home[1],
+        5.0,
+        '1',
+    )
+    assert first['start_xy'] == [10.0, 5.0] and first['end_xy'] == [13.0, 9.0]
+    assert first['attacking_direction'] == 'right' and first['source'] == 'manual' and first['success'] is True
+    assert all(p['verified'] for p in stats['passes'])  # внесены человеком
+    assert points[('home', 200000)]['success'] is False and points[('home', 200000)]['attacking_direction'] == 'unknown'
+    assert points[('away', 1500000)]['period'] == '2' and points[('away', 1500000)]['length_m'] == 6.0
+    assert stats['pass_players'] == [  # хозяева первыми, затем по числу передач
+        {'side': 'home', 'player_id': home[0], 'total': 3, 'accurate': 2, 'known': 3, 'length_m': 7.5, 'verified': 3},
+        {'side': 'away', 'player_id': away[0], 'total': 1, 'accurate': 1, 'known': 1, 'length_m': 6.0, 'verified': 1},
+    ]
+    second = admin_client.get(f'/api/v1/matches/{match["id"]}/action-stats', params={'period': '2'}).json()
+    assert [p['side'] for p in second['passes']] == ['away'] and len(second['pass_players']) == 1
 
 
 def test_period_filter_and_invalid_period(admin_client, analytics_match, send_command):
@@ -174,7 +229,7 @@ def test_ordinary_admin_cannot_read_private_stats(admin_client, analytics_match)
     assert admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').status_code == 403
 
 
-def _cv_run_with_passes(client, match, *, side_map=None, publish=True):
+def _cv_run_with_passes(client, match, *, side_map=None, publish=True, report=None, manifest=None, checks=None):
     """Импорт пакета версии 3 (две передачи команды A: точная и неточная), подтверждение и публикация."""
     from uuid import uuid4
 
@@ -189,7 +244,16 @@ def _cv_run_with_passes(client, match, *, side_map=None, publish=True):
     run = upload(
         client,
         match,
-        result_zip(job, mutate=lambda m, r, t, c: m.update(contract_version='3'), extras={'events.json': events_doc()}),
+        result_zip(
+            job,
+            mutate=lambda m, r, t, c: (
+                m.update(contract_version='3'),
+                report and report(r),
+                manifest and manifest(m),
+                checks and checks(c),
+            ),
+            extras={'events.json': events_doc()},
+        ),
     )
     assert run.status_code == 200, run.text
     run = run.json()
@@ -236,6 +300,27 @@ def test_auto_passes_from_published_video_analysis(admin_client, analytics_match
     assert (accurate['numerator'], accurate['denominator'], accurate['value']) == (1, 2, 50.0)
     assert _row(stats, 'passes_total')['away']['value'] == 0 and _row(stats, 'passes_total')['coverage'] == 'partial'
     assert stats['shots'] == [] and [p['key'] for p in stats['periods']] == ['all']
+    # Передачи для карты: игрок — по назначенному фрагменту, адресат только у точной и не сам исполнитель.
+    assert [(p['success'], p['length_m'], p['start_xy'], p['end_xy'], p['source']) for p in stats['passes']] == [
+        (True, 8.1, [10.0, 5.0], [18.0, 6.0], 'cv_auto'),
+        (False, 8.1, [10.0, 5.0], [18.0, 6.0], 'cv_auto'),
+    ]
+    assert all(p['side'] == 'home' and p['period'] is None and p['player_id'] for p in stats['passes'])
+    assert not any(p['verified'] for p in stats['passes'])
+    # Мяч найден своей моделью мяча, а не детектором игроков: к точности относится замеренная погрешность.
+    assert stats['video_ball'] == 'ball_model'
+    assert stats['passes'][1]['recipient_id'] is None and stats['passes'][0]['start_ms'] == 10000
+    assert stats['pass_players'] == [
+        {
+            'side': 'home',
+            'player_id': stats['passes'][0]['player_id'],
+            'total': 2,
+            'accurate': 1,
+            'known': 2,
+            'length_m': 8.1,
+            'verified': 0,  # передачи из видео без проверки
+        }
+    ]
     assert admin_client.get(path).status_code == 404
     from .test_analysis_assignments import command
 
@@ -245,6 +330,7 @@ def test_auto_passes_from_published_video_analysis(admin_client, analytics_match
     public = admin_client.get(path)
     assert public.status_code == 200, public.text
     assert public.json()['source']['published'] is True and _row(public.json(), 'passes_total')['home']['value'] == 2
+    assert public.json()['passes'] == stats['passes'] and public.json()['pass_players'] == stats['pass_players']
     # Тайма нет в видеоанализе — пустая сводка: периоды странице задаёт протокол
     first = admin_client.get(path, params={'period': '1'})
     assert first.status_code == 200 and first.json()['rows'] == []
@@ -254,6 +340,30 @@ def test_auto_passes_follow_the_side_map(admin_client, analytics_match):
     _cv_run_with_passes(admin_client, analytics_match, side_map={'A': 'away', 'B': 'home'})
     stats = admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').json()
     assert _row(stats, 'passes_total')['away']['value'] == 2 and _row(stats, 'passes_total')['home']['value'] == 0
+    away = {p['player_id'] for p in analytics_match['lineup'] if p['side'] == 'away'}
+    assert {p['side'] for p in stats['passes']} == {'away'} and {p['player_id'] for p in stats['passes']} <= away
+
+
+def test_passes_from_the_general_detector_are_marked(admin_client, analytics_match):
+    """Запись трансляции без своей модели мяча: мяч искал детектор игроков, его модель — в манифесте."""
+    model = 'ball/best.pt'  # модель мяча в events_doc
+    _cv_run_with_passes(
+        admin_client, analytics_match, manifest=lambda m: m['processor'].update(model=model, ball_model=model)
+    )
+    stats = admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').json()
+    assert stats['video_ball'] == 'general' and len(stats['passes']) == 2
+    admin_client.headers.pop('X-CSRF-Token', None)
+    admin_client.cookies.clear()
+    public = admin_client.get(f'/api/v1/public/matches/{analytics_match["id"]}/action-stats')
+    assert public.status_code == 200 and public.json()['video_ball'] == 'general'
+
+
+def test_passes_from_own_ball_model_on_a_broadcast_are_marked(admin_client, analytics_match):
+    """Запись трансляции со своей моделью мяча: замер журналов залов (неподвижные камеры) к ней не относится."""
+    registration = {'keyframes': 3, 'replays': [], 'share': {'ok': 0.96, 'weak': 0.01, 'lost': 0.01, 'replay': 0.02}}
+    _cv_run_with_passes(admin_client, analytics_match, checks=lambda c: c.update(camera_registration=registration))
+    stats = admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').json()
+    assert stats['video_ball'] == 'broadcast_model' and len(stats['passes']) == 2
 
 
 def _shots_only(home, away):
@@ -283,7 +393,8 @@ def test_manual_passes_win_and_auto_fills_only_missing_categories(admin_client, 
         and stats['source']['run_published'] is True
     )
     assert _row(stats, 'shots_total')['source'] == 'manual' and _row(stats, 'passes_total')['source'] == 'cv_auto'
-    assert stats['coverage']['passes'] == 'partial'
+    assert stats['coverage']['passes'] == 'partial' and stats['video_ball'] == 'ball_model'
+    assert len(stats['passes']) == 2 and {p['source'] for p in stats['passes']} == {'cv_auto'}
 
 
 def test_manual_passes_are_not_mixed_with_auto(admin_client, analytics_match, send_command):
@@ -298,3 +409,47 @@ def test_manual_passes_are_not_mixed_with_auto(admin_client, analytics_match, se
     stats = admin_client.get(f'/api/v1/matches/{match["id"]}/action-stats').json()
     assert stats['source']['kind'] == 'manual' and {r['source'] for r in stats['rows']} == {'manual'}
     assert _row(stats, 'passes_total')['home']['value'] == 4
+    assert stats['passes'] == [] and stats['pass_players'][0]['total'] == 4  # ручные передачи без точек
+
+
+def _heat(pitch, *cells):
+    grid = [[0.0] * int(pitch['width_m'] + 0.999) for _ in range(int(pitch['length_m'] + 0.999))]
+    for x, y, seconds in cells:
+        grid[x][y] += seconds
+    return grid
+
+
+def _positions_report(report):
+    """Треки 1 и 2 (команда A) — у левых ворот, трек 3 (B) — справа; центры команд дают направление атаки."""
+    pitch = report['pitch']
+    period = report['periods'][0]
+    cells = {1: [(4, 5, 30)], 2: [(10, 8, 60)], 3: [(30, 12, 40)]}
+    for player in period['players']:
+        player['heatmap_s'] = _heat(pitch, *cells[player['track_id']])
+    period['teams'] = {'A': {'heatmap_s': _heat(pitch, (8, 7, 90))}, 'B': {'heatmap_s': _heat(pitch, (30, 12, 40))}}
+
+
+def test_video_positions_and_attack_direction_for_the_pass_network(admin_client, analytics_match):
+    _cv_run_with_passes(admin_client, analytics_match, report=_positions_report)
+    stats = admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').json()
+    # Хозяева (A) у левых ворот: атакуют вправо, у передач направление из видео.
+    assert stats['positions_orientation'] == 'attack'
+    assert {p['attacking_direction'] for p in stats['passes']} == {'right'}
+    home = next(p for p in stats['positions'] if p['side'] == 'home')
+    away = next(p for p in stats['positions'] if p['side'] == 'away')
+    # Оба трека команды A назначены одному игроку: средняя точка взвешена секундами.
+    assert (home['x'], home['y'], home['observed_s']) == (8.5, 7.5, 90.0)
+    assert (away['x'], away['y'], away['observed_s']) == (30.5, 12.5, 40.0)
+    public = admin_client.get(f'/api/v1/public/matches/{analytics_match["id"]}/action-stats').json()
+    assert public['positions'] == stats['positions']
+
+
+def test_manual_actions_take_positions_from_the_published_video_analysis(admin_client, analytics_match, send_command):
+    match, _, _, _ = _setup(
+        admin_client, analytics_match, send_command, _passes_with_points, {'passes': [{'status': 'complete'}]}
+    )
+    before = admin_client.get(f'/api/v1/matches/{match["id"]}/action-stats').json()
+    assert before['positions'] == [] and before['positions_orientation'] is None
+    _cv_run_with_passes(admin_client, match, report=_positions_report)
+    stats = admin_client.get(f'/api/v1/matches/{match["id"]}/action-stats').json()
+    assert stats['source']['kind'] == 'manual' and len(stats['positions']) == 2

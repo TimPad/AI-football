@@ -1,5 +1,5 @@
-import { CircleDot } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { CircleDot, Star } from 'lucide-react';
+import { Fragment, type ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { MatchRatingsView, PublicMatch, PublicProtocol } from '../../api/domain';
 import { sections } from '../../api/domain';
@@ -10,10 +10,15 @@ import { PitchMap } from '../../components/pitch/PitchMap';
 import { publicForward } from '../navigation/publicContext';
 import { num, reason, roles } from '../ratings/types';
 import { canAttachCurrentCv, mergeRoster, type RosterRow } from './adapters';
+import { boardGoals } from './board';
 import { formatFact, STAT_GROUPS, type StatGroup } from './facts';
-import { MatchStats, topLines } from './MatchStats';
+import { matchFlow } from './flow';
+import { MatchFlow } from './MatchFlow';
+import { MatchStats, playerName, topLines } from './MatchStats';
 import { MatchTimeline } from './MatchTimeline';
+import { breakdown, decimal, method, missingNotes, pointsIndex } from './matchPoints';
 import type { PlayerSelection, ReportModel, Resource } from './model';
+import { PlayerPasses } from './PassStats';
 import { PlayerTable } from './PlayerTable';
 import { StatRow } from './StatBlocks';
 import type { StatLine } from './stats';
@@ -142,6 +147,7 @@ function Inspector({
     );
   const cv = ready(model.cv);
   const ratings = ready(model.ratings);
+  const actions = ready(model.actions);
   const rows = ratings?.items.filter((r) => r.player_id === row.playerId) ?? [];
   const overall: RatingRow | undefined =
     ratings?.overall?.find((r) => r.player_id === row.playerId) ?? (rows.length === 1 ? rows[0] : undefined);
@@ -199,6 +205,15 @@ function Inspector({
       ) : ratings ? (
         <p className="muted">Оценки этого игрока нет.</p>
       ) : null}
+      {actions && (
+        <PlayerPasses
+          stats={actions}
+          playerId={row.playerId}
+          homeName={match.home_name}
+          awayName={match.away_name}
+          name={playerName(model)}
+        />
+      )}
       <section>
         <h3>Карта времени</h3>
         {showMap && pitch ? (
@@ -324,6 +339,10 @@ export function MatchReport({
     requestedGroup ?? (model.ratings.status !== 'ready' && model.cv.status === 'ready' ? 'movement' : 'shots');
   const protocol = ready(model.protocol);
   const marks = playerMarks(protocol);
+  // Рейтинг матча по действиям: значок у игрока, расшифровка — по нажатию.
+  const points = model.points ? ready(model.points) : null;
+  const pointsOf = pointsIndex(points);
+  const [openPoints, setOpenPoints] = useState<string | null>(null);
   const ratings = ready(model.ratings);
   const leaders = ratings
     ? [...(ratings.overall ?? ratings.items)]
@@ -384,7 +403,7 @@ export function MatchReport({
         <Block resource={model.protocol} absent="Протокол ещё не опубликован." onRetry={onRetry}>
           {(p) => (
             <>
-              <MatchTimeline value={p} />
+              <MatchTimeline value={p} board={boardGoals(ready(model.cv), p)} />
               {p.protocol.public_notes && <p className="public-note">{p.protocol.public_notes}</p>}
               <p className="muted small">
                 Подтверждённый протокол · версия {p.number}.
@@ -423,42 +442,79 @@ export function MatchReport({
                 <ul className="roster-list">
                   {roster
                     .filter((r) => r.side === side)
-                    .map((r) => (
-                      <li key={r.playerId} aria-selected={selection?.playerId === r.playerId}>
-                        <span className="num shirt">{r.shirtNumber ?? '—'}</span>
-                        <button
-                          className="link-button"
-                          onClick={() => onSelect({ playerId: r.playerId, origin: r.sources[0] })}
-                        >
-                          {r.name}
-                        </button>
-                        <Marks m={marks[r.playerId]} />
-                        {audience === 'cabinet' && (
-                          <span className="sources">
-                            {r.sources.map((s) => (
-                              <span key={s} className="chip">
-                                {SOURCE_LABEL[s]}
+                    .map((r) => {
+                      const item = r.rating ? undefined : pointsOf[r.playerId];
+                      const best = !!item && points?.best_player_id === r.playerId;
+                      return (
+                        <Fragment key={r.playerId}>
+                          <li aria-selected={selection?.playerId === r.playerId}>
+                            <span className="num shirt">{r.shirtNumber ?? '—'}</span>
+                            <button
+                              className="link-button"
+                              onClick={() => onSelect({ playerId: r.playerId, origin: r.sources[0] })}
+                            >
+                              {r.name}
+                            </button>
+                            <Marks m={marks[r.playerId]} />
+                            {audience === 'cabinet' && (
+                              <span className="sources">
+                                {r.sources.map((s) => (
+                                  <span key={s} className="chip">
+                                    {SOURCE_LABEL[s]}
+                                  </span>
+                                ))}
                               </span>
-                            ))}
-                          </span>
-                        )}
-                        {r.rating && (
-                          <button
-                            className={`rating-chip num tone-${ratingTone(r.rating.display_rating)}`}
-                            onClick={() => onSelect({ playerId: r.playerId, origin: 'rating' })}
-                            aria-label={`Оценка ${r.name}`}
-                          >
-                            {r.rating.display_rating?.toFixed(1) ?? '—'}
-                          </button>
-                        )}
-                      </li>
-                    ))}
+                            )}
+                            {r.rating && (
+                              <button
+                                className={`rating-chip num tone-${ratingTone(r.rating.display_rating)}`}
+                                onClick={() => onSelect({ playerId: r.playerId, origin: 'rating' })}
+                                aria-label={`Оценка ${r.name}`}
+                              >
+                                {r.rating.display_rating?.toFixed(1) ?? '—'}
+                              </button>
+                            )}
+                            {item && (
+                              <button
+                                type="button"
+                                className={`rating-chip num tone-${ratingTone(item.rating)}${best ? ' best' : ''}`}
+                                aria-expanded={openPoints === r.playerId}
+                                aria-label={`Рейтинг матча ${r.name}: ${decimal(item.rating)}${best ? ', лучший игрок матча' : ''}`}
+                                onClick={() => setOpenPoints((v) => (v === r.playerId ? null : r.playerId))}
+                              >
+                                {best && <Star aria-hidden="true" />}
+                                {decimal(item.rating)}
+                              </button>
+                            )}
+                          </li>
+                          {item && openPoints === r.playerId && (
+                            <li className="points-breakdown">
+                              {[`База ${decimal(points!.policy.base)}`, ...breakdown(item)].join(' · ')} →{' '}
+                              {decimal(item.rating)}
+                              {item.goalkeeper ? ' · вратарь' : ''}
+                            </li>
+                          )}
+                        </Fragment>
+                      );
+                    })}
                 </ul>
               </div>
             ))}
           </div>
         ) : (
           <p className="muted">Опубликованных данных об игроках пока нет.</p>
+        )}
+        {points && (
+          <div className="points-note">
+            <p className="muted small">
+              <strong>Рейтинг матча</strong> — {method(points)}
+            </p>
+            {missingNotes(points, (s) => (s === 'home' ? match.home_name : match.away_name)).map((note) => (
+              <p key={note} className="muted small">
+                {note}
+              </p>
+            ))}
+          </div>
         )}
       </section>
     );
@@ -478,10 +534,26 @@ export function MatchReport({
           <section className="report-block">
             <h2>Ключевые события</h2>
             <Block resource={model.protocol} absent="" onRetry={onRetry}>
-              {(p) => <MatchTimeline value={p} keyOnly />}
+              {(p) => <MatchTimeline value={p} keyOnly board={boardGoals(ready(model.cv), p)} />}
             </Block>
           </section>
         )}
+        {(() => {
+          const minutes = matchFlow(ready(model.cv), ready(model.actions), protocol);
+          return (
+            minutes.length > 0 && (
+              <section className="report-block">
+                <h2>Ход матча</h2>
+                <MatchFlow
+                  minutes={minutes}
+                  homeName={match.home_name}
+                  awayName={match.away_name}
+                  goalsFrom={boardGoals(ready(model.cv), protocol) ? 'board' : 'protocol'}
+                />
+              </section>
+            )
+          );
+        })()}
         {(() => {
           const top = topLines(protocol, ready(model.actions), ready(model.cv), 'all').filter(meaningful);
           return (

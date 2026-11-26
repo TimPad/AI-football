@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
 import { downloadJson, ErrorBox } from '../../components/ui';
 import { useDraft } from '../protocol/drafts';
-import { baseGroups } from './candidates';
+import { baseGroups, dropConflicts, identityConflicts } from './candidates';
 import { PlayerCandidates } from './PlayerCandidates';
 import { filteredCount, TRACK_FILTERS, type TrackFilter, trackState, visibleTrackIds } from './reviewQueue';
+import { SimilarPicker } from './SimilarPicker';
 import type { IdentitySuggestion } from './understandingTypes';
 import './review.css';
 
@@ -59,8 +60,12 @@ export function IdentityReview({
   const view = external ?? local;
   const navigate = onView ?? ((patch: Partial<View>) => setLocal((v) => ({ ...v, ...patch })));
   const [queueOpen, setQueueOpen] = useState(false);
-  // Есть склейка треков — по умолчанию сопоставляем кандидатов-игроков; старые версии открываются по фрагментам.
-  const [mode, setMode] = useState<'players' | 'tracks'>(run.groups?.length ? 'players' : 'tracks');
+  // Есть признаки внешности — по умолчанию подбор похожих фрагментов; есть склейка — кандидаты-игроки;
+  // старые версии открываются по фрагментам.
+  const looks = run.tracks.some((t) => t.appearance);
+  const [mode, setMode] = useState<'similar' | 'players' | 'tracks'>(
+    looks ? 'similar' : run.groups?.length ? 'players' : 'tracks',
+  );
   useEffect(() => {
     onDirty?.(draft.dirty);
   }, [draft.dirty, onDirty]);
@@ -137,6 +142,7 @@ export function IdentityReview({
       <span className={`thumb-missing ${cls}`}>Кадр недоступен</span>
     );
   const dirtyCount = draft.dirty ? draft.value.assignments.length : 0;
+  const conflicts = identityConflicts(run, assignments);
   return (
     <section className="identity-review" aria-label="Сопоставление игроков">
       <div className="review-bar">
@@ -168,6 +174,11 @@ export function IdentityReview({
           ))}
         </div>
         <div className="segmented review-mode" role="group" aria-label="Сопоставлять">
+          {looks && (
+            <button aria-pressed={mode === 'similar'} onClick={() => setMode('similar')}>
+              Подбор
+            </button>
+          )}
           <button aria-pressed={mode === 'players'} onClick={() => setMode('players')}>
             По игрокам · {baseGroups(run).length}
           </button>
@@ -197,7 +208,15 @@ export function IdentityReview({
           </>
         )}
       </div>
-      {mode === 'players' ? (
+      {mode === 'similar' ? (
+        <SimilarPicker
+          run={run}
+          assignments={assignments}
+          sideMap={draft.value.side_map}
+          disabled={disabled}
+          onChange={(next) => change({ ...draft.value, assignments: next })}
+        />
+      ) : mode === 'players' ? (
         <PlayerCandidates
           run={run}
           assignments={assignments}
@@ -412,6 +431,20 @@ export function IdentityReview({
               </>
             ) : null}
           </aside>
+        </div>
+      )}
+      {conflicts.length > 0 && (
+        <div className="warning conflict-banner" role="alert">
+          <span>
+            У одного игрока фрагменты, видные одновременно: {conflicts.length} {conflicts.length === 1 ? 'пара' : 'пар'}
+            . Сервер не подтвердит такую версию — обычно это короткие дубли трекера внутри длинного фрагмента.
+          </span>
+          <button
+            disabled={disabled}
+            onClick={() => change({ ...draft.value, assignments: dropConflicts(run, draft.value.assignments) })}
+          >
+            Снять более короткие ({new Set(conflicts.map((c) => c.drop)).size})
+          </button>
         </div>
       )}
       {draft.dirty && (

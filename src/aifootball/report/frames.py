@@ -6,7 +6,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-THUMB_H = 120
+from aifootball.perception.frames import FrameReader
+
+# Миниатюра фрагмента: по ней в кабинете узнают человека (волосы, гетры, обувь) — 120 px было мало.
+THUMB_H = 240
 STILL_W = 640
 JPEG_QUALITY = 80
 THUMB_PAD = 0.15  # запас вокруг рамки игрока
@@ -16,21 +19,20 @@ BOX_BGR = (0, 230, 255)
 
 
 def grab_images(video: Path, requests: dict[str, dict]) -> dict[str, str]:
-    """requests: ключ -> {kind: thumb|still, frame_id, box: [x1, y1, x2, y2] | None}. Нечитаемые кадры пропускаются."""
-    cap = cv2.VideoCapture(str(video))
+    """requests: ключ -> {kind: thumb|still, frame_id, ts, box: [x1, y1, x2, y2] | None}. Нечитаемые кадры пропускаются.
+
+    Кадр ищется по метке времени ts: номер кадра на записи с плавающим шагом указывает на другой момент.
+    """
     out = {}
-    try:
-        for key, req in sorted(requests.items(), key=lambda kv: kv[1]['frame_id']):
-            cap.set(cv2.CAP_PROP_POS_FRAMES, req['frame_id'])
-            ok, frame = cap.read()
-            if not ok:
+    with FrameReader(video) as reader:
+        for key, req in sorted(requests.items(), key=lambda kv: kv[1]['ts']):
+            frame = reader.read(req['ts'])
+            if frame is None:
                 continue
             image = _thumb(frame, req['box']) if req['kind'] == 'thumb' else _still(frame, req['box'])
             ok, buf = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
             if ok:
                 out[key] = 'data:image/jpeg;base64,' + base64.b64encode(buf.tobytes()).decode('ascii')
-    finally:
-        cap.release()
     return out
 
 

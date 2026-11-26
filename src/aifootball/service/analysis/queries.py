@@ -207,10 +207,30 @@ def get_public_analysis(db, match_id):
             if side in ('A', 'B')
         }
         periods.append(
-            {'key': p['key'], 'name': p['name'], 'duration_s': p['duration_s'], 'teams': teams, 'thirds': thirds}
+            {
+                'key': p['key'],
+                'name': p['name'],
+                'duration_s': p['duration_s'],
+                'spans': p['spans'],
+                'teams': teams,
+                'thirds': thirds,
+                # Ход матча по минутам (давление команд); у старых прогонов и без направления атаки — нет.
+                'flow': p.get('flow'),
+            }
         )
     pitch = {key: run.report['pitch'][key] for key in ('length_m', 'width_m', 'cell_m')}
     pitch['orientation'] = run.report['pitch'].get('orientation', 'camera')
+    # Голы с табло трансляции: время на записи не нужно, сторону плашки с командой сопоставляет сайт.
+    board = run.report.get('scoreboard')
+    scoreboard = (
+        {
+            'overlay': board['overlay'],
+            'final': board['final'],
+            'goals': [{k: g[k] for k in ('side', 'period', 'elapsed_s')} for g in board['goals']],
+        }
+        if board
+        else None
+    )
     return {
         'match_id': match_id,
         'run_id': run.id,
@@ -223,4 +243,28 @@ def get_public_analysis(db, match_id):
         'partial': run.checks['partial'],
         'periods': periods,
         'players': players,
+        'scoreboard': scoreboard,
+    }
+
+
+def run_moments(run):
+    """Закладки разметки по видео: таймы основного периода, голы с табло трансляции (плашка слева/справа),
+    повторы трансляции и удары-кандидаты обработчика (подсказки: находится треть ударов, верны две трети)."""
+    periods = {p['key']: p for p in run.report['periods']}
+    primary = periods.get(run.manifest['primary_period_key']) or run.report['periods'][0]
+    board = run.report.get('scoreboard') or {}
+    candidates = (run.events or {}).get('candidates', [])
+    return {
+        'run_id': run.id,
+        'video_s': run.manifest['source_video']['duration_s'],
+        'halves': primary['spans'],
+        'side_map': run.side_map,
+        'board_final': board.get('final'),
+        'board_goals': [{'t_s': g['t_s'], 'plate': g['side']} for g in board.get('goals', [])],
+        'replays': (run.checks.get('camera_registration') or {}).get('replays', []),
+        'shots': [
+            {'t_s': c['start_s'], 'side': run.side_map[c['team']], 'on_target': c['on_target']}
+            for c in candidates
+            if c['team'] in run.side_map
+        ],
     }

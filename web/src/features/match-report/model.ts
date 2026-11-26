@@ -1,4 +1,4 @@
-import type { MatchRatingsView, PublicAnalysis, PublicProtocol, TeamActionStats } from '../../api/domain';
+import type { MatchPoints, MatchRatingsView, PublicAnalysis, PublicProtocol, TeamActionStats } from '../../api/domain';
 
 // Отдельные указатели источников: у протокола, CV и рейтинга нет общей версии.
 export type PlayerOrigin = 'protocol' | 'cv' | 'rating';
@@ -23,4 +23,6 @@ export type ReportModel = {
   ratings: Resource<MatchRatingsView>;
   // Командная сводка проверенных действий выбранного периода (опубликованная версия у гостя).
   actions: Resource<TeamActionStats>;
+  // Рейтинг матча по очкам за действия (только на публичной странице; в кабинете его нет).
+  points?: Resource<MatchPoints>;
 };

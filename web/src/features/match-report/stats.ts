@@ -14,6 +14,7 @@ export type StatLine = {
   source: StatSource;
   partial?: boolean;
   auto?: boolean;
+  reviewed?: boolean; // передачи из видео проверены вручную, разбор матча ещё не опубликован
 };
 export type ActionGroup = 'shots' | 'passes' | 'defense' | 'goalkeeping';
 
@@ -186,9 +187,11 @@ export function actionLines(stats: TeamActionStats): Record<ActionGroup, StatLin
           ? 'none'
           : 'higher',
       source: 'actions',
-      // Автоматическая строка помечается «авто»: она всегда неполная, звёздочка ручной разметки к ней не относится.
-      partial: row.source !== 'cv_auto' && row.coverage !== 'complete',
+      // Строка из видео помечается «авто» или «проверено»: она всегда неполная, звёздочка ручной разметки
+      // к ней не относится.
+      partial: row.source !== 'cv_auto' && row.source !== 'cv_reviewed' && row.coverage !== 'complete',
       auto: row.source === 'cv_auto',
+      reviewed: row.source === 'cv_reviewed',
     });
   return out;
 }

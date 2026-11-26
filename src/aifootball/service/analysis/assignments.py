@@ -3,7 +3,7 @@ from collections import defaultdict
 from sqlalchemy import delete, select
 
 from aifootball.analytics.track_groups import OVERLAP_S
-from aifootball.service.analysis.aggregation import aggregate_player
+from aifootball.service.analysis.aggregation import aggregate_player, period_fragments
 from aifootball.service.analysis.models import AnalysisAssignment, PlayerMatchMetric
 from aifootball.service.errors import DomainError
 
@@ -61,7 +61,7 @@ def create_metrics(db, run, job):
     tracks = {t['track_id']: t for t in run.tracks['tracks']}
     roster = {p['player_id']: p for p in job.context['rosters']}
     primary = next(p for p in run.report['periods'] if p['key'] == run.manifest['primary_period_key'])
-    metrics = {p['track_id']: p for p in primary['players']}
+    metrics = period_fragments(primary, run.report['pitch'])
     by_player = defaultdict(list)
     for assignment in assigned:
         by_player[assignment.player_id].append(assignment.track_id)

@@ -37,6 +37,31 @@ def _write_detections(data, path):
         os.close(descriptor)
 
 
+def _ensure_registration(job, video: Path, venue, source: dict, workspace: Workspace, root: Path) -> dict:
+    """Поворотная камера: привязка кадров к эталону профиля; готовая и целая привязка не пересчитывается."""
+    import cv2
+    import numpy as np
+
+    from aifootball.geometry.registration import register_video
+
+    path = root / 'registration.parquet'
+    saved = workspace.get_json('cv:registration')
+    if saved is not None and path.exists() and file_hash(path) == saved['sha256']:
+        return saved['summary']
+    if 'reference.jpg' not in job.files:
+        raise ValueError('Поворотной камере нужен эталонный кадр профиля')
+    reference = cv2.imdecode(np.frombuffer(job.files['reference.jpg'], np.uint8), cv2.IMREAD_COLOR)
+    if reference is None or reference.shape[1] != source['width'] or reference.shape[0] != source['height']:
+        raise ValueError('Эталонный кадр камеры не читается или другого размера')
+    result = register_video(Path(video), venue, reference)
+    if result.summary['keyframes_linked_to_reference'] == 0:
+        # Ни один вид записи не совпал с эталоном: другой зал, другая точка съёмки или эталон не той трансляции.
+        raise ValueError('Запись не сверяется с эталонным кадром профиля: нужна новая версия профиля камеры')
+    schemas.write(result.frames, path, 'registration')
+    workspace.put_json('cv:registration', {'sha256': file_hash(path), 'summary': result.summary})
+    return result.summary
+
+
 def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, ball_model: str | None = None) -> Path:
     from aifootball import cli
     from aifootball.perception.detect import detect_batches, pick_device
@@ -58,7 +83,10 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
         # Детекция, трекер и проверки идут на фактической частоте, а не на пределе из задания.
         venue = replace(venue, target_fps=processing_fps(video_fps(video), venue.target_fps))
         alignment = None
-        if 'reference.jpg' in job.files:
+        registration = None
+        if venue.is_ptz:
+            registration = _ensure_registration(job, video, venue, source, workspace, root)
+        elif 'reference.jpg' in job.files:
             alignment = workspace.get_json('cv:alignment')
             if alignment is None:
                 import cv2
@@ -87,11 +115,20 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
             'context_hash': job.contract['context_hash'],
             'weights_sha256': file_hash(weights),
             'venue_files': {name: sha256(raw).hexdigest() for name, raw in job.files.items()},
-            'pipeline': 'cv-chunks-v1',
+            # v2: время кадра — метка кадра в потоке, а не номер / fps; куски v1 с ними не смешиваются.
+            'pipeline': 'cv-chunks-v2',
             'chunk_ms': CHUNK_MS,
         }
         if ball_weights:
             fingerprint['ball_model'] = {'name': ball_model, 'sha256': file_hash(ball_weights)}
+            if venue.is_ptz:
+                from aifootball.perception.ball_detect import PTZ_SEARCH
+
+                fingerprint['ball_model']['search'] = PTZ_SEARCH
+        if venue.is_ptz:
+            from aifootball.geometry.registration import VERSION
+
+            fingerprint['camera_motion'] = {'motion': 'ptz', 'registration': VERSION}
         previous = workspace.get_json('cv:fingerprint')
         if previous is not None and previous != fingerprint:
             raise ValueError('CV fingerprint mismatch')
@@ -137,20 +174,42 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
         if start < count:
             ball_detector = None
             if ball_weights:
-                from aifootball.perception.ball_detect import BallDetector
+                from aifootball.perception.ball_detect import BallDetector, PtzBallDetector
 
                 ball = ball_settings(venue, source['width'])
-                ball_detector = BallDetector(
-                    ball_weights,
-                    ball.require_polygon(),
-                    (source['height'], source['width']),
-                    ball.ball_tile,
-                    ball.ball_margin_px,
-                    ball.conf_ball,
-                    pick_device(),
-                )
+                frame_shape = (source['height'], source['width'])
+                if venue.is_ptz:
+                    # Зона поиска — на плоскости поля, на каждый кадр по привязке, сохранённой до детекции.
+                    ball_detector = PtzBallDetector.for_venue(
+                        ball_weights,
+                        ball,
+                        schemas.read(root / 'registration.parquet', 'registration'),
+                        frame_shape,
+                        ball.conf_ball,
+                        pick_device(),
+                    )
+                else:
+                    ball_detector = BallDetector(
+                        ball_weights,
+                        ball.require_polygon(),
+                        frame_shape,
+                        ball.ball_tile,
+                        ball.ball_margin_px,
+                        ball.conf_ball,
+                        pick_device(),
+                    )
+            # Продолжение — от последнего обработанного кадра: перемотка к нему со сверкой метки времени даёт те же
+            # номера и время кадров, что проход от начала, и при плавающем шаге кадров. Поворотная камера продолжает
+            # чтением подряд: номера кадров детекции должны совпасть с привязкой к эталону.
+            last = (saved[-1]['last_frame_id'], saved[-1]['last_ts']) if saved else None
             for batch in detect_batches(
-                Path(video), venue, weights, start_ms=start * CHUNK_MS, ball_detector=ball_detector
+                Path(video),
+                venue,
+                weights,
+                start_ms=start * CHUNK_MS,
+                ball_detector=ball_detector,
+                seek=not venue.is_ptz,
+                after=last,
             ):
                 for frame_id, ts in zip(batch.frame_ids, batch.timestamps):
                     index = min(count - 1, int(ts * 1000 // CHUNK_MS))
@@ -167,7 +226,9 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
                         parts.append(part)
             if not sampled or current != count - 1:
                 raise ValueError('Incomplete video decoding')
-            tolerance = max(1 / venue.target_fps, 1 / video_fps(video)) + 0.001
+            # Длительность — метка последнего кадра + шаг по fps; при прореживании последний отобранный кадр раньше
+            # последнего на шаг отбора. Запас в кадр — на плавающий шаг кадров.
+            tolerance = 1 / venue.target_fps + 1 / video_fps(video) + 0.001
             if source['duration_s'] - sampled[-1][1] > tolerance:
                 raise ValueError('Incomplete video decoding')
             saved.append(persist(current))
@@ -190,6 +251,7 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
             'source_sha256': source['sha256'],
             'context_hash': job.contract['context_hash'],
             'camera_alignment': alignment,
+            'camera_registration': registration,
             'created_at': datetime.now(UTC).isoformat(timespec='seconds'),
         }
         Workspace._atomic(root / 'meta.json', canonical(meta))

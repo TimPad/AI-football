@@ -74,8 +74,8 @@ def create_profile(hid: UUID, data: CameraCreate, db: Session = Depends(get_sess
         return make_camera(db, hid, data)
 
 
-@router.get('/matches/{mid}/cv-config', dependencies=[Depends(require_admin)])
-def export_cv(mid: UUID, db: Session = Depends(get_session)):
+def cv_files(db, mid) -> tuple[CameraProfile, dict[str, str]]:
+    """Текстовые файлы установки CV по профилю камеры матча: venue.yaml, гомография, контур, источник."""
     match = get_entity(db, Match, mid)
     if not match.hall_snapshot or not match.camera_profile_id:
         raise DomainError('camera_required', 'Выберите зал и калиброванный профиль камеры в информации о матче')
@@ -100,6 +100,13 @@ def export_cv(mid: UUID, db: Session = Depends(get_session)):
             'camera_profile_id': str(profile.id),
         },
     }
+    if profile.is_ptz:
+        # Секция camera — для aifootball.venue: каждый кадр привязывается к эталонному, контур — по гомографии.
+        settings['camera'] = {
+            'motion': 'ptz',
+            'overlay': profile.overlay,
+            **({'replay_badge_xy': profile.replay_badge['xy']} if profile.replay_badge else {}),
+        }
     files = {
         'venue.yaml': yaml.safe_dump(settings, allow_unicode=True),
         'homography.json': json.dumps(
@@ -110,25 +117,44 @@ def export_cv(mid: UUID, db: Session = Depends(get_session)):
                 'leave_one_out_error_m': profile.leave_one_out_error_m,
             }
         ),
-        'pitch_polygon.json': json.dumps({'points_px': profile.pitch_polygon_px}),
-        'source.json': json.dumps(
-            {
-                'match_id': str(match.id),
-                'hall': match.hall_snapshot,
-                'camera_profile_id': str(profile.id),
-                'camera_profile_version': profile.version,
-            },
-            ensure_ascii=False,
-        ),
     }
+    if not profile.is_ptz:
+        files['pitch_polygon.json'] = json.dumps({'points_px': profile.pitch_polygon_px})
+    files['source.json'] = json.dumps(
+        {
+            'match_id': str(match.id),
+            'hall': match.hall_snapshot,
+            'camera_profile_id': str(profile.id),
+            'camera_profile_version': profile.version,
+        },
+        ensure_ascii=False,
+    )
     if profile.calibration:
         files['calib.json'] = json.dumps(profile.calibration)
+    return profile, files
+
+
+@router.get('/matches/{mid}/cv-config', dependencies=[Depends(require_admin)])
+def export_cv(mid: UUID, request: Request, db: Session = Depends(get_session)):
+    from aifootball.service.halls.frames import badge_path, reference_path
+
+    profile, files = cv_files(db, mid)
+    raw = {name: value.encode() for name, value in files.items()}
+    if profile.is_ptz:
+        # Установке поворотной камеры без эталонного кадра и образца плашки не загрузиться (cli run).
+        root = request.app.state.settings.attachment_root
+        for name, path, ready in (
+            ('reference.jpg', reference_path(root, profile.id), profile.reference_sha256),
+            ('replay_badge.png', badge_path(root, profile.id), profile.replay_badge),
+        ):
+            if ready and path.is_file():
+                raw[name] = path.read_bytes()
     buffer = BytesIO()
     with ZipFile(buffer, 'w', compression=ZIP_DEFLATED) as archive:
-        for name, value in files.items():
+        for name, value in raw.items():
             info = ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
             info.compress_type = ZIP_DEFLATED
-            archive.writestr(info, value.encode())
+            archive.writestr(info, value)
     return Response(
         buffer.getvalue(),
         media_type='application/zip',

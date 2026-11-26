@@ -8,8 +8,11 @@ from sqlalchemy import select
 from aifootball.service.analysis.context import build_context, canonical_json, context_hash
 from aifootball.service.analysis.models import AnalysisCommand, AnalysisJob
 from aifootball.service.analysis.schemas import JobView
+from aifootball.service.common import get_entity
 from aifootball.service.errors import DomainError
+from aifootball.service.halls.models import CameraProfile
 from aifootball.service.halls.operations import lock_request
+from aifootball.service.matches.models import Match
 
 
 def command_hash(match_id, kind, payload):
@@ -41,11 +44,20 @@ def create_job(db, match_id, actor_id, request_id):
     prior, hashed = prior_command(db, match_id, actor_id, request_id, 'job', {})
     if prior:
         return prior.response
+    # Контекст и файлы задания читают профиль дважды: загрузка плашки между ними разошлась бы со снимком.
+    match = get_entity(db, Match, match_id, lock=True)
+    if match.camera_profile_id:
+        get_entity(db, CameraProfile, match.camera_profile_id, lock=True)
     context = build_context(db, match_id)
-    from aifootball.service.halls.routes import export_cv
+    camera = context['camera']
+    if camera.get('motion') == 'ptz' and not camera.get('reference_sha256'):
+        raise DomainError(
+            'reference_required',
+            'Поворотной камере нужен эталонный кадр: загрузите его в профиле камеры в карточке зала',
+        )
+    from aifootball.service.halls.routes import cv_files
 
-    with ZipFile(BytesIO(export_cv(match_id, db).body)) as archive:
-        files = {name: archive.read(name).decode() for name in archive.namelist()}
+    _, files = cv_files(db, match_id)
     job = AnalysisJob(
         id=uuid5(NAMESPACE_URL, f'aifootball:job:{match_id}:{request_id}'),
         match_id=match_id,
@@ -65,7 +77,7 @@ def create_job(db, match_id, actor_id, request_id):
 def export_job(job, attachment_root):
     from hashlib import sha256
 
-    from aifootball.service.halls.frames import reference_path
+    from aifootball.service.halls.frames import badge_path, reference_path
 
     contract = {
         'contract_version': '1',
@@ -84,6 +96,12 @@ def export_job(job, attachment_root):
         if sha256(raw).hexdigest() != camera['reference_sha256']:
             raise DomainError('reference_missing', 'Эталонный кадр камеры недоступен в хранилище', status=409)
         files['reference.jpg'] = raw
+    if camera.get('replay_badge'):
+        path = badge_path(attachment_root, camera['id'])
+        raw = path.read_bytes() if path.is_file() else b''
+        if sha256(raw).hexdigest() != camera['replay_badge']['sha256']:
+            raise DomainError('badge_missing', 'Плашка повтора камеры недоступна в хранилище', status=409)
+        files['replay_badge.png'] = raw
     buffer = BytesIO()
     with ZipFile(buffer, 'w') as archive:
         for name, value in sorted(files.items()):

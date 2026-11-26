@@ -139,6 +139,9 @@ class ActionInput(Input):
     source_video_ms: Millis | None = None
     shot_id: UUID | None = None
     decision: Literal['accepted', 'rejected'] = 'accepted'
+    # Действие из видео: auto — найдено обработчиком и человеком ещё не проверено, checked — проверено
+    # (принято, исправлено или отклонено). None — внесено человеком.
+    review: Literal['auto', 'checked'] | None = None
     notes: str = Field(default='', max_length=500)
 
 
@@ -363,7 +366,8 @@ class TeamStatRow(BaseModel):
     category: str
     unit: Literal['count', 'percent']
     coverage: Literal['complete', 'partial', 'unknown']
-    source: Literal['manual', 'cv_auto'] = 'manual'
+    # cv_reviewed — передачи из видео после ручной проверки, ещё не опубликованной как действия матча.
+    source: Literal['manual', 'cv_auto', 'cv_reviewed'] = 'manual'
     home: StatValue
     away: StatValue
 
@@ -380,6 +384,47 @@ class ShotPoint(BaseModel):
     outcome: str
     period: str | None
     start_ms: int | None
+
+
+class PassPoint(BaseModel):
+    """Передача на карте: координаты площадки в метрах, как на видео (без разворота по атаке)."""
+
+    id: str
+    side: Literal['home', 'away']
+    player_id: UUID | None
+    recipient_id: UUID | None
+    start_xy: list[float]
+    end_xy: list[float]
+    length_m: float
+    success: bool | None
+    period: str | None
+    start_ms: int | None
+    attacking_direction: Literal['left', 'right', 'unknown']
+    source: Literal['manual', 'cv_auto', 'cv_reviewed']
+    # Проверена человеком: внесена вручную или проверена в разборе; передача из видео без проверки — нет.
+    verified: bool
+
+
+class PassPlayerStats(BaseModel):
+    """Передачи исполнителя за период: все, точные и с известным исходом; средняя длина — по передачам с точками."""
+
+    side: Literal['home', 'away']
+    player_id: UUID | None
+    total: int
+    accurate: int
+    known: int
+    length_m: float | None
+    verified: int  # из них проверено человеком
+
+
+class PlayerPosition(BaseModel):
+    """Средняя позиция игрока за период по видео, метры площадки (развёрнута по positions_orientation)."""
+
+    side: Literal['home', 'away']
+    player_id: UUID
+    x: float
+    y: float
+    observed_s: float
 
 
 class StatsSource(BaseModel):
@@ -412,4 +457,59 @@ class TeamActionStats(BaseModel):
     coverage: dict[str, Literal['complete', 'partial', 'unknown']]
     rows: list[TeamStatRow]
     shots: list[ShotPoint]
+    passes: list[PassPoint]
+    pass_players: list[PassPlayerStats]
+    positions: list[PlayerPosition]
+    # attack — хозяева атакуют вправо; halves — чётные таймы повёрнуты к первому; camera — как на видео.
+    positions_orientation: Literal['attack', 'halves', 'camera'] | None
     pitch: PitchSize | None
+    # Чем найден мяч передач из видео: своей моделью мяча зала (погрешность замерена по журналам), общим
+    # детектором игроков или своей моделью мяча на записи трансляции (обе не замерены). None — передач из видео нет.
+    video_ball: Literal['ball_model', 'general', 'broadcast_model'] | None = None
+
+
+class MatchPointsPart(BaseModel):
+    key: str
+    count: int
+    points: float
+
+
+class MatchPointsItem(BaseModel):
+    player_id: UUID
+    side: Literal['home', 'away']
+    display_name: str | None
+    goalkeeper: bool
+    rating: float
+    parts: list[MatchPointsPart]
+
+
+class MatchPointsMissing(BaseModel):
+    goals_total: int
+    goals_without_author: int
+    actions_without_player: int
+    goalkeeper_unknown: list[Literal['home', 'away']]
+    without_on_court: int
+    partial_categories: list[str]
+
+
+class MatchPointsPolicy(BaseModel):
+    base: float
+    min: float
+    max: float
+    pass_cap: float
+    goal_authors_min: float
+    points: dict[str, float]
+
+
+class MatchPointsView(BaseModel):
+    """Рейтинг матча по очкам за действия; без авторов голов (ready = false) оценок нет, только чего не хватает."""
+
+    model_version: str
+    ready: bool
+    complete: bool
+    best_player_id: UUID | None
+    items: list[MatchPointsItem]
+    missing: MatchPointsMissing
+    # Откуда время на площадке для плюс-минуса: ручное участие или фрагменты видео; None — неизвестно.
+    on_court_source: Literal['manual', 'video'] | None
+    policy: MatchPointsPolicy

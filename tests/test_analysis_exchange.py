@@ -1,3 +1,4 @@
+import base64
 import copy
 import json
 import math
@@ -244,3 +245,164 @@ def test_contract_3_rejects_bad_events(raw):
 
     with pytest.raises(ExchangeError):
         validate_result(raw())
+
+
+SHOT = {'kind': 'shot', 'team': 'A', 'start_s': 12.0, 'on_target': True, 'confidence': 0.6}
+
+
+def test_shot_candidates_ride_along_with_passes():
+    from aifootball.analytics.exchange import validate_result
+
+    raw = json.loads(events_doc())
+    raw['candidates'] = [SHOT, {**SHOT, 'start_s': 40.0, 'team': 'B', 'on_target': None}]
+    result = validate_result(result_v3(json.dumps(raw).encode()))
+    # Кандидаты — подсказки разметки: не события и не статистика.
+    assert [c['start_s'] for c in result.events['candidates']] == [12.0, 40.0]
+    assert result.events['kinds'] == ['pass']
+
+
+@pytest.mark.parametrize(
+    'candidate',
+    [
+        {**SHOT, 'kind': 'pass'},
+        {**SHOT, 'team': 'C'},
+        {**SHOT, 'start_s': 500.0},
+        {**SHOT, 'on_target': 'yes'},
+        {**SHOT, 'confidence': 2.0},
+        {**SHOT, 'extra': 1},
+    ],
+)
+def test_bad_shot_candidates_are_rejected(candidate):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    raw = json.loads(events_doc())
+    raw['candidates'] = [candidate]
+    with pytest.raises(ExchangeError):
+        validate_result(result_v3(json.dumps(raw).encode()))
+
+
+@pytest.mark.parametrize(
+    'value,ok',
+    [
+        (base64.b64encode(bytes(range(156))).decode(), True),
+        (base64.b64encode(bytes(155)).decode(), False),
+        ('не base64', False),
+        (42, False),
+    ],
+)
+def test_fragment_appearance_is_156_bytes_of_base64(tmp_path, value, ok):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    def mutate(m, r, t, c):
+        t['tracks'][0]['appearance'] = value
+
+    path = tmp_path / 'result.zip'
+    path.write_bytes(result_zip(mutate=mutate))
+    if ok:
+        assert validate_result(path).tracks['tracks'][0]['appearance'] == value
+    else:
+        with pytest.raises(ExchangeError, match='признак внешности'):
+            validate_result(path)
+
+
+def test_appearance_size_matches_the_feature():
+    from aifootball.analytics.exchange import APPEARANCE_BYTES
+    from aifootball.perception.appearance import APPEARANCE_DIMS
+
+    assert APPEARANCE_BYTES == APPEARANCE_DIMS
+
+
+def _with_fragment(**change):
+    def mutate(m, r, t, c):
+        t['tracks'].append(
+            {'track_id': 4, 'team': 'A', 'role': 'player', 'intervals': [[61, 70]], 'thumb': None, 'has_metrics': False}
+        )
+        fragment = {
+            'track_id': 4,
+            'team': 'A',
+            'observed_s': 9.0,
+            'distance_m': 20.0,
+            'hsr_m': 0.0,
+            'sprints': 0,
+            'vmax_ms': None,
+            'heatmap_cells': [[5, 5, 9.0]],
+            **change,
+        }
+        r['periods'][0]['fragments'] = [fragment]
+
+    return mutate
+
+
+@pytest.mark.parametrize(
+    'change,error',
+    [
+        ({}, None),
+        ({'heatmap_cells': [[99, 5, 1.0]]}, 'тепловая карта фрагмента'),
+        ({'team': 'B'}, 'Команда/роль фрагмента'),
+        ({'distance_m': 1000.0}, 'Дистанция'),
+        ({'track_id': 1}, 'повторный трек'),
+    ],
+)
+def test_short_fragments_in_the_report_are_validated(tmp_path, change, error):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    path = tmp_path / 'result.zip'
+    path.write_bytes(result_zip(mutate=_with_fragment(**change)))
+    if error is None:
+        assert validate_result(path).report['periods'][0]['fragments'][0]['track_id'] == 4
+    else:
+        with pytest.raises(ExchangeError, match=error):
+            validate_result(path)
+
+
+@pytest.mark.parametrize('share,ok', [(0.4, True), (None, True), (1.5, False)])
+def test_match_flow_in_the_report_is_validated(tmp_path, share, ok):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    def mutate(m, r, t, c):
+        team = {'observed_s': 50.0, 'attack_share': share}
+        r['periods'][0]['flow'] = {
+            'bin_s': 60,
+            'bins': [{'half': 1, 'minute': 0, 'start_s': 0.0, 'A': team, 'B': team}],
+        }
+
+    path = tmp_path / 'result.zip'
+    path.write_bytes(result_zip(mutate=mutate))
+    if ok:
+        assert validate_result(path).report['periods'][0]['flow']['bins'][0]['A']['attack_share'] == share
+    else:
+        with pytest.raises(ExchangeError, match='чужой трети'):
+            validate_result(path)
+
+
+def _board(goals, final=None):
+    counted = {s: sum(g['side'] == s for g in goals) for s in ('left', 'right')}
+    return {'source': 'broadcast', 'overlay': 'Мяч ТВ', 'final': final or counted, 'goals': goals}
+
+
+GOAL = {'t_s': 5.0, 'side': 'left', 'period': 1, 'elapsed_s': 5.0}
+
+
+@pytest.mark.parametrize(
+    'board,error',
+    [
+        (_board([GOAL]), None),
+        (_board([GOAL], final={'left': 2, 'right': 0}), 'Итог табло'),
+        (_board([{**GOAL, 'side': 'home'}]), 'Неверный гол табло'),
+        (_board([{**GOAL, 't_s': 1e6}]), 'время гола табло'),
+        (_board([{**GOAL, 't_s': 8.0}, GOAL]), 'не по порядку'),
+    ],
+)
+def test_scoreboard_in_the_report_is_validated(tmp_path, board, error):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    def mutate(m, r, t, c):
+        r['scoreboard'] = board
+
+    path = tmp_path / 'result.zip'
+    path.write_bytes(result_zip(mutate=mutate))
+    if error is None:
+        assert validate_result(path).report['scoreboard']['final'] == {'left': 1, 'right': 0}
+    else:
+        with pytest.raises(ExchangeError, match=error):
+            validate_result(path)
