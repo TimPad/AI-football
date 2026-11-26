@@ -207,3 +207,69 @@ describe('review workspace URL', () => {
     expect(vi.mocked(api).mock.calls.some(([p]) => String(p).includes('understanding'))).toBe(false);
   });
 });
+describe('identity draft over a changed server version', () => {
+  const key = 'aifootball:identity:v1:admin:run-a';
+  const stored = (base?: string) =>
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        version: 1,
+        value: { side_map: { A: 'home', B: 'away' }, assignments: [{ track_id: 1, player_id: 'p7' }] },
+        ...(base === undefined ? {} : { base }),
+      }),
+    );
+  const view = (run: AnalysisRun, save = vi.fn().mockResolvedValue(undefined)) => (
+    <MemoryRouter>
+      <IdentityReview run={run} actorId="admin" editable onSave={save} />
+    </MemoryRouter>
+  );
+  const stale = () => screen.queryByRole('alert', { name: 'Черновик устарел' });
+  const staleAlert = () => screen.getByRole('alert', { name: 'Черновик устарел' });
+
+  it('warns that the server changed after the draft began and can show the server version', () => {
+    stored('версия до переноса');
+    render(view(runA));
+    const alert = staleAlert();
+    expect(alert).toHaveTextContent('на сервере решений по фрагментам: 2, в черновике: 1');
+    expect(screen.getByRole('button', { name: 'Сохранить сопоставление' })).toBeDisabled();
+    fireEvent.click(within(alert).getByRole('button', { name: 'Показать версию сервера' }));
+    expect(stale()).toBeNull();
+    expect(localStorage.getItem(key)).toBeNull();
+    fireEvent.change(screen.getByLabelText('Фильтр треков'), { target: { value: 'assigned' } });
+    fireEvent.click(
+      within(screen.getByRole('navigation', { name: 'Очередь треков' })).getByRole('button', { name: /Трек 30/ }),
+    );
+    expect(screen.getByLabelText('Игрок фрагмента 30')).toHaveValue('p9');
+  });
+
+  it('treats a draft without a known version as stale and keeps it on request', async () => {
+    stored();
+    const save = vi.fn().mockResolvedValue(undefined);
+    const first = render(view(runA, save));
+    fireEvent.click(within(staleAlert()).getByRole('button', { name: 'Оставить черновик' }));
+    expect(stale()).toBeNull();
+    first.unmount();
+    render(view(runA, save));
+    expect(stale()).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить сопоставление' }));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect(save.mock.calls[0][0].assignments).toEqual([{ track_id: 1, player_id: 'p7' }]);
+  });
+
+  it('stays quiet for a fresh draft and its own save, but notices a save made elsewhere', () => {
+    const page = render(view(runB));
+    fireEvent.change(screen.getByLabelText('Игрок фрагмента 1'), { target: { value: 'p7' } });
+    expect(stale()).toBeNull();
+    // Своё сохранение: сервер уже вернул записанное, а черновик ещё не отмечен сохранённым.
+    const own = { ...runB, revision: 1, assignments: [{ track_id: 1, player_id: 'p7' }] } as unknown as AnalysisRun;
+    page.rerender(view(own));
+    expect(stale()).toBeNull();
+    const elsewhere = {
+      ...runB,
+      revision: 2,
+      assignments: [{ track_id: 2, player_id: 'p9' }],
+    } as unknown as AnalysisRun;
+    page.rerender(view(elsewhere));
+    expect(stale()).not.toBeNull();
+  });
+});

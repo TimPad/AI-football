@@ -464,7 +464,8 @@
     height: 180px;
   }
 }
-.conflict-banner {
+.conflict-banner,
+.stale-draft {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
