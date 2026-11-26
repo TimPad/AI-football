@@ -8861,7 +8861,7 @@ export interface components {
             positions_orientation: ("attack" | "halves" | "camera") | null;
             pitch: components["schemas"]["PitchSize"] | null;
             /** Video Ball */
-            video_ball?: ("ball_model" | "general") | null;
+            video_ball?: ("ball_model" | "general" | "broadcast_model") | null;
         };
         /** TeamCreate */
         TeamCreate: {

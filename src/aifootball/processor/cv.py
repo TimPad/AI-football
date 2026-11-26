@@ -84,8 +84,6 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
         venue = replace(venue, target_fps=processing_fps(video_fps(video), venue.target_fps))
         alignment = None
         registration = None
-        if venue.is_ptz and ball_model:
-            raise ValueError('Модель мяча пока не работает с поворотной камерой')
         if venue.is_ptz:
             registration = _ensure_registration(job, video, venue, source, workspace, root)
         elif 'reference.jpg' in job.files:
@@ -123,6 +121,10 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
         }
         if ball_weights:
             fingerprint['ball_model'] = {'name': ball_model, 'sha256': file_hash(ball_weights)}
+            if venue.is_ptz:
+                from aifootball.perception.ball_detect import PTZ_SEARCH
+
+                fingerprint['ball_model']['search'] = PTZ_SEARCH
         if venue.is_ptz:
             from aifootball.geometry.registration import VERSION
 
@@ -172,18 +174,30 @@ def run_cv(job_path: Path, video: Path, workspace: Workspace, *, models: Path, b
         if start < count:
             ball_detector = None
             if ball_weights:
-                from aifootball.perception.ball_detect import BallDetector
+                from aifootball.perception.ball_detect import BallDetector, PtzBallDetector
 
                 ball = ball_settings(venue, source['width'])
-                ball_detector = BallDetector(
-                    ball_weights,
-                    ball.require_polygon(),
-                    (source['height'], source['width']),
-                    ball.ball_tile,
-                    ball.ball_margin_px,
-                    ball.conf_ball,
-                    pick_device(),
-                )
+                frame_shape = (source['height'], source['width'])
+                if venue.is_ptz:
+                    # Зона поиска — на плоскости поля, на каждый кадр по привязке, сохранённой до детекции.
+                    ball_detector = PtzBallDetector.for_venue(
+                        ball_weights,
+                        ball,
+                        schemas.read(root / 'registration.parquet', 'registration'),
+                        frame_shape,
+                        ball.conf_ball,
+                        pick_device(),
+                    )
+                else:
+                    ball_detector = BallDetector(
+                        ball_weights,
+                        ball.require_polygon(),
+                        frame_shape,
+                        ball.ball_tile,
+                        ball.ball_margin_px,
+                        ball.conf_ball,
+                        pick_device(),
+                    )
             # Продолжение — от последнего обработанного кадра: перемотка к нему со сверкой метки времени даёт те же
             # номера и время кадров, что проход от начала, и при плавающем шаге кадров. Поворотная камера продолжает
             # чтением подряд: номера кадров детекции должны совпасть с привязкой к эталону.

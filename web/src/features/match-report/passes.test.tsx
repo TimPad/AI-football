@@ -220,6 +220,16 @@ it('does not apply the journal measurement to passes found by the general detect
   expect(screen.queryByText(/Неточные из видео чаще ошибочны/)).toBeNull();
 });
 
+it('does not apply the journal measurement to a broadcast with its own ball model', () => {
+  const broadcast = { ...match(), video_ball: 'broadcast_model' as const };
+  render(<PassStats stats={broadcast} homeName="Север" awayName="Юг" name={name} />);
+  const percent = within(screen.getByLabelText('Точность передач команд')).getByText('≈86%');
+  expect(percent).toHaveAttribute('title', expect.stringContaining('погрешность на трансляциях не замерялась'));
+  expect(screen.getByText(/сверки с ручным журналом на трансляциях не было/)).toBeInTheDocument();
+  expect(screen.queryByText(/расходится с ручным журналом до 17/)).toBeNull();
+  expect(screen.queryByText(/Неточные из видео чаще ошибочны/)).toBeNull();
+});
+
 it("shows one player's passes and accuracy in the player card", () => {
   render(<PlayerPasses stats={match()} playerId={P1} homeName="Север" awayName="Юг" name={name} />);
   expect(screen.getByText('6 · точных 5 / 6 · ≈83% · средняя длина 11,8 м')).toBeInTheDocument();

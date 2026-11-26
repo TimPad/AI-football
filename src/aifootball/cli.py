@@ -38,21 +38,32 @@ def cmd_detect(args, venue) -> None:
     if venue.ball_model:
         import cv2
 
-        from aifootball.perception.ball_detect import BallDetector
+        from aifootball.perception.ball_detect import BallDetector, PtzBallDetector
         from aifootball.perception.detect import pick_device
 
         cap = cv2.VideoCapture(str(args.video))
         frame_shape = (int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
         cap.release()
-        ball_detector = BallDetector(
-            args.models / venue.ball_model,
-            venue.require_polygon(),
-            frame_shape,
-            venue.ball_tile,
-            venue.ball_margin_px,
-            venue.conf_ball,
-            pick_device(),
-        )
+        if venue.is_ptz:
+            # Зона поиска мяча — по привязке кадров: у поворотной камеры register идёт до detect.
+            ball_detector = PtzBallDetector.for_venue(
+                args.models / venue.ball_model,
+                venue,
+                read_registration(args.match, venue),
+                frame_shape,
+                venue.conf_ball,
+                pick_device(),
+            )
+        else:
+            ball_detector = BallDetector(
+                args.models / venue.ball_model,
+                venue.require_polygon(),
+                frame_shape,
+                venue.ball_tile,
+                venue.ball_margin_px,
+                venue.conf_ball,
+                pick_device(),
+            )
     detections = detect_video(args.video, venue, args.models / venue.model, ball_detector=ball_detector)
     schemas.write(detections, args.match / 'detections.parquet', 'detections')
     schemas.write_json(
@@ -184,12 +195,13 @@ def cmd_render(args, venue) -> None:
 
 
 def cmd_run(args, venue) -> bool:
+    # Привязка поворотной камеры — до детекции: по ней своя модель мяча выбирает зону поиска на каждом кадре.
+    if venue.is_ptz and (args.redetect or not (args.match / 'registration.parquet').exists()):
+        cmd_register(args, venue)
     if args.redetect or not (args.match / 'detections.parquet').exists():
         cmd_detect(args, venue)
     else:
         print('detect: пропущен, detections.parquet уже есть (--redetect, чтобы пересчитать)')
-    if venue.is_ptz and (args.redetect or not (args.match / 'registration.parquet').exists()):
-        cmd_register(args, venue)
     cmd_track(args, venue)
     cmd_project(args, venue)
     cmd_metrics(args, venue)
