@@ -1,7 +1,9 @@
 import type { PublicAnalysis, PublicProtocol, TeamActionStats } from '../../api/domain';
+import { boardGoals } from './board';
 
 // Ход матча по минутам: давление (доля времени полевых игроков в чужой трети, из видеоанализа),
-// передачи команд из видео и голы из протокола. Минута — от начала своего тайма.
+// передачи команд из видео и голы из протокола (без голов в протоколе — с табло трансляции).
+// Минута — от начала своего тайма.
 export type Side = 'home' | 'away';
 export type FlowMinute = {
   half: number;
@@ -62,5 +64,6 @@ export function matchFlow(
     const m = at(e.period, Math.floor(e.elapsed_ms / 60000));
     if (m) m.goals.push(e.side as Side);
   }
+  for (const g of boardGoals(cv, protocol) ?? []) at(g.period, Math.floor(g.elapsedMs / 60000))?.goals.push(g.side);
   return minutes;
 }

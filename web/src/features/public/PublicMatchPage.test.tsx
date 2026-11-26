@@ -206,7 +206,8 @@ describe('public match page', () => {
     await waitFor(() => expect(paths).toContain('/api/v1/public/protocols/pp1'));
     expect(paths[0]).toBe(`/api/v1/public/matches/${A}`);
     expect(paths.every((p) => p.startsWith('/api/v1/public/'))).toBe(true);
-    expect(paths.some((p) => /analysis|ratings|\/players\/|\/versions/.test(p))).toBe(false);
+    // События берут ещё публичный видеоанализ — ради голов по табло трансляции.
+    expect(paths.some((p) => /ratings|\/players\/|\/versions/.test(p))).toBe(false);
     expect(document.querySelector('img')?.getAttribute('src')).toBe('/api/v1/public/catalog/team-logos/logo-h');
   });
   it('hides empty sections and does not request private history when no protocol is published', async () => {
@@ -315,5 +316,37 @@ describe('public match page', () => {
     show('/watch/matches/not-a-uuid');
     expect(screen.getByRole('alert')).toHaveTextContent('Неверная ссылка на матч.');
     expect(paths).toEqual([]);
+  });
+  it('shows goal minutes from the broadcast scoreboard when the protocol has only the score', async () => {
+    const scoreOnly = { ...protocol, protocol: { ...protocol.protocol, events: [] } };
+    const board = {
+      overlay: 'Мяч ТВ',
+      final: { left: 3, right: 2 },
+      goals: [
+        { side: 'left', period: 1, elapsed_s: 70 },
+        { side: 'right', period: 1, elapsed_s: 400 },
+        { side: 'left', period: 2, elapsed_s: 30 },
+        { side: 'right', period: 2, elapsed_s: 500 },
+        { side: 'left', period: 2, elapsed_s: 1100 },
+      ],
+    };
+    stub((path) =>
+      path.includes('/public/protocols/pp1')
+        ? { status: 200, body: scoreOnly }
+        : path.includes(`/public/matches/${A}/analysis`)
+          ? { status: 200, body: { ...analysis, scoreboard: board } }
+          : standard(path),
+    );
+    show(`/watch/matches/${A}?tab=events`);
+    const scorers = await screen.findByLabelText('Авторы голов');
+    expect(
+      within(scorers)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent?.trim()),
+    ).toEqual(["2' 21' 39'", "7' 29'"]);
+    expect(screen.getByText('Минуты голов — по табло трансляции')).toBeInTheDocument();
+    const list = screen.getByRole('list', { name: 'Лента матча' });
+    expect(within(list).getByText('Гол · 3 : 2')).toBeInTheDocument();
+    expect(within(list).getByText('Конец 1-го тайма · 1 : 1')).toBeInTheDocument();
   });
 });

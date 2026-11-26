@@ -23,9 +23,11 @@ describe('public section loader', () => {
   it('loads only public dependencies of the selected section', async () => {
     const paths = stub({ '/public/protocols/pp1': { status: 200, body: { number: 2 } } });
     const model = await loadPublicSection(match, 'events', null, new AbortController().signal);
-    expect(paths).toEqual(['/api/v1/public/protocols/pp1']);
+    // События: протокол и публичный видеоанализ (голы по табло), без оценок и действий.
+    expect(paths).toEqual(['/api/v1/public/protocols/pp1', '/api/v1/public/matches/m1/analysis']);
     expect(model.protocol).toEqual({ status: 'ready', value: { number: 2 } });
-    expect(model.cv).toBeUndefined();
+    expect(model.cv).toEqual({ status: 'absent' });
+    expect(model.ratings).toBeUndefined();
   });
   it('does not ask private routes when the protocol pointer is absent', async () => {
     const paths = stub({});
@@ -35,7 +37,7 @@ describe('public section loader', () => {
       null,
       new AbortController().signal,
     );
-    expect(paths).toEqual([]);
+    expect(paths).toEqual(['/api/v1/public/matches/m1/analysis']);
     expect(model.protocol).toEqual({ status: 'absent' });
   });
   it('keeps sources independent: 404 is absent, 500 is a block error', async () => {
@@ -59,8 +61,8 @@ describe('public section loader', () => {
     await loadPublicSection(match, 'players', 'edition-A', new AbortController().signal);
     expect(paths).toContain('/api/v1/public/matches/m1/ratings?snapshot_id=edition-A');
     expect(paths.some((p) => /understanding|evidence|\/players\//.test(p))).toBe(false);
-    // Видео берёт только протокол для авторов голов в шапке.
-    expect(SECTION_SOURCES.video).toEqual(['protocol']);
+    // Видео берёт только протокол и видеоанализ — для авторов или минут голов по табло в шапке.
+    expect(SECTION_SOURCES.video).toEqual(['protocol', 'cv']);
   });
   it('rejects when the context is aborted', async () => {
     stub({});

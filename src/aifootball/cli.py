@@ -392,6 +392,11 @@ def build_parser() -> argparse.ArgumentParser:
     job.add_argument(
         '--ball-model', help='Модель мяча из --models (например ball_hall/best.pt): включает передачи в пакете'
     )
+    job.add_argument(
+        '--scoreboard',
+        type=Path,
+        help='Шаблон табло трансляции (configs/broadcasts/*.json): голы и минуты по табло в отчёте',
+    )
 
     def add(name, video=False, models=False, seconds=False):
         p = sub.add_parser(name)
@@ -471,6 +476,7 @@ def main(argv=None) -> int:
                 vlm_max_input_tokens=args.vlm_max_input_tokens,
                 vlm_max_output_tokens=args.vlm_max_output_tokens,
                 ball_model=args.ball_model,
+                scoreboard=args.scoreboard,
             )
         except ValueError as exc:
             print(str(exc), file=sys.stderr)

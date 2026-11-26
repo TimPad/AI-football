@@ -69,4 +69,24 @@ describe('match flow', () => {
     expect(passes.querySelectorAll('rect.flow-bar.home')).toHaveLength(2);
     expect(passes.querySelectorAll('rect.flow-bar.away')).toHaveLength(1);
   });
+
+  it('places goals from the broadcast scoreboard when the protocol has none', () => {
+    const withBoard = {
+      ...cv,
+      scoreboard: {
+        overlay: 'Мяч ТВ',
+        final: { left: 1, right: 0 },
+        goals: [{ side: 'left', period: 1, elapsed_s: 70 }],
+      },
+    } as unknown as PublicAnalysis;
+    // В протоколе только счёт 0:1 — левая плашка трансляции оказалась гостями.
+    const scoreOnly = {
+      projection: { effective_score: { home: 0, away: 1 } },
+      protocol: { events: [] },
+    } as unknown as PublicProtocol;
+    const flow = matchFlow(withBoard, actions, scoreOnly);
+    expect(flow.map((m) => m.goals)).toEqual([[], ['away'], []]);
+    render(<MatchFlow minutes={flow} homeName="Север" awayName="Юг" goalsFrom="board" />);
+    expect(screen.getByText(/Точки — голы по табло трансляции/)).toBeInTheDocument();
+  });
 });

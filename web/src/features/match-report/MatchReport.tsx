@@ -10,6 +10,7 @@ import { PitchMap } from '../../components/pitch/PitchMap';
 import { publicForward } from '../navigation/publicContext';
 import { num, reason, roles } from '../ratings/types';
 import { canAttachCurrentCv, mergeRoster, type RosterRow } from './adapters';
+import { boardGoals } from './board';
 import { formatFact, STAT_GROUPS, type StatGroup } from './facts';
 import { matchFlow } from './flow';
 import { MatchFlow } from './MatchFlow';
@@ -397,7 +398,7 @@ export function MatchReport({
         <Block resource={model.protocol} absent="Протокол ещё не опубликован." onRetry={onRetry}>
           {(p) => (
             <>
-              <MatchTimeline value={p} />
+              <MatchTimeline value={p} board={boardGoals(ready(model.cv), p)} />
               {p.protocol.public_notes && <p className="public-note">{p.protocol.public_notes}</p>}
               <p className="muted small">
                 Подтверждённый протокол · версия {p.number}.
@@ -491,7 +492,7 @@ export function MatchReport({
           <section className="report-block">
             <h2>Ключевые события</h2>
             <Block resource={model.protocol} absent="" onRetry={onRetry}>
-              {(p) => <MatchTimeline value={p} keyOnly />}
+              {(p) => <MatchTimeline value={p} keyOnly board={boardGoals(ready(model.cv), p)} />}
             </Block>
           </section>
         )}
@@ -501,7 +502,12 @@ export function MatchReport({
             minutes.length > 0 && (
               <section className="report-block">
                 <h2>Ход матча</h2>
-                <MatchFlow minutes={minutes} homeName={match.home_name} awayName={match.away_name} />
+                <MatchFlow
+                  minutes={minutes}
+                  homeName={match.home_name}
+                  awayName={match.away_name}
+                  goalsFrom={boardGoals(ready(model.cv), protocol) ? 'board' : 'protocol'}
+                />
               </section>
             )
           );

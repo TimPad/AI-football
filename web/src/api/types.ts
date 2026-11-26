@@ -6727,6 +6727,7 @@ export interface components {
             }[];
             /** Players */
             players: components["schemas"]["PublicPlayer"][];
+            scoreboard?: components["schemas"]["PublicScoreboard"] | null;
         };
         /** PublicAppearance */
         PublicAppearance: {
@@ -7220,6 +7221,20 @@ export interface components {
             home: number | null;
             /** Away */
             away: number | null;
+        };
+        /**
+         * PublicScoreboard
+         * @description Голы с табло трансляции: стороны — плашки слева и справа, не команды протокола.
+         */
+        PublicScoreboard: {
+            /** Overlay */
+            overlay: string;
+            /** Final */
+            final: {
+                [key: string]: number;
+            };
+            /** Goals */
+            goals: components["schemas"]["ScoreboardGoal"][];
         };
         /** PublicShootoutAttempt */
         PublicShootoutAttempt: {
@@ -8268,6 +8283,18 @@ export interface components {
             /** Players */
             players: components["schemas"]["PlayerMetric"][];
             auto_sources?: components["schemas"]["AutoSources"] | null;
+        };
+        /** ScoreboardGoal */
+        ScoreboardGoal: {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "left" | "right";
+            /** Period */
+            period: number;
+            /** Elapsed S */
+            elapsed_s: number;
         };
         /** SectionView */
         SectionView: {

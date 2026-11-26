@@ -4,13 +4,13 @@ import type { ReportModel, Resource } from '../match-report/model';
 
 type Source = 'protocol' | 'cv' | 'ratings' | 'actions';
 // Каждому разделу — только его публичные зависимости.
-// Протокол нужен везде: из него шапка берёт авторов голов.
+// Протокол и видеоанализ нужны везде: из них шапка берёт авторов голов или минуты голов по табло.
 export const SECTION_SOURCES: Record<string, Source[]> = {
   overview: ['protocol', 'cv', 'ratings', 'actions'],
-  events: ['protocol'],
+  events: ['protocol', 'cv'],
   players: ['protocol', 'cv', 'ratings'],
   stats: ['protocol', 'cv', 'ratings', 'actions'],
-  video: ['protocol'],
+  video: ['protocol', 'cv'],
 };
 
 async function resource<T>(load: () => Promise<T | null>): Promise<Resource<T>> {

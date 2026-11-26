@@ -1,5 +1,6 @@
 import type { PublicAnalysis, PublicMatch, PublicProtocol, TeamActionStats } from '../../api/domain';
 import { type Shot, ShotMap } from '../../components/pitch/ShotMap';
+import { boardGoals } from './board';
 import { matchFlow } from './flow';
 import { MatchFlow } from './MatchFlow';
 import type { ReportModel, Resource } from './model';
@@ -185,7 +186,12 @@ export function MatchStats({
           <div className="stat-grid">
             {flow.length > 0 && (
               <StatCard title="Ход матча" wide>
-                <MatchFlow minutes={flow} homeName={match.home_name} awayName={match.away_name} />
+                <MatchFlow
+                  minutes={flow}
+                  homeName={match.home_name}
+                  awayName={match.away_name}
+                  goalsFrom={boardGoals(cv, protocol) ? 'board' : 'protocol'}
+                />
               </StatCard>
             )}
             {actions && actions.pitch && actions.rows.some((r) => r.category === 'shots') && (

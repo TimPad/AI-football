@@ -189,6 +189,20 @@ class PublicPlayer(BaseModel):
     metrics: PublicMetrics
 
 
+class ScoreboardGoal(BaseModel):
+    side: Literal['left', 'right']
+    period: int
+    elapsed_s: float
+
+
+class PublicScoreboard(BaseModel):
+    """Голы с табло трансляции: стороны — плашки слева и справа, не команды протокола."""
+
+    overlay: str
+    final: dict[Literal['left', 'right'], int]
+    goals: list[ScoreboardGoal]
+
+
 class PublicAnalysis(BaseModel):
     match_id: UUID
     run_id: UUID
@@ -201,6 +215,7 @@ class PublicAnalysis(BaseModel):
     partial: bool
     periods: list[dict[str, Any]]
     players: list[PublicPlayer]
+    scoreboard: PublicScoreboard | None = None
 
 
 class UnderstandingReviewUpdate(Mutation):

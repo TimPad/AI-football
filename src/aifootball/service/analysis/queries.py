@@ -220,6 +220,17 @@ def get_public_analysis(db, match_id):
         )
     pitch = {key: run.report['pitch'][key] for key in ('length_m', 'width_m', 'cell_m')}
     pitch['orientation'] = run.report['pitch'].get('orientation', 'camera')
+    # Голы с табло трансляции: время на записи не нужно, сторону плашки с командой сопоставляет сайт.
+    board = run.report.get('scoreboard')
+    scoreboard = (
+        {
+            'overlay': board['overlay'],
+            'final': board['final'],
+            'goals': [{k: g[k] for k in ('side', 'period', 'elapsed_s')} for g in board['goals']],
+        }
+        if board
+        else None
+    )
     return {
         'match_id': match_id,
         'run_id': run.id,
@@ -232,4 +243,5 @@ def get_public_analysis(db, match_id):
         'partial': run.checks['partial'],
         'periods': periods,
         'players': players,
+        'scoreboard': scoreboard,
     }

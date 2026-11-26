@@ -38,12 +38,14 @@ export function MatchHeader({
   resultNote,
   tournamentHref,
   scorers,
+  scorersNote,
   children,
 }: {
   match: PublicMatch;
   resultNote?: string | null;
   tournamentHref?: string;
   scorers?: { home: HeaderScorer[]; away: HeaderScorer[] } | null;
+  scorersNote?: string | null;
   children?: ReactNode;
 }) {
   const location = useLocation();
@@ -103,6 +105,7 @@ export function MatchHeader({
           </ul>
         </div>
       )}
+      {scorers && scorersNote && <p className="match-scorers-note">{scorersNote}</p>}
       {children}
     </header>
   );
