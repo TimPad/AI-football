@@ -1,15 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
 import { downloadJson, ErrorBox } from '../../components/ui';
 import { useDraft } from '../protocol/drafts';
-import { baseGroups, dropConflicts, identityConflicts } from './candidates';
-import { PlayerCandidates } from './PlayerCandidates';
+import { dropConflicts, identityConflicts } from './candidates';
+import { IdentityGrid } from './IdentityGrid';
+import { IdentityQueue } from './IdentityQueue';
+import { identityFingerprint } from './identityBase';
+import { PlayersPanel } from './PlayersPanel';
 import { filteredCount, TRACK_FILTERS, type TrackFilter, trackState, visibleTrackIds } from './reviewQueue';
-import { SimilarPicker } from './SimilarPicker';
 import type { IdentitySuggestion } from './understandingTypes';
 import './review.css';
 
-type Review = { side_map: AnalysisRun['side_map']; assignments: AnalysisAssignment[] };
+// Решение сохраняется само через 2 с после последнего изменения; null — без автосохранения.
+const AUTOSAVE_MS = 2000;
+type Review = { side_map: AnalysisRun['side_map']; assignments: AnalysisAssignment[]; absent_players?: string[] };
 function valid(v: unknown): v is Review {
   if (!v || typeof v !== 'object') return false;
   const r = v as Review;
@@ -23,7 +27,9 @@ function valid(v: unknown): v is Review {
         Number.isInteger(a.track_id) &&
         (a.player_id == null || typeof a.player_id === 'string') &&
         (a.excluded_reason == null || typeof a.excluded_reason === 'string'),
-    )
+    ) &&
+    (r.absent_players === undefined ||
+      (Array.isArray(r.absent_players) && r.absent_players.every((x) => typeof x === 'string')))
   );
 }
 type View = { filter?: TrackFilter; page: number; item: number | null };
@@ -38,6 +44,7 @@ export function IdentityReview({
   onEvidence,
   view: external,
   onView,
+  autosaveMs = AUTOSAVE_MS,
 }: {
   run: AnalysisRun;
   actorId: string;
@@ -48,24 +55,24 @@ export function IdentityReview({
   onEvidence?: (ids: string[]) => void;
   view?: View;
   onView?: (patch: Partial<View>) => void;
+  autosaveMs?: number | null;
 }) {
-  const draft = useDraft<Review>(
-    `aifootball:identity:v1:${actorId}:${run.id}`,
-    { side_map: run.side_map, assignments: run.assignments },
-    valid,
-  );
+  const server = { side_map: run.side_map, assignments: run.assignments, absent_players: run.absent_players ?? [] };
+  const serverBase = identityFingerprint(server);
+  const draft = useDraft<Review>(`aifootball:identity:v1:${actorId}:${run.id}`, server, valid, serverBase);
+  // Черновик начат с другой версии сервера и с нынешней не совпадает: страница показывает черновик, а его
+  // сохранение заменит версию сервера целиком. Своё сохранение сюда не попадает — сервер уже равен черновику.
+  const stale =
+    draft.dirty && !draft.corrupt && draft.base !== serverBase && identityFingerprint(draft.value) !== serverBase;
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const [local, setLocal] = useState<View>({ page: 1, item: null });
   const view = external ?? local;
   const navigate = onView ?? ((patch: Partial<View>) => setLocal((v) => ({ ...v, ...patch })));
   const [queueOpen, setQueueOpen] = useState(false);
-  // Есть признаки внешности — по умолчанию подбор похожих фрагментов; есть склейка — кандидаты-игроки;
-  // старые версии открываются по фрагментам.
+  // Есть признаки цвета — очередь; старые версии без признаков открываются по фрагментам, как раньше.
   const looks = run.tracks.some((t) => t.appearance);
-  const [mode, setMode] = useState<'similar' | 'players' | 'tracks'>(
-    looks ? 'similar' : run.groups?.length ? 'players' : 'tracks',
-  );
+  const [mode, setMode] = useState<'queue' | 'grid' | 'players' | 'tracks'>(looks ? 'queue' : 'tracks');
   useEffect(() => {
     onDirty?.(draft.dirty);
   }, [draft.dirty, onDirty]);
@@ -94,8 +101,12 @@ export function IdentityReview({
       assignments: draft.value.assignments.map((a) => (a.track_id === track_id ? { ...a, excluded_reason: value } : a)),
     });
   }
-  // Сохраняется весь черновик, включая строки вне текущего фильтра и страницы.
+  // Сохраняется весь черновик, включая строки вне текущего фильтра и страницы. Одна запись за раз: кнопка и
+  // автосохранение не отправляют одну ревизию дважды.
+  const saving = useRef(false);
   async function save() {
+    if (saving.current) return;
+    saving.current = true;
     setBusy(true);
     setError(undefined);
     try {
@@ -105,12 +116,22 @@ export function IdentityReview({
     } catch (e) {
       setError(e);
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   }
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  useEffect(() => {
+    if (autosaveMs == null || !editable || !draft.dirty || draft.corrupt || stale || error) return;
+    const timer = setTimeout(() => void saveRef.current(), autosaveMs);
+    return () => clearTimeout(timer);
+  }, [autosaveMs, editable, draft.dirty, draft.corrupt, draft.value, stale, error]);
   const sidesChanged = JSON.stringify(draft.value.side_map) !== JSON.stringify(run.side_map);
   const disabled = !editable || busy || draft.corrupt;
   const assignments = draft.value.assignments;
+  const absent = draft.value.absent_players ?? [];
+  const setAssignments = (next: AnalysisAssignment[]) => change({ ...draft.value, assignments: next });
   const filter: TrackFilter = view.filter ?? (filteredCount(run, 'unassigned', assignments) ? 'unassigned' : 'all');
   const total = filteredCount(run, filter, assignments);
   const pages = Math.max(1, Math.ceil(total / PAGE));
@@ -145,6 +166,26 @@ export function IdentityReview({
   const conflicts = identityConflicts(run, assignments);
   return (
     <section className="identity-review" aria-label="Сопоставление игроков">
+      {stale && (
+        <div className="warning stale-draft" role="alert" aria-label="Черновик устарел">
+          <span>
+            Сопоставление изменилось на сервере после того, как начат черновик этого браузера: на сервере решений по
+            фрагментам: {run.assignments.length}, в черновике: {draft.value.assignments.length}. Ниже показан черновик;
+            его сохранение заменит версию сервера целиком.
+          </span>
+          <span className="row">
+            <button
+              onClick={() => {
+                draft.clear();
+                onDirty?.(false);
+              }}
+            >
+              Показать версию сервера
+            </button>
+            <button onClick={draft.rebase}>Оставить черновик</button>
+          </span>
+        </div>
+      )}
       <div className="review-bar">
         <div className="form-grid side-map">
           {(['A', 'B'] as const).map((s) => (
@@ -174,15 +215,16 @@ export function IdentityReview({
           ))}
         </div>
         <div className="segmented review-mode" role="group" aria-label="Сопоставлять">
-          {looks && (
-            <button aria-pressed={mode === 'similar'} onClick={() => setMode('similar')}>
-              Подбор
-            </button>
-          )}
-          <button aria-pressed={mode === 'players'} onClick={() => setMode('players')}>
-            По игрокам · {baseGroups(run).length}
+          <button type="button" aria-pressed={mode === 'queue'} onClick={() => setMode('queue')}>
+            Очередь
           </button>
-          <button aria-pressed={mode === 'tracks'} onClick={() => setMode('tracks')}>
+          <button type="button" aria-pressed={mode === 'grid'} onClick={() => setMode('grid')}>
+            Сетка
+          </button>
+          <button type="button" aria-pressed={mode === 'players'} onClick={() => setMode('players')}>
+            Игроки
+          </button>
+          <button type="button" aria-pressed={mode === 'tracks'} onClick={() => setMode('tracks')}>
             По фрагментам · {run.tracks.length}
           </button>
         </div>
@@ -208,22 +250,31 @@ export function IdentityReview({
           </>
         )}
       </div>
-      {mode === 'similar' ? (
-        <SimilarPicker
+      {mode === 'queue' ? (
+        <IdentityQueue
           run={run}
           assignments={assignments}
           sideMap={draft.value.side_map}
+          absent={absent}
           disabled={disabled}
-          onChange={(next) => change({ ...draft.value, assignments: next })}
+          onChange={setAssignments}
+        />
+      ) : mode === 'grid' ? (
+        <IdentityGrid
+          run={run}
+          assignments={assignments}
+          sideMap={draft.value.side_map}
+          absent={absent}
+          disabled={disabled}
+          onChange={setAssignments}
         />
       ) : mode === 'players' ? (
-        <PlayerCandidates
+        <PlayersPanel
           run={run}
           assignments={assignments}
-          sideMap={draft.value.side_map}
+          absent={absent}
           disabled={disabled}
-          suggestions={sidesChanged ? [] : suggestions}
-          onChange={(next) => change({ ...draft.value, assignments: next })}
+          onChange={(next, nextAbsent) => change({ ...draft.value, assignments: next, absent_players: nextAbsent })}
         />
       ) : (
         <div className={`review-panes${queueOpen ? ' queue-open' : ''}`}>
@@ -460,7 +511,10 @@ export function IdentityReview({
       <ErrorBox error={error || draft.error} />
       {editable && (
         <div className="row">
-          <button className="primary" disabled={disabled} onClick={save}>
+          <span className="muted small" role="status" aria-label="Сохранение">
+            {busy ? 'сохраняется…' : draft.dirty ? 'изменения сохранятся сами' : 'сохранено'}
+          </span>
+          <button className="primary" disabled={disabled || stale} onClick={save}>
             Сохранить сопоставление
           </button>
           <button onClick={() => downloadJson(draft.raw ?? draft.value, 'сопоставление.json')}>Скачать черновик</button>

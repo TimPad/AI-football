@@ -3436,6 +3436,8 @@ export interface components {
             };
             /** Assignments */
             assignments: components["schemas"]["AssignmentInput"][];
+            /** Absent Players */
+            absent_players?: string[] | null;
         };
         /** AttachmentPayload */
         AttachmentPayload: {
@@ -8447,6 +8449,11 @@ export interface components {
             };
             /** Assignments */
             assignments: components["schemas"]["AssignmentInput"][];
+            /**
+             * Absent Players
+             * @default []
+             */
+            absent_players?: string[];
             /** Players */
             players: components["schemas"]["PlayerMetric"][];
             auto_sources?: components["schemas"]["AutoSources"] | null;
@@ -9711,6 +9718,8 @@ export interface components {
             has_metrics: boolean;
             /** Appearance */
             appearance?: string | null;
+            /** Embedding */
+            embedding?: string | null;
         };
         /** UnderstandingReviewUpdate */
         UnderstandingReviewUpdate: {

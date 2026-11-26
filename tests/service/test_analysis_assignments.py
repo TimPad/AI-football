@@ -19,16 +19,16 @@ def assignments(run, overlap=False):
     return [{'track_id': 1, 'player_id': home}, {'track_id': 2, 'player_id': home}, {'track_id': 3, 'player_id': away}]
 
 
-def save_assignments(client, match, run, values=None):
-    return client.put(
-        f'/api/v1/matches/{match["id"]}/analysis/runs/{run["id"]}/assignments',
-        json={
-            'request_id': str(uuid4()),
-            'expected_revision': run['revision'],
-            'side_map': {'A': 'home', 'B': 'away'},
-            'assignments': values if values is not None else assignments(run),
-        },
-    )
+def save_assignments(client, match, run, values=None, absent=None):
+    body = {
+        'request_id': str(uuid4()),
+        'expected_revision': run['revision'],
+        'side_map': {'A': 'home', 'B': 'away'},
+        'assignments': values if values is not None else assignments(run),
+    }
+    if absent is not None:
+        body['absent_players'] = absent
+    return client.put(f'/api/v1/matches/{match["id"]}/analysis/runs/{run["id"]}/assignments', json=body)
 
 
 def command(client, match, run, kind, request_id=None, analysis_revision=None):
@@ -150,3 +150,33 @@ def test_player_metrics_sum_short_fragments_too(admin_client, analytics_match):
     # Треки 1 и 2 из таблицы игроков (210 м за 180 с) и короткий фрагмент 4 (20 м за 9 с, скорость не измерена).
     assert (metrics['distance_m'], metrics['observed_s'], metrics['vmax_ms']) == (230, 189, 2)
     assert metrics['missing_track_ids'] == []
+
+
+def test_absent_players_are_kept_and_get_no_fragments(admin_client, analytics_match):
+    run = import_run(admin_client, analytics_match)
+    home = [p['player_id'] for p in run['context']['rosters'] if p['side'] == 'home']
+    saved = save_assignments(admin_client, analytics_match, run, absent=[home[1]])
+    assert saved.status_code == 200, saved.text
+    run = saved.json()
+    assert run['absent_players'] == [home[1]]
+    # Без поля участие не меняется.
+    kept = save_assignments(admin_client, analytics_match, run)
+    assert kept.status_code == 200, kept.text
+    run = kept.json()
+    assert run['absent_players'] == [home[1]]
+    refused = save_assignments(admin_client, analytics_match, run, [{'track_id': 1, 'player_id': home[1]}])
+    assert refused.status_code == 422
+    assert refused.json()['error']['code'] == 'absent_player'
+    stranger = save_assignments(admin_client, analytics_match, run, absent=[str(uuid4())])
+    assert stranger.status_code == 422
+    assert stranger.json()['error']['code'] == 'foreign_player'
+
+
+def test_only_the_newest_version_takes_labelling(admin_client, analytics_match):
+    old = import_run(admin_client, analytics_match)
+    new = import_run(admin_client, analytics_match)
+    stale = save_assignments(admin_client, analytics_match, old)
+    assert stale.status_code == 409
+    assert stale.json()['error']['code'] == 'stale_analysis_run'
+    assert stale.json()['error']['fields'] == {'newest_run_id': new['id']}
+    assert save_assignments(admin_client, analytics_match, new).status_code == 200

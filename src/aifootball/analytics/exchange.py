@@ -51,6 +51,8 @@ class ExchangeError(ValueError):
 
 # Байт в признаке цвета фрагмента: perception.appearance.APPEARANCE_DIMS.
 APPEARANCE_BYTES = 156
+# Байт в признаке SigLIP 2 фрагмента: perception.appearance.EMBEDDING_DIMS.
+EMBEDDING_BYTES = 768
 
 
 @dataclass(frozen=True)
@@ -222,6 +224,19 @@ def appearance_ok(value) -> bool:
 
     try:
         return isinstance(value, str) and len(base64.b64decode(value, validate=True)) == APPEARANCE_BYTES
+    except (binascii.Error, ValueError):
+        return False
+
+
+def embedding_ok(value) -> bool:
+    """Признак SigLIP 2 фрагмента (perception.appearance): EMBEDDING_BYTES байт в base64; поле необязательное."""
+    if value is None:
+        return True
+    import base64
+    import binascii
+
+    try:
+        return isinstance(value, str) and len(base64.b64decode(value, validate=True)) == EMBEDDING_BYTES
     except (binascii.Error, ValueError):
         return False
 
@@ -432,6 +447,7 @@ def validate_result(source, limits=Limits()):
                 'Нет миниатюры в пакете',
             )
             ensure(appearance_ok(track.get('appearance')), 'Неверный признак внешности фрагмента')
+            ensure(embedding_ok(track.get('embedding')), 'Неверный признак SigLIP фрагмента')
             index[tid] = track
         validate_groups(tracks.get('groups', []), index)
         ensure(isinstance(report['periods'], list) and 0 < len(report['periods']) <= 20, 'Неверное число периодов')

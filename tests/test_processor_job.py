@@ -139,3 +139,58 @@ def test_package_preserves_missing_metrics_with_reasons(venue, tmp_path, mode):
     else:
         assert primary['teams']['B']['distance_m'] is None
         assert primary['teams']['B']['metric_notes']['distance_m']
+
+
+def _fake_crops(monkeypatch):
+    import numpy as np
+
+    crop = np.full((64, 32, 3), (0, 0, 200), np.uint8)
+    monkeypatch.setattr('aifootball.perception.person_crops.pick_frames', lambda *a, **k: {1: []})
+    monkeypatch.setattr('aifootball.perception.person_crops.extract_crops', lambda video, picks: {1: [crop, crop]})
+    monkeypatch.setattr('aifootball.cli.read_registration', lambda *a: None)
+
+
+def test_fragment_gets_a_siglip_embedding_when_weights_exist(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from aifootball.perception.appearance import EMBEDDING_DIMS, decode_embedding
+    from aifootball.processor.job import appearance
+
+    _fake_crops(monkeypatch)
+    unit = np.eye(EMBEDDING_DIMS)[0]
+    monkeypatch.setattr(
+        'aifootball.perception.appearance.siglip_embedder', lambda models: lambda images: [unit for _ in images]
+    )
+    looks, warning = appearance(
+        tmp_path / 'v.mp4',
+        pl.DataFrame({'track_id': [1]}),
+        SimpleNamespace(overlay=None),
+        tmp_path,
+        {1},
+        (100, 100),
+        models=tmp_path,
+    )
+    assert warning is None
+    colour, embedding = looks[1]
+    assert colour and decode_embedding(embedding)[0] > 0.999
+
+
+def test_without_weights_the_package_says_so_and_has_no_embedding(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    from aifootball.processor.job import appearance
+
+    _fake_crops(monkeypatch)
+    looks, warning = appearance(
+        tmp_path / 'v.mp4',
+        pl.DataFrame({'track_id': [1]}),
+        SimpleNamespace(overlay=None),
+        tmp_path,
+        {1},
+        (100, 100),
+        models=tmp_path,
+    )
+    assert looks[1][1] is None
+    assert 'SigLIP' in warning

@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
+from aifootball.service.analysis.carry import carry_labelling, newest_run
 from aifootball.service.analysis.context import build_context, context_hash
 from aifootball.service.analysis.jobs import prior_command, remember
 from aifootball.service.analysis.models import AnalysisJob, AnalysisRun
@@ -58,6 +59,7 @@ def import_result(db, match_id, actor_id, request_id, result, root, created_path
         )
     )
     if run is None:
+        previous = newest_run(db, match_id)
         key, created = put_package(root, result)
         if created:
             created_paths.append(created)
@@ -77,6 +79,7 @@ def import_result(db, match_id, actor_id, request_id, result, root, created_path
         )
         db.add(run)
         db.flush()
+        carry_labelling(db, run, previous, job)
         from aifootball.service.analysis.team_review.queries import obsolete_prior_tasks
 
         obsolete_prior_tasks(db, run)

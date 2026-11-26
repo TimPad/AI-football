@@ -318,29 +318,37 @@ def ball_events(artifacts, venue, state, spans, track_ids, models=None):
     }, None
 
 
-def appearance(video_path, tracks, venue, artifacts, track_ids, frame_size):
-    """Признак цвета фрагментов для подбора игроков в кабинете: {трек: base64}. Без годных кадров признака нет.
+def appearance(video_path, tracks, venue, artifacts, track_ids, frame_size, models=None):
+    """Признаки фрагментов для разметки в кабинете: {трек: (цвет base64, SigLIP 2 base64 или None)} и предупреждение.
 
-    Сборка людей по этому признаку не проходит проверку (docs/2026-11-23-people-clustering.md: точность склеек 0,50),
-    поэтому он только упорядочивает подсказки похожих фрагментов, а решает человек.
+    Цвет упорядочивает подсказки похожих фрагментов; SigLIP 2 нужен модели матча кабинета. Сборка людей по
+    внешности без человека проверку не проходит (docs/2026-11-23-people-clustering.md) — решает человек.
     """
     import polars as pl
 
     from aifootball.analytics.people import mean_feature
     from aifootball.cli import read_registration
     from aifootball.geometry.registration import frame_homographies
-    from aifootball.perception.appearance import color_feature, encode
-    from aifootball.perception.person_crops import extract_crops, pick_frames
+    from aifootball.perception import appearance as features
+    from aifootball.perception import person_crops
 
     registration = read_registration(Path(artifacts), venue)
     usable = set(frame_homographies(registration)) if registration is not None else None
-    picks = pick_frames(tracks.filter(pl.col('track_id').is_in(sorted(track_ids))), frame_size, usable, venue.overlay)
+    picks = person_crops.pick_frames(
+        tracks.filter(pl.col('track_id').is_in(sorted(track_ids))), frame_size, usable, venue.overlay
+    )
+    embed = features.siglip_embedder(models)
     out = {}
-    for tid, images in extract_crops(Path(video_path), picks).items():
-        feature = mean_feature([color_feature(i) for i in images])
-        if feature is not None:
-            out[tid] = encode(feature)
-    return out
+    for tid, images in person_crops.extract_crops(Path(video_path), picks).items():
+        colour = mean_feature([features.color_feature(i) for i in images])
+        if colour is None:
+            continue
+        vector = mean_feature(embed(images)) if embed else None
+        out[tid] = (features.encode(colour), features.encode_embedding(vector) if vector is not None else None)
+    warning = None
+    if models is not None and embed is None and out:
+        warning = 'Признак SigLIP фрагментов не рассчитан: нет весов в models/hf — модель матча в кабинете недоступна'
+    return out, warning
 
 
 def package_result(
@@ -463,10 +471,15 @@ def package_result(
         period['fragments'] = [
             {**f, 'team': team_of[f['track_id']]} for f in period.get('fragments', []) if f['track_id'] in playable
         ]
-    looks = appearance(video_path, tracks, venue, artifacts, playable, (source['width'], source['height']))
+    looks, look_warning = appearance(
+        video_path, tracks, venue, artifacts, playable, (source['width'], source['height']), models
+    )
     for track in indexed:
         if track['track_id'] in looks:
-            track['appearance'] = looks[track['track_id']]
+            colour, embedding = looks[track['track_id']]
+            track['appearance'] = colour
+            if embedding:
+                track['embedding'] = embedding
     files = {}
     for track in indexed:
         image = images.get(str(track['track_id']))
@@ -483,6 +496,7 @@ def package_result(
     warnings = (
         (['Частичная запись или неполное покрытие обработки'] if partial else [])
         + ([events_warning] if events_warning else [])
+        + ([look_warning] if look_warning else [])
         + camera_warnings
     )
     errors = ([] if checked['passed'] else ['Проверки координат/скоростей не пройдены']) + camera_errors

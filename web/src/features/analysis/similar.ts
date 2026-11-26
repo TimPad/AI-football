@@ -1,5 +1,5 @@
-import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
-import { type Candidate, decisionOf, intervalsClash } from './candidates';
+import type { AnalysisRun } from '../../api/domain';
+import { intervalsClash } from './candidates';
 
 // Подбор похожих фрагментов игроку. Похожесть — косинус признаков цвета одежды и обуви из пакета
 // (perception.appearance: 156 байт 0..255 в base64). Сборка людей по ней не прошла проверку
@@ -7,7 +7,6 @@ import { type Candidate, decisionOf, intervalsClash } from './candidates';
 
 type Track = AnalysisRun['tracks'][number];
 export type Look = Float64Array;
-export type Suggestion = { candidate: Candidate; score: number | null };
 
 const seconds = (t: Track) => t.intervals.reduce((s, [a, b]) => s + b - a, 0);
 
@@ -17,6 +16,20 @@ export function decodeLook(text: string): Look {
   let norm = 0;
   for (let i = 0; i < bin.length; i++) {
     v[i] = bin.charCodeAt(i) / 255;
+    norm += v[i] * v[i];
+  }
+  norm = Math.sqrt(norm) || 1;
+  return v.map((x) => x / norm);
+}
+
+// Признак SigLIP 2 из пакета: 768 байт со знаком (−127…127) в base64, обратно в нормированный вектор.
+export function decodeEmbedding(text: string): Look {
+  const bin = atob(text);
+  const v = new Float64Array(bin.length);
+  let norm = 0;
+  for (let i = 0; i < bin.length; i++) {
+    const b = bin.charCodeAt(i);
+    v[i] = (b > 127 ? b - 256 : b) / 127;
     norm += v[i] * v[i];
   }
   norm = Math.sqrt(norm) || 1;
@@ -33,17 +46,21 @@ export function cosine(a: Look, b: Look): number {
 export function lookIndex(run: AnalysisRun) {
   const tracks = new Map(run.tracks.map((t) => [t.track_id, t]));
   const looks = new Map<number, Look>();
-  for (const t of run.tracks) if (t.appearance) looks.set(t.track_id, decodeLook(t.appearance));
-  return { tracks, looks };
+  const embeds = new Map<number, Look>();
+  for (const t of run.tracks) {
+    if (t.appearance) looks.set(t.track_id, decodeLook(t.appearance));
+    if (t.embedding) embeds.set(t.track_id, decodeEmbedding(t.embedding));
+  }
+  return { tracks, looks, embeds };
 }
 export type LookIndex = ReturnType<typeof lookIndex>;
 
 // Средний признак фрагментов с весом по времени на площадке; без признаков — null.
-export function meanLook(index: LookIndex, ids: number[]): Look | null {
+function meanOf(index: LookIndex, ids: number[], source: Map<number, Look>): Look | null {
   let out: Look | null = null;
   let total = 0;
   for (const id of ids) {
-    const v = index.looks.get(id);
+    const v = source.get(id);
     const t = index.tracks.get(id);
     if (!v || !t) continue;
     const w = seconds(t);
@@ -55,50 +72,11 @@ export function meanLook(index: LookIndex, ids: number[]): Look | null {
   const norm = Math.sqrt(cosine(out, out)) || 1;
   return out.map((x) => x / norm);
 }
+export const meanLook = (index: LookIndex, ids: number[]) => meanOf(index, ids, index.looks);
+export const meanEmbed = (index: LookIndex, ids: number[]) => meanOf(index, ids, index.embeds);
 
 // Одновременно видны — разные люди (правило сервера, candidates.intervalsClash).
 export function clash(index: LookIndex, a: number[], b: number[]): boolean {
   const spans = (ids: number[]) => ids.flatMap((id) => index.tracks.get(id)?.intervals ?? []);
   return intervalsClash(spans(a), spans(b));
-}
-
-// Подсказки игроку: неназначенные кандидаты его команды, не видные одновременно с его фрагментами и не отклонённые
-// для него, по убыванию похожести. Без фрагментов у игрока — самые длинные неназначенные: с них начинается подбор.
-export function suggest(
-  index: LookIndex,
-  candidates: Candidate[],
-  team: 'A' | 'B',
-  own: number[],
-  assignments: AnalysisAssignment[],
-  rejected: Set<string>,
-  limit: number,
-): Suggestion[] {
-  const open = candidates.filter(
-    (c) => c.team === team && !rejected.has(c.key) && decisionOf(assignments, c.trackIds).kind === 'none',
-  );
-  const byTime = (a: Suggestion, b: Suggestion) => b.candidate.seconds - a.candidate.seconds;
-  if (!own.length)
-    return open
-      .map((candidate) => ({ candidate, score: null }))
-      .sort(byTime)
-      .slice(0, limit);
-  const mine = meanLook(index, own);
-  return open
-    .filter((c) => !clash(index, own, c.trackIds))
-    .map((candidate) => {
-      const look = meanLook(index, candidate.trackIds);
-      return { candidate, score: mine && look ? cosine(mine, look) : null };
-    })
-    .sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || byTime(a, b))
-    .slice(0, limit);
-}
-
-// Доля игрового времени команды, уже отданная игрокам.
-export function assignedShare(candidates: Candidate[], team: 'A' | 'B', assignments: AnalysisAssignment[]): number {
-  const mine = candidates.filter((c) => c.team === team);
-  const total = mine.reduce((s, c) => s + c.seconds, 0);
-  const done = mine
-    .filter((c) => decisionOf(assignments, c.trackIds).kind === 'player')
-    .reduce((s, c) => s + c.seconds, 0);
-  return total ? done / total : 0;
 }

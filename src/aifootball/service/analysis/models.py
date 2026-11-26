@@ -35,6 +35,8 @@ class AnalysisRun(Entity, Base):
     identity_workflow = Column(String(10), nullable=False, default='admin', server_default='admin')
     revision = Column(Integer, nullable=False, default=0)
     side_map = Column(JSONB, nullable=False, default=lambda: {'A': 'home', 'B': 'away'})
+    # Игроки состава, не участвовавшие в матче по разметке: им нельзя назначать фрагменты (миграция 0030).
+    absent_players = Column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
     confirmed_by = Column(Uuid, ForeignKey('admins.id'))
     __table_args__ = (
         Index(

@@ -17,6 +17,8 @@ type Track = AnalysisRun['tracks'][number];
 // Дубль трекера при передаче игрока между треками — до секунды (как OVERLAP_S на сервере).
 export const HANDOFF_S = 1;
 export const SHORT_S = 10;
+// Время записи «м:сс» для подписей кандидатов.
+export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 const playable = (t: Track) => !!t.team && (t.role === 'player' || t.role === 'goalkeeper');
 const seconds = (t: Track) => t.intervals.reduce((s, [a, b]) => s + (b - a), 0);

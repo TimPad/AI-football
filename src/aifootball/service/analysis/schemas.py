@@ -43,6 +43,8 @@ class AssignmentInput(BaseModel):
 class AssignmentsUpdate(Mutation):
     side_map: dict[str, Literal['home', 'away']]
     assignments: list[AssignmentInput] = Field(max_length=50000)
+    # None — участие не меняется (капитанские задания и старые клиенты); список — заменить целиком.
+    absent_players: list[UUID] | None = Field(default=None, max_length=200)
 
 
 from typing import Any  # noqa: E402
@@ -93,6 +95,8 @@ class TrackView(BaseModel):
     has_metrics: bool
     # Признак цвета для подбора похожих фрагментов (base64, analytics.exchange.APPEARANCE_BYTES байт); у старых — нет.
     appearance: str | None = None
+    # Признак SigLIP 2 для модели матча (base64, analytics.exchange.EMBEDDING_BYTES байт); у старых пакетов — нет.
+    embedding: str | None = None
 
 
 class MetricValues(BaseModel):
@@ -142,6 +146,7 @@ class RunView(RunSummary):
     groups: list[list[int]] = []  # кандидаты-игроки из склейки треков; старые прогоны — без групп
     side_map: dict[str, Literal['home', 'away']]
     assignments: list[AssignmentInput]
+    absent_players: list[UUID] = []
     players: list[PlayerMetric]
     auto_sources: AutoSources | None = None
 

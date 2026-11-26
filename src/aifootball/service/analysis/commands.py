@@ -87,6 +87,7 @@ def mutate(db, match_id, run_id, actor_id, data, kind):
             checks=source.checks,
             side_map=source.side_map,
             side_map_verified=source.side_map_verified,
+            absent_players=list(source.absent_players or []),
             understanding=deepcopy(source.understanding),
             identity_workflow=source.identity_workflow,
             events=deepcopy(source.events),

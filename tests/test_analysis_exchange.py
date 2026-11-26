@@ -406,3 +406,33 @@ def test_scoreboard_in_the_report_is_validated(tmp_path, board, error):
     else:
         with pytest.raises(ExchangeError, match=error):
             validate_result(path)
+
+
+@pytest.mark.parametrize(
+    'value,ok',
+    [
+        (base64.b64encode(bytes(768)).decode(), True),
+        (base64.b64encode(bytes(767)).decode(), False),
+        ('не base64', False),
+    ],
+)
+def test_fragment_embedding_is_768_bytes_of_base64(tmp_path, value, ok):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+
+    def mutate(m, r, t, c):
+        t['tracks'][0]['embedding'] = value
+
+    path = tmp_path / 'result.zip'
+    path.write_bytes(result_zip(mutate=mutate))
+    if ok:
+        assert validate_result(path).tracks['tracks'][0]['embedding'] == value
+    else:
+        with pytest.raises(ExchangeError, match='признак SigLIP'):
+            validate_result(path)
+
+
+def test_embedding_size_matches_the_feature():
+    from aifootball.analytics.exchange import EMBEDDING_BYTES
+    from aifootball.perception.appearance import EMBEDDING_DIMS
+
+    assert EMBEDDING_BYTES == EMBEDDING_DIMS

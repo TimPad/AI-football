@@ -240,3 +240,38 @@ it('tells which rating versions the confirmed video produced', async () => {
   );
   expect(screen.getByRole('link', { name: 'участие №2' })).toHaveAttribute('href', '?tab=participation');
 });
+
+it('labels players only in the newest version of the match', async () => {
+  const checks = { ...run.checks, critical_errors: [] };
+  const older = { ...run, checks, id: 'old', created_at: '2026-10-12T10:00:00Z' };
+  const newer = { ...run, checks, id: 'new', created_at: '2026-10-13T10:00:00Z' };
+  const overview = {
+    match_id: 'match',
+    analysis_revision: 0,
+    active_run_id: null,
+    published_run_id: null,
+    jobs: [],
+    runs: [newer, older],
+  };
+  vi.mocked(api).mockImplementation(async (path) => {
+    const p = String(path);
+    if (p.endsWith('/team-review-tasks')) return { items: [], total: 0 };
+    if (p.endsWith('/team-confirmations')) return { workflow: 'admin', sides: [] };
+    if (p.endsWith('/runs/old')) return older;
+    if (p.endsWith('/runs/new')) return newer;
+    return overview;
+  });
+  const update = vi.fn();
+  render(
+    <MemoryRouter>
+      <VideoAnalysisTab
+        matchId="match"
+        actorId="actor"
+        canManage
+        nav={{ params: new URLSearchParams('run_id=old'), update }}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole('button', { name: 'Перейти к разметке' }));
+  expect(update).toHaveBeenCalledWith(expect.objectContaining({ run_id: 'new' }));
+});
