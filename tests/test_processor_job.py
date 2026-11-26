@@ -99,6 +99,81 @@ def test_job_rejects_changed_cv_geometry_and_source_resolution(venue, tmp_path):
         read_job(path)
 
 
+def rewritten_job(path, out, change):
+    """Тот же пакет задания с изменённым контекстом: новое задание со своим отпечатком контекста."""
+    from hashlib import sha256
+
+    with ZipFile(path) as source:
+        files = {n: source.read(n) for n in source.namelist()}
+    job = json.loads(files['job.json'])
+    change(job['context'])
+    job['job_id'] = str(uuid4())
+    job['context_hash'] = sha256(
+        json.dumps(job['context'], sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()
+    ).hexdigest()
+    files['job.json'] = json.dumps(job).encode()
+    with ZipFile(out, 'w') as archive:
+        for name, raw in files.items():
+            archive.writestr(name, raw)
+    return out, job
+
+
+def test_artifacts_of_previous_job_are_repackaged_when_only_the_roster_changed(venue, tmp_path):
+    from aifootball.analytics.exchange import ExchangeError, validate_result
+    from aifootball.processor.job import process_job, read_job, source_for_job
+
+    old_path, old = job_package(venue, tmp_path)
+    player = {'player_id': str(uuid4()), 'side': 'home', 'display_name': 'Игрок', 'shirt_number': '8'}
+    new_path, new = rewritten_job(old_path, tmp_path / 'job-roster.zip', lambda c: c['rosters'].append(player))
+    teams_path, _ = rewritten_job(
+        old_path, tmp_path / 'job-teams.zip', lambda c: c['teams']['home'].update(name='Другие')
+    )
+    video = write_video(tmp_path / 'clip.mp4', n_frames=140, fps=2, size=(400, 200))
+    state, tracks = synthetic_match(seconds=65, sprint=False)
+    work = tmp_path / 'artifacts'
+    schemas.write(state, work / 'state.parquet', 'state')
+    schemas.write(tracks, work / 'tracks.parquet', 'tracks')
+    meta = {
+        'camera_profile_id': old['context']['camera']['id'],
+        'source_sha256': source_for_job(read_job(old_path), video)['sha256'],
+        'context_hash': old['context_hash'],
+    }
+    (work / 'meta.json').write_text(json.dumps(meta))
+
+    with pytest.raises(ExchangeError, match='происхождение'):
+        process_job(new_path, video, tmp_path / 'plain.zip', artifacts=work)
+    result = validate_result(
+        process_job(new_path, video, tmp_path / 'result.zip', artifacts=work, artifacts_job=old_path)
+    )
+    assert result.manifest['job_id'] == new['job_id']
+    # Изменились не только игроки — артефакты прежнего задания к новому не подходят.
+    with pytest.raises(ExchangeError, match='не только составом'):
+        process_job(teams_path, video, tmp_path / 'teams.zip', artifacts=work, artifacts_job=old_path)
+    # Прежнее задание — то, под которым получены артефакты, а не любое с тем же составом.
+    with pytest.raises(ExchangeError, match='происхождение'):
+        process_job(new_path, video, tmp_path / 'self.zip', artifacts=work, artifacts_job=new_path)
+
+
+def test_artifacts_job_needs_artifacts():
+    from aifootball.analytics.exchange import ExchangeError
+    from aifootball.processor.job import process_job
+
+    with pytest.raises(ExchangeError, match='--artifacts-job'):
+        process_job('job.zip', 'clip.mp4', 'result.zip', artifacts_job='old.zip')
+
+
+def test_cli_takes_the_job_artifacts_were_made_for():
+    from pathlib import Path
+
+    from aifootball.cli import build_parser
+
+    args = build_parser().parse_args(
+        ['process-job', '--job', 'job.zip', '--video', 'a.mp4', '--output', 'r.zip']
+        + ['--artifacts', 'work', '--artifacts-job', 'old.zip']
+    )
+    assert args.artifacts_job == Path('old.zip')
+
+
 def test_process_job_cli_exists():
     from aifootball.cli import build_parser
 

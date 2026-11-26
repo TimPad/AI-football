@@ -377,6 +377,11 @@ def build_parser() -> argparse.ArgumentParser:
     job.add_argument('--output', type=Path, required=True)
     job.add_argument('--models', type=Path, default=Path('models'))
     job.add_argument('--artifacts', type=Path, help='Повторно упаковать артефакты этого же задания/источника')
+    job.add_argument(
+        '--artifacts-job',
+        type=Path,
+        help='Пакет задания, под которым получены --artifacts, если с тех пор в задании изменился только состав',
+    )
     job.add_argument('--partial-recording', action='store_true', help='Исходный файл содержит только фрагмент матча')
     job.add_argument('--halves', help='Интервалы относительно исходного видео: 0:40-21:50,27:10-46:00')
     job.add_argument('--understand', action='store_true', help='Включить платный анализ Qwen API')
@@ -465,6 +470,7 @@ def main(argv=None) -> int:
                 args.output,
                 models=args.models,
                 artifacts=args.artifacts,
+                artifacts_job=args.artifacts_job,
                 halves=args.halves,
                 partial_recording=args.partial_recording,
                 understand=args.understand,

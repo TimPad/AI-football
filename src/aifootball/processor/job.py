@@ -569,6 +569,24 @@ def package_result(
     return output_path
 
 
+def artifacts_origin(job, prior):
+    """Отпечаток контекста, под которым получены артефакты, когда с тех пор изменился только состав.
+
+    Зрение состав не использует: треки, позиции и мяч считаются по видео, камере и площадке. Поэтому артефакты
+    прежнего задания того же матча можно перепаковать под новое, если задания совпадают во всём, кроме игроков
+    (матч ВШЭ Ю — JWH 22.11.2026: из состава убрали двух игроков после обработки). Происхождение артефактов
+    по-прежнему подтверждает их meta.json — отпечаток прежнего задания, а не нового.
+    """
+    old, new = prior.contract['context'], job.contract['context']
+    ensure(
+        {k: v for k, v in old.items() if k != 'rosters'} == {k: v for k, v in new.items() if k != 'rosters'}
+        and {n: raw for n, raw in prior.files.items() if n != 'job.json'}
+        == {n: raw for n, raw in job.files.items() if n != 'job.json'},
+        'Прежнее задание отличается не только составом',
+    )
+    return prior.contract['context_hash']
+
+
 def process_job(
     job_path,
     video_path,
@@ -576,6 +594,7 @@ def process_job(
     *,
     models=Path('models'),
     artifacts=None,
+    artifacts_job=None,
     halves=None,
     partial_recording=False,
     understand=False,
@@ -596,6 +615,7 @@ def process_job(
         not resume or (work_dir is not None and (Path(work_dir) / 'workspace.json').exists()),
         'resume requires an existing --work-dir workspace',
     )
+    ensure(artifacts_job is None or artifacts is not None, '--artifacts-job задаётся вместе с --artifacts')
     ensure(
         vlm_mode in ('native', 'frames')
         and analysis_scope in ('full_match', 'continuous_excerpt', 'highlights', 'unknown'),
@@ -624,10 +644,13 @@ def process_job(
     )
     if artifacts is not None:
         meta = load_json((Path(artifacts) / 'meta.json').read_bytes(), 'meta.json')
+        origin = (
+            job.contract['context_hash'] if artifacts_job is None else artifacts_origin(job, read_job(artifacts_job))
+        )
         ensure(
             meta.get('camera_profile_id') == job.contract['context']['camera']['id']
             and meta.get('source_sha256') == source['sha256']
-            and meta.get('context_hash') == job.contract['context_hash'],
+            and meta.get('context_hash') == origin,
             'Артефакты не подтверждают происхождение камеры/видео/контекста задания',
         )
         if not understand:
