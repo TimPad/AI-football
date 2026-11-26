@@ -397,30 +397,32 @@ function TaggingForm({
         </div>
         <div className="tagging-side">
           <h3>Отметки · {tags.length}</h3>
-          <table className="tag-summary">
-            <thead>
-              <tr>
-                <th />
-                <th>Удары</th>
-                <th>В створ</th>
-                <th>Голы</th>
-                <th>Отборы</th>
-                <th>Перехваты</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(['home', 'away'] as const).map((side) => (
-                <tr key={side}>
-                  <th scope="row">{team(side)}</th>
-                  <td className="num">{counts(side, ['on_target', 'off_target', 'blocked', 'goal'])}</td>
-                  <td className="num">{counts(side, ['on_target', 'goal'])}</td>
-                  <td className="num">{counts(side, ['goal'])}</td>
-                  <td className="num">{counts(side, ['tackle'])}</td>
-                  <td className="num">{counts(side, ['interception'])}</td>
+          <div className="table-scroll">
+            <table className="tag-summary">
+              <thead>
+                <tr>
+                  <th />
+                  <th>Удары</th>
+                  <th>В створ</th>
+                  <th>Голы</th>
+                  <th>Отборы</th>
+                  <th>Перехваты</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(['home', 'away'] as const).map((side) => (
+                  <tr key={side}>
+                    <th scope="row">{team(side)}</th>
+                    <td className="num">{counts(side, ['on_target', 'off_target', 'blocked', 'goal'])}</td>
+                    <td className="num">{counts(side, ['on_target', 'goal'])}</td>
+                    <td className="num">{counts(side, ['goal'])}</td>
+                    <td className="num">{counts(side, ['tackle'])}</td>
+                    <td className="num">{counts(side, ['interception'])}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <ol className="tag-items" aria-label="Отметки">
             {tags.map((t) => (
               <li key={t.id} aria-current={t.id === selected ? 'true' : undefined}>
