@@ -20,6 +20,7 @@ SUSTAIN_S = 0.5  # устойчивая скорость: медиана за э
 TEAMS = ('A', 'B')
 
 SERIES_BIN_S = 300.0  # ход матча по 5-минутным отрезкам
+FLOW_BIN_S = 60.0  # ход матча по минутам: давление команд
 
 LOW_DATA_SHARE = 0.5  # меньше половины от «период × 4 полевых» — пометка «мало данных»
 
@@ -221,6 +222,31 @@ def series(state: pl.DataFrame, spans) -> dict:
                 out[team].append(round(float(c['step'].sum()) / observed * 60, 1) if observed > 0 else None)
         offset += end - start
     return out
+
+
+def flow(oriented: pl.DataFrame, spans, length_m: float) -> dict:
+    """Ход матча по минутам каждого тайма: доля времени полевых игроков команды в чужой трети.
+
+    oriented — после orient: свои ворота каждой команды слева, чужая треть — x > 2/3 длины. По позициям игроков,
+    без мяча: на записи трансляции мяч виден лишь в части кадров. Минута — от начала своего тайма.
+    """
+    steps = _steps(oriented.filter((pl.col('role') == 'player') & pl.col('team').is_in(TEAMS)))
+    bins = []
+    for half, (start, end) in enumerate(spans, 1):
+        part = steps.filter((pl.col('ts') >= start) & (pl.col('ts') < end))
+        for minute, b0 in enumerate(np.arange(start, end, FLOW_BIN_S)):
+            chunk = part.filter((pl.col('ts') >= b0) & (pl.col('ts') < min(b0 + FLOW_BIN_S, end)))
+            entry = {'half': half, 'minute': minute, 'start_s': round(float(b0), 2)}
+            for team in TEAMS:
+                c = chunk.filter(pl.col('team') == team)
+                observed = float(c['dt'].sum())
+                attack = float(c.filter(pl.col('x_m') > length_m * 2 / 3)['dt'].sum())
+                entry[team] = {
+                    'observed_s': round(observed, 1),
+                    'attack_share': round(attack / observed, 3) if observed > 0 else None,
+                }
+            bins.append(entry)
+    return {'bin_s': FLOW_BIN_S, 'bins': bins}
 
 
 def _observed(state: pl.DataFrame) -> pl.DataFrame:
@@ -506,6 +532,8 @@ def build_report(
             'teams': team_overview(part, oriented, length_m, width_m, cap, p.duration_s),
             'thirds': thirds_share(oriented, length_m) if oriented_ok else {t: None for t in TEAMS},
             'series': series(part, p.spans),
+            # Без направления атаки в каждом тайме чужая треть неизвестна — хода матча нет.
+            'flow': flow(oriented, p.spans, length_m) if oriented_ok else None,
             'players': (players := players_table(part, oriented, labels, length_m, width_m, cap)),
             'fragments': fragments_table(part, {r['track_id'] for r in players}, length_m, width_m, cap),
             'moments': moments(part, tracks, labels, p.spans, cap),

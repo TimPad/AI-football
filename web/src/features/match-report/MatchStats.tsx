@@ -1,5 +1,7 @@
 import type { PublicAnalysis, PublicMatch, PublicProtocol, TeamActionStats } from '../../api/domain';
 import { type Shot, ShotMap } from '../../components/pitch/ShotMap';
+import { matchFlow } from './flow';
+import { MatchFlow } from './MatchFlow';
 import type { ReportModel, Resource } from './model';
 import { PassNetworkStats, PassStats } from './PassStats';
 import { AUTO_HINT, StatCard } from './StatBlocks';
@@ -158,6 +160,8 @@ export function MatchStats({
   const physical = cv && cvKey ? cvLines(cv, cvKey) : null;
   const thirds = cv && cvKey ? cvThirds(cv, cvKey) : null;
   const name = playerName(model);
+  // Ход матча — по всему матчу: у тайма свой отрезок графика не нужен.
+  const flow = period === 'all' ? matchFlow(cv, actions, protocol) : [];
   const shots: Shot[] = actions ? actions.shots.map((s) => ({ ...s, player: name(s.player_id ?? null) })) : [];
   const passes = actions?.pitch && actions.rows.some((r) => r.category === 'passes') && actions.pass_players.length > 0;
   // «Главное» здесь не повторяется: каждая строка уже есть в своей карточке, голы — вместе с дисциплиной.
@@ -179,6 +183,11 @@ export function MatchStats({
           </p>
         ) : (
           <div className="stat-grid">
+            {flow.length > 0 && (
+              <StatCard title="Ход матча" wide>
+                <MatchFlow minutes={flow} homeName={match.home_name} awayName={match.away_name} />
+              </StatCard>
+            )}
             {actions && actions.pitch && actions.rows.some((r) => r.category === 'shots') && (
               <StatCard title="Карта ударов">
                 <ShotMap

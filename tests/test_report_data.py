@@ -283,3 +283,35 @@ def test_short_fragments_get_metrics_outside_the_players_table():
     # Разреженная тепловая карта: секунды по клеткам складываются во время наблюдения.
     assert sum(c[2] for c in fragment['heatmap_cells']) == pytest.approx(fragment['observed_s'], abs=0.05)
     assert all(isinstance(c[0], int) and isinstance(c[1], int) for c in fragment['heatmap_cells'])
+
+
+def test_flow_is_the_share_of_time_in_the_attacking_third_per_minute():
+    from aifootball.analytics.report_data import flow
+
+    rows = []
+    for k, t in enumerate(np.arange(0, 120, 0.5)):
+        # Минута 0: A у чужих ворот (x 35 из 40), B у своих; минута 1: наоборот. Своя половина у обоих слева.
+        first = t < 60
+        for tid, team, x in [(1, 'A', 35.0 if first else 5.0), (2, 'B', 5.0 if first else 35.0)]:
+            rows.append(
+                {
+                    'frame_id': k,
+                    'ts': float(t),
+                    'track_id': tid,
+                    'role': 'player',
+                    'team': team,
+                    'x_m': x,
+                    'y_m': 10.0,
+                    'vx': 0.0,
+                    'vy': 0.0,
+                    'speed': 0.0,
+                    'interpolated': False,
+                }
+            )
+    oriented = pl.DataFrame(rows, schema=schemas.STATE)
+    out = flow(oriented, [(0.0, 120.0)], 40.0)
+    assert out['bin_s'] == 60 and [(b['half'], b['minute']) for b in out['bins']] == [(1, 0), (1, 1)]
+    first, second = out['bins']
+    assert (first['A']['attack_share'], first['B']['attack_share']) == (1.0, 0.0)
+    assert (second['A']['attack_share'], second['B']['attack_share']) == (0.0, 1.0)
+    assert first['A']['observed_s'] == pytest.approx(59.5, abs=0.6)

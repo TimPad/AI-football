@@ -11,6 +11,8 @@ import { publicForward } from '../navigation/publicContext';
 import { num, reason, roles } from '../ratings/types';
 import { canAttachCurrentCv, mergeRoster, type RosterRow } from './adapters';
 import { formatFact, STAT_GROUPS, type StatGroup } from './facts';
+import { matchFlow } from './flow';
+import { MatchFlow } from './MatchFlow';
 import { MatchStats, playerName, topLines } from './MatchStats';
 import { MatchTimeline } from './MatchTimeline';
 import type { PlayerSelection, ReportModel, Resource } from './model';
@@ -493,6 +495,17 @@ export function MatchReport({
             </Block>
           </section>
         )}
+        {(() => {
+          const minutes = matchFlow(ready(model.cv), ready(model.actions), protocol);
+          return (
+            minutes.length > 0 && (
+              <section className="report-block">
+                <h2>Ход матча</h2>
+                <MatchFlow minutes={minutes} homeName={match.home_name} awayName={match.away_name} />
+              </section>
+            )
+          );
+        })()}
         {(() => {
           const top = topLines(protocol, ready(model.actions), ready(model.cv), 'all').filter(meaningful);
           return (

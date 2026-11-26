@@ -207,7 +207,16 @@ def get_public_analysis(db, match_id):
             if side in ('A', 'B')
         }
         periods.append(
-            {'key': p['key'], 'name': p['name'], 'duration_s': p['duration_s'], 'teams': teams, 'thirds': thirds}
+            {
+                'key': p['key'],
+                'name': p['name'],
+                'duration_s': p['duration_s'],
+                'spans': p['spans'],
+                'teams': teams,
+                'thirds': thirds,
+                # Ход матча по минутам (давление команд); у старых прогонов и без направления атаки — нет.
+                'flow': p.get('flow'),
+            }
         )
     pitch = {key: run.report['pitch'][key] for key in ('length_m', 'width_m', 'cell_m')}
     pitch['orientation'] = run.report['pitch'].get('orientation', 'camera')
