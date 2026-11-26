@@ -40,7 +40,8 @@ def test_rating_waits_for_goal_authors_and_says_what_is_missing(admin_client, an
 
 def test_rating_counts_goal_assist_tagged_shot_and_passes(admin_client, analytics_match, send_command):
     roster = admin_client.get(f'/api/v1/matches/{analytics_match["id"]}').json()['lineup']
-    home = [p['player_id'] for p in roster if p['side'] == 'home']
+    # Задание обработки упорядочивает состав по player_id (а состав матча — по порядку добавления): трек 1 у _run — home[0].
+    home = sorted(p['player_id'] for p in roster if p['side'] == 'home')
     goal, match = _goal(send_command, analytics_match, player_id=home[0], assist_id=home[1], assist_known=True)
     match, _ = _protocol(admin_client, match, send_command, publish=True)
     _, run_home, away = _run(admin_client, match)
