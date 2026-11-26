@@ -1536,6 +1536,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{mid}/analysis/runs/{rid}/moments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Moments */
+        get: operations["moments_api_v1_matches__mid__analysis_runs__rid__moments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{mid}/analysis/runs/{rid}/thumbs/{tid}": {
         parameters: {
             query?: never;
@@ -1939,6 +1956,23 @@ export interface paths {
         };
         /** Public Match Action Stats */
         get: operations["public_match_action_stats_api_v1_public_matches__mid__action_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/matches/{mid}/match-rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Match Points View */
+        get: operations["public_match_points_view_api_v1_public_matches__mid__match_rating_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5363,6 +5397,88 @@ export interface components {
             /** Override Reason */
             override_reason?: string | null;
         };
+        /** MatchPointsItem */
+        MatchPointsItem: {
+            /**
+             * Player Id
+             * Format: uuid
+             */
+            player_id: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** Display Name */
+            display_name: string | null;
+            /** Goalkeeper */
+            goalkeeper: boolean;
+            /** Rating */
+            rating: number;
+            /** Parts */
+            parts: components["schemas"]["MatchPointsPart"][];
+        };
+        /** MatchPointsMissing */
+        MatchPointsMissing: {
+            /** Goals Total */
+            goals_total: number;
+            /** Goals Without Author */
+            goals_without_author: number;
+            /** Actions Without Player */
+            actions_without_player: number;
+            /** Goalkeeper Unknown */
+            goalkeeper_unknown: ("home" | "away")[];
+            /** Without On Court */
+            without_on_court: number;
+            /** Partial Categories */
+            partial_categories: string[];
+        };
+        /** MatchPointsPart */
+        MatchPointsPart: {
+            /** Key */
+            key: string;
+            /** Count */
+            count: number;
+            /** Points */
+            points: number;
+        };
+        /** MatchPointsPolicy */
+        MatchPointsPolicy: {
+            /** Base */
+            base: number;
+            /** Min */
+            min: number;
+            /** Max */
+            max: number;
+            /** Pass Cap */
+            pass_cap: number;
+            /** Goal Authors Min */
+            goal_authors_min: number;
+            /** Points */
+            points: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * MatchPointsView
+         * @description Рейтинг матча по очкам за действия; без авторов голов (ready = false) оценок нет, только чего не хватает.
+         */
+        MatchPointsView: {
+            /** Model Version */
+            model_version: string;
+            /** Ready */
+            ready: boolean;
+            /** Complete */
+            complete: boolean;
+            /** Best Player Id */
+            best_player_id: string | null;
+            /** Items */
+            items: components["schemas"]["MatchPointsItem"][];
+            missing: components["schemas"]["MatchPointsMissing"];
+            /** On Court Source */
+            on_court_source: ("manual" | "video") | null;
+            policy: components["schemas"]["MatchPointsPolicy"];
+        };
         /** MatchRatingsView */
         MatchRatingsView: {
             /** Overall */
@@ -5520,6 +5636,28 @@ export interface components {
             };
             /** Missing Track Ids */
             missing_track_ids?: number[];
+        };
+        /** MomentGoal */
+        MomentGoal: {
+            /** T S */
+            t_s: number;
+            /**
+             * Plate
+             * @enum {string}
+             */
+            plate: "left" | "right";
+        };
+        /** MomentShot */
+        MomentShot: {
+            /** T S */
+            t_s: number;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "home" | "away";
+            /** On Target */
+            on_target: boolean | null;
         };
         /** NextRound */
         NextRound: {
@@ -6727,6 +6865,7 @@ export interface components {
             }[];
             /** Players */
             players: components["schemas"]["PublicPlayer"][];
+            scoreboard?: components["schemas"]["PublicScoreboard"] | null;
         };
         /** PublicAppearance */
         PublicAppearance: {
@@ -7220,6 +7359,20 @@ export interface components {
             home: number | null;
             /** Away */
             away: number | null;
+        };
+        /**
+         * PublicScoreboard
+         * @description Голы с табло трансляции: стороны — плашки слева и справа, не команды протокола.
+         */
+        PublicScoreboard: {
+            /** Overlay */
+            overlay: string;
+            /** Final */
+            final: {
+                [key: string]: number;
+            };
+            /** Goals */
+            goals: components["schemas"]["ScoreboardGoal"][];
         };
         /** PublicShootoutAttempt */
         PublicShootoutAttempt: {
@@ -8130,6 +8283,35 @@ export interface components {
              */
             tied: boolean;
         };
+        /**
+         * RunMoments
+         * @description Закладки разметки ударов и защиты по видео: время — секунды записи.
+         */
+        RunMoments: {
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Video S */
+            video_s: number;
+            /** Halves */
+            halves: number[][];
+            /** Side Map */
+            side_map: {
+                [key: string]: "home" | "away";
+            };
+            /** Board Final */
+            board_final: {
+                [key: string]: number;
+            } | null;
+            /** Board Goals */
+            board_goals: components["schemas"]["MomentGoal"][];
+            /** Replays */
+            replays: number[][];
+            /** Shots */
+            shots: components["schemas"]["MomentShot"][];
+        };
         /** RunSummary */
         RunSummary: {
             /**
@@ -8268,6 +8450,18 @@ export interface components {
             /** Players */
             players: components["schemas"]["PlayerMetric"][];
             auto_sources?: components["schemas"]["AutoSources"] | null;
+        };
+        /** ScoreboardGoal */
+        ScoreboardGoal: {
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "left" | "right";
+            /** Period */
+            period: number;
+            /** Elapsed S */
+            elapsed_s: number;
         };
         /** SectionView */
         SectionView: {
@@ -8861,7 +9055,7 @@ export interface components {
             positions_orientation: ("attack" | "halves" | "camera") | null;
             pitch: components["schemas"]["PitchSize"] | null;
             /** Video Ball */
-            video_ball?: ("ball_model" | "general") | null;
+            video_ball?: ("ball_model" | "general" | "broadcast_model") | null;
         };
         /** TeamCreate */
         TeamCreate: {
@@ -13272,6 +13466,38 @@ export interface operations {
             };
         };
     };
+    moments_api_v1_matches__mid__analysis_runs__rid__moments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+                rid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunMoments"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     thumbnail_api_v1_matches__mid__analysis_runs__rid__thumbs__tid__get: {
         parameters: {
             query?: never;
@@ -14169,6 +14395,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamActionStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_match_points_view_api_v1_public_matches__mid__match_rating_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchPointsView"];
                 };
             };
             /** @description Validation Error */

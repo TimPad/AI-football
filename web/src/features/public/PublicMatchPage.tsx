@@ -6,6 +6,7 @@ import { MatchHeader } from '../../components/match/MatchHeader';
 import { SectionNavigation } from '../../components/match/SectionNavigation';
 import { Loading } from '../../components/ui';
 import { useDocumentTitle } from '../../components/useDocumentTitle';
+import { BOARD_NOTE, boardGoals, boardScorers } from '../match-report/board';
 import { STAT_GROUPS, type StatGroup } from '../match-report/facts';
 import { MatchReport } from '../match-report/MatchReport';
 import { goalScorers } from '../match-report/MatchTimeline';
@@ -33,12 +34,15 @@ const hasSection = (match: PublicMatch, id: string) =>
       ? !!(match.broadcast_url || match.broadcast_embed_url)
       : true;
 const ORIGINS: PlayerOrigin[] = ['protocol', 'cv', 'rating'];
-type Sources = Pick<ReportModel, 'protocol' | 'cv' | 'ratings' | 'actions'>;
+type Sources = Pick<ReportModel, 'protocol' | 'cv' | 'ratings' | 'actions'> & {
+  points: NonNullable<ReportModel['points']>;
+};
 const EMPTY: Sources = {
   protocol: { status: 'loading' },
   cv: { status: 'loading' },
   ratings: { status: 'loading' },
   actions: { status: 'loading' },
+  points: { status: 'loading' },
 };
 
 export function PublicMatchPage() {
@@ -124,7 +128,10 @@ function MatchContent({ id }: { id: string }) {
       periodKey: period,
     },
   };
-  const note = sources.protocol.status === 'ready' ? resultNote(sources.protocol.value) : null;
+  const protocol = sources.protocol.status === 'ready' ? sources.protocol.value : null;
+  const note = protocol ? resultNote(protocol) : null;
+  // Без голов в протоколе — минуты голов с табло трансляции, если итог табло совпал со счётом.
+  const board = boardGoals(sources.cv.status === 'ready' ? sources.cv.value : null, protocol);
   return (
     <>
       <Link className="breadcrumb" to={back.href} state={back.state}>
@@ -133,7 +140,8 @@ function MatchContent({ id }: { id: string }) {
       <MatchHeader
         match={match}
         resultNote={note}
-        scorers={sources.protocol.status === 'ready' ? goalScorers(sources.protocol.value) : null}
+        scorers={protocol ? (board ? boardScorers(protocol, board) : goalScorers(protocol)) : null}
+        scorersNote={board ? `Минуты голов — ${BOARD_NOTE}` : null}
       >
         <SectionNavigation
           label="Разделы матча"

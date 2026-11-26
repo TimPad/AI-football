@@ -267,12 +267,24 @@ def ball_events(artifacts, venue, state, spans, track_ids, models=None):
     share = ball.filter(~pl.col('interpolated')).height / frames if frames else 0.0
     if share < EVENTS_MIN_BALL_SHARE:
         return None, f'Передачи не рассчитаны: мяч найден лишь в {share:.0%} кадров — модель мяча не подходит записи'
-    events = []
+    events, candidates = [], []
     for span in spans:
         part = in_period(state, [span])
         sides = defending_sides(part)
         attack = {sides[0]: venue.length_m, sides[1]: 0.0} if sides else None
         for e in extract_events(in_period(ball, [span]), part, venue.length_m, venue.width_m, attack):
+            if e['kind'] == 'shot' and e['team'] in ('A', 'B'):
+                # Удары находятся на треть и верны на две трети — только подсказки разметки в кабинете.
+                candidates.append(
+                    {
+                        'kind': 'shot',
+                        'team': e['team'],
+                        'start_s': round(float(e['start_s']), 3),
+                        'on_target': e['on_target'],
+                        'confidence': round(float(e['confidence']), 2),
+                    }
+                )
+                continue
             recipient = e.get('recipient_track_id')
             if (
                 e['kind'] not in EVENT_KINDS
@@ -296,11 +308,13 @@ def ball_events(artifacts, venue, state, spans, track_ids, models=None):
                 }
             )
     events.sort(key=lambda e: e['start_s'])
+    candidates.sort(key=lambda e: e['start_s'])
     return {
         'schema_version': '1',
         'ball': {'model': name, 'sha256': sha, 'frames_with_ball': round(share, 3)},
         'kinds': list(EVENT_KINDS),
         'events': events,
+        'candidates': candidates,
     }, None
 
 
@@ -340,6 +354,7 @@ def package_result(
     understanding=None,
     evidence_files=None,
     models=None,
+    scoreboard=None,
 ):
     from tempfile import TemporaryDirectory
 
@@ -388,6 +403,17 @@ def package_result(
     )
     report['pitch']['orientation'] = 'camera'
     report['match']['video_duration_estimated'] = False
+    if scoreboard is not None:
+        # Голы с табло трансляции: по шаблону её оформления; итог сверяется со счётом протокола на сайте.
+        from aifootball.perception.scoreboard import load_overlay, scoreboard_from_video
+
+        report['scoreboard'] = scoreboard_from_video(
+            Path(video_path),
+            load_overlay(Path(scoreboard)),
+            (source['width'], source['height']),
+            (registration or {}).get('replays', []),
+            spans,
+        )
     primary = report['periods'][0]
     # Uniform physical orientation makes maps summable across fragments and halves.
     for period in report['periods']:
@@ -561,6 +587,7 @@ def process_job(
     vlm_max_output_tokens=100_000,
     analysis_scope='unknown',
     ball_model=None,
+    scoreboard=None,
 ):
     from aifootball.processor.cv import run_cv
     from aifootball.processor.workspace import Workspace
@@ -612,6 +639,7 @@ def process_job(
                 halves=halves,
                 partial_recording=partial_recording,
                 models=models,
+                scoreboard=scoreboard,
             )
     work = Path(work_dir) if work_dir is not None else Path(output_path).parent / ('processor-' + uuid4().hex)
     ensure(
@@ -657,6 +685,7 @@ def process_job(
             understanding=understanding,
             evidence_files=evidence,
             models=models,
+            scoreboard=scoreboard,
         )
 
 

@@ -229,7 +229,7 @@ def test_ordinary_admin_cannot_read_private_stats(admin_client, analytics_match)
     assert admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').status_code == 403
 
 
-def _cv_run_with_passes(client, match, *, side_map=None, publish=True, report=None, manifest=None):
+def _cv_run_with_passes(client, match, *, side_map=None, publish=True, report=None, manifest=None, checks=None):
     """Импорт пакета версии 3 (две передачи команды A: точная и неточная), подтверждение и публикация."""
     from uuid import uuid4
 
@@ -246,7 +246,12 @@ def _cv_run_with_passes(client, match, *, side_map=None, publish=True, report=No
         match,
         result_zip(
             job,
-            mutate=lambda m, r, t, c: (m.update(contract_version='3'), report and report(r), manifest and manifest(m)),
+            mutate=lambda m, r, t, c: (
+                m.update(contract_version='3'),
+                report and report(r),
+                manifest and manifest(m),
+                checks and checks(c),
+            ),
             extras={'events.json': events_doc()},
         ),
     )
@@ -351,6 +356,14 @@ def test_passes_from_the_general_detector_are_marked(admin_client, analytics_mat
     admin_client.cookies.clear()
     public = admin_client.get(f'/api/v1/public/matches/{analytics_match["id"]}/action-stats')
     assert public.status_code == 200 and public.json()['video_ball'] == 'general'
+
+
+def test_passes_from_own_ball_model_on_a_broadcast_are_marked(admin_client, analytics_match):
+    """Запись трансляции со своей моделью мяча: замер журналов залов (неподвижные камеры) к ней не относится."""
+    registration = {'keyframes': 3, 'replays': [], 'share': {'ok': 0.96, 'weak': 0.01, 'lost': 0.01, 'replay': 0.02}}
+    _cv_run_with_passes(admin_client, analytics_match, checks=lambda c: c.update(camera_registration=registration))
+    stats = admin_client.get(f'/api/v1/matches/{analytics_match["id"]}/action-stats').json()
+    assert stats['video_ball'] == 'broadcast_model' and len(stats['passes']) == 2
 
 
 def _shots_only(home, away):

@@ -30,6 +30,9 @@ PASS_FIELDS = {
     'confidence',
 }
 EVENT_PITCH_MARGIN_M = 3.0
+# Удары-кандидаты: подсказки для разметки по видео в кабинете, не события и не статистика
+# (найдено 9 из 26 ударов, верных 9 из 14 — docs/2026-10-25-shots-stoppages-new-hall.md).
+CANDIDATE_FIELDS = {'kind', 'team', 'start_s', 'on_target', 'confidence'}
 JOB_FILES = {
     'job.json',
     'venue.yaml',
@@ -223,6 +226,69 @@ def appearance_ok(value) -> bool:
         return False
 
 
+def validate_flow(value, span_s):
+    """Ход матча по минутам (report_data.flow): необязательный, доли — от 0 до 1."""
+    if value is None:
+        return
+    ensure(
+        isinstance(value, dict) and value.get('bin_s') == 60 and isinstance(value.get('bins'), list),
+        'Неверный ход матча',
+    )
+    ensure(len(value['bins']) <= 1000, 'Слишком длинный ход матча')
+    for b in value['bins']:
+        ensure(
+            isinstance(b, dict)
+            and type(b.get('half')) is int
+            and 1 <= b['half'] <= 10
+            and type(b.get('minute')) is int
+            and 0 <= b['minute'] <= 1000,
+            'Неверная минута хода матча',
+        )
+        numeric(b['start_s'], 'начало минуты')
+        for side in ('A', 'B'):
+            team = b[side]
+            numeric(team['observed_s'], 'время команды в минуте', maximum=60 * 50)
+            ensure(
+                team['attack_share'] is None or 0 <= numeric(team['attack_share'], 'доля в чужой трети') <= 1,
+                'Неверная доля в чужой трети',
+            )
+
+
+def validate_scoreboard(value, duration):
+    """Голы с табло трансляции (perception.scoreboard): необязательный блок, итог равен числу голов плашки."""
+    if value is None:
+        return
+    ensure(
+        isinstance(value, dict)
+        and value.get('source') == 'broadcast'
+        and isinstance(value.get('overlay'), str)
+        and 0 < len(value['overlay']) <= 100
+        and isinstance(value.get('goals'), list)
+        and len(value['goals']) <= 200,
+        'Неверный блок табло',
+    )
+    previous = -1.0
+    for g in value['goals']:
+        ensure(
+            isinstance(g, dict)
+            and g.get('side') in ('left', 'right')
+            and type(g.get('period')) is int
+            and 1 <= g['period'] <= 10,
+            'Неверный гол табло',
+        )
+        t = numeric(g['t_s'], 'время гола табло', maximum=duration + 0.1)
+        numeric(g['elapsed_s'], 'время гола от начала тайма', maximum=duration + 0.1)
+        ensure(t >= previous, 'Голы табло не по порядку')
+        previous = t
+    final = value.get('final')
+    ensure(
+        isinstance(final, dict)
+        and set(final) == {'left', 'right'}
+        and all(final[s] == sum(g['side'] == s for g in value['goals']) for s in ('left', 'right')),
+        'Итог табло не совпадает с голами',
+    )
+
+
 def validate_groups(groups, index):
     """Кандидаты-игроки из склейки треков: цепочки одной команды без одновременной видимости."""
     from aifootball.analytics.track_groups import OVERLAP_S
@@ -348,6 +414,7 @@ def validate_result(source, limits=Limits()):
         ensure(pitch.get('orientation', 'camera') == 'camera', 'Карты должны использовать координаты площадки')
         numeric(report['match']['processed_s'], 'processed_s', maximum=duration + 0.1)
         ensure(abs(report['match']['video_s'] - duration) <= 0.1, 'Длительность отчёта не совпадает с источником')
+        validate_scoreboard(report.get('scoreboard'), duration)
         ensure(isinstance(tracks['tracks'], list) and len(tracks['tracks']) <= 50000, 'Неверный индекс треков')
         index = {}
         for track in tracks['tracks']:
@@ -423,6 +490,7 @@ def validate_result(source, limits=Limits()):
                     ensure(type(player['sprints']) is int, 'Число спринтов должно быть целым')
                 ensure('heatmap_s' in player, 'Нет тепловой карты')
                 heatmap(player['heatmap_s'], pitch, f'трек {tid}')
+            validate_flow(period.get('flow'), span_s)
             fragments = period.get('fragments', [])
             ensure(isinstance(fragments, list) and len(fragments) <= 50000, 'Неверный список фрагментов периода')
             for f in fragments:
@@ -550,7 +618,8 @@ def validate_events(value, index, pitch, duration, limits=Limits()):
     """events.json: события по мячу, привязанные к трекам пакета, внутри видео и площадки."""
     try:
         ensure(
-            set(value) == {'schema_version', 'ball', 'kinds', 'events'} and value['schema_version'] == '1',
+            set(value) - {'candidates'} == {'schema_version', 'ball', 'kinds', 'events'}
+            and value['schema_version'] == '1',
             'Неверная структура events.json',
         )
         ball = value['ball']
@@ -601,6 +670,22 @@ def validate_events(value, index, pitch, duration, limits=Limits()):
             previous = start
             ensure(within(event['start_xy']) and within(event['end_xy']), 'Точка события вне площадки')
             numeric(event['confidence'], 'уверенность события', maximum=1)
+        candidates = value.get('candidates', [])
+        ensure(isinstance(candidates, list) and len(candidates) <= limits.events, 'Неверные кандидаты ударов')
+        previous = 0
+        for c in candidates:
+            ensure(
+                isinstance(c, dict)
+                and set(c) == CANDIDATE_FIELDS
+                and c['kind'] == 'shot'
+                and c['team'] in ('A', 'B')
+                and c['on_target'] in (True, False, None),
+                'Неверный кандидат удара',
+            )
+            start = numeric(c['start_s'], 'время кандидата удара', maximum=duration + 0.001)
+            ensure(start >= previous, 'Кандидаты ударов не по порядку')
+            previous = start
+            numeric(c['confidence'], 'уверенность кандидата удара', maximum=1)
         return value
     except (KeyError, TypeError, AttributeError) as exc:
         raise ExchangeError('Неверная структура events.json') from exc

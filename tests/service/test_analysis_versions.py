@@ -73,6 +73,17 @@ def test_public_team_missing_data_retains_quality(admin_client, analytics_match)
             }
         }
         r['periods'][0]['thirds'] = {'A': [30, 60, 10], 'B': ['Приватная', 1, 2], 'C': [1, 2, 3]}
+        team = {'observed_s': 50.0, 'attack_share': 0.4}
+        r['periods'][0]['flow'] = {
+            'bin_s': 60,
+            'bins': [{'half': 1, 'minute': 0, 'start_s': 0.0, 'A': team, 'B': team}],
+        }
+        r['scoreboard'] = {
+            'source': 'broadcast',
+            'overlay': 'Мяч ТВ',
+            'final': {'left': 1, 'right': 0},
+            'goals': [{'t_s': 70.0, 'side': 'left', 'period': 1, 'elapsed_s': 70.0}],
+        }
 
     run = import_run(admin_client, analytics_match, missing)
     run = save_assignments(admin_client, analytics_match, run).json()
@@ -84,3 +95,9 @@ def test_public_team_missing_data_retains_quality(admin_client, analytics_match)
     assert team['metric_notes']['distance_m'] == 'Нет наблюдений команды'
     assert 'Приватная' not in str(public)
     assert public['periods'][0]['thirds'] == {'A': [30, 60, 10], 'B': None}
+    # Ход матча и интервалы периода — для графика по минутам на странице матча.
+    assert public['periods'][0]['flow']['bins'][0]['A']['attack_share'] == 0.4
+    assert public['periods'][0]['spans'] == [[0, 240]]
+    # Голы с табло трансляции — как в пакете, стороны плашек сопоставляет сайт по счёту протокола.
+    assert public['scoreboard']['final'] == {'left': 1, 'right': 0}
+    assert public['scoreboard']['goals'] == [{'side': 'left', 'period': 1, 'elapsed_s': 70.0}]

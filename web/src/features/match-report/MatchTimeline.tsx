@@ -1,6 +1,7 @@
 import { CircleDot, Target, Timer } from 'lucide-react';
 import type { ReactElement } from 'react';
 import type { PublicProtocol } from '../../api/domain';
+import { BOARD_HINT, BOARD_NOTE, type BoardGoal, boardMinute } from './board';
 
 type Event = PublicProtocol['protocol']['events'][number];
 type Side = 'home' | 'away';
@@ -26,7 +27,8 @@ const scoringSide = (e: Event): Side | null =>
 const playerName = (p: PublicProtocol, id: string | null | undefined) =>
   id ? (p.lineup.find((l) => l.player_id === id)?.display_name ?? 'Игрок') : null;
 
-// Авторы голов под счётом: по стороне, получившей гол.
+// Авторы голов под счётом: по стороне, получившей гол. Голы одного автора — одной строкой минут, голы без
+// автора — одной строкой минут без подписи (как в FotMob), а не строкой «Автор не указан» на каждый гол.
 export function goalScorers(p: PublicProtocol): Record<Side, Scorer[]> {
   const out: Record<Side, Scorer[]> = { home: [], away: [] };
   for (const e of sorted(p.protocol.events)) {
@@ -34,12 +36,13 @@ export function goalScorers(p: PublicProtocol): Record<Side, Scorer[]> {
     if (!side) continue;
     const own = 'own_goal' in e && e.own_goal;
     const pen = 'from_penalty' in e && e.from_penalty;
-    out[side].push({
-      key: e.id,
-      name: playerName(p, 'player_id' in e ? e.player_id : null) ?? 'Автор не указан',
-      minute: eventMinute(p, e),
-      note: own ? 'автогол' : pen ? 'пен.' : null,
-    });
+    const author = 'player_id' in e ? (e.player_id ?? null) : null;
+    const note = own ? 'автогол' : pen ? 'пен.' : null;
+    const key = `${author ?? ''}|${note ?? ''}`;
+    const same = out[side].find((s) => s.key === key);
+    if (same) same.minute = `${same.minute} ${eventMinute(p, e)}`;
+    else
+      out[side].push({ key, name: author ? (playerName(p, author) ?? 'Игрок') : '', minute: eventMinute(p, e), note });
   }
   return out;
 }
@@ -97,11 +100,48 @@ function Line({ p, e, score }: { p: PublicProtocol; e: Event; score: string | nu
   );
 }
 
-// Лента в две стороны по минутам, разделители таймов со счётом после тайма.
-export function MatchTimeline({ value: p, keyOnly = false }: { value: PublicProtocol; keyOnly?: boolean }) {
+// Гол с табло трансляции: без автора, со счётом после него.
+function BoardLine({ p, g }: { p: PublicProtocol; g: BoardGoal }) {
+  const content = (
+    <span className="ev-body">
+      <CircleDot className="ev-icon goal" />
+      <span>
+        <b>{`Гол · ${g.score.home} : ${g.score.away}`}</b>
+        <small>{BOARD_NOTE}</small>
+      </span>
+    </span>
+  );
+  return (
+    <li className={`ev-row ${g.side}`}>
+      <span className="ev-side home">{g.side === 'home' && content}</span>
+      <span className="ev-minute">{boardMinute(p, g)}</span>
+      <span className="ev-side away">{g.side === 'away' && content}</span>
+    </li>
+  );
+}
+
+// Лента в две стороны по минутам, разделители таймов со счётом после тайма. Голы табло трансляции
+// (board) идут вместе с событиями протокола, когда своих голов в протоколе нет.
+export function MatchTimeline({
+  value: p,
+  keyOnly = false,
+  board = null,
+}: {
+  value: PublicProtocol;
+  keyOnly?: boolean;
+  board?: BoardGoal[] | null;
+}) {
   const kinds = keyOnly ? new Set(['goal', 'card']) : SHOWN;
-  const events = sorted(p.protocol.events.filter((e) => kinds.has(e.kind)));
-  if (!events.length)
+  type Item = { period: number | null | undefined; at: number; event?: Event; goal?: BoardGoal };
+  const all: Item[] = [
+    ...sorted(p.protocol.events.filter((e) => kinds.has(e.kind))).map((e) => ({
+      period: e.period,
+      at: e.elapsed_ms ?? Number.MAX_SAFE_INTEGER,
+      event: e,
+    })),
+    ...(board ?? []).map((g) => ({ period: g.period, at: g.elapsedMs, goal: g })),
+  ].sort((a, b) => (a.period ?? 99) - (b.period ?? 99) || a.at - b.at);
+  if (!all.length)
     return (
       <p className="muted">
         {keyOnly ? 'Голов и карточек в опубликованном протоколе нет.' : 'Событий в опубликованном протоколе нет.'}
@@ -110,23 +150,32 @@ export function MatchTimeline({ value: p, keyOnly = false }: { value: PublicProt
   const score = { home: 0, away: 0 };
   const items: ReactElement[] = [];
   let period: number | null | undefined;
-  for (const e of events) {
-    if (e.period !== period) {
+  for (const item of all) {
+    if (item.period !== period) {
       if (period !== undefined)
         items.push(
           <li key={`break:${period}`} className="ev-break">
             {period == null ? 'Без времени' : `Конец ${period}-го тайма`} · {score.home} : {score.away}
           </li>,
         );
-      period = e.period;
+      period = item.period;
     }
+    if (item.goal) {
+      score[item.goal.side]++;
+      items.push(<BoardLine key={item.goal.key} p={p} g={item.goal} />);
+      continue;
+    }
+    const e = item.event!;
     const side = scoringSide(e);
     if (side) score[side]++;
     items.push(<Line key={e.id} p={p} e={e} score={side ? `${score.home} : ${score.away}` : null} />);
   }
   return (
-    <ol className="timeline" aria-label="Лента матча">
-      {items}
-    </ol>
+    <>
+      <ol className="timeline" aria-label="Лента матча">
+        {items}
+      </ol>
+      {board && board.length > 0 && <p className="muted small">{BOARD_HINT}</p>}
+    </>
   );
 }
