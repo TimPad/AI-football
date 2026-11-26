@@ -34,12 +34,15 @@ const hasSection = (match: PublicMatch, id: string) =>
       ? !!(match.broadcast_url || match.broadcast_embed_url)
       : true;
 const ORIGINS: PlayerOrigin[] = ['protocol', 'cv', 'rating'];
-type Sources = Pick<ReportModel, 'protocol' | 'cv' | 'ratings' | 'actions'>;
+type Sources = Pick<ReportModel, 'protocol' | 'cv' | 'ratings' | 'actions'> & {
+  points: NonNullable<ReportModel['points']>;
+};
 const EMPTY: Sources = {
   protocol: { status: 'loading' },
   cv: { status: 'loading' },
   ratings: { status: 'loading' },
   actions: { status: 'loading' },
+  points: { status: 'loading' },
 };
 
 export function PublicMatchPage() {

@@ -9,12 +9,14 @@ from aifootball.service.db import get_session
 from aifootball.service.errors import DomainError
 from aifootball.service.matches.models import Match
 from aifootball.service.ratings.actions import action_overview, action_view, save_actions
+from aifootball.service.ratings.match_points import public_match_points
 from aifootball.service.ratings.models import ActionVersion, ParticipationVersion
 from aifootball.service.ratings.operations import participation_overview, participation_view, save_participation
 from aifootball.service.ratings.schemas import (
     ActionsOverview,
     ActionsSave,
     ActionsView,
+    MatchPointsView,
     ParticipationOverview,
     ParticipationSave,
     ParticipationView,
@@ -227,3 +229,8 @@ def public_match_action_stats(
     mid: UUID, period: str = Query('all', pattern=r'^(all|[1-9][0-9]?)$'), db: Session = Depends(get_session)
 ):
     return public_action_stats(db, mid, period)
+
+
+@router.get('/public/matches/{mid}/match-rating', response_model=MatchPointsView)
+def public_match_points_view(mid: UUID, db: Session = Depends(get_session)):
+    return public_match_points(db, mid)

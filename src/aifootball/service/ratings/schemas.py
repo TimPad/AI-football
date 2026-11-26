@@ -466,3 +466,50 @@ class TeamActionStats(BaseModel):
     # Чем найден мяч передач из видео: своей моделью мяча зала (погрешность замерена по журналам), общим
     # детектором игроков или своей моделью мяча на записи трансляции (обе не замерены). None — передач из видео нет.
     video_ball: Literal['ball_model', 'general', 'broadcast_model'] | None = None
+
+
+class MatchPointsPart(BaseModel):
+    key: str
+    count: int
+    points: float
+
+
+class MatchPointsItem(BaseModel):
+    player_id: UUID
+    side: Literal['home', 'away']
+    display_name: str | None
+    goalkeeper: bool
+    rating: float
+    parts: list[MatchPointsPart]
+
+
+class MatchPointsMissing(BaseModel):
+    goals_total: int
+    goals_without_author: int
+    actions_without_player: int
+    goalkeeper_unknown: list[Literal['home', 'away']]
+    without_on_court: int
+    partial_categories: list[str]
+
+
+class MatchPointsPolicy(BaseModel):
+    base: float
+    min: float
+    max: float
+    pass_cap: float
+    goal_authors_min: float
+    points: dict[str, float]
+
+
+class MatchPointsView(BaseModel):
+    """Рейтинг матча по очкам за действия; без авторов голов (ready = false) оценок нет, только чего не хватает."""
+
+    model_version: str
+    ready: bool
+    complete: bool
+    best_player_id: UUID | None
+    items: list[MatchPointsItem]
+    missing: MatchPointsMissing
+    # Откуда время на площадке для плюс-минуса: ручное участие или фрагменты видео; None — неизвестно.
+    on_court_source: Literal['manual', 'video'] | None
+    policy: MatchPointsPolicy

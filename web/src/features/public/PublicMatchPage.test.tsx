@@ -311,6 +311,77 @@ describe('public match page', () => {
     expect(await screen.findByText('Этого игрока нет в опубликованных данных матча.')).toBeInTheDocument();
     expect(paths.some((p) => p.includes(P2))).toBe(false);
   });
+  it('shows the match rating by actions in the lineups with its breakdown and what is missing', async () => {
+    const lineup = [
+      { player_id: P1, display_name: 'Игрок 01', shirt_number: '7', side: 'home' },
+      { player_id: P2, display_name: 'Игрок 02', shirt_number: '4', side: 'away' },
+    ];
+    const points = {
+      model_version: 'match-points-v1',
+      ready: true,
+      complete: false,
+      best_player_id: P1,
+      items: [
+        {
+          player_id: P1,
+          side: 'home',
+          display_name: 'Игрок 01',
+          goalkeeper: false,
+          rating: 7.2,
+          parts: [
+            { key: 'goal', count: 1, points: 1 },
+            { key: 'shot_on_target', count: 1, points: 0.15 },
+          ],
+        },
+        {
+          player_id: P2,
+          side: 'away',
+          display_name: 'Игрок 02',
+          goalkeeper: true,
+          rating: 5.6,
+          parts: [{ key: 'goal_conceded', count: 1, points: -0.4 }],
+        },
+      ],
+      missing: {
+        goals_total: 1,
+        goals_without_author: 0,
+        actions_without_player: 2,
+        goalkeeper_unknown: ['home'],
+        without_on_court: 0,
+        partial_categories: [],
+      },
+      on_court_source: null,
+      policy: {
+        base: 6,
+        min: 3,
+        max: 10,
+        pass_cap: 0.4,
+        goal_authors_min: 0.8,
+        points: { goal: 1, goal_conceded: -0.4 },
+      },
+    };
+    const paths = stub((path) =>
+      path.includes('/public/protocols/pp1')
+        ? { status: 200, body: { ...protocol, lineup } }
+        : path.includes(`/public/matches/${A}/match-rating`)
+          ? { status: 200, body: points }
+          : path.includes('/ratings')
+            ? undefined
+            : standard(path),
+    );
+    const user = userEvent.setup();
+    show(`/watch/matches/${A}?tab=players`);
+    const best = await screen.findByRole('button', { name: 'Рейтинг матча Игрок 01: 7,2, лучший игрок матча' });
+    expect(best).toHaveTextContent('7,2');
+    expect(screen.getByRole('button', { name: 'Рейтинг матча Игрок 02: 5,6' })).toHaveClass('tone-low');
+    await user.click(best);
+    expect(best).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('База 6,0 · Гол ×1 +1,0 · Удар в створ ×1 +0,15 → 7,2')).toBeInTheDocument();
+    expect(screen.getByText(/очки за действия: гол \+1,0, пропущенный гол −0,4/)).toBeInTheDocument();
+    expect(screen.getByText('У 2 отметок разметки не выбран игрок — они в рейтинг не вошли.')).toBeInTheDocument();
+    expect(screen.getByText(/Не указан вратарь: Север\./)).toBeInTheDocument();
+    expect(paths).toContain(`/api/v1/public/matches/${A}/match-rating`);
+  });
   it('rejects a malformed id without requests', () => {
     const paths = stub(standard);
     show('/watch/matches/not-a-uuid');
