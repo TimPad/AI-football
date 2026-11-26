@@ -25,6 +25,7 @@ import { MatchPublication } from '../publication/MatchPublication';
 import { ActionReview } from '../ratings/ActionReview';
 import { ParticipationEditor } from '../ratings/ParticipationEditor';
 import { PassReview } from '../ratings/PassReview';
+import { VideoTagging } from '../ratings/VideoTagging';
 import { MatchOverview } from './MatchOverview';
 import { Lineups, MatchInfo } from './MatchPage';
 import { MatchReportTab } from './MatchReportTab';
@@ -174,6 +175,12 @@ export function MatchWorkspace({ matchId }: { matchId: string }) {
         )}
         {tab === 'actions' && analytics && (
           <>
+            <VideoTagging
+              key={`tagging:${tick}`}
+              match={m}
+              actorId={session!.id}
+              onSaved={() => setTick((n) => n + 1)}
+            />
             <PassReview
               key={`passes:${tick}`}
               matchId={matchId}

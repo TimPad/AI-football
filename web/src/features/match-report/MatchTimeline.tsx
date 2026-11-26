@@ -27,7 +27,8 @@ const scoringSide = (e: Event): Side | null =>
 const playerName = (p: PublicProtocol, id: string | null | undefined) =>
   id ? (p.lineup.find((l) => l.player_id === id)?.display_name ?? 'Игрок') : null;
 
-// Авторы голов под счётом: по стороне, получившей гол.
+// Авторы голов под счётом: по стороне, получившей гол. Голы одного автора — одной строкой минут, голы без
+// автора — одной строкой минут без подписи (как в FotMob), а не строкой «Автор не указан» на каждый гол.
 export function goalScorers(p: PublicProtocol): Record<Side, Scorer[]> {
   const out: Record<Side, Scorer[]> = { home: [], away: [] };
   for (const e of sorted(p.protocol.events)) {
@@ -35,12 +36,13 @@ export function goalScorers(p: PublicProtocol): Record<Side, Scorer[]> {
     if (!side) continue;
     const own = 'own_goal' in e && e.own_goal;
     const pen = 'from_penalty' in e && e.from_penalty;
-    out[side].push({
-      key: e.id,
-      name: playerName(p, 'player_id' in e ? e.player_id : null) ?? 'Автор не указан',
-      minute: eventMinute(p, e),
-      note: own ? 'автогол' : pen ? 'пен.' : null,
-    });
+    const author = 'player_id' in e ? (e.player_id ?? null) : null;
+    const note = own ? 'автогол' : pen ? 'пен.' : null;
+    const key = `${author ?? ''}|${note ?? ''}`;
+    const same = out[side].find((s) => s.key === key);
+    if (same) same.minute = `${same.minute} ${eventMinute(p, e)}`;
+    else
+      out[side].push({ key, name: author ? (playerName(p, author) ?? 'Игрок') : '', minute: eventMinute(p, e), note });
   }
   return out;
 }

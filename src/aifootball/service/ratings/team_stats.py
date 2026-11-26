@@ -428,6 +428,116 @@ def _with_review(stats, version, run):
     return stats
 
 
+# Разметка ударов и защиты по видео в кабинете: категории, которые она объявляет, и виды её действий.
+TAGGED_CATEGORIES = ('shots', 'saves', 'shot_blocks', 'duels', 'recoveries')
+TAGGED_KINDS = ('shot', 'goal', 'save', 'shot_block', 'duel', 'recovery')
+
+
+def _tagged_version(db, match_id, run):
+    """Последняя подтверждённая разметка ударов и защиты этого видеоанализа: ручная версия действий из него,
+    объявившая полноту хотя бы одной категории разметки. Зрителю она видна без отдельной публикации действий."""
+    versions = db.scalars(
+        select(ActionVersion)
+        .where(
+            ActionVersion.match_id == match_id,
+            ActionVersion.status == 'confirmed',
+            ActionVersion.source_analysis_run_id == run.id,
+        )
+        .order_by(ActionVersion.revision.desc())
+    )
+    for version in versions:
+        if not is_auto(version) and any(_coverage(version.document, c) != 'unknown' for c in TAGGED_CATEGORIES):
+            return version
+    return None
+
+
+def _tagged_records(version, run, period):
+    """Действия разметки за период видеоанализа: тайм — по интервалам видео; match_ms — время матча
+    (смещение тайма по регламенту + время от его начала на записи). Гол протокола без времени записи — в свой
+    тайм по протоколу и в весь матч."""
+    periods = _cv_periods(run)
+    bounds = next((p for p in periods if p['key'] == period), None)
+    if bounds is None:
+        return []
+    halves = [p for p in periods if p['key'] != 'all']
+    regular = (((version.provenance or {}).get('regulation') or {}).get('periods_s')) or []
+    inside = lambda t, spans: any(a <= t <= b for a, b in spans)
+    records = []
+    for r in version.canonical_actions or []:
+        if r['kind'] not in TAGGED_KINDS or r.get('side') not in SIDES:
+            continue
+        if r.get('start_ms') is None or r.get('clock_basis') != 'video':
+            half = str(r['period']) if r['kind'] == 'goal' and r.get('period') else None
+            if half is not None and period in ('all', half):
+                records.append({**r, 'period': half, 'match_ms': None})
+            continue
+        t = r['start_ms'] / 1000
+        if not inside(t, bounds['spans']):
+            continue
+        index = next((i for i, h in enumerate(halves) if inside(t, h['spans'])), None)
+        match_ms = None
+        if index is not None:
+            start = min(a for a, _ in halves[index]['spans'])
+            match_ms = round(sum(regular[:index]) * 1000 + (t - start) * 1000)
+        records.append({**r, 'period': halves[index]['key'] if index is not None else None, 'match_ms': match_ms})
+    return records
+
+
+def _with_tagging(stats, version, run):
+    """Строки ударов, вратарей и защиты из разметки по видео — в категории, которых нет в ручной версии;
+    удары с отмеченной точкой — на карту ударов."""
+    have = {r['category'] for r in stats['rows'] if r['source'] == 'manual'}
+    categories = [c for c in TAGGED_CATEGORIES if c not in have and _coverage(version.document, c) != 'unknown']
+    if not categories:
+        return stats
+    records = _tagged_records(version, run, stats['period'])
+    blocked = {r.get('shot_id') for r in records if r['kind'] == 'shot_block' and r.get('shot_id')}
+    values = {side: _values([r for r in records if r['side'] == side], blocked) for side in SIDES}
+    rows = [r for r in stats['rows'] if r['category'] not in categories]
+    for key, label, group, category, unit in ROWS:
+        if category in categories:
+            rows.append(
+                {
+                    'key': key,
+                    'label': label,
+                    'group': group,
+                    'category': category,
+                    'unit': unit,
+                    'coverage': _coverage(version.document, category),
+                    'source': 'manual',
+                    'home': values['home'][key],
+                    'away': values['away'][key],
+                }
+            )
+    order = {row[0]: i for i, row in enumerate(ROWS)}
+    stats['rows'] = sorted(rows, key=lambda r: order.get(r['key'], len(order)))
+    stats['coverage'] = {**stats['coverage'], **{c: _coverage(version.document, c) for c in categories}}
+    if 'shots' in categories:
+        stats['shots'] = [
+            {
+                'id': r['id'],
+                'side': r['side'],
+                'player_id': r.get('player_id'),
+                'x': r['start_xy'][0],
+                'y': r['start_xy'][1],
+                'goal': bool(r.get('counts_as_player_goal')),
+                'on_target': _on_target(r),
+                'blocked': r['id'] in blocked,
+                'outcome': r.get('outcome') or 'unknown',
+                'period': r['period'],
+                'start_ms': r['match_ms'],
+            }
+            for r in records
+            if r.get('counts_as_shot') and r.get('start_xy')
+        ]
+    return stats
+
+
+def _public_tagging(db, match_id, stats, run):
+    version = _tagged_version(db, match_id, run)
+    return _with_tagging(stats, version, run) if version else stats
+
+
 def _with_events(stats, run, published, people):
     """Добавляет автоматические строки в категории, которых нет в ручной версии."""
     rows = _auto_rows(run, stats['period'])
@@ -616,10 +726,11 @@ def public_action_stats(db, match_id, period='all'):
         raise DomainError('not_found', 'Действия матча не опубликованы', status=404)
     if version is None:
         stats = auto_action_stats(run, published=True, period=period, people=_people(db, run))
-        return _public_review(db, match_id, stats, run)
+        return _public_tagging(db, match_id, _public_review(db, match_id, stats, run), run)
     stats = team_action_stats(version, published=True, period=period)
     if run:
         stats = _public_review(db, match_id, _with_events(stats, run, True, _people(db, run)), run)
+        stats = _public_tagging(db, match_id, stats, run)
     # Позиции — только из опубликованного видеоанализа, даже без событий по мячу.
     return _with_positions(stats, run or _analysis_run(db, published_run), db)
 

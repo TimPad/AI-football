@@ -1,0 +1,112 @@
+/* Разметка ударов и защиты: видео, кнопки отметок и поле слева, отметки и закладки справа. */
+.video-tagging {
+  margin-bottom: 24px;
+}
+.tagging-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 24px;
+  margin-top: 16px;
+  outline: none;
+}
+@media (max-width: 900px) {
+  .tagging-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tagging-main,
+.tagging-side {
+  display: grid;
+  /* Без явной колонки она растягивается по таблице сводки и выводит страницу за край телефона. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+.tagging-side h3 {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+.tag-buttons {
+  display: grid;
+  gap: 8px;
+}
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.tag-team {
+  min-width: 120px;
+  font-weight: 500;
+}
+.tag-row kbd {
+  margin-left: 4px;
+}
+.tagging-pitch svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.tagging-pitch svg.placing {
+  cursor: crosshair;
+}
+.tag-point {
+  stroke: var(--surface);
+  stroke-width: 0.15;
+}
+.tag-point.home {
+  fill: var(--home);
+}
+.tag-point.away {
+  fill: var(--away);
+}
+.tag-point.selected {
+  stroke: var(--text);
+  stroke-width: 0.25;
+}
+.tag-summary {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.tag-summary th,
+.tag-summary td {
+  padding: 4px 6px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+.tag-summary th[scope="row"],
+.tag-summary thead th:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+.tag-items,
+.tag-marks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  max-height: 320px;
+  overflow: auto;
+}
+.tag-items li,
+.tag-marks li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.tag-items li[aria-current="true"] {
+  background: var(--hover);
+}
+.tag-items select {
+  max-width: 180px;
+}
+.tag-marks li.done {
+  opacity: 0.6;
+}
