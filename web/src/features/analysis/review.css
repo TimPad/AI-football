@@ -474,3 +474,34 @@
   border-radius: var(--radius);
   background: var(--warn-soft);
 }
+.suggestion-picker {
+  display: grid;
+  gap: 16px;
+}
+.hint-group {
+  display: grid;
+  gap: 8px;
+}
+.hint-group h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.hint-group .check {
+  margin: 0;
+  gap: 4px;
+  font-size: 13px;
+}
+.hint-confidence {
+  padding: 0 6px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: var(--font-caption);
+}
+.hint-confidence.sure {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+.hint-confidence.unsure {
+  color: var(--warn);
+  background: var(--warn-soft);
+}

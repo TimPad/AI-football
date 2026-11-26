@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
 import { downloadJson, ErrorBox } from '../../components/ui';
 import { useDraft } from '../protocol/drafts';
-import { baseGroups, dropConflicts, identityConflicts } from './candidates';
+import { baseGroups, candidatesOf, dropConflicts, identityConflicts } from './candidates';
 import { PlayerCandidates } from './PlayerCandidates';
 import { filteredCount, TRACK_FILTERS, type TrackFilter, trackState, visibleTrackIds } from './reviewQueue';
 import { SimilarPicker } from './SimilarPicker';
+import { SuggestionPicker } from './SuggestionPicker';
+import { lookIndex } from './similar';
+import { hintsFor } from './suggestions';
 import type { IdentitySuggestion } from './understandingTypes';
 import './review.css';
 
@@ -63,8 +66,32 @@ export function IdentityReview({
   // Есть признаки внешности — по умолчанию подбор похожих фрагментов; есть склейка — кандидаты-игроки;
   // старые версии открываются по фрагментам.
   const looks = run.tracks.some((t) => t.appearance);
-  const [mode, setMode] = useState<'similar' | 'players' | 'tracks'>(
+  const [mode, setMode] = useState<'similar' | 'hints' | 'players' | 'tracks'>(
     looks ? 'similar' : run.groups?.length ? 'players' : 'tracks',
+  );
+  // Число подсказок для кнопки режима: обе команды, без отклонений (их держит сам режим).
+  const lookIdx = useMemo(() => lookIndex(run), [run]);
+  const allCandidates = useMemo(() => candidatesOf(run, baseGroups(run)), [run]);
+  const sideMap = draft.value.side_map;
+  const draftAssignments = draft.value.assignments;
+  const hintCount = useMemo(
+    () =>
+      looks
+        ? (['A', 'B'] as const).reduce(
+            (n, t) =>
+              n +
+              hintsFor(
+                lookIdx,
+                allCandidates,
+                t,
+                run.context.rosters.filter((p) => p.side === sideMap[t]).map((p) => p.player_id),
+                draftAssignments,
+                new Set(),
+              ).hints.length,
+            0,
+          )
+        : 0,
+    [looks, lookIdx, allCandidates, run, sideMap, draftAssignments],
   );
   useEffect(() => {
     onDirty?.(draft.dirty);
@@ -175,9 +202,14 @@ export function IdentityReview({
         </div>
         <div className="segmented review-mode" role="group" aria-label="Сопоставлять">
           {looks && (
-            <button aria-pressed={mode === 'similar'} onClick={() => setMode('similar')}>
-              Подбор
-            </button>
+            <>
+              <button type="button" aria-pressed={mode === 'similar'} onClick={() => setMode('similar')}>
+                Подбор
+              </button>
+              <button type="button" aria-pressed={mode === 'hints'} onClick={() => setMode('hints')}>
+                Подсказки · {hintCount}
+              </button>
+            </>
           )}
           <button aria-pressed={mode === 'players'} onClick={() => setMode('players')}>
             По игрокам · {baseGroups(run).length}
@@ -215,6 +247,15 @@ export function IdentityReview({
           sideMap={draft.value.side_map}
           disabled={disabled}
           onChange={(next) => change({ ...draft.value, assignments: next })}
+        />
+      ) : mode === 'hints' ? (
+        <SuggestionPicker
+          run={run}
+          assignments={assignments}
+          sideMap={draft.value.side_map}
+          disabled={disabled}
+          onChange={(next) => change({ ...draft.value, assignments: next })}
+          onOpenSimilar={() => setMode('similar')}
         />
       ) : mode === 'players' ? (
         <PlayerCandidates

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
-import { assignGroup, baseGroups, type Candidate, candidatesOf, decisionOf } from './candidates';
+import { CandidateThumb } from './CandidateThumb';
+import { assignGroup, baseGroups, candidatesOf, clock, decisionOf } from './candidates';
 import { assignedShare, clash, lookIndex, suggest } from './similar';
 
 const STEP = 12;
-const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 type Mark = 'yes' | 'no';
 
 // Подбор фрагментов игроку: выбран игрок, ниже — самые похожие неназначенные фрагменты его команды, не видные
@@ -51,20 +51,6 @@ export function SimilarPicker({
   const share = assignedShare(candidates, team, assignments);
   const label = (p: (typeof roster)[number]) =>
     `${p.shirt_number ? `${p.shirt_number} · ` : ''}${p.display_name}${own(p.player_id).length ? ` · фрагментов ${own(p.player_id).length}` : ''}`;
-  const seconds = (id: number) => index.tracks.get(id)?.intervals.reduce((s, [a, b]) => s + b - a, 0) ?? 0;
-  // Кадр кандидата — миниатюра его самого длинного фрагмента.
-  const thumb = (c: Candidate, cls: string) => {
-    const id = c.trackIds.filter((t) => index.tracks.get(t)?.thumb).sort((a, b) => seconds(b) - seconds(a))[0];
-    return id != null ? (
-      <img
-        className={`track-thumb ${cls}`}
-        src={`/api/v1/matches/${run.match_id}/analysis/runs/${run.id}/thumbs/${id}`}
-        alt={`Фрагмент ${id}`}
-      />
-    ) : (
-      <span className={`thumb-missing ${cls}`}>Кадр недоступен</span>
-    );
-  };
   function pick(id: string) {
     setChosen((c) => ({ ...c, [team]: id }));
     reset();
@@ -130,7 +116,7 @@ export function SimilarPicker({
           <ul className="similar-own" aria-label="Фрагменты игрока">
             {placed.map((c) => (
               <li key={c.key}>
-                {thumb(c, 'small')}
+                <CandidateThumb run={run} index={index} candidate={c} className="small" />
                 <button
                   aria-label={`Убрать фрагмент ${clock(c.span[0])}–${clock(c.span[1])}`}
                   title="Убрать у игрока"
@@ -164,7 +150,7 @@ export function SimilarPicker({
                 className={`similar-card${m ? ` ${m}` : ''}`}
                 aria-label={`Фрагмент ${clock(c.span[0])}–${clock(c.span[1])}`}
               >
-                {thumb(c, 'similar')}
+                <CandidateThumb run={run} index={index} candidate={c} className="similar" />
                 <span className="small num">
                   {score != null ? `похож ${score.toFixed(2)} · ` : ''}
                   {clock(c.seconds)}

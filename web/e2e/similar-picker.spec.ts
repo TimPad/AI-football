@@ -115,8 +115,22 @@ test('similar fragments are picked for a player and saved as track assignments',
   await picker.getByRole('button', { name: 'Добавить отмеченных (1)' }).click();
   const next = picker.getByRole('listitem', { name: 'Фрагмент 0:00–1:00' });
   await expect(next).toContainText('похож 1.00');
-  await next.getByRole('button', { name: 'Он', exact: true }).click();
-  await picker.getByRole('button', { name: 'Добавить отмеченных (1)' }).click();
+  // Оставшийся фрагмент — из «Подсказок»: фрагменты есть у одного игрока, подсказка уверенная и уже отмечена.
+  await page.getByRole('button', { name: 'Подсказки · 1', exact: true }).click();
+  const hints = page.getByRole('region', { name: 'Подсказки игроков' });
+  const card = hints.getByRole('listitem', { name: 'Фрагмент 0:00–1:00' });
+  await expect(card).toContainText('уверенно');
+  await expect(card.getByRole('checkbox', { name: 'Назначить' })).toBeChecked();
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    ).toBe(true);
+    await hints.screenshot({ path: `test-results/suggestion-picker-${width}.png` });
+  }
+  await hints.getByRole('button', { name: 'Назначить отмеченных (1)' }).click();
+  await expect(hints).toContainText('Подсказок нет');
+  await page.getByRole('button', { name: 'Подбор', exact: true }).click();
   await expect(picker.getByRole('status', { name: 'Назначено времени команды' })).toContainText('100%');
   await picker.screenshot({ path: 'test-results/similar-picker.png' });
   await page.getByRole('button', { name: 'Сохранить сопоставление', exact: true }).click();
