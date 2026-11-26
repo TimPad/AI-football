@@ -89,6 +89,19 @@ export function SuggestionPicker({
             forget(g.hints.map((h) => h.candidate.key));
             onChange(next);
           }
+          // Все сразу: «да» — всем, кроме видных одновременно с уже отмеченными; «нет» — снять отметки.
+          const tickAll = (on: boolean) => {
+            const all = on ? initialTicks(index, g.hints, false) : new Set<string>();
+            setMarks((m) => ({
+              ...m,
+              ...Object.fromEntries(g.hints.map((h) => [h.candidate.key, all.has(h.candidate.key)])),
+            }));
+          };
+          const unticked = g.hints.filter((h) => !ticked(h));
+          function rejectUnticked() {
+            setRejected((r) => new Set([...r, ...unticked.map((h) => rejectKey(h.playerId, h.candidate))]));
+            forget(unticked.map((h) => h.candidate.key));
+          }
           return (
             <section className="hint-group" key={g.playerId} aria-label={`Подсказки игроку ${name(g.playerId)}`}>
               <h3>
@@ -137,6 +150,15 @@ export function SuggestionPicker({
               <div className="row wrap">
                 <button type="button" className="primary" disabled={disabled || !chosen.length} onClick={assign}>
                   Назначить отмеченных ({chosen.length})
+                </button>
+                <button type="button" disabled={disabled} onClick={() => tickAll(true)}>
+                  Отметить все
+                </button>
+                <button type="button" disabled={disabled || !chosen.length} onClick={() => tickAll(false)}>
+                  Снять все
+                </button>
+                <button type="button" disabled={disabled || !unticked.length} onClick={rejectUnticked}>
+                  Не он — неотмеченным ({unticked.length})
                 </button>
               </div>
             </section>

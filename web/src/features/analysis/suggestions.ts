@@ -71,11 +71,12 @@ export function groupByPlayer(hints: Hint[]): { playerId: string; hints: Hint[] 
 }
 
 // Отмеченные сразу: уверенные подсказки игрока по убыванию похожести, кроме видных одновременно с уже отмеченными.
-export function initialTicks(index: LookIndex, hints: Hint[]): Set<string> {
+// «Отметить все» берёт и сомнительные (onlyConfident = false) — с тем же запретом одновременных.
+export function initialTicks(index: LookIndex, hints: Hint[], onlyConfident = true): Set<string> {
   const keys = new Set<string>();
   const ticked: number[] = [];
   for (const h of [...hints].sort((a, b) => b.score - a.score)) {
-    if (!h.confident || (ticked.length && clash(index, ticked, h.candidate.trackIds))) continue;
+    if ((onlyConfident && !h.confident) || (ticked.length && clash(index, ticked, h.candidate.trackIds))) continue;
     keys.add(h.candidate.key);
     ticked.push(...h.candidate.trackIds);
   }

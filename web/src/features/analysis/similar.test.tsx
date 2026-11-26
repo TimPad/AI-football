@@ -119,6 +119,40 @@ describe('similar fragments', () => {
   });
 });
 
+describe('marking all suggestions at once', () => {
+  it('marks every suggestion as him, skipping ones seen together, or as not him', () => {
+    render(
+      <MemoryRouter>
+        <IdentityReview
+          run={{ ...run, assignments: [{ track_id: 4, player_id: 'p1' }] }}
+          actorId="admin"
+          editable
+          onSave={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    const picker = screen.getByRole('region', { name: 'Подбор похожих фрагментов' });
+    fireEvent.change(within(picker).getByLabelText('Игрок'), { target: { value: 'p1' } });
+    // Синий 3 (0:00–0:30) первым; красный 1 виден одновременно с ним — «он» ему не ставится.
+    fireEvent.click(within(picker).getByRole('button', { name: 'Все — он' }));
+    expect(within(picker).getByRole('button', { name: 'Добавить отмеченных (3)' })).toBeEnabled();
+    const one = within(picker).getByRole('listitem', { name: 'Фрагмент 0:00–0:40' });
+    expect(within(one).getByRole('button', { name: 'Он' })).toBeDisabled();
+    fireEvent.click(within(picker).getByRole('button', { name: 'Все — не он' }));
+    for (const card of within(picker)
+      .getAllByRole('listitem')
+      .filter((li) => li.className.includes('similar-card')))
+      expect(within(card).getByRole('button', { name: 'Не он' })).toHaveAttribute('aria-pressed', 'true');
+    // Только «не он» — кнопка всё равно применяет отметки: отклонённые уходят из подсказок игрока.
+    fireEvent.click(within(picker).getByRole('button', { name: 'Добавить отмеченных (0)' }));
+    expect(
+      within(picker)
+        .queryAllByRole('listitem')
+        .filter((li) => li.className.includes('similar-card')),
+    ).toEqual([]);
+  });
+});
+
 describe('simultaneous fragments of one player', () => {
   it('treats a short tracker duplicate inside a long fragment as a clash, like the server', () => {
     // 0,7 с внутри 49 с: пересечение меньше секунды, но начинается за 40 с до конца — сервер отклонит.

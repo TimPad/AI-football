@@ -63,6 +63,18 @@ export function SimilarPicker({
       return next;
     });
   }
+  // Все подсказки сразу: «он» — по убыванию похожести, кроме видных одновременно с уже отмеченными; «не он» — все.
+  function markAll(value: Mark) {
+    const next: Record<string, Mark> = {};
+    const taken: number[] = [];
+    for (const { candidate: c } of list) {
+      if (value === 'yes' && taken.length && clash(index, taken, c.trackIds)) continue;
+      next[c.key] = value;
+      if (value === 'yes') taken.push(...c.trackIds);
+    }
+    setMarks(next);
+  }
+  const marked = list.some((s) => marks[s.candidate.key]);
   function add() {
     let next = assignments;
     for (const s of yes) next = assignGroup(next, s.candidate.trackIds, player.player_id);
@@ -71,7 +83,8 @@ export function SimilarPicker({
     // Игрок остаётся выбранным: иначе после первых фрагментов выбор ушёл бы к следующему без фрагментов.
     setChosen((c) => ({ ...c, [team]: player.player_id }));
     reset();
-    onChange(next);
+    // Только «не он» — назначения не меняются, черновик не трогаем.
+    if (yes.length) onChange(next);
   }
   const nextFree = roster.find((p) => p.player_id !== player.player_id && !own(p.player_id).length);
   return (
@@ -183,8 +196,14 @@ export function SimilarPicker({
         <p className="muted">Подсказок нет: все фрагменты команды назначены или видны одновременно с этим игроком.</p>
       )}
       <div className="row wrap">
-        <button className="primary" disabled={disabled || !yes.length} onClick={add}>
+        <button type="button" className="primary" disabled={disabled || !marked} onClick={add}>
           Добавить отмеченных ({yes.length})
+        </button>
+        <button type="button" disabled={disabled || !list.length} onClick={() => markAll('yes')}>
+          Все — он
+        </button>
+        <button type="button" disabled={disabled || !list.length} onClick={() => markAll('no')}>
+          Все — не он
         </button>
         <button disabled={list.length < limit} onClick={() => setLimit((l) => l + STEP)}>
           Ещё похожие

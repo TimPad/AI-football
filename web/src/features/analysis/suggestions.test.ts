@@ -111,6 +111,18 @@ describe('hints for leftover fragments', () => {
     expect(ticks.has('2') && ticks.has('8')).toBe(true);
   });
 
+  it('can tick doubtful hints too, still one of the candidates seen together', () => {
+    const twins = [...base, { track_id: 8, player_id: 'p3' }];
+    const [group] = groupByPlayer(hintsFor(index, candidates, 'A', home, twins, new Set()).hints).filter(
+      (g) => g.playerId === 'p1',
+    );
+    expect(group.hints.every((h) => !h.confident)).toBe(true);
+    expect(initialTicks(index, group.hints).size).toBe(0);
+    const all = initialTicks(index, group.hints, false);
+    expect(all.has('2')).toBe(true);
+    expect(['9', '10'].filter((k) => all.has(k))).toHaveLength(1);
+  });
+
   it('orders groups by the number of hints', () => {
     const groups = groupByPlayer(hintsFor(index, candidates, 'A', home, base, new Set()).hints);
     expect(groups.map((g) => [g.playerId, g.hints.length])).toEqual([

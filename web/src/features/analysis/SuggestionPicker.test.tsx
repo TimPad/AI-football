@@ -91,6 +91,19 @@ describe('suggestion picker', () => {
     expect(card(group('Север · игрок 2'), '0:50–1:30')).toBeInTheDocument();
   });
 
+  it('ticks all, clears all and passes the unticked ones to the next player', () => {
+    show();
+    const p2 = group('Север · игрок 2');
+    fireEvent.click(within(p2).getByRole('button', { name: 'Снять все' }));
+    expect(within(p2).getByRole('button', { name: 'Назначить отмеченных (0)' })).toBeDisabled();
+    fireEvent.click(within(p2).getByRole('button', { name: 'Отметить все' }));
+    expect(within(p2).getByRole('button', { name: 'Назначить отмеченных (2)' })).toBeEnabled();
+    fireEvent.click(within(card(p2, '3:20–3:50')).getByRole('checkbox', { name: 'Назначить' }));
+    fireEvent.click(within(p2).getByRole('button', { name: 'Не он — неотмеченным (1)' }));
+    expect(card(group('7 · Север · игрок 1'), '3:20–3:50')).toBeInTheDocument();
+    expect(within(group('Север · игрок 2')).getByRole('button', { name: 'Назначить отмеченных (1)' })).toBeEnabled();
+  });
+
   it('asks to start in the similar picker when no player has fragments', () => {
     const onOpenSimilar = vi.fn();
     show([], vi.fn(), onOpenSimilar);
