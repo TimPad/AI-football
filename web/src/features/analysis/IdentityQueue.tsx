@@ -3,7 +3,7 @@ import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
 import { CandidateThumb } from './CandidateThumb';
 import { assignGroup, baseGroups, candidatesOf, clock, decisionOf } from './candidates';
 import { available, confidentHint, queueOrder, queuePlayers } from './queue';
-import { lookIndex } from './similar';
+import { blocker, lookIndex, trackSpan } from './similar';
 import { useMatchModel } from './useMatchModel';
 
 type Step = { key: string; before: AnalysisAssignment[] };
@@ -125,13 +125,21 @@ export function IdentityQueue({
             <div className="queue-players" role="group" aria-label="Игрок фрагмента">
               {players.map((p) => {
                 const free = available(index, p, current);
+                const by = free ? null : blocker(index, p.own, current.trackIds);
+                const span = by != null ? trackSpan(index, by) : null;
                 return (
                   <button
                     type="button"
                     key={p.id}
                     className={`queue-player${p.id === hint ? ' hinted' : ''}`}
                     disabled={disabled || !free}
-                    title={free ? undefined : 'На площадке в это время'}
+                    title={
+                      free
+                        ? undefined
+                        : span
+                          ? `На площадке в это время: фрагмент ${clock(span[0])}–${clock(span[1])}`
+                          : 'На площадке в это время'
+                    }
                     onClick={() => decide(p.id)}
                   >
                     {p.key ? `${p.key} · ` : ''}

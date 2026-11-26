@@ -1,7 +1,7 @@
 import type { AnalysisAssignment } from '../../api/domain';
 import { assignGroup, type Candidate, decisionOf } from './candidates';
 import { candidateFeature, type MatchModel, probabilityOf } from './matchModel';
-import { clash, cosine, type LookIndex, meanLook } from './similar';
+import { blocker, clash, cosine, type LookIndex, meanLook } from './similar';
 
 export const PAGE_TILES = 60;
 
@@ -45,7 +45,7 @@ export function applyClass(
   assignments: AnalysisAssignment[],
   picked: Candidate[],
   value: string,
-): { next: AnalysisAssignment[]; skipped: string[] } {
+): { next: AnalysisAssignment[]; skipped: string[]; blockedBy: Record<string, number> } {
   const player = value !== '' && value !== 'exclude';
   const pickedIds = new Set(picked.flatMap((c) => c.trackIds));
   const taken = player
@@ -53,15 +53,18 @@ export function applyClass(
     : [];
   let next = assignments;
   const skipped: string[] = [];
+  const blockedBy: Record<string, number> = {};
   for (const c of picked) {
     if (player && taken.length && clash(index, taken, c.trackIds)) {
       skipped.push(c.key);
+      const by = blocker(index, taken, c.trackIds);
+      if (by != null) blockedBy[c.key] = by;
       continue;
     }
     if (player) taken.push(...c.trackIds);
     next = assignGroup(next, c.trackIds, value);
   }
-  return { next, skipped };
+  return { next, skipped, blockedBy };
 }
 
 // Диапазон выделения Shift + щелчок: от якоря до кадра включительно, в любую сторону.

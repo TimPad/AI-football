@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
 import { CandidateThumb } from './CandidateThumb';
-import { assignGroup, baseGroups, candidatesOf, clock, decisionOf } from './candidates';
+import { baseGroups, candidatesOf, clock } from './candidates';
 import { lookIndex } from './similar';
 
 type Player = AnalysisRun['context']['rosters'][number];
@@ -56,12 +56,11 @@ export function PlayersPanel({
     );
   }
   const player = rows.find((p) => p.player_id === chosen);
-  const mine = player
-    ? candidates.filter((c) => {
-        const d = decisionOf(assignments, c.trackIds);
-        return d.kind === 'player' && d.playerId === player.player_id;
-      })
-    : [];
+  // Кандидаты, где у игрока есть хоть один фрагмент: решения, поставленные на часть склейки, тоже видны
+  // (иначе они незаметно мешают назначению по одновременности). «Убрать» снимает только фрагменты этого игрока.
+  const ownIn = (ids: number[]) =>
+    player ? ids.filter((id) => assignments.some((a) => a.track_id === id && a.player_id === player.player_id)) : [];
+  const mine = player ? candidates.filter((c) => ownIn(c.trackIds).length > 0) : [];
   return (
     <section className="players-panel" aria-label="Игроки матча">
       <div className="table-scroll">
@@ -114,12 +113,19 @@ export function PlayersPanel({
                 <CandidateThumb run={run} index={index} candidate={c} className="tile" />
                 <span className="muted small num">
                   {clock(c.span[0])}–{clock(c.span[1])}
+                  {ownIn(c.trackIds).length < c.trackIds.length ? ' · часть склейки' : ''}
                 </span>
                 <button
                   type="button"
                   aria-label={`Убрать ${clock(c.span[0])}–${clock(c.span[1])}`}
                   disabled={disabled}
-                  onClick={() => onChange(assignGroup(assignments, c.trackIds, ''), absent)}
+                  onClick={() => {
+                    const ids = ownIn(c.trackIds);
+                    onChange(
+                      assignments.filter((a) => !ids.includes(a.track_id)),
+                      absent,
+                    );
+                  }}
                 >
                   Убрать
                 </button>

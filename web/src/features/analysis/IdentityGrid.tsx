@@ -4,7 +4,7 @@ import { CandidateThumb } from './CandidateThumb';
 import { baseGroups, type Candidate, candidatesOf, clock, decisionOf } from './candidates';
 import { applyClass, gridOrder, PAGE_TILES, rangeKeys } from './grid';
 import { queuePlayers } from './queue';
-import { lookIndex } from './similar';
+import { lookIndex, trackSpan } from './similar';
 import { useMatchModel } from './useMatchModel';
 
 const EXCLUDE_KEYS = ['x', 'X', 'ч', 'Ч'];
@@ -44,6 +44,12 @@ export function IdentityGrid({
   const [selected, setSelected] = useState<string[]>([]);
   const [anchor, setAnchor] = useState<string | null>(null);
   const [clashed, setClashed] = useState<string[]>([]);
+  const [blockedBy, setBlockedBy] = useState<Record<string, number>>({});
+  // Отрезок фрагмента, который мешает назначению: человек видит, с чем именно одновременность.
+  const blockText = (key: string) => {
+    const span = blockedBy[key] != null ? trackSpan(index, blockedBy[key]) : null;
+    return span ? `мешает фрагмент ${clock(span[0])}–${clock(span[1])} этого игрока` : 'игрок на площадке в это время';
+  };
   const players = queuePlayers(index, run.context.rosters, sideMap[team], absent, assignments);
   const model = useMatchModel(
     index,
@@ -75,8 +81,9 @@ export function IdentityGrid({
       const c = byKey.get(k);
       return c ? [c] : [];
     });
-    const { next, skipped } = applyClass(index, assignments, picked, value);
+    const { next, skipped, blockedBy: by } = applyClass(index, assignments, picked, value);
     setClashed(skipped);
+    setBlockedBy(by);
     if (next !== assignments) onChange(next);
   }
   // Кнопка или клавиша класса: меняет кисть; при выделении — присваивает класс всем выделенным.
@@ -215,7 +222,7 @@ export function IdentityGrid({
                   className={`grid-tile${on ? ' selected' : ''}${bad ? ' clash' : ''}`}
                   aria-label={`Фрагмент ${clock(c.span[0])}–${clock(c.span[1])}`}
                   aria-pressed={on}
-                  title={bad ? 'На площадке в это время' : undefined}
+                  title={bad ? blockText(key) : undefined}
                   onClick={(e) => click(key, e)}
                 >
                   <CandidateThumb run={run} index={index} candidate={c} className="tile" />
@@ -234,6 +241,11 @@ export function IdentityGrid({
       {clashed.length > 0 && (
         <p className="warning small" role="status" aria-label="Не назначено">
           Не назначено из-за одновременности: {clashed.length}
+          {clashed.slice(0, 3).map((key) => {
+            const c = byKey.get(key);
+            return c ? ` · ${clock(c.span[0])}–${clock(c.span[1])}: ${blockText(key)}` : '';
+          })}
+          {clashed.length > 3 ? ' · …' : ''}
         </p>
       )}
       {pages > 1 && (

@@ -80,3 +80,12 @@ export function clash(index: LookIndex, a: number[], b: number[]): boolean {
   const spans = (ids: number[]) => ids.flatMap((id) => index.tracks.get(id)?.intervals ?? []);
   return intervalsClash(spans(a), spans(b));
 }
+
+// Фрагмент игрока, из-за которого кандидат ему недоступен (первый по номеру), и отрезок фрагмента на записи.
+export function blocker(index: LookIndex, own: number[], ids: number[]): number | null {
+  return [...own].sort((a, b) => a - b).find((t) => clash(index, [t], ids)) ?? null;
+}
+export function trackSpan(index: LookIndex, id: number): [number, number] | null {
+  const iv = index.tracks.get(id)?.intervals ?? [];
+  return iv.length ? [Math.min(...iv.map((x) => x[0])), Math.max(...iv.map((x) => x[1]))] : null;
+}

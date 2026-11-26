@@ -38,4 +38,15 @@ describe('players panel', () => {
     fireEvent.click(within(own).getByRole('button', { name: 'Убрать 0:00–0:40' }));
     expect(onChange).toHaveBeenCalledWith([{ track_id: 4, player_id: 'p2' }], []);
   });
+
+  it('shows a fragment given to a player inside a chain and removes only it', () => {
+    const onChange = vi.fn();
+    const chained = { ...run, groups: [[1, 2]] } as typeof run;
+    render(<PlayersPanel run={chained} assignments={base} absent={[]} disabled={false} onChange={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: '№7 Север · игрок 1' }));
+    const own = screen.getByRole('region', { name: 'Фрагменты игрока' });
+    expect(own).toHaveTextContent('0:00–1:30 · часть склейки');
+    fireEvent.click(within(own).getByRole('button', { name: 'Убрать 0:00–1:30' }));
+    expect(onChange).toHaveBeenCalledWith([{ track_id: 4, player_id: 'p2' }], []);
+  });
 });

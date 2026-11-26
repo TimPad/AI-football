@@ -30,9 +30,11 @@ describe('identity grid', () => {
   it('gives a class to the picked fragments, skipping ones seen together', () => {
     const one = applyClass(index, base, [cand('3'), cand('2')], 'p1');
     expect(one.skipped).toEqual(['3']);
+    expect(one.blockedBy).toEqual({ 3: 1 });
     expect(one.next).toContainEqual({ track_id: 2, player_id: 'p1' });
     const pair = applyClass(index, base, [cand('9'), cand('10')], 'p2');
     expect(pair.skipped).toEqual(['10']);
+    expect(pair.blockedBy).toEqual({ 10: 9 });
     expect(applyClass(index, base, [cand('6')], 'exclude').next).toContainEqual({
       track_id: 6,
       excluded_reason: 'Не игрок матча',

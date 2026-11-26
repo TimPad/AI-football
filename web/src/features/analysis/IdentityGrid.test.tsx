@@ -71,7 +71,7 @@ describe('identity grid', () => {
     fireEvent.click(tile('0:00–0:30'));
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByRole('status', { name: 'Не назначено' })).toHaveTextContent(
-      'Не назначено из-за одновременности: 1',
+      'Не назначено из-за одновременности: 1 · 0:00–0:30: мешает фрагмент 0:00–0:40 этого игрока',
     );
   });
 
