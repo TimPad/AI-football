@@ -287,6 +287,23 @@ describe('public match page', () => {
     expect(within(table).getByText('Дистанция, м')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Перемещения' })).toHaveAttribute('aria-pressed', 'true');
   });
+  it('opens a player card with video physics, goals and the average position on the heatmap', async () => {
+    stub(standard);
+    show(`/watch/matches/${A}?tab=stats&player_id=${P1}&origin=cv`);
+    const card = await screen.findByRole('dialog', { name: 'Игрок 01' });
+    const physics = await within(card).findByRole('region', { name: 'Физика по видео' });
+    expect(within(physics).getByText('В кадре').nextSibling).toHaveTextContent('1:00');
+    expect(within(physics).getByText('Дистанция').nextSibling).toHaveTextContent('0 м');
+    expect(within(physics).getByText('Темп').nextSibling).toHaveTextContent('—');
+    expect(within(physics).getByText('В кадре').parentElement).toHaveAttribute(
+      'title',
+      expect.stringContaining('не минуты на площадке'),
+    );
+    // Голы размечены в протоколе полностью: у игрока 1 гол.
+    expect(within(card).getByText('Голы · ассисты').nextSibling).toHaveTextContent('1 · 0');
+    expect(card.querySelector('circle.pitch-marker')).not.toBeNull();
+    expect(within(card).getByText(/точка — средняя позиция/)).toBeInTheDocument();
+  });
   it('does not render a late response of the previous match', async () => {
     let release!: () => void;
     const late = new Promise<void>((r) => {

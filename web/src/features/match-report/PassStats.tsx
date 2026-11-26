@@ -119,11 +119,13 @@ export function PassStats({
   homeName,
   awayName,
   name,
+  onOpenPlayer,
 }: {
   stats: TeamActionStats;
   homeName: string;
   awayName: string;
   name: Name;
+  onOpenPlayer?: (playerId: string) => void;
 }) {
   const [filter, setFilter] = useState<PassFilter>(ALL_PASSES);
   if (!stats.pitch) return null;
@@ -218,6 +220,14 @@ export function PassStats({
           <b>{name(chosen.player_id) ?? 'Игрок'}</b>: передач {chosen.total}, точных{' '}
           {formatAccuracy(accuracy([chosen], MIN_PASSES_FOR_PERCENT), approx)}
           {chosen.length_m != null ? `, средняя длина ${metres(chosen.length_m)} м` : ''}
+          {onOpenPlayer && chosen.player_id && (
+            <>
+              {' '}
+              <button type="button" className="btn-link" onClick={() => onOpenPlayer(chosen.player_id!)}>
+                Карточка игрока
+              </button>
+            </>
+          )}
         </p>
       )}
       <PassMap
@@ -308,12 +318,14 @@ export function PassNetworkStats({
   awayName,
   name,
   number,
+  onOpenPlayer,
 }: {
   stats: TeamActionStats;
   homeName: string;
   awayName: string;
   name: Name;
   number: Name;
+  onOpenPlayer?: (playerId: string) => void;
 }) {
   // Сеть открывается на команде, у которой она есть: у хозяев может не быть назначенных игроков.
   const [side, setSide] = useState<Side>(() =>
@@ -398,6 +410,14 @@ export function PassNetworkStats({
           ]
             .filter(Boolean)
             .join(', ')}
+          {onOpenPlayer && (
+            <>
+              {' '}
+              <button type="button" className="btn-link" onClick={() => onOpenPlayer(chosen.playerId)}>
+                Карточка игрока
+              </button>
+            </>
+          )}
         </p>
       )}
       <PassNetwork

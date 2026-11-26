@@ -735,7 +735,8 @@
   text-align: center;
   font-size: 12px;
 }
-@media (max-width: 1024px) {
+/* Та же граница, что у PlayerInspector (узкий экран — до 1023 px): на 1024 px карточка — боковая панель. */
+@media (max-width: 1023px) {
   .match-report.with-aside {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -910,6 +911,21 @@
 .network-dot.away {
   background: var(--away, #e9aa49);
   color: #1d1a14;
+}
+.card-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+}
+.card-tile {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.card-tile b {
+  font-size: 15px;
 }
 .match-flow {
   display: grid;
