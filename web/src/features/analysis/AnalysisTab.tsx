@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../../api/client';
+import { ApiError, api } from '../../api/client';
 import type { AnalysisJob, AnalysisOverview, AnalysisRun, PublicAnalysis } from '../../api/domain';
 import { plural } from '../../components/plural';
 import { downloadJson, ErrorBox, Loading, useLoad } from '../../components/ui';
@@ -484,9 +484,15 @@ function RunContent({
           editable={canManage && run.status === 'review' && run.id === newestId && !busy && !episodeDirty}
           onDirty={setDirty}
           onSave={async (values) => {
-            const result = await change('assignments', values, 'PUT');
-            understanding.reload();
-            return result;
+            try {
+              const result = await change('assignments', values, 'PUT');
+              understanding.reload();
+              return result;
+            } catch (e) {
+              // Загружена более новая версия: обновить список версий, чтобы появился переход к ней.
+              if (e instanceof ApiError && e.code === 'stale_analysis_run') refresh();
+              throw e;
+            }
           }}
           suggestions={understanding.data?.identity_suggestions}
           onEvidence={(ids) => {

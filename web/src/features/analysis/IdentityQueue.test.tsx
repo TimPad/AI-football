@@ -61,6 +61,25 @@ describe('identity queue', () => {
     expect(screen.getByText(/0:00–0:30 · 30 с/)).toBeInTheDocument();
   });
 
+  it('undo does not give fragments back to a player marked absent', () => {
+    const onChange = vi.fn();
+    const props = { run, sideMap, disabled: false, onChange };
+    const view = render(<IdentityQueue {...props} assignments={base} absent={[]} />);
+    key('2');
+    view.rerender(
+      <IdentityQueue
+        {...props}
+        assignments={[
+          { track_id: 4, player_id: 'p2' },
+          { track_id: 3, player_id: 'p2' },
+        ]}
+        absent={['p1']}
+      />,
+    );
+    key('Backspace');
+    expect(last(onChange)).toEqual([{ track_id: 4, player_id: 'p2' }]);
+  });
+
   it('highlights only a confident hint and never reorders the players', () => {
     show();
     expect(screen.getByRole('button', { name: '2 · Север · игрок 2' })).toHaveClass('hinted');
@@ -91,6 +110,28 @@ describe('review tab', () => {
     expect(save.mock.calls[0][0].assignments).toContainEqual({ track_id: 3, player_id: 'p2' });
     expect(save.mock.calls[0][0].absent_players).toEqual([]);
     vi.useRealTimers();
+  });
+
+  it('finds assignments the server would reject and removes them with one button', async () => {
+    vi.useFakeTimers();
+    try {
+      localStorage.clear();
+      const save = vi.fn().mockResolvedValue(undefined);
+      // Игрок «Севера» на фрагменте команды B (Юг): сервер ответит «другая сторона матча».
+      const wrong = [...base, { track_id: 7, player_id: 'p1' }];
+      render(
+        <MemoryRouter>
+          <IdentityReview run={{ ...run, assignments: wrong }} actorId="admin" editable onSave={save} />
+        </MemoryRouter>,
+      );
+      expect(screen.getByRole('alert', { name: 'Неверные назначения' })).toHaveTextContent('сервер не примет: 1');
+      fireEvent.click(screen.getByRole('button', { name: 'Снять их (1)' }));
+      await vi.advanceTimersByTimeAsync(2100);
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(save.mock.calls[0][0].assignments).toEqual(base);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('keeps who did not take part in the draft', () => {

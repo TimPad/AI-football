@@ -71,7 +71,8 @@ export function IdentityQueue({
     if (!step || disabled) return;
     setHistory((h) => h.slice(0, -1));
     setPos(Math.max(0, order.indexOf(step.key)));
-    onChange(step.before);
+    // Не участвовавшему после решения фрагменты не возвращаются: сервер такую разметку не примет.
+    onChange(step.before.filter((a) => !a.player_id || !absent.includes(a.player_id)));
   }
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

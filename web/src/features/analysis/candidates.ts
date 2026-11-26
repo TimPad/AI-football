@@ -86,6 +86,30 @@ export function identityConflicts(
   return out;
 }
 
+// Назначения, которые сервер не примет (analysis/assignments.set_assignments): игрок не из состава задания,
+// отмечен как не участвовавший, трек не игрока или вратаря, игрок другой стороны. Номера фрагментов.
+export function rejectedAssignments(
+  run: AnalysisRun,
+  sideMap: AnalysisRun['side_map'],
+  absent: string[],
+  assignments: AnalysisAssignment[],
+): number[] {
+  const roster = new Map(run.context.rosters.map((p) => [p.player_id, p]));
+  const tracks = new Map(run.tracks.map((t) => [t.track_id, t]));
+  return assignments.flatMap((a) => {
+    if (!a.player_id) return [];
+    const player = roster.get(a.player_id);
+    const track = tracks.get(a.track_id);
+    const ok =
+      !!player &&
+      !!track &&
+      !absent.includes(a.player_id) &&
+      (track.role === 'player' || track.role === 'goalkeeper') &&
+      (!track.team || player.side === sideMap[track.team as 'A' | 'B']);
+    return ok ? [] : [a.track_id];
+  });
+}
+
 // Снимает с игроков более короткие фрагменты конфликтных пар, пока конфликтов не останется.
 export function dropConflicts(run: AnalysisRun, assignments: AnalysisAssignment[]): AnalysisAssignment[] {
   let next = assignments;

@@ -83,4 +83,15 @@ describe('identity grid', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Обновить' }));
     expect(screen.queryByRole('button', { name: 'Фрагмент 3:20–3:50' })).toBeNull();
   });
+
+  it('drops the brush when the team changes', () => {
+    const onChange = vi.fn();
+    render(
+      <IdentityGrid run={run} assignments={[]} sideMap={sideMap} absent={[]} disabled={false} onChange={onChange} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '2 · Север · игрок 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Юг' }));
+    fireEvent.click(tile('0:00–2:30'));
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

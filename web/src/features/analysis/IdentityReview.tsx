@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
 import { downloadJson, ErrorBox } from '../../components/ui';
 import { useDraft } from '../protocol/drafts';
-import { dropConflicts, identityConflicts } from './candidates';
+import { dropConflicts, identityConflicts, rejectedAssignments } from './candidates';
 import { IdentityGrid } from './IdentityGrid';
 import { IdentityQueue } from './IdentityQueue';
 import { identityFingerprint } from './identityBase';
@@ -13,6 +13,8 @@ import './review.css';
 
 // Решение сохраняется само через 2 с после последнего изменения; null — без автосохранения.
 const AUTOSAVE_MS = 2000;
+// Причина исключения по умолчанию — как у кнопки X в очереди и сетке; пустую сервер не примет.
+const EXCLUDE_REASON = 'Не игрок матча';
 type Review = { side_map: AnalysisRun['side_map']; assignments: AnalysisAssignment[]; absent_players?: string[] };
 function valid(v: unknown): v is Review {
   if (!v || typeof v !== 'object') return false;
@@ -89,7 +91,7 @@ export function IdentityReview({
         ? [
             ...rest,
             value === 'exclude'
-              ? { track_id, excluded_reason: old?.excluded_reason ?? '' }
+              ? { track_id, excluded_reason: old?.excluded_reason ?? EXCLUDE_REASON }
               : { track_id, player_id: value },
           ]
         : rest,
@@ -122,11 +124,20 @@ export function IdentityReview({
   }
   const saveRef = useRef(save);
   saveRef.current = save;
+  const blankReason = draft.value.assignments.some((a) => a.excluded_reason != null && !a.excluded_reason.trim());
+  // Такие назначения сервер отклонит целиком: пока они есть, автосохранение ждёт, а баннер предлагает их снять.
+  const rejected = rejectedAssignments(
+    run,
+    draft.value.side_map,
+    draft.value.absent_players ?? [],
+    draft.value.assignments,
+  );
+  const blocked = blankReason || rejected.length > 0;
   useEffect(() => {
-    if (autosaveMs == null || !editable || !draft.dirty || draft.corrupt || stale || error) return;
+    if (autosaveMs == null || !editable || !draft.dirty || draft.corrupt || stale || error || blocked) return;
     const timer = setTimeout(() => void saveRef.current(), autosaveMs);
     return () => clearTimeout(timer);
-  }, [autosaveMs, editable, draft.dirty, draft.corrupt, draft.value, stale, error]);
+  }, [autosaveMs, editable, draft.dirty, draft.corrupt, draft.value, stale, error, blocked]);
   const sidesChanged = JSON.stringify(draft.value.side_map) !== JSON.stringify(run.side_map);
   const disabled = !editable || busy || draft.corrupt;
   const assignments = draft.value.assignments;
@@ -484,6 +495,25 @@ export function IdentityReview({
           </aside>
         </div>
       )}
+      {rejected.length > 0 && (
+        <div className="warning conflict-banner" role="alert" aria-label="Неверные назначения">
+          <span>
+            Назначения, которые сервер не примет: {rejected.length} — игрок другой команды, не участвовал в матче или не
+            из состава этой версии. Пока они есть, разметка не сохраняется.
+          </span>
+          <button
+            disabled={disabled}
+            onClick={() =>
+              change({
+                ...draft.value,
+                assignments: draft.value.assignments.filter((a) => !rejected.includes(a.track_id)),
+              })
+            }
+          >
+            Снять их ({rejected.length})
+          </button>
+        </div>
+      )}
       {conflicts.length > 0 && (
         <div className="warning conflict-banner" role="alert">
           <span>
@@ -512,9 +542,17 @@ export function IdentityReview({
       {editable && (
         <div className="row">
           <span className="muted small" role="status" aria-label="Сохранение">
-            {busy ? 'сохраняется…' : draft.dirty ? 'изменения сохранятся сами' : 'сохранено'}
+            {busy
+              ? 'сохраняется…'
+              : blankReason
+                ? 'укажите причину исключения'
+                : rejected.length
+                  ? 'снимите назначения, которые сервер не примет'
+                  : draft.dirty
+                    ? 'изменения сохранятся сами'
+                    : 'сохранено'}
           </span>
-          <button className="primary" disabled={disabled || stale} onClick={save}>
+          <button className="primary" disabled={disabled || stale || blocked} onClick={save}>
             Сохранить сопоставление
           </button>
           <button onClick={() => downloadJson(draft.raw ?? draft.value, 'сопоставление.json')}>Скачать черновик</button>

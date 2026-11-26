@@ -59,6 +59,8 @@ export function IdentityGrid({
     const t = next.team ?? team;
     const s = next.show ?? show;
     const sim = next.similarTo === undefined ? similarTo : next.similarTo;
+    // Кисть — игрок одной команды: на кадрах другой она назначила бы игрока чужой стороне.
+    if (t !== team) setBrush(null);
     setTeam(t);
     setShow(s);
     setSimilarTo(sim);
