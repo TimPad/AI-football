@@ -3,6 +3,7 @@ import type { AnalysisAssignment, AnalysisRun } from '../../api/domain';
 import { downloadJson, ErrorBox } from '../../components/ui';
 import { useDraft } from '../protocol/drafts';
 import { baseGroups, dropConflicts, identityConflicts } from './candidates';
+import { identityFingerprint } from './identityBase';
 import { PlayerCandidates } from './PlayerCandidates';
 import { filteredCount, TRACK_FILTERS, type TrackFilter, trackState, visibleTrackIds } from './reviewQueue';
 import { SimilarPicker } from './SimilarPicker';
@@ -49,11 +50,13 @@ export function IdentityReview({
   view?: View;
   onView?: (patch: Partial<View>) => void;
 }) {
-  const draft = useDraft<Review>(
-    `aifootball:identity:v1:${actorId}:${run.id}`,
-    { side_map: run.side_map, assignments: run.assignments },
-    valid,
-  );
+  const server = { side_map: run.side_map, assignments: run.assignments };
+  const serverBase = identityFingerprint(server);
+  const draft = useDraft<Review>(`aifootball:identity:v1:${actorId}:${run.id}`, server, valid, serverBase);
+  // Черновик начат с другой версии сервера и с нынешней не совпадает: страница показывает черновик, а его
+  // сохранение заменит версию сервера целиком. Своё сохранение сюда не попадает — сервер уже равен черновику.
+  const stale =
+    draft.dirty && !draft.corrupt && draft.base !== serverBase && identityFingerprint(draft.value) !== serverBase;
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const [local, setLocal] = useState<View>({ page: 1, item: null });
@@ -145,6 +148,26 @@ export function IdentityReview({
   const conflicts = identityConflicts(run, assignments);
   return (
     <section className="identity-review" aria-label="Сопоставление игроков">
+      {stale && (
+        <div className="warning stale-draft" role="alert" aria-label="Черновик устарел">
+          <span>
+            Сопоставление изменилось на сервере после того, как начат черновик этого браузера: на сервере решений по
+            фрагментам: {run.assignments.length}, в черновике: {draft.value.assignments.length}. Ниже показан черновик;
+            его сохранение заменит версию сервера целиком.
+          </span>
+          <span className="row">
+            <button
+              onClick={() => {
+                draft.clear();
+                onDirty?.(false);
+              }}
+            >
+              Показать версию сервера
+            </button>
+            <button onClick={draft.rebase}>Оставить черновик</button>
+          </span>
+        </div>
+      )}
       <div className="review-bar">
         <div className="form-grid side-map">
           {(['A', 'B'] as const).map((s) => (
@@ -460,7 +483,7 @@ export function IdentityReview({
       <ErrorBox error={error || draft.error} />
       {editable && (
         <div className="row">
-          <button className="primary" disabled={disabled} onClick={save}>
+          <button className="primary" disabled={disabled || stale} onClick={save}>
             Сохранить сопоставление
           </button>
           <button onClick={() => downloadJson(draft.raw ?? draft.value, 'сопоставление.json')}>Скачать черновик</button>
