@@ -13,7 +13,7 @@ function packageFor(job: unknown) {
   return result.stdout;
 }
 
-test('similar fragments are picked for a player and saved as track assignments', async ({ page }) => {
+test('players are labelled in the queue and the grid, absent ones leave it', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Логин', { exact: true }).fill('e2e-analyst');
   await page.getByLabel('Пароль', { exact: true }).fill('e2e-only-password');
@@ -28,7 +28,7 @@ test('similar fragments are picked for a player and saved as track assignments',
   }
   const suffix = crypto.randomUUID().slice(0, 6);
   const hall = await call('/halls', {
-    name: `Подбор ${suffix}`,
+    name: `Очередь ${suffix}`,
     address: 'Тестовый адрес',
     pitch_length_m: 40,
     pitch_width_m: 20,
@@ -52,7 +52,7 @@ test('similar fragments are picked for a player and saved as track assignments',
     ],
   });
   const tour = await call('/tournaments', {
-    name: `Подбор фрагментов ${suffix}`,
+    name: `Очередь разметки ${suffix}`,
     visibility: 'draft',
     season: '2026',
     starts_on: '2026-10-01',
@@ -101,41 +101,58 @@ test('similar fragments are picked for a player and saved as track assignments',
   expect(imported.ok(), await imported.text()).toBeTruthy();
   const run = await imported.json();
 
+  const saved = async () => (await page.request.get(`/api/v1${path}/analysis/runs/${run.id}`)).json();
+  const mine = async (playerId: string) =>
+    (await saved()).assignments
+      .filter((a: { player_id: string | null }) => a.player_id === playerId)
+      .map((a: { track_id: number }) => a.track_id)
+      .sort();
+  const [p1, p2] = people.home;
+
   await page.goto(`${path}?tab=review`);
-  const picker = page.getByRole('region', { name: 'Подбор похожих фрагментов' });
-  await expect(page.getByRole('button', { name: 'Подбор', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  const player = people.home.find((p) => p.name.startsWith('Север · игрок 1'))!;
-  await expect(picker.getByLabel('Игрок')).toHaveValue(/.+/);
-  const chosen = await picker.getByLabel('Игрок').inputValue();
-  // Начало подбора — самый длинный фрагмент команды (2: 2:00–4:00); после него подсказан похожий 1.
-  await picker
-    .getByRole('listitem', { name: 'Фрагмент 2:00–4:00' })
-    .getByRole('button', { name: 'Он', exact: true })
-    .click();
-  await picker.getByRole('button', { name: 'Добавить отмеченных (1)' }).click();
-  const next = picker.getByRole('listitem', { name: 'Фрагмент 0:00–1:00' });
-  await expect(next).toContainText('похож 1.00');
-  await next.getByRole('button', { name: 'Он', exact: true }).click();
-  await picker.getByRole('button', { name: 'Добавить отмеченных (1)' }).click();
-  await expect(picker.getByRole('status', { name: 'Назначено времени команды' })).toContainText('100%');
-  await picker.screenshot({ path: 'test-results/similar-picker.png' });
-  await page.getByRole('button', { name: 'Сохранить сопоставление', exact: true }).click();
-  await expect
-    .poll(async () => {
-      const saved = await (await page.request.get(`/api/v1${path}/analysis/runs/${run.id}`)).json();
-      return saved.assignments
-        .filter((a: { player_id: string | null }) => a.player_id === chosen)
-        .map((a: { track_id: number }) => a.track_id)
-        .sort();
-    })
-    .toEqual([1, 2]);
-  expect(chosen).toBeTruthy();
-  expect(player).toBeTruthy();
-  for (const width of [1440, 390]) {
+  await expect(page.getByRole('button', { name: 'Очередь', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const queue = page.getByRole('region', { name: 'Очередь разметки' });
+  // Очередь по времени: 1 (0:00–1:00), затем 2 (2:00–4:00); клавиша 1 — первый игрок по имени.
+  await expect(queue).toContainText('0:00–1:00');
+  await page.keyboard.press('1');
+  await expect(queue).toContainText('2:00–4:00');
+  await page.keyboard.press('1');
+  await expect(queue).toContainText('Все фрагменты команды в очереди размечены');
+  await expect.poll(() => mine(p1.id)).toEqual([1, 2]);
+
+  // Сетка: фрагменты первого игрока — снять все, неназначенные — второму.
+  await page.getByRole('button', { name: 'Сетка', exact: true }).click();
+  const grid = page.getByRole('region', { name: 'Сетка разметки' });
+  await grid.getByLabel('Показать').selectOption(p1.id);
+  await grid.getByRole('button', { name: 'Выделить все на странице' }).click();
+  await page.keyboard.press('Delete');
+  await grid.getByLabel('Показать').selectOption('open');
+  await grid.getByRole('button', { name: 'Выделить все на странице' }).click();
+  await page.keyboard.press('2');
+  await expect.poll(() => mine(p2.id)).toEqual([1, 2]);
+  for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
     ).toBe(true);
+    await page.screenshot({ path: `test-results/identity-grid-${width}.png`, fullPage: true });
   }
-  await picker.screenshot({ path: 'test-results/similar-picker-390.png' });
+
+  // Игроки: второй не участвовал — его фрагменты вернутся в очередь.
+  await page.getByRole('button', { name: 'Игроки', exact: true }).click();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('checkbox', { name: `Участвовал в матче: ${p2.name}` }).uncheck();
+  await expect.poll(async () => (await saved()).absent_players).toEqual([p2.id]);
+  await expect.poll(() => mine(p2.id)).toEqual([]);
+
+  await page.reload();
+  await expect(page.getByRole('status', { name: 'Прогресс очереди' })).toContainText('осталось 2');
+  await expect(page.getByRole('button', { name: new RegExp(p2.name) })).toHaveCount(0);
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    ).toBe(true);
+    await page.screenshot({ path: `test-results/identity-queue-${width}.png`, fullPage: true });
+  }
 });

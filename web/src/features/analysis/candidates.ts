@@ -14,9 +14,11 @@ export type Candidate = {
 export type GroupDecision = { kind: 'none' | 'player' | 'excluded' | 'mixed'; playerId?: string };
 type Track = AnalysisRun['tracks'][number];
 
-// Дубль трекера при передаче игрока между треками — до секунды (как OVERLAP_S на сервере).
-export const HANDOFF_S = 1;
+// Перекрытие фрагментов одного игрока при передаче между треками — до 3 с (IDENTITY_HANDOFF_S на сервере).
+export const HANDOFF_S = 3;
 export const SHORT_S = 10;
+// Время записи «м:сс» для подписей кандидатов.
+export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 const playable = (t: Track) => !!t.team && (t.role === 'player' || t.role === 'goalkeeper');
 const seconds = (t: Track) => t.intervals.reduce((s, [a, b]) => s + (b - a), 0);
@@ -82,6 +84,30 @@ export function identityConflicts(
         out.push({ playerId, keep, drop });
       }
   return out;
+}
+
+// Назначения, которые сервер не примет (analysis/assignments.set_assignments): игрок не из состава задания,
+// отмечен как не участвовавший, трек не игрока или вратаря, игрок другой стороны. Номера фрагментов.
+export function rejectedAssignments(
+  run: AnalysisRun,
+  sideMap: AnalysisRun['side_map'],
+  absent: string[],
+  assignments: AnalysisAssignment[],
+): number[] {
+  const roster = new Map(run.context.rosters.map((p) => [p.player_id, p]));
+  const tracks = new Map(run.tracks.map((t) => [t.track_id, t]));
+  return assignments.flatMap((a) => {
+    if (!a.player_id) return [];
+    const player = roster.get(a.player_id);
+    const track = tracks.get(a.track_id);
+    const ok =
+      !!player &&
+      !!track &&
+      !absent.includes(a.player_id) &&
+      (track.role === 'player' || track.role === 'goalkeeper') &&
+      (!track.team || player.side === sideMap[track.team as 'A' | 'B']);
+    return ok ? [] : [a.track_id];
+  });
 }
 
 // Снимает с игроков более короткие фрагменты конфликтных пар, пока конфликтов не останется.

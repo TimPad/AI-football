@@ -134,6 +134,44 @@ it('conflict preserves pending payload instead of silently rebasing', async () =
   expect(readPending('conflict')!.body.expected_revision).toBe(0);
 });
 
+it('a rejected command leaves no pending send, so the tab is not locked', async () => {
+  vi.mocked(api)
+    .mockRejectedValueOnce(new ApiError('foreign_side', 'Игрок относится к другой стороне матча', {}, undefined, 422))
+    .mockResolvedValueOnce({});
+  await expect(sendJson('rejected', '/x', { a: 1 })).rejects.toThrow('другой стороне');
+  expect(readPending('rejected')).toBeNull();
+  await sendJson('rejected', '/x', { a: 2 });
+  expect(vi.mocked(api)).toHaveBeenCalledTimes(2);
+});
+
+it('a save into an older version leaves no pending send either', async () => {
+  vi.mocked(api).mockRejectedValueOnce(
+    new ApiError('stale_analysis_run', 'Есть более новая версия разметки', { newest_run_id: 'new' }, undefined, 409),
+  );
+  await expect(sendJson('stale', '/x', { a: 1 })).rejects.toThrow();
+  expect(readPending('stale')).toBeNull();
+});
+
+it('excluding a fragment fills a reason, and a blank reason is not sent', async () => {
+  vi.useFakeTimers();
+  try {
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(
+      <MemoryRouter>
+        <IdentityReview run={run} actorId="actor" editable onSave={save} />
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByLabelText('Игрок фрагмента 1'), { target: { value: 'exclude' } });
+    expect(screen.getByLabelText('Причина исключения 1')).toHaveValue('Не игрок матча');
+    fireEvent.change(screen.getByLabelText('Причина исключения 1'), { target: { value: ' ' } });
+    await vi.advanceTimersByTimeAsync(2100);
+    expect(save).not.toHaveBeenCalled();
+    expect(screen.getByRole('status', { name: 'Сохранение' })).toHaveTextContent('укажите причину исключения');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it('shows track and team period measurements before identity confirmation', async () => {
   const preview = {
     ...run,
@@ -239,4 +277,39 @@ it('tells which rating versions the confirmed video produced', async () => {
     'участие №2 — время на площадке у 7 игроков, действия №3 — 41 передача',
   );
   expect(screen.getByRole('link', { name: 'участие №2' })).toHaveAttribute('href', '?tab=participation');
+});
+
+it('labels players only in the newest version of the match', async () => {
+  const checks = { ...run.checks, critical_errors: [] };
+  const older = { ...run, checks, id: 'old', created_at: '2026-10-12T10:00:00Z' };
+  const newer = { ...run, checks, id: 'new', created_at: '2026-10-13T10:00:00Z' };
+  const overview = {
+    match_id: 'match',
+    analysis_revision: 0,
+    active_run_id: null,
+    published_run_id: null,
+    jobs: [],
+    runs: [newer, older],
+  };
+  vi.mocked(api).mockImplementation(async (path) => {
+    const p = String(path);
+    if (p.endsWith('/team-review-tasks')) return { items: [], total: 0 };
+    if (p.endsWith('/team-confirmations')) return { workflow: 'admin', sides: [] };
+    if (p.endsWith('/runs/old')) return older;
+    if (p.endsWith('/runs/new')) return newer;
+    return overview;
+  });
+  const update = vi.fn();
+  render(
+    <MemoryRouter>
+      <VideoAnalysisTab
+        matchId="match"
+        actorId="actor"
+        canManage
+        nav={{ params: new URLSearchParams('run_id=old'), update }}
+      />
+    </MemoryRouter>,
+  );
+  fireEvent.click(await screen.findByRole('button', { name: 'Перейти к разметке' }));
+  expect(update).toHaveBeenCalledWith(expect.objectContaining({ run_id: 'new' }));
 });

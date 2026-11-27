@@ -139,7 +139,7 @@ def test_correction_blocks_freeze_and_admin_fallback_is_explicit(admin_client, a
     assert command(admin_client, analytics_match, current, 'confirm').status_code == 200
 
 
-@pytest.mark.parametrize('start,expected', [(59.2, 200), (58.9, 422)])
+@pytest.mark.parametrize('start,expected', [(57.2, 200), (56.9, 422)])
 def test_existing_overlap_tolerance_applies_to_captain_confirmation(admin_client, analytics_match, start, expected):
     def overlap(m, r, t, c):
         t['tracks'][1]['intervals'] = [[start, 240]]

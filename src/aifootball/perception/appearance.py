@@ -20,6 +20,10 @@ BANDS = ((0.15, 0.5), (0.5, 0.85), (0.85, 1.0))
 APPEARANCE_KIND = 'color-hsv-v1'
 APPEARANCE_DIMS = 3 * (12 * 4 + 4)
 INPUT = (112, 224)  # ширина, высота
+# Признак SigLIP 2 фрагмента в пакете (поле embedding): нормированный вектор, по байту со знаком на число, base64.
+# По нему кабинет обучает модель матча (docs/superpowers/specs/2026-11-26-identity-queue-design.md).
+EMBEDDING_KIND = 'siglip2-b16-int8-v1'
+EMBEDDING_DIMS = 768
 ENCODERS = {
     'dino': 'vit_small_patch14_reg4_dinov2.lvd142m',
     'siglip': 'vit_base_patch16_siglip_224.v2_webli',
@@ -85,3 +89,33 @@ class TimmEmbedder:
         with self.torch.no_grad():
             out = self.model(x).float().cpu().numpy()
         return [v / max(float(np.linalg.norm(v)), 1e-9) for v in out]
+
+
+def encode_embedding(feature: np.ndarray) -> str:
+    """Признак SigLIP 2 — по байту со знаком на число, base64. Наибольший модуль — 127: при чтении вектор
+    нормируется, а точность выше, чем у умножения нормированного вектора на 127 (косинус 0,9999 против 0,998)."""
+    import base64
+
+    v = np.asarray(feature, np.float64)
+    q = np.clip(np.rint(v * (127 / max(float(np.abs(v).max()), 1e-9))), -127, 127).astype(np.int8)
+    return base64.b64encode(q.tobytes()).decode('ascii')
+
+
+def decode_embedding(text: str) -> np.ndarray:
+    import base64
+
+    v = np.frombuffer(base64.b64decode(text, validate=True), np.int8).astype(np.float64) / 127
+    return v / max(float(np.linalg.norm(v)), 1e-9)
+
+
+def siglip_embedder(models: Path | None):
+    """SigLIP 2 из models/hf без скачивания (HF_HUB_OFFLINE); весов нет — None."""
+    if models is None:
+        return None
+    cache = Path(models) / 'hf'
+    if not (cache / f'models--timm--{ENCODERS["siglip"]}').exists():
+        return None
+    import os
+
+    os.environ.setdefault('HF_HUB_OFFLINE', '1')
+    return TimmEmbedder('siglip', cache)

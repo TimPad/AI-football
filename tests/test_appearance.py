@@ -49,3 +49,21 @@ def test_color_feature_survives_the_package_encoding():
     assert a.size == APPEARANCE_DIMS and len(encode(a)) == 208  # 156 байт в base64
     assert decode(encode(a)) @ a > 0.999
     assert decode(encode(a)) @ decode(encode(b)) == pytest.approx(a @ b, abs=0.01)
+
+
+def test_siglip_embedding_survives_the_package_encoding():
+    from aifootball.perception.appearance import EMBEDDING_DIMS, decode_embedding, encode_embedding
+
+    rng = np.random.default_rng(0)
+    v = rng.normal(size=EMBEDDING_DIMS)
+    v /= np.linalg.norm(v)
+    back = decode_embedding(encode_embedding(v))
+    assert back.shape == (EMBEDDING_DIMS,)
+    assert float(back @ v) > 0.999
+
+
+def test_siglip_weights_are_never_downloaded(tmp_path):
+    from aifootball.perception.appearance import siglip_embedder
+
+    assert siglip_embedder(None) is None
+    assert siglip_embedder(tmp_path) is None  # в tmp_path/hf весов нет

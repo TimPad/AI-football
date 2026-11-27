@@ -25,8 +25,19 @@ export function prepare(key: string, path: string, body: Record<string, unknown>
   localStorage.setItem(key, JSON.stringify(pending));
   return pending;
 }
+// Отказ сервера по существу (422) и запись в устаревшую версию разметки не применены, и повтор ответит так же:
+// такая отправка не держится как незавершённая, иначе она запирает вкладку. Конфликт ревизии (409) остаётся
+// незавершённым — его решает человек, без тихой подмены ревизии.
+const rejected = (e: unknown) =>
+  e instanceof ApiError && (e.status === 422 || (e.status === 409 && e.code === 'stale_analysis_run'));
 export async function retryJson<T>(key: string, pending: Pending): Promise<T> {
-  const result = await api<T>(pending.path, { method: pending.method, body: JSON.stringify(pending.body) });
+  let result: T;
+  try {
+    result = await api<T>(pending.path, { method: pending.method, body: JSON.stringify(pending.body) });
+  } catch (e) {
+    if (rejected(e)) localStorage.removeItem(key);
+    throw e;
+  }
   localStorage.removeItem(key);
   return result;
 }

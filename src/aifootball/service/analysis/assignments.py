@@ -2,9 +2,9 @@ from collections import defaultdict
 
 from sqlalchemy import delete, select
 
-from aifootball.analytics.track_groups import OVERLAP_S
+from aifootball.analytics.track_groups import IDENTITY_HANDOFF_S
 from aifootball.service.analysis.aggregation import aggregate_player, period_fragments
-from aifootball.service.analysis.models import AnalysisAssignment, PlayerMatchMetric
+from aifootball.service.analysis.models import AnalysisAssignment, AnalysisRun, PlayerMatchMetric
 from aifootball.service.errors import DomainError
 
 
@@ -13,10 +13,28 @@ def set_assignments(db, run, job, data):
         raise DomainError(
             'immutable_analysis', 'Создайте новую версию проверки для изменения подтверждённых назначений', status=409
         )
+    newest = db.scalar(
+        select(AnalysisRun.id)
+        .where(AnalysisRun.match_id == run.match_id)
+        .order_by(AnalysisRun.created_at.desc(), AnalysisRun.id.desc())
+        .limit(1)
+    )
+    if newest != run.id:
+        raise DomainError(
+            'stale_analysis_run',
+            'Есть более новая версия разметки. Откройте её.',
+            fields={'newest_run_id': str(newest)},
+            status=409,
+        )
     if set(data.side_map) != {'A', 'B'} or set(data.side_map.values()) != {'home', 'away'}:
         raise DomainError('sides', 'Стороны A и B должны соответствовать разным командам')
     tracks = {t['track_id']: t for t in run.tracks['tracks']}
     roster = {p['player_id']: p for p in job.context['rosters']}
+    absent = {str(p) for p in run.absent_players or []}
+    if getattr(data, 'absent_players', None) is not None:
+        absent = {str(p) for p in data.absent_players}
+        if absent - set(roster):
+            raise DomainError('foreign_player', 'Игрок отсутствует в снимке состава задания')
     seen = set()
     rows = []
     for item in data.assignments:
@@ -30,6 +48,8 @@ def set_assignments(db, run, job, data):
             track = tracks[item.track_id]
             if not player:
                 raise DomainError('foreign_player', 'Игрок отсутствует в снимке состава задания')
+            if str(item.player_id) in absent:
+                raise DomainError('absent_player', 'Игрок отмечен как не участвовавший в матче')
             if track['role'] not in ('player', 'goalkeeper'):
                 raise DomainError('role', 'Игроку нельзя назначить трек судьи или неизвестной роли')
             if track['team'] and player['side'] != data.side_map[track['team']]:
@@ -46,6 +66,7 @@ def set_assignments(db, run, job, data):
     db.execute(delete(AnalysisAssignment).where(AnalysisAssignment.run_id == run.id))
     db.add_all(rows)
     run.side_map = data.side_map
+    run.absent_players = sorted(absent)
 
 
 def create_metrics(db, run, job):
@@ -70,8 +91,8 @@ def create_metrics(db, run, job):
         observed = sorted((start, end, tid) for tid in ids for start, end in tracks[tid]['intervals'])
         previous_end = -1
         for start, end, tid in observed:
-            # Передача игрока между треками даёт короткий дубль — до OVERLAP_S это один человек.
-            if start < previous_end - OVERLAP_S:
+            # Передача игрока между треками даёт короткий дубль — до IDENTITY_HANDOFF_S это один человек.
+            if start < previous_end - IDENTITY_HANDOFF_S:
                 raise DomainError(
                     'overlapping_identity',
                     'Одному игроку назначены пересекающиеся фрагменты. Исключите дубль или пересчитайте трек.',

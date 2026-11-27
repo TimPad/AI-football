@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../../api/client';
+import { ApiError, api } from '../../api/client';
 import type { AnalysisJob, AnalysisOverview, AnalysisRun, PublicAnalysis } from '../../api/domain';
 import { plural } from '../../components/plural';
 import { downloadJson, ErrorBox, Loading, useLoad } from '../../components/ui';
@@ -127,9 +127,15 @@ export function VideoAnalysisTab({
   const hasJobs = !!state.data?.jobs.length;
   const hasRuns = !!state.data?.runs.length;
   // По умолчанию открывается версия, ожидающая проверки: это следующая работа Админ+.
-  const reviewRun = canManage ? state.data?.runs.find((r) => r.status === 'review')?.id : undefined;
+  // Одна разметка на матч: она в самой новой версии, её Админ+ и открывает по умолчанию (правило сервера).
+  const newestId = [...(state.data?.runs ?? [])].sort(
+    (a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id),
+  )[0]?.id;
   const selectedId =
-    (known ? selected : undefined) ?? reviewRun ?? state.data?.active_run_id ?? state.data?.runs[0]?.id;
+    (known ? selected : undefined) ??
+    (canManage ? newestId : undefined) ??
+    state.data?.active_run_id ??
+    state.data?.runs[0]?.id;
   return (
     <div className="analysis-workflow">
       <section className="surface">
@@ -289,6 +295,8 @@ export function VideoAnalysisTab({
               mutate={json}
               refresh={state.reload}
               nav={nav}
+              newestId={newestId}
+              onSelect={setSelected}
             />
           )}
         </>
@@ -306,8 +314,12 @@ function RunContent({
   mutate,
   refresh,
   nav,
+  newestId,
+  onSelect,
 }: {
   nav?: ReviewNav;
+  newestId?: string;
+  onSelect: (id: string) => void;
   id: string;
   matchId: string;
   actorId: string;
@@ -441,16 +453,46 @@ function RunContent({
           }}
         />
       )}
+      {task === 'identity' && canManage && newestId && run.id !== newestId && (
+        <p className="warning row wrap" role="status" aria-label="Разметка в новой версии">
+          Разметка игроков ведётся в самой новой версии матча.
+          <button type="button" onClick={() => onSelect(newestId)}>
+            Перейти к разметке
+          </button>
+        </p>
+      )}
+      {task === 'identity' && canManage && run.id === newestId && run.status === 'confirmed' && (
+        <p className="row wrap" role="status" aria-label="Продолжить разметку">
+          Версия подтверждена: изменения пойдут в новую проверку с копией всех решений.
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void change('reviews')
+                .then((r) => onSelect(r.id))
+                .catch(() => {})
+            }
+          >
+            Продолжить разметку
+          </button>
+        </p>
+      )}
       {task === 'identity' && (
         <IdentityReview
           run={run}
           actorId={actorId}
-          editable={canManage && run.status === 'review' && !busy && !episodeDirty}
+          editable={canManage && run.status === 'review' && run.id === newestId && !busy && !episodeDirty}
           onDirty={setDirty}
           onSave={async (values) => {
-            const result = await change('assignments', values, 'PUT');
-            understanding.reload();
-            return result;
+            try {
+              const result = await change('assignments', values, 'PUT');
+              understanding.reload();
+              return result;
+            } catch (e) {
+              // Загружена более новая версия: обновить список версий, чтобы появился переход к ней.
+              if (e instanceof ApiError && e.code === 'stale_analysis_run') refresh();
+              throw e;
+            }
           }}
           suggestions={understanding.data?.identity_suggestions}
           onEvidence={(ids) => {

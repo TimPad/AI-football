@@ -61,6 +61,7 @@ def run_view(db, run):
             'context': job.context,
             'side_map': run.side_map,
             'side_map_verified': run.side_map_verified,
+            'absent_players': run.absent_players or [],
             'assignments': [
                 {'track_id': a.track_id, 'player_id': a.player_id, 'excluded_reason': a.excluded_reason}
                 for a in assigned
