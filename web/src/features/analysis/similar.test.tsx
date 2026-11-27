@@ -65,6 +65,9 @@ describe('simultaneous fragments of one player', () => {
     // Передача между треками: новый начинается за 0,5 с до конца прежнего — один человек.
     expect(intervalsClash([[0, 10]], [[9.5, 20]])).toBe(false);
     expect(intervalsClash([[0, 10]], [[12, 20]])).toBe(false);
+    // До 3 с перекрытия — та же передача (ВШЭ Ю — JWH: 2,0 с); больше — два человека.
+    expect(intervalsClash([[790, 841.7]], [[839.7, 861.4]])).toBe(false);
+    expect(intervalsClash([[0, 10]], [[6.5, 20]])).toBe(true);
   });
 
   it('drops the shorter fragment of each clashing pair from the draft', () => {

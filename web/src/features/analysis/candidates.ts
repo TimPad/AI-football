@@ -14,8 +14,8 @@ export type Candidate = {
 export type GroupDecision = { kind: 'none' | 'player' | 'excluded' | 'mixed'; playerId?: string };
 type Track = AnalysisRun['tracks'][number];
 
-// Дубль трекера при передаче игрока между треками — до секунды (как OVERLAP_S на сервере).
-export const HANDOFF_S = 1;
+// Перекрытие фрагментов одного игрока при передаче между треками — до 3 с (IDENTITY_HANDOFF_S на сервере).
+export const HANDOFF_S = 3;
 export const SHORT_S = 10;
 // Время записи «м:сс» для подписей кандидатов.
 export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;

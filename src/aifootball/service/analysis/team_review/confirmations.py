@@ -4,7 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 
-from aifootball.analytics.track_groups import OVERLAP_S
+from aifootball.analytics.track_groups import IDENTITY_HANDOFF_S
 from aifootball.service.analysis.assignments import set_assignments
 from aifootball.service.analysis.context import build_context, context_hash
 from aifootball.service.analysis.models import AnalysisAssignment, AnalysisJob, AnalysisRun
@@ -77,7 +77,7 @@ def check_overlaps(run, assignments):
     for intervals in by_person.values():
         end = -1
         for start, stop in sorted(intervals):
-            if start < end - OVERLAP_S:
+            if start < end - IDENTITY_HANDOFF_S:
                 raise DomainError(
                     'overlapping_identity', 'Игроку назначены пересекающиеся фрагменты. Сообщите об ошибке материала.'
                 )
